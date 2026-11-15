@@ -73,30 +73,63 @@
         </section>
 
         <section id="project-view" class="workspace-view project-view" hidden aria-live="polite">
-          <button id="back-to-projects" class="button button-quiet back-button" type="button">← Projects</button>
-          <header class="project-view-heading">
-            <div>
-              <p class="eyebrow">Project</p>
-              <h1 id="project-title"></h1>
-              <p id="project-description" class="detail-description"></p>
-            </div>
-            <span id="project-state" class="project-status"></span>
-          </header>
-          <nav class="project-tabs" aria-label="Project">
-            <button id="chat-tab" class="project-tab is-active" type="button" aria-current="page">Chat</button>
-            <button id="members-tab" class="project-tab" type="button">Members</button>
-          </nav>
-          <section id="chat-view" class="project-tab-view" aria-labelledby="chat-tab"></section>
-          <section id="members-view" class="project-tab-view" hidden aria-labelledby="members-tab">
-            <h2 class="section-title">Project members</h2>
-            <ul id="member-list" class="member-list"></ul>
-            <form id="member-form" class="member-form" hidden>
-              <label>Add a developer
-                <select id="member-select" name="user_id"></select>
-              </label>
-              <button id="add-member-button" class="button button-secondary" type="submit">Add to project</button>
-            </form>
+          <aside class="project-sidebar" aria-label="Project navigation">
+            <button id="back-to-projects" class="button button-quiet back-button" type="button">← All projects</button>
+            <h2 class="section-title">Projects</h2>
+            <ul id="project-sidebar-list" class="project-sidebar-list"></ul>
+          </aside>
+
+          <section class="project-main" aria-label="Project issues and members">
+            <header class="project-view-heading">
+              <div>
+                <p class="eyebrow">Project</p>
+                <h1 id="project-title"></h1>
+                <p id="project-description" class="detail-description"></p>
+              </div>
+              <span id="project-state" class="project-status"></span>
+            </header>
+            <nav class="project-tabs" aria-label="Project work">
+              <button id="issues-tab" class="project-tab is-active" type="button" aria-current="page">Issues</button>
+              <button id="members-tab" class="project-tab" type="button">Members</button>
+            </nav>
+            <section id="issues-view" class="project-tab-view" aria-labelledby="issues-tab">
+              <header class="issues-toolbar">
+                <h2 class="section-title">Issues</h2>
+                <button id="toggle-issue-form" class="button button-primary" type="button">New issue</button>
+              </header>
+              <section id="issue-form-panel" class="panel issue-form-panel" hidden aria-labelledby="new-issue-heading">
+                <h3 id="new-issue-heading">New issue</h3>
+                <form id="issue-form" class="form-stack">
+                  <label>Title
+                    <input name="title" maxlength="200" required>
+                  </label>
+                  <label>Description
+                    <textarea name="description" rows="3" maxlength="10000"></textarea>
+                  </label>
+                  <div class="form-actions">
+                    <button id="cancel-issue-form" class="button button-quiet" type="button">Cancel</button>
+                    <button class="button button-primary" type="submit">Create issue</button>
+                  </div>
+                </form>
+              </section>
+              <ul id="issue-list" class="issue-list" aria-live="polite"></ul>
+              <p id="empty-issues" class="empty-state" hidden>No issues yet. Create the first one.</p>
+            </section>
+            <section id="members-view" class="project-tab-view" hidden aria-labelledby="members-tab">
+              <h2 class="section-title">Project members</h2>
+              <ul id="member-list" class="member-list"></ul>
+              <form id="member-form" class="member-form" hidden>
+                <label>Add a developer
+                  <select id="member-select" name="user_id"></select>
+                </label>
+                <button id="add-member-button" class="button button-secondary" type="submit">Add to project</button>
+              </form>
+            </section>
           </section>
+
+          <aside id="project-chat-column" class="project-chat-column" aria-label="Project chat">
+            <div id="chat-view" class="project-chat-host"></div>
+          </aside>
         </section>
 
         <section id="admin-view" class="workspace-view admin-view" hidden aria-labelledby="admin-heading">

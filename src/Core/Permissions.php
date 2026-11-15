@@ -16,6 +16,8 @@ final class Permissions
                 => $user->role === 'admin' || ($resource['is_member'] ?? false) === true,
             'chat.read', 'chat.send'
                 => $user->role === 'admin' || ($user->role === 'developer' && ($resource['is_member'] ?? false) === true),
+            'issues.read', 'issues.create', 'issues.update'
+                => $user->role === 'admin' || ($user->role === 'developer' && ($resource['is_member'] ?? false) === true),
             'tokens.create'
                 => in_array($user->role, ['admin', 'developer'], true),
             'tokens.revoke'

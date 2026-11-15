@@ -2,31 +2,31 @@
 
 Chat, projects and issues in one place for developers working remotely. Keyboard-first, built for AI-assisted development, and simple to self-host on ordinary PHP + MySQL hosting.
 
-> **Status: pre-alpha.** Auth, projects, and the initial project-chat slice are implemented; broader chat workflows and later spec phases remain planned.
+> **Status: pre-alpha.** Auth, projects, project chat, and the initial issue slice are implemented; broader chat and issue workflows remain planned.
 
 ## Why
 
 Most teams spread work across a chat app, an issue tracker and a project board. This tool puts them together and removes the mouse from the daily loop:
 
-- **Keyboard-first.** Change status, assign, create and navigate with shortcuts and a command palette (`Ctrl/Cmd+K`). No drag and drop.
-- **Chat and issues are linked.** Turn any message into an issue (`/issue` or one keypress). The issue keeps its thread.
-- **Made for AI-assisted work.** Issues work as specs. Copy an issue as a prompt for an agent. Agents are users with their own tokens and use the same API.
-- **Client view.** Customers (guests) get a restricted view of progress, milestones and shared updates. They can comment on shared content and approve designated deliveries; internal work stays hidden.
-- **Simple to host.** Upload files to shared hosting, run the install wizard. No Composer, no npm, no framework in production.
+- **Keyboard-first direction.** Shortcuts and the command palette are planned; they are not in the current slice.
+- **Chat and issues will connect.** Message-to-issue conversion is planned, with the message thread kept as context.
+- **Made for AI-assisted work.** Issue prompt export and agent tokens use the same API; those workflows are planned.
+- **Client view (planned).** Guests will see shared progress and updates; internal work stays hidden.
+- **Simple to host (planned).** The install wizard is not implemented yet. Production will need no Composer, npm, or framework.
 
 ## Planned features
 
 | Area | What |
 |---|---|
 | Chat | Standalone channels, DMs, chat-to-issue actions and broader chat workflows |
-| Issues | Backlog / Todo / Doing / Done, quick-add syntax (`Fix login bug @niklas !high due:fri`), milestones, linked PRs |
+| Issues | Quick-add syntax (`Fix login bug @niklas !high due:fri`), assignment, priorities, milestones, linked PRs and chat conversion |
 | Inbox | Mentions, assignments, thread replies, status changes and PR events in one list |
 | Guests | Restricted client view with progress, milestones, shared issues and updates; comments on shared content and approvals for designated deliveries |
 | Integrations | GitHub via webhooks (GitLab later through the same interface) |
 | API | REST under `/api/v1/`, opaque Bearer tokens, OpenAPI description |
 
 See [`docs/SPEC.md`](docs/SPEC.md) for the full spec (Swedish) and phases.
-The current API contract is in [`docs/openapi.yaml`](docs/openapi.yaml). Project chat supports threaded text messages and adaptive polling.
+The current API contract is in [`docs/openapi.yaml`](docs/openapi.yaml). Project issues support create, list and status updates; project chat supports threaded text messages and adaptive polling.
 
 ## Tech
 

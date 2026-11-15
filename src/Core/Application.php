@@ -14,6 +14,9 @@ use Tangent\Modules\Auth\UserRepository;
 use Tangent\Modules\Chat\ChatRepository;
 use Tangent\Modules\Chat\ChatRoutes;
 use Tangent\Modules\Chat\ChatService;
+use Tangent\Modules\Issues\IssueRepository;
+use Tangent\Modules\Issues\IssuesRoutes;
+use Tangent\Modules\Issues\IssuesService;
 use Tangent\Modules\Projects\ProjectRepository;
 use Tangent\Modules\Projects\ProjectRoutes;
 use Tangent\Modules\Projects\ProjectService;
@@ -27,12 +30,14 @@ final class Application
         $auth = new AuthService($users, $tokens, new RateLimiter($pdo), $config);
         $projectRepository = new ProjectRepository($pdo);
         $chat = new ChatService(new ChatRepository($pdo), $projectRepository);
+        $issues = new IssuesService(new IssueRepository($pdo), $projectRepository);
         $projects = new ProjectService($projectRepository, $users, $pdo, $chat);
         $router = new Router();
 
         (new AuthRoutes($auth, $config->cookieSecure))->register($router);
         (new ProjectRoutes($projects))->register($router);
         (new ChatRoutes($chat))->register($router);
+        (new IssuesRoutes($issues))->register($router);
 
         return new Gateway($router, new Authenticator($tokens, $config));
     }

@@ -28,9 +28,17 @@ const projectTitle = document.querySelector('#project-title');
 const projectDescription = document.querySelector('#project-description');
 const projectState = document.querySelector('#project-state');
 const chatView = document.querySelector('#chat-view');
+const projectSidebarList = document.querySelector('#project-sidebar-list');
+const issuesView = document.querySelector('#issues-view');
 const membersView = document.querySelector('#members-view');
 const membersTabButton = document.querySelector('#members-tab');
-const chatTabButton = document.querySelector('#chat-tab');
+const issuesTabButton = document.querySelector('#issues-tab');
+const issueForm = document.querySelector('#issue-form');
+const issueFormPanel = document.querySelector('#issue-form-panel');
+const issueList = document.querySelector('#issue-list');
+const emptyIssues = document.querySelector('#empty-issues');
+const toggleIssueFormButton = document.querySelector('#toggle-issue-form');
+const cancelIssueFormButton = document.querySelector('#cancel-issue-form');
 const memberList = document.querySelector('#member-list');
 const memberForm = document.querySelector('#member-form');
 const memberSelect = document.querySelector('#member-select');
@@ -92,7 +100,10 @@ function showSignedOut() {
     loginPanel.hidden = false;
     workspacePanel.hidden = true;
     accountBar.hidden = true;
+    document.body.classList.remove('is-project-view');
     projectList.replaceChildren();
+    projectSidebarList.replaceChildren();
+    issueList.replaceChildren();
     chatView.replaceChildren();
 }
 function showSignedIn(user) {
@@ -102,6 +113,7 @@ function showSignedIn(user) {
     accountBar.hidden = false;
     currentUserLabel.textContent = `${user.name} · ${user.role}`;
     adminNavButton.hidden = user.role !== 'admin';
+    toggleProjectFormButton.hidden = user.role !== 'admin';
     showWorkspaceView('projects');
     report('');
 }
@@ -115,6 +127,7 @@ function showWorkspaceView(view) {
     adminView.hidden = view !== 'admin';
     projectView.hidden = view !== 'project';
     workspaceNav.hidden = view === 'project';
+    document.body.classList.toggle('is-project-view', view === 'project');
     projectsNavButton.classList.toggle('is-active', view === 'projects');
     adminNavButton.classList.toggle('is-active', view === 'admin');
     if (view === 'projects') {
@@ -373,8 +386,7 @@ projectsNavButton.addEventListener('click', () => showWorkspaceView('projects'))
 adminNavButton.addEventListener('click', () => showWorkspaceView('admin'));
 document.querySelector('#back-to-projects')
     .addEventListener('click', () => showWorkspaceView('projects'));
-document.querySelector('#chat-tab')
-    .addEventListener('click', () => switchProjectTab('chat'));
+issuesTabButton.addEventListener('click', () => switchProjectTab('issues'));
 membersTabButton.addEventListener('click', () => switchProjectTab('members'));
 toggleProjectFormButton.addEventListener('click', () => {
     projectFormPanel.hidden = !projectFormPanel.hidden;
@@ -384,6 +396,35 @@ toggleProjectFormButton.addEventListener('click', () => {
 cancelProjectFormButton.addEventListener('click', () => {
     projectForm.reset();
     projectFormPanel.hidden = true;
+});
+toggleIssueFormButton.addEventListener('click', () => {
+    issueFormPanel.hidden = !issueFormPanel.hidden;
+    if (!issueFormPanel.hidden)
+        issueForm.querySelector('input[name="title"]')?.focus();
+});
+cancelIssueFormButton.addEventListener('click', () => {
+    issueForm.reset();
+    issueFormPanel.hidden = true;
+});
+issueForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (activeProject === null)
+        return;
+    const projectId = activeProject.id;
+    const values = new FormData(issueForm);
+    try {
+        await api(`/projects/${projectId}/issues`, {
+            method: 'POST',
+            body: JSON.stringify({ title: values.get('title'), description: values.get('description') }),
+        });
+        issueForm.reset();
+        issueFormPanel.hidden = true;
+        report('Issue created.');
+        await loadProjectIssues(projectId);
+    }
+    catch (error) {
+        report(error instanceof Error ? error.message : 'Could not create the issue.', true);
+    }
 });
 memberForm.addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -403,6 +444,7 @@ async function loadProjects() {
     const result = await api('/projects');
     projectList.replaceChildren();
     emptyProjects.hidden = result.projects.length > 0;
+    projectSidebarList.replaceChildren();
     for (const project of result.projects) {
         const item = document.createElement('li');
         item.className = 'project-card';
@@ -426,18 +468,31 @@ async function loadProjects() {
         actions.append(state, open);
         item.append(details, actions);
         projectList.append(item);
+        const sidebarItem = document.createElement('li');
+        const sidebarButton = document.createElement('button');
+        sidebarButton.type = 'button';
+        sidebarButton.className = 'project-sidebar-link';
+        sidebarButton.classList.toggle('is-active', activeProject?.id === project.id);
+        sidebarButton.textContent = project.name;
+        sidebarButton.addEventListener('click', () => void loadProjectDetail(project.id));
+        sidebarItem.append(sidebarButton);
+        projectSidebarList.append(sidebarItem);
     }
 }
-async function loadProjectDetail(projectId, tab = 'chat') {
+async function loadProjectDetail(projectId, tab = 'issues') {
     stopChatPolling();
     try {
         const result = await api(`/projects/${projectId}`);
         activeProject = result.project;
         activeProjectMembers = result.members;
+        projectSidebarList.querySelectorAll('.project-sidebar-link').forEach((button) => {
+            button.classList.toggle('is-active', button.textContent === result.project.name);
+        });
         projectTitle.textContent = result.project.name;
         projectDescription.textContent = result.project.description || 'No description yet.';
         projectState.textContent = result.project.status;
         showWorkspaceView('project');
+        chatView.replaceChildren(createProjectChat(projectId));
         switchProjectTab(tab);
     }
     catch (error) {
@@ -448,21 +503,87 @@ async function loadProjectDetail(projectId, tab = 'chat') {
 function switchProjectTab(tab) {
     if (activeProject === null)
         return;
-    stopChatPolling();
-    chatView.hidden = tab !== 'chat';
+    issuesView.hidden = tab !== 'issues';
     membersView.hidden = tab !== 'members';
-    chatTabButton.classList.toggle('is-active', tab === 'chat');
+    issuesTabButton.classList.toggle('is-active', tab === 'issues');
     membersTabButton.classList.toggle('is-active', tab === 'members');
-    if (tab === 'chat') {
-        chatTabButton.setAttribute('aria-current', 'page');
+    if (tab === 'issues') {
+        issuesTabButton.setAttribute('aria-current', 'page');
         membersTabButton.removeAttribute('aria-current');
-        chatView.replaceChildren(createProjectChat(activeProject.id));
+        void loadProjectIssues(activeProject.id);
         return;
     }
     membersTabButton.setAttribute('aria-current', 'page');
-    chatTabButton.removeAttribute('aria-current');
-    chatView.replaceChildren();
+    issuesTabButton.removeAttribute('aria-current');
     void loadProjectMembers(activeProject.id);
+}
+async function loadProjectIssues(projectId) {
+    try {
+        const result = await api(`/projects/${projectId}/issues`);
+        if (activeProject?.id !== projectId || issuesView.hidden)
+            return;
+        issueList.replaceChildren();
+        emptyIssues.hidden = result.issues.length > 0;
+        for (const issue of result.issues)
+            issueList.append(createIssueRow(issue));
+    }
+    catch (error) {
+        if (error instanceof ApiFailure && error.status === 401) {
+            showSignedOut();
+            return;
+        }
+        report(error instanceof Error ? error.message : 'Could not load project issues.', true);
+    }
+}
+function createIssueRow(issue) {
+    const item = document.createElement('li');
+    item.className = 'issue-card';
+    item.dataset.issueId = String(issue.id);
+    const content = document.createElement('div');
+    content.className = 'issue-content';
+    const title = document.createElement('strong');
+    title.className = 'issue-title';
+    title.textContent = issue.title;
+    content.append(title);
+    if (issue.description !== '') {
+        const description = document.createElement('p');
+        description.className = 'issue-description';
+        description.textContent = issue.description;
+        content.append(description);
+    }
+    const status = document.createElement('select');
+    status.className = 'issue-status';
+    status.setAttribute('aria-label', `Status for ${issue.title}`);
+    const statuses = [
+        { value: 'backlog', label: 'Backlog' },
+        { value: 'todo', label: 'Todo' },
+        { value: 'doing', label: 'Doing' },
+        { value: 'done', label: 'Done' },
+    ];
+    for (const entry of statuses) {
+        const option = document.createElement('option');
+        option.value = entry.value;
+        option.textContent = entry.label;
+        option.selected = entry.value === issue.status;
+        status.append(option);
+    }
+    status.addEventListener('change', async () => {
+        const newStatus = status.value;
+        try {
+            await api(`/issues/${issue.id}`, {
+                method: 'PATCH',
+                body: JSON.stringify({ status: newStatus }),
+            });
+            report('Issue status updated.');
+            await loadProjectIssues(issue.project_id);
+        }
+        catch (error) {
+            status.value = issue.status;
+            report(error instanceof Error ? error.message : 'Could not update issue status.', true);
+        }
+    });
+    item.append(content, status);
+    return item;
 }
 async function loadProjectMembers(projectId) {
     memberList.replaceChildren();

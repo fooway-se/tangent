@@ -17,6 +17,20 @@ interface Project {
   status: 'active' | 'archived';
 }
 
+type IssueStatus = 'backlog' | 'todo' | 'doing' | 'done';
+
+interface Issue {
+  id: number;
+  workspace_id: number;
+  project_id: number;
+  title: string;
+  description: string;
+  status: IssueStatus;
+  created_by: number;
+  created_at: string;
+  updated_at: string;
+}
+
 interface Member extends User {
   joined_at?: string;
 }
@@ -70,9 +84,17 @@ const projectTitle = document.querySelector<HTMLElement>('#project-title')!;
 const projectDescription = document.querySelector<HTMLElement>('#project-description')!;
 const projectState = document.querySelector<HTMLElement>('#project-state')!;
 const chatView = document.querySelector<HTMLElement>('#chat-view')!;
+const projectSidebarList = document.querySelector<HTMLUListElement>('#project-sidebar-list')!;
+const issuesView = document.querySelector<HTMLElement>('#issues-view')!;
 const membersView = document.querySelector<HTMLElement>('#members-view')!;
 const membersTabButton = document.querySelector<HTMLButtonElement>('#members-tab')!;
-const chatTabButton = document.querySelector<HTMLButtonElement>('#chat-tab')!;
+const issuesTabButton = document.querySelector<HTMLButtonElement>('#issues-tab')!;
+const issueForm = document.querySelector<HTMLFormElement>('#issue-form')!;
+const issueFormPanel = document.querySelector<HTMLElement>('#issue-form-panel')!;
+const issueList = document.querySelector<HTMLUListElement>('#issue-list')!;
+const emptyIssues = document.querySelector<HTMLElement>('#empty-issues')!;
+const toggleIssueFormButton = document.querySelector<HTMLButtonElement>('#toggle-issue-form')!;
+const cancelIssueFormButton = document.querySelector<HTMLButtonElement>('#cancel-issue-form')!;
 const memberList = document.querySelector<HTMLUListElement>('#member-list')!;
 const memberForm = document.querySelector<HTMLFormElement>('#member-form')!;
 const memberSelect = document.querySelector<HTMLSelectElement>('#member-select')!;
@@ -139,7 +161,10 @@ function showSignedOut(): void {
   loginPanel.hidden = false;
   workspacePanel.hidden = true;
   accountBar.hidden = true;
+  document.body.classList.remove('is-project-view');
   projectList.replaceChildren();
+  projectSidebarList.replaceChildren();
+  issueList.replaceChildren();
   chatView.replaceChildren();
 }
 
@@ -150,6 +175,7 @@ function showSignedIn(user: User): void {
   accountBar.hidden = false;
   currentUserLabel.textContent = `${user.name} · ${user.role}`;
   adminNavButton.hidden = user.role !== 'admin';
+  toggleProjectFormButton.hidden = user.role !== 'admin';
   showWorkspaceView('projects');
   report('');
 }
@@ -164,6 +190,7 @@ function showWorkspaceView(view: 'projects' | 'admin' | 'project'): void {
   adminView.hidden = view !== 'admin';
   projectView.hidden = view !== 'project';
   workspaceNav.hidden = view === 'project';
+  document.body.classList.toggle('is-project-view', view === 'project');
   projectsNavButton.classList.toggle('is-active', view === 'projects');
   adminNavButton.classList.toggle('is-active', view === 'admin');
   if (view === 'projects') {
@@ -415,8 +442,7 @@ projectsNavButton.addEventListener('click', () => showWorkspaceView('projects'))
 adminNavButton.addEventListener('click', () => showWorkspaceView('admin'));
 document.querySelector<HTMLButtonElement>('#back-to-projects')!
   .addEventListener('click', () => showWorkspaceView('projects'));
-document.querySelector<HTMLButtonElement>('#chat-tab')!
-  .addEventListener('click', () => switchProjectTab('chat'));
+issuesTabButton.addEventListener('click', () => switchProjectTab('issues'));
 membersTabButton.addEventListener('click', () => switchProjectTab('members'));
 
 toggleProjectFormButton.addEventListener('click', () => {
@@ -426,6 +452,34 @@ toggleProjectFormButton.addEventListener('click', () => {
 cancelProjectFormButton.addEventListener('click', () => {
   projectForm.reset();
   projectFormPanel.hidden = true;
+});
+
+toggleIssueFormButton.addEventListener('click', () => {
+  issueFormPanel.hidden = !issueFormPanel.hidden;
+  if (!issueFormPanel.hidden) issueForm.querySelector<HTMLInputElement>('input[name="title"]')?.focus();
+});
+cancelIssueFormButton.addEventListener('click', () => {
+  issueForm.reset();
+  issueFormPanel.hidden = true;
+});
+
+issueForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  if (activeProject === null) return;
+  const projectId = activeProject.id;
+  const values = new FormData(issueForm);
+  try {
+    await api(`/projects/${projectId}/issues`, {
+      method: 'POST',
+      body: JSON.stringify({ title: values.get('title'), description: values.get('description') }),
+    });
+    issueForm.reset();
+    issueFormPanel.hidden = true;
+    report('Issue created.');
+    await loadProjectIssues(projectId);
+  } catch (error) {
+    report(error instanceof Error ? error.message : 'Could not create the issue.', true);
+  }
 });
 
 memberForm.addEventListener('submit', async (event) => {
@@ -445,6 +499,7 @@ async function loadProjects(): Promise<void> {
   const result = await api<{ projects: Project[] }>('/projects');
   projectList.replaceChildren();
   emptyProjects.hidden = result.projects.length > 0;
+  projectSidebarList.replaceChildren();
 
   for (const project of result.projects) {
     const item = document.createElement('li');
@@ -471,19 +526,33 @@ async function loadProjects(): Promise<void> {
     actions.append(state, open);
     item.append(details, actions);
     projectList.append(item);
+
+    const sidebarItem = document.createElement('li');
+    const sidebarButton = document.createElement('button');
+    sidebarButton.type = 'button';
+    sidebarButton.className = 'project-sidebar-link';
+    sidebarButton.classList.toggle('is-active', activeProject?.id === project.id);
+    sidebarButton.textContent = project.name;
+    sidebarButton.addEventListener('click', () => void loadProjectDetail(project.id));
+    sidebarItem.append(sidebarButton);
+    projectSidebarList.append(sidebarItem);
   }
 }
 
-async function loadProjectDetail(projectId: number, tab: 'chat' | 'members' = 'chat'): Promise<void> {
+async function loadProjectDetail(projectId: number, tab: 'issues' | 'members' = 'issues'): Promise<void> {
   stopChatPolling();
   try {
     const result = await api<{ project: Project; members: Member[] }>(`/projects/${projectId}`);
     activeProject = result.project;
     activeProjectMembers = result.members;
+    projectSidebarList.querySelectorAll<HTMLButtonElement>('.project-sidebar-link').forEach((button) => {
+      button.classList.toggle('is-active', button.textContent === result.project.name);
+    });
     projectTitle.textContent = result.project.name;
     projectDescription.textContent = result.project.description || 'No description yet.';
     projectState.textContent = result.project.status;
     showWorkspaceView('project');
+    chatView.replaceChildren(createProjectChat(projectId));
     switchProjectTab(tab);
   } catch (error) {
     report(error instanceof Error ? error.message : 'Could not load the project.', true);
@@ -491,24 +560,91 @@ async function loadProjectDetail(projectId: number, tab: 'chat' | 'members' = 'c
   }
 }
 
-function switchProjectTab(tab: 'chat' | 'members'): void {
+function switchProjectTab(tab: 'issues' | 'members'): void {
   if (activeProject === null) return;
-  stopChatPolling();
-  chatView.hidden = tab !== 'chat';
+  issuesView.hidden = tab !== 'issues';
   membersView.hidden = tab !== 'members';
-  chatTabButton.classList.toggle('is-active', tab === 'chat');
+  issuesTabButton.classList.toggle('is-active', tab === 'issues');
   membersTabButton.classList.toggle('is-active', tab === 'members');
-  if (tab === 'chat') {
-    chatTabButton.setAttribute('aria-current', 'page');
+  if (tab === 'issues') {
+    issuesTabButton.setAttribute('aria-current', 'page');
     membersTabButton.removeAttribute('aria-current');
-    chatView.replaceChildren(createProjectChat(activeProject.id));
+    void loadProjectIssues(activeProject.id);
     return;
   }
 
   membersTabButton.setAttribute('aria-current', 'page');
-  chatTabButton.removeAttribute('aria-current');
-  chatView.replaceChildren();
+  issuesTabButton.removeAttribute('aria-current');
   void loadProjectMembers(activeProject.id);
+}
+
+async function loadProjectIssues(projectId: number): Promise<void> {
+  try {
+    const result = await api<{ issues: Issue[] }>(`/projects/${projectId}/issues`);
+    if (activeProject?.id !== projectId || issuesView.hidden) return;
+    issueList.replaceChildren();
+    emptyIssues.hidden = result.issues.length > 0;
+    for (const issue of result.issues) issueList.append(createIssueRow(issue));
+  } catch (error) {
+    if (error instanceof ApiFailure && error.status === 401) {
+      showSignedOut();
+      return;
+    }
+    report(error instanceof Error ? error.message : 'Could not load project issues.', true);
+  }
+}
+
+function createIssueRow(issue: Issue): HTMLElement {
+  const item = document.createElement('li');
+  item.className = 'issue-card';
+  item.dataset.issueId = String(issue.id);
+
+  const content = document.createElement('div');
+  content.className = 'issue-content';
+  const title = document.createElement('strong');
+  title.className = 'issue-title';
+  title.textContent = issue.title;
+  content.append(title);
+  if (issue.description !== '') {
+    const description = document.createElement('p');
+    description.className = 'issue-description';
+    description.textContent = issue.description;
+    content.append(description);
+  }
+
+  const status = document.createElement('select');
+  status.className = 'issue-status';
+  status.setAttribute('aria-label', `Status for ${issue.title}`);
+  const statuses: Array<{ value: IssueStatus; label: string }> = [
+    { value: 'backlog', label: 'Backlog' },
+    { value: 'todo', label: 'Todo' },
+    { value: 'doing', label: 'Doing' },
+    { value: 'done', label: 'Done' },
+  ];
+  for (const entry of statuses) {
+    const option = document.createElement('option');
+    option.value = entry.value;
+    option.textContent = entry.label;
+    option.selected = entry.value === issue.status;
+    status.append(option);
+  }
+  status.addEventListener('change', async () => {
+    const newStatus = status.value as IssueStatus;
+    try {
+      await api(`/issues/${issue.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: newStatus }),
+      });
+      report('Issue status updated.');
+      await loadProjectIssues(issue.project_id);
+    } catch (error) {
+      status.value = issue.status;
+      report(error instanceof Error ? error.message : 'Could not update issue status.', true);
+    }
+  });
+
+  item.append(content, status);
+  return item;
 }
 
 async function loadProjectMembers(projectId: number): Promise<void> {
