@@ -4,16 +4,21 @@ declare(strict_types=1);
 
 namespace Tangent\Modules\Projects;
 
+use PDO;
+use Throwable;
 use Tangent\Core\ApiException;
 use Tangent\Core\AuthenticatedUser;
 use Tangent\Core\Permissions;
 use Tangent\Modules\Auth\UserRepository;
+use Tangent\Modules\Chat\ChatService;
 
 final class ProjectService
 {
     public function __construct(
         private readonly ProjectRepository $projects,
         private readonly UserRepository $users,
+        private readonly PDO $pdo,
+        private readonly ChatService $chat,
     ) {
     }
 
@@ -55,7 +60,24 @@ final class ProjectService
         }
 
         $slug = self::slug($name);
-        return $this->projects->create($user->workspaceId, $name, $slug, $description, $user->id);
+        $ownsTransaction = !$this->pdo->inTransaction();
+        if ($ownsTransaction) {
+            $this->pdo->beginTransaction();
+        }
+
+        try {
+            $project = $this->projects->create($user->workspaceId, $name, $slug, $description, $user->id);
+            $this->chat->createProjectChannel($user->workspaceId, (int) $project['id']);
+            if ($ownsTransaction) {
+                $this->pdo->commit();
+            }
+            return $project;
+        } catch (Throwable $exception) {
+            if ($ownsTransaction && $this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            throw $exception;
+        }
     }
 
     /** @param array<string, mixed> $body @return array<string, mixed> */

@@ -25,6 +25,17 @@ final class Response
         return new self($status, $body, $normalized);
     }
 
+    /** @param array<string, string|list<string>> $headers */
+    public static function notModified(array $headers = []): self
+    {
+        $normalized = [];
+        foreach ($headers as $name => $value) {
+            $normalized[strtolower($name)] = $value;
+        }
+
+        return new self(304, [], $normalized);
+    }
+
     public function send(): never
     {
         http_response_code($this->status);
@@ -34,7 +45,7 @@ final class Response
             }
         }
 
-        if ($this->status !== 204) {
+        if (!in_array($this->status, [204, 304], true)) {
             echo json_encode($this->body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         }
 

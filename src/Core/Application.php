@@ -11,6 +11,9 @@ use Tangent\Modules\Auth\Authenticator;
 use Tangent\Modules\Auth\RateLimiter;
 use Tangent\Modules\Auth\TokenRepository;
 use Tangent\Modules\Auth\UserRepository;
+use Tangent\Modules\Chat\ChatRepository;
+use Tangent\Modules\Chat\ChatRoutes;
+use Tangent\Modules\Chat\ChatService;
 use Tangent\Modules\Projects\ProjectRepository;
 use Tangent\Modules\Projects\ProjectRoutes;
 use Tangent\Modules\Projects\ProjectService;
@@ -22,11 +25,14 @@ final class Application
         $users = new UserRepository($pdo);
         $tokens = new TokenRepository($pdo);
         $auth = new AuthService($users, $tokens, new RateLimiter($pdo), $config);
-        $projects = new ProjectService(new ProjectRepository($pdo), $users);
+        $projectRepository = new ProjectRepository($pdo);
+        $chat = new ChatService(new ChatRepository($pdo), $projectRepository);
+        $projects = new ProjectService($projectRepository, $users, $pdo, $chat);
         $router = new Router();
 
         (new AuthRoutes($auth, $config->cookieSecure))->register($router);
         (new ProjectRoutes($projects))->register($router);
+        (new ChatRoutes($chat))->register($router);
 
         return new Gateway($router, new Authenticator($tokens, $config));
     }

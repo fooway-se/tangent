@@ -6,7 +6,7 @@ namespace Tangent\Core;
 
 final class Request
 {
-    /** @param array<string, mixed> $body @param array<string, string> $headers */
+    /** @param array<string, mixed> $body @param array<string, string> $headers @param array<string, mixed> $query */
     public function __construct(
         public readonly string $method,
         public readonly string $path,
@@ -15,10 +15,11 @@ final class Request
         public readonly array $cookies = [],
         public readonly string $remoteAddress = 'unknown',
         public readonly bool $validJson = true,
+        public readonly array $query = [],
     ) {
     }
 
-    /** @param array<string, mixed> $body @param array<string, string> $headers */
+    /** @param array<string, mixed> $body @param array<string, string> $headers @param array<string, mixed> $query */
     public static function json(
         string $method,
         string $path,
@@ -26,8 +27,9 @@ final class Request
         array $headers = [],
         array $cookies = [],
         string $remoteAddress = 'unknown',
+        array $query = [],
     ): self {
-        return new self(strtoupper($method), $path, $body, $headers, $cookies, $remoteAddress);
+        return new self(strtoupper($method), $path, $body, $headers, $cookies, $remoteAddress, true, $query);
     }
 
     /** @param array<string, mixed> $query @param array<string, string> $headers */
@@ -59,6 +61,7 @@ final class Request
             $cookies,
             $remoteAddress,
             $validJson,
+            $query,
         );
     }
 

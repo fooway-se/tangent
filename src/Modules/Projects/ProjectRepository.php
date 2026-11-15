@@ -56,6 +56,24 @@ final class ProjectRepository
         return $statement->fetchColumn() !== false;
     }
 
+    /** @return list<array{id: int, is_member: bool}> */
+    public function visibilityForUser(int $workspaceId, int $userId): array
+    {
+        $statement = $this->pdo->prepare(
+            'SELECT p.id, pm.user_id IS NOT NULL AS is_member
+             FROM projects p
+             LEFT JOIN project_memberships pm
+               ON pm.workspace_id = p.workspace_id AND pm.project_id = p.id AND pm.user_id = :user_id
+             WHERE p.workspace_id = :workspace_id
+             ORDER BY p.id'
+        );
+        $statement->execute(['workspace_id' => $workspaceId, 'user_id' => $userId]);
+        return array_map(static fn (array $row): array => [
+            'id' => (int) $row['id'],
+            'is_member' => (bool) $row['is_member'],
+        ], $statement->fetchAll(PDO::FETCH_ASSOC));
+    }
+
     /** @return array<string, mixed> */
     public function create(int $workspaceId, string $name, string $slug, string $description, int $creatorId): array
     {

@@ -2,7 +2,7 @@
 
 Chat, projects and issues in one place for developers working remotely. Keyboard-first, built for AI-assisted development, and simple to self-host on ordinary PHP + MySQL hosting.
 
-> **Status: pre-alpha.** The first auth + projects vertical slice is implemented; later spec phases remain planned.
+> **Status: pre-alpha.** Auth, projects, and the initial project-chat slice are implemented; broader chat workflows and later spec phases remain planned.
 
 ## Why
 
@@ -18,7 +18,7 @@ Most teams spread work across a chat app, an issue tracker and a project board. 
 
 | Area | What |
 |---|---|
-| Chat | Project channels, standalone channels, DMs, threads, adaptive polling for near-live updates |
+| Chat | Standalone channels, DMs, chat-to-issue actions and broader chat workflows |
 | Issues | Backlog / Todo / Doing / Done, quick-add syntax (`Fix login bug @niklas !high due:fri`), milestones, linked PRs |
 | Inbox | Mentions, assignments, thread replies, status changes and PR events in one list |
 | Guests | Restricted client view with progress, milestones, shared issues and updates; comments on shared content and approvals for designated deliveries |
@@ -26,7 +26,7 @@ Most teams spread work across a chat app, an issue tracker and a project board. 
 | API | REST under `/api/v1/`, opaque Bearer tokens, OpenAPI description |
 
 See [`docs/SPEC.md`](docs/SPEC.md) for the full spec (Swedish) and phases.
-The implemented first-slice API contract is in [`docs/openapi.yaml`](docs/openapi.yaml).
+The current API contract is in [`docs/openapi.yaml`](docs/openapi.yaml). Project chat supports threaded text messages and adaptive polling.
 
 ## Tech
 
