@@ -1,0 +1,71 @@
+# Tangent
+
+Chat, projects and issues in one place for developers working remotely. Keyboard-first, built for AI-assisted development, and simple to self-host on ordinary PHP + MySQL hosting.
+
+> **Status: planning / pre-alpha.** Nothing is released yet. The spec and UI mockups exist; implementation starts with auth + projects.
+
+## Why
+
+Most teams spread work across a chat app, an issue tracker and a project board. This tool puts them together and removes the mouse from the daily loop:
+
+- **Keyboard-first.** Change status, assign, create and navigate with shortcuts and a command palette (`Ctrl/Cmd+K`). No drag and drop.
+- **Chat and issues are linked.** Turn any message into an issue (`/issue` or one keypress). The issue keeps its thread.
+- **Made for AI-assisted work.** Issues work as specs. Copy an issue as a prompt for an agent. Agents are users with their own tokens and use the same API.
+- **Client view.** Customers (guests) get a separate, read-only view of progress, milestones and shared updates. Internal work stays hidden.
+- **Simple to host.** Upload files to shared hosting, run the install wizard. No Composer, no npm, no framework in production.
+
+## Planned features
+
+| Area | What |
+|---|---|
+| Chat | Project channels, standalone channels, DMs, threads, adaptive polling for near-live updates |
+| Issues | Backlog / Todo / Doing / Done, quick-add syntax (`Fix login bug @niklas !high due:fri`), milestones, linked PRs |
+| Inbox | Mentions, assignments, thread replies, status changes and PR events in one list |
+| Guests | Read-only client view with progress, milestones, shared issues and updates |
+| Integrations | GitHub via webhooks (GitLab later through the same interface) |
+| API | REST under `/api/v1/`, opaque Bearer tokens, OpenAPI description |
+
+See [`docs/SPEC.md`](docs/SPEC.md) for the full spec (Swedish) and phases.
+
+## Tech
+
+- **Backend:** PHP >= 8.2.7, no framework, no runtime dependencies. PHPUnit for development only.
+- **Database:** MySQL / MariaDB (`utf8mb4`, InnoDB).
+- **Frontend:** plain HTML, CSS and TypeScript (ES modules). No React.
+- **Realtime:** adaptive polling, with a swappable transport for WebSockets later.
+
+Architecture and conventions: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+
+## Mockups
+
+Dark "charcoal" theme, in [`docs/mockups/`](docs/mockups/): project view, command palette, issue detail, client view, inbox.
+
+## Installation
+
+Not available yet. The plan:
+
+1. Download the release zip (PHP code and prebuilt JavaScript).
+2. Upload it to your web host.
+3. Open the install wizard. It checks PHP version and extensions, takes database details, runs migrations, creates the first admin and writes `config.php`.
+
+Requirements: PHP >= 8.2.7 with `pdo_mysql`, `mbstring`, `json` and `openssl` (or `sodium`), and a MySQL/MariaDB database.
+
+## Development
+
+```
+# backend tests (real MySQL test database, each test in a rolled-back transaction)
+vendor/bin/phpunit
+
+# frontend build
+npx tsc -p tsconfig.json
+```
+
+Commands will be finalized with the first vertical slice.
+
+## Contributing
+
+Read [`AGENTS.md`](AGENTS.md) and [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) first. They apply to people and AI agents alike: tests first, small classes that add behavior, every permission check through `can()`, every query scoped by `workspace_id`.
+
+## License
+
+[MIT](LICENSE)
