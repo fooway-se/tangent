@@ -4,11 +4,21 @@ services:
       context: .
       dockerfile: Dockerfile.dev
     working_dir: /workspace
-    command: ["sleep", "infinity"]
+    command: ["php", "-S", "0.0.0.0:8080", "-t", "public", "public/index.php"]
+    ports:
+      - "${TANGENT_HTTP_PORT:-8080}:8080"
     volumes:
       - .:/workspace
       - composer_vendor:/workspace/vendor
     environment:
+      TANGENT_ENV: development
+      TANGENT_DB_HOST: mysql
+      TANGENT_DB_PORT: "3306"
+      TANGENT_DB_NAME: tangent_test
+      TANGENT_DB_USER: tangent
+      TANGENT_DB_PASSWORD: tangent_dev_password
+      TANGENT_WORKSPACE_ID: "1"
+      TANGENT_COOKIE_SECURE: "false"
       TANGENT_TEST_DB_HOST: mysql
       TANGENT_TEST_DB_PORT: "3306"
       TANGENT_TEST_DB_NAME: tangent_test
@@ -38,6 +48,16 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
 
+  frontend:
+    image: node:22-alpine
+    profiles: [frontend]
+    working_dir: /workspace
+    entrypoint: ["npm"]
+    volumes:
+      - .:/workspace
+      - frontend_node_modules:/workspace/node_modules
+
 volumes:
   composer_vendor:
+  frontend_node_modules:
   mysql_data:

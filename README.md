@@ -2,7 +2,7 @@
 
 Chat, projects and issues in one place for developers working remotely. Keyboard-first, built for AI-assisted development, and simple to self-host on ordinary PHP + MySQL hosting.
 
-> **Status: planning / pre-alpha.** Nothing is released yet. The spec and UI mockups exist; implementation starts with auth + projects.
+> **Status: pre-alpha.** The first auth + projects vertical slice is implemented; later spec phases remain planned.
 
 ## Why
 
@@ -26,6 +26,7 @@ Most teams spread work across a chat app, an issue tracker and a project board. 
 | API | REST under `/api/v1/`, opaque Bearer tokens, OpenAPI description |
 
 See [`docs/SPEC.md`](docs/SPEC.md) for the full spec (Swedish) and phases.
+The implemented first-slice API contract is in [`docs/openapi.yaml`](docs/openapi.yaml).
 
 ## Tech
 
@@ -48,7 +49,7 @@ Not available yet. The plan:
 2. Upload it to your web host.
 3. Open the install wizard. It checks PHP version and extensions, takes database details, runs migrations, creates the first admin and writes `config.php`.
 
-Requirements: PHP >= 8.5.12 with `pdo_mysql`, `mbstring`, `json` and `openssl` (or `sodium`), and a MySQL/MariaDB database.
+Requirements: PHP >= 8.5.12 with `pdo_mysql`, `mbstring`, and `iconv`, plus a MySQL/MariaDB database.
 
 ## Development
 
@@ -57,10 +58,14 @@ Backend development and tests use Docker Compose with PHP 8.5.12 and a real MySQ
 ```sh
 docker compose up -d --build
 docker compose exec php composer install
+docker compose exec php php bin/migrate.php
+docker compose exec -it php php bin/seed-admin.php
 docker compose exec php composer test
+docker compose --profile frontend run --rm frontend ci --ignore-scripts
+docker compose --profile frontend run --rm frontend run build
 ```
 
-The frontend build command will be finalized with the first vertical slice.
+The TypeScript compiler is a development-only dependency. The build writes the browser module to `public/assets/app.js`.
 
 ## Contributing
 
