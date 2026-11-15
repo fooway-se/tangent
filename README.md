@@ -52,15 +52,15 @@ Requirements: PHP >= 8.5.12 with `pdo_mysql`, `mbstring`, `json` and `openssl` (
 
 ## Development
 
-```
-# backend tests (real MySQL test database, each test in a rolled-back transaction)
-vendor/bin/phpunit
+Backend development and tests use Docker Compose with PHP 8.5.12 and a real MySQL database. PHPUnit is a development-only Composer dependency. See [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) for setup and TDD commands.
 
-# frontend build
-npx tsc -p tsconfig.json
+```sh
+docker compose up -d --build
+docker compose exec php composer install
+docker compose exec php composer test
 ```
 
-Commands will be finalized with the first vertical slice.
+The frontend build command will be finalized with the first vertical slice.
 
 ## Contributing
 
