@@ -110,7 +110,7 @@
               <section id="issues-view" class="project-tab-view" aria-labelledby="issues-tab">
                 <header class="issues-toolbar">
                   <h2 class="section-title">Issues</h2>
-                  <button id="toggle-issue-form" class="button button-primary" type="button">New issue</button>
+                  <button id="toggle-issue-form" class="button button-primary" type="button">New issue <kbd>c</kbd></button>
                 </header>
                 <section id="issue-form-panel" class="panel issue-form-panel" hidden aria-labelledby="new-issue-heading">
                   <h3 id="new-issue-heading">New issue</h3>
@@ -138,6 +138,38 @@
                     <select id="member-select" name="user_id"></select>
                   </label>
                   <button id="add-member-button" class="button button-secondary" type="submit">Add to project</button>
+                </form>
+              </section>
+              <section id="issue-detail-view" class="project-tab-view issue-detail-view" hidden aria-labelledby="issue-detail-title">
+                <header class="issue-detail-toolbar">
+                  <button id="issue-back-button" class="button button-quiet" type="button">← Issues</button>
+                  <button id="issue-detail-edit-button" class="button" type="button">Edit issue <kbd>e</kbd></button>
+                </header>
+                <div class="issue-detail-status-row">
+                  <label for="issue-detail-status">Status <kbd>s</kbd></label>
+                  <select id="issue-detail-status" class="issue-status" aria-label="Issue status">
+                    <option value="backlog">Backlog</option>
+                    <option value="todo">Todo</option>
+                    <option value="doing">Doing</option>
+                    <option value="done">Done</option>
+                  </select>
+                </div>
+                <div id="issue-detail-display" class="issue-detail-display">
+                  <h2 id="issue-detail-title" class="issue-detail-title"></h2>
+                  <p id="issue-detail-description" class="issue-detail-description"></p>
+                  <a id="issue-source-link" class="issue-source-link" href="#project-chat-column" hidden>Open source chat thread</a>
+                </div>
+                <form id="issue-detail-edit-form" class="form-stack issue-detail-edit-form" hidden>
+                  <label>Title
+                    <input id="issue-detail-title-input" name="title" maxlength="200" required>
+                  </label>
+                  <label>Description
+                    <textarea id="issue-detail-description-input" name="description" rows="8" maxlength="10000"></textarea>
+                  </label>
+                  <div class="form-actions">
+                    <button id="issue-detail-cancel-button" class="button button-quiet" type="button">Cancel</button>
+                    <button id="issue-detail-save-button" class="button button-primary" type="submit">Save changes</button>
+                  </div>
                 </form>
               </section>
             </section>
@@ -171,7 +203,51 @@
             </article>
           </section>
         </main>
+        <footer id="keyboard-hints" class="keyboard-hints" hidden>
+          <span><kbd>j</kbd>/<kbd>k</kbd> Move</span>
+          <span><kbd>Enter</kbd> Open</span>
+          <span><kbd>g</kbd> <kbd>p</kbd> Projects</span>
+          <span id="go-prefix-hint" class="go-prefix-hint" hidden>Press <kbd>p</kbd> for Projects</span>
+          <span id="project-keyboard-hints" hidden><kbd>c</kbd> Create <kbd>e</kbd> Edit <kbd>s</kbd> Status <kbd>i</kbd> Chat to issue</span>
+          <span><kbd>Ctrl/Cmd</kbd>+<kbd>K</kbd> Commands</span>
+          <span><kbd>?</kbd> Shortcuts</span>
+        </footer>
       </section>
     </section>
+
+    <dialog id="command-palette" class="command-palette" aria-labelledby="command-palette-heading">
+      <section class="command-palette-content">
+        <header class="dialog-heading">
+          <h2 id="command-palette-heading">Command palette</h2>
+          <button id="command-palette-close" class="button button-quiet" type="button" aria-label="Close command palette">Esc</button>
+        </header>
+        <label class="command-search-label">Search commands
+          <input id="command-search" type="search" autocomplete="off" placeholder="Type a command…">
+        </label>
+        <ul id="command-results" class="command-results" role="listbox" aria-label="Commands"></ul>
+        <p class="command-palette-help"><kbd>↑</kbd>/<kbd>↓</kbd> Move · <kbd>Enter</kbd> Run · <kbd>Esc</kbd> Close</p>
+      </section>
+    </dialog>
+
+    <dialog id="shortcut-help" class="shortcut-help" aria-labelledby="shortcut-help-heading">
+      <section class="shortcut-help-content">
+        <header class="dialog-heading">
+          <h2 id="shortcut-help-heading">Keyboard shortcuts</h2>
+          <button id="shortcut-help-close" class="button button-quiet" type="button" aria-label="Close keyboard shortcuts">Esc</button>
+        </header>
+        <dl class="shortcut-list">
+          <div><dt><kbd>Ctrl/Cmd</kbd>+<kbd>K</kbd></dt><dd>Open command palette</dd></div>
+          <div><dt><kbd>?</kbd></dt><dd>Show keyboard shortcuts</dd></div>
+          <div><dt><kbd>j</kbd>/<kbd>k</kbd></dt><dd>Move through projects or issues</dd></div>
+          <div><dt><kbd>Enter</kbd></dt><dd>Open selected project or issue</dd></div>
+          <div><dt><kbd>g</kbd>, <kbd>p</kbd></dt><dd>Go to projects</dd></div>
+          <div><dt><kbd>c</kbd></dt><dd>Create issue in the open project</dd></div>
+          <div><dt><kbd>e</kbd></dt><dd>Edit selected issue</dd></div>
+          <div><dt><kbd>s</kbd></dt><dd>Focus issue status</dd></div>
+          <div><dt><kbd>i</kbd></dt><dd>Create an issue from the latest chat message</dd></div>
+          <div><dt><kbd>Esc</kbd></dt><dd>Close the current panel or dialog</dd></div>
+        </dl>
+      </section>
+    </dialog>
   </body>
 </html>

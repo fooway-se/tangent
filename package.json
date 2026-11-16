@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "test": "node --test"
+    "test": "npm run build && node --experimental-default-type=module --test"
   },
   "devDependencies": {
     "typescript": "^5.9.3"

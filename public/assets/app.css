@@ -22,6 +22,7 @@
 [hidden] { display: none !important; }
 body { min-width: 0; min-height: 100vh; margin: 0; }
 button, input, textarea, select { font: inherit; }
+kbd { display: inline-block; border: 1px solid var(--border); border-radius: 0; padding: .08rem .25rem; color: var(--muted); background: var(--deep-blue); font-size: .72em; line-height: 1.25; white-space: nowrap; }
 
 .topbar {
   min-height: 56px;
@@ -126,6 +127,7 @@ textarea { resize: vertical; }
 .project-form-panel { max-width: 680px; margin-bottom: 1.25rem; }
 .project-list { display: grid; gap: .45rem; margin: 0; padding: 0; list-style: none; }
 .project-card { display: flex; align-items: center; justify-content: space-between; gap: .75rem; border: 1px solid var(--border); border-radius: 0; padding: .65rem .75rem; background: var(--surface); }
+.project-card.is-keyboard-selected, .issue-card.is-keyboard-selected { outline: 1px solid var(--accent); background: var(--surface-raised); }
 .project-name { margin: 0 0 .25rem; font-size: 1rem; font-weight: 650; }
 .project-description, .project-meta { margin: 0; color: var(--muted); font-size: .82rem; }
 .project-status { display: inline-flex; align-items: center; gap: .45rem; margin-right: .7rem; color: var(--muted); font-size: .78rem; text-transform: capitalize; }
@@ -149,9 +151,22 @@ textarea { resize: vertical; }
 .issue-card { display: flex; align-items: center; justify-content: space-between; gap: .75rem; border-bottom: 1px solid var(--border); padding: .65rem .4rem; }
 .issue-content { min-width: 0; }
 .issue-title { display: block; font-size: .9rem; overflow-wrap: anywhere; }
+.issue-title-button { display: block; border: 0; padding: 0; color: inherit; background: transparent; text-align: left; cursor: pointer; }
+.issue-title-button:hover { color: var(--accent); }
 .issue-description { margin: .25rem 0 0; color: var(--muted); font-size: .78rem; white-space: pre-wrap; overflow-wrap: anywhere; }
 .issue-source { display: inline-block; margin-top: .3rem; color: var(--accent); font-size: .72rem; }
 .issue-status { width: auto; min-width: 112px; padding: .35rem .45rem; font-size: .75rem; text-transform: capitalize; }
+.issue-detail-toolbar { display: flex; justify-content: space-between; gap: .75rem; margin-bottom: 1.1rem; }
+.issue-detail-status-row { display: flex; align-items: center; gap: .6rem; margin-bottom: 1rem; }
+.issue-detail-status-row label { display: block; font-size: .78rem; }
+.issue-detail-status-row kbd { margin-left: .25rem; }
+.issue-detail-status-row .issue-status { min-width: 130px; }
+.issue-detail-title { margin-bottom: .8rem; font-size: clamp(1.25rem, 2vw, 1.7rem); overflow-wrap: anywhere; }
+.issue-detail-description { min-height: 3.5rem; margin: 0 0 1rem; color: var(--pale-blue); font-size: .9rem; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+.issue-detail-description.is-empty { color: var(--muted); font-style: italic; }
+.issue-source-link { display: inline-block; border: 1px solid var(--border); padding: .45rem .55rem; color: var(--accent); text-decoration: none; }
+.issue-source-link:hover { border-color: var(--accent); color: var(--pale-blue); }
+.issue-detail-edit-form { max-width: 780px; margin-top: .5rem; }
 .member-list { display: grid; gap: .35rem; max-width: 680px; margin: .25rem 0 1.25rem; padding: 0; list-style: none; color: var(--muted-blue); }
 .member-list li { border-bottom: 1px solid var(--border); padding: .55rem .2rem; }
 .member-form { display: grid; gap: .6rem; max-width: 460px; border-top: 1px solid var(--border); padding-top: .75rem; }
@@ -167,6 +182,7 @@ textarea { resize: vertical; }
 .chat-message-list { display: grid; flex: 1; align-content: start; gap: .2rem; min-height: 140px; overflow-y: auto; }
 .chat-empty-state { margin: 0; padding: .55rem 0; color: var(--muted); font-size: .82rem; }
 .chat-message { border-bottom: 1px solid var(--border); padding: .45rem .5rem; }
+.chat-message.is-chat-source { outline: 1px solid var(--accent); background: var(--surface-raised); }
 .chat-reply { border-left: 2px solid var(--accent); margin-left: .65rem; }
 .chat-message-heading, .chat-composer-actions { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
 .chat-message-actions { display: flex; align-items: center; gap: .15rem; }
@@ -179,6 +195,27 @@ textarea { resize: vertical; }
 .chat-composer-actions { justify-content: flex-end; }
 .chat-reply-hint { margin: 0; color: var(--accent); font-size: .78rem; }
 .empty-state { border: 1px dashed var(--border); border-radius: 0; padding: .85rem; color: var(--muted); }
+
+.keyboard-hints { display: flex; flex-shrink: 0; flex-wrap: wrap; align-items: center; gap: .45rem .9rem; border-top: 1px solid var(--border); padding: .4rem 1rem; color: var(--muted); font-size: .72rem; }
+.keyboard-hints span { white-space: nowrap; }
+.keyboard-hints kbd { margin: 0 .08rem; }
+dialog { max-width: calc(100vw - 2rem); border: 1px solid var(--border); border-radius: 0; padding: 0; background: var(--surface); color: var(--pale-blue); }
+dialog::backdrop { background: #111827CC; }
+.command-palette { width: min(620px, calc(100vw - 2rem)); max-height: min(80vh, 720px); margin: 8vh auto auto; }
+.command-palette-content, .shortcut-help-content { padding: 1rem; }
+.dialog-heading { display: flex; align-items: center; justify-content: space-between; gap: .75rem; margin-bottom: .8rem; }
+.dialog-heading h2 { margin: 0; }
+.command-search-label { margin-bottom: .65rem; }
+.command-results { display: grid; gap: .15rem; max-height: 50vh; overflow: auto; margin: 0; padding: 0; list-style: none; }
+.command-item { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: .75rem; border: 1px solid transparent; border-radius: 0; padding: .55rem .6rem; color: var(--pale-blue); background: transparent; text-align: left; cursor: pointer; }
+.command-item:hover, .command-item.is-active { border-color: var(--border); background: var(--surface-raised); }
+.command-item-description { color: var(--muted); font-size: .76rem; }
+.command-palette-help { margin: .7rem 0 0; color: var(--muted); font-size: .75rem; }
+.shortcut-help { width: min(560px, calc(100vw - 2rem)); max-height: 85vh; overflow: auto; margin: auto; }
+.shortcut-list { display: grid; gap: .2rem; margin: 0; }
+.shortcut-list > div { display: grid; grid-template-columns: 140px minmax(0, 1fr); align-items: center; gap: .75rem; border-bottom: 1px solid var(--border); padding: .42rem 0; }
+.shortcut-list dt { color: var(--muted); }
+.shortcut-list dd { margin: 0; }
 
 @media (max-width: 1050px) {
   .workspace-layout { grid-template-columns: 205px minmax(0, 1fr); }

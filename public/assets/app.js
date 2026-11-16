@@ -1,4 +1,4 @@
-"use strict";
+import { resolveShortcut } from './shortcuts.js';
 class ApiFailure extends Error {
     status;
     constructor(message, status) {
@@ -35,8 +35,30 @@ const chatView = document.querySelector('#chat-view');
 const projectSidebarList = document.querySelector('#project-sidebar-list');
 const issuesView = document.querySelector('#issues-view');
 const membersView = document.querySelector('#members-view');
+const issueDetailView = document.querySelector('#issue-detail-view');
+const issueDetailDisplay = document.querySelector('#issue-detail-display');
+const issueDetailTitle = document.querySelector('#issue-detail-title');
+const issueDetailDescription = document.querySelector('#issue-detail-description');
+const issueDetailStatus = document.querySelector('#issue-detail-status');
+const issueSourceLink = document.querySelector('#issue-source-link');
+const issueDetailEditForm = document.querySelector('#issue-detail-edit-form');
+const issueDetailTitleInput = document.querySelector('#issue-detail-title-input');
+const issueDetailDescriptionInput = document.querySelector('#issue-detail-description-input');
+const issueDetailEditButton = document.querySelector('#issue-detail-edit-button');
+const issueDetailSaveButton = document.querySelector('#issue-detail-save-button');
+const keyboardHints = document.querySelector('#keyboard-hints');
+const projectKeyboardHints = document.querySelector('#project-keyboard-hints');
+const goPrefixHint = document.querySelector('#go-prefix-hint');
+const commandPalette = document.querySelector('#command-palette');
+const commandPaletteClose = document.querySelector('#command-palette-close');
+const commandSearch = document.querySelector('#command-search');
+const commandResults = document.querySelector('#command-results');
+const shortcutHelp = document.querySelector('#shortcut-help');
+const shortcutHelpClose = document.querySelector('#shortcut-help-close');
 const membersTabButton = document.querySelector('#members-tab');
 const issuesTabButton = document.querySelector('#issues-tab');
+const issueBackButton = document.querySelector('#issue-back-button');
+const issueDetailCancelButton = document.querySelector('#issue-detail-cancel-button');
 const issueForm = document.querySelector('#issue-form');
 const issueFormPanel = document.querySelector('#issue-form-panel');
 const issueList = document.querySelector('#issue-list');
@@ -53,6 +75,7 @@ const logoutButton = document.querySelector('#logout-button');
 let activeUser = null;
 let activeProject = null;
 let activeProjectMembers = [];
+let selectedIssue = null;
 let activeChatProjectId = null;
 let chatPollTimer = null;
 let chatCursor = 0;
@@ -64,6 +87,11 @@ let chatInput = null;
 let chatReplyHint = null;
 let chatCancelReply = null;
 let chatReplyParent = null;
+let goPrefixPending = false;
+let goPrefixTimer = null;
+let paletteCommands = [];
+let visiblePaletteCommands = [];
+let activePaletteCommandIndex = 0;
 async function api(path, init = {}) {
     const method = (init.method ?? 'GET').toUpperCase();
     const headers = new Headers(init.headers);
@@ -103,10 +131,14 @@ function showSignedOut() {
     activeUser = null;
     activeProject = null;
     activeProjectMembers = [];
+    selectedIssue = null;
     loginShell.hidden = false;
     loginPanel.hidden = false;
     workspacePanel.hidden = true;
     accountBar.hidden = true;
+    keyboardHints.hidden = true;
+    projectKeyboardHints.hidden = true;
+    clearGoPrefix();
     document.body.classList.remove('is-project-view');
     projectList.replaceChildren();
     projectSidebarList.replaceChildren();
@@ -120,6 +152,7 @@ function showSignedIn(user) {
     loginPanel.hidden = true;
     workspacePanel.hidden = false;
     accountBar.hidden = false;
+    keyboardHints.hidden = false;
     currentUserLabel.textContent = `${user.name} · ${user.role}`;
     adminNavButton.hidden = user.role !== 'admin';
     toggleProjectFormButton.hidden = user.role !== 'admin';
@@ -131,11 +164,16 @@ function showWorkspaceView(view) {
         stopChatPolling();
         activeProject = null;
         activeProjectMembers = [];
+        selectedIssue = null;
+        issueDetailEditForm.hidden = true;
+        issueDetailDisplay.hidden = false;
     }
     projectsView.hidden = view !== 'projects';
     adminView.hidden = view !== 'admin';
     projectView.hidden = view !== 'project';
     workspaceNav.hidden = false;
+    keyboardHints.hidden = false;
+    projectKeyboardHints.hidden = view !== 'project';
     breadcrumbProjectsButton.hidden = view === 'projects';
     breadcrumbDivider.hidden = view === 'projects';
     breadcrumbCurrent.textContent = view === 'project'
@@ -172,6 +210,379 @@ function stopChatPolling() {
     chatCancelReply = null;
     chatReplyParent = null;
 }
+function selectedProjectButton() {
+    const focused = document.activeElement;
+    if (focused instanceof HTMLElement) {
+        const focusedCard = focused.closest('.project-card');
+        if (focusedCard !== null)
+            return focusedCard.querySelector('button');
+    }
+    return projectList.querySelector('.project-card.is-keyboard-selected button');
+}
+function selectedIssueButton() {
+    const focused = document.activeElement;
+    if (focused instanceof HTMLElement) {
+        const focusedRow = focused.closest('.issue-card');
+        if (focusedRow !== null)
+            return focusedRow.querySelector('.issue-title-button');
+    }
+    return issueList.querySelector('.issue-card.is-keyboard-selected .issue-title-button');
+}
+function hasSelectedIssueInVisibleView() {
+    return !projectView.hidden && (!issuesView.hidden || !issueDetailView.hidden)
+        && (selectedIssue !== null || selectedIssueButton() !== null);
+}
+function latestChatIssueButton() {
+    if (chatMessageList === null)
+        return null;
+    const messages = Array.from(chatMessageList.querySelectorAll('.chat-message'))
+        .filter((message) => Number(message.dataset.messageId) > 0);
+    return messages.at(-1)?.querySelector('.chat-create-issue-button:not(:disabled)') ?? null;
+}
+function isEditableTarget(target) {
+    if (!(target instanceof HTMLElement))
+        return false;
+    return target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName);
+}
+function shortcutContext(target) {
+    return {
+        targetIsEditable: isEditableTarget(target),
+        goPrefixPending,
+        hasWorkspace: activeUser !== null,
+        hasProject: activeProject !== null && !projectView.hidden,
+        projectListVisible: !workspacePanel.hidden && !projectsView.hidden,
+        hasSelectedProject: selectedProjectButton() !== null,
+        issueListVisible: !projectView.hidden && !issuesView.hidden,
+        issueDetailVisible: !projectView.hidden && !issueDetailView.hidden,
+        hasSelectedIssue: hasSelectedIssueInVisibleView(),
+        hasLatestChatMessage: latestChatIssueButton() !== null,
+        canDismiss: commandPalette.open || shortcutHelp.open || !issueDetailView.hidden
+            || !issueDetailEditForm.hidden || !issueFormPanel.hidden || !projectFormPanel.hidden
+            || chatReplyParent !== null,
+    };
+}
+function clearGoPrefix() {
+    goPrefixPending = false;
+    goPrefixHint.hidden = true;
+    if (goPrefixTimer !== null)
+        window.clearTimeout(goPrefixTimer);
+    goPrefixTimer = null;
+}
+function startGoPrefix() {
+    clearGoPrefix();
+    goPrefixPending = true;
+    goPrefixHint.hidden = false;
+    goPrefixTimer = window.setTimeout(clearGoPrefix, 1200);
+}
+function moveFocusWithin(buttons, rowSelector, direction) {
+    if (buttons.length === 0)
+        return;
+    const focused = document.activeElement;
+    const currentIndex = buttons.findIndex((button) => {
+        const row = button.closest(rowSelector);
+        return row?.classList.contains('is-keyboard-selected') === true || (focused instanceof HTMLElement && row?.contains(focused) === true);
+    });
+    const nextIndex = currentIndex < 0
+        ? direction > 0 ? 0 : buttons.length - 1
+        : Math.max(0, Math.min(buttons.length - 1, currentIndex + direction));
+    for (const button of buttons)
+        button.closest(rowSelector)?.classList.remove('is-keyboard-selected');
+    const next = buttons[nextIndex];
+    next.closest(rowSelector)?.classList.add('is-keyboard-selected');
+    next.focus();
+}
+function moveIssueSelection(direction) {
+    const buttons = Array.from(issueList.querySelectorAll('.issue-title-button'));
+    if (!issueDetailView.hidden && selectedIssue !== null) {
+        const currentIndex = buttons.findIndex((button) => button.closest('.issue-card')?.dataset.issueId === String(selectedIssue?.id));
+        const nextIndex = currentIndex < 0
+            ? direction > 0 ? 0 : buttons.length - 1
+            : Math.max(0, Math.min(buttons.length - 1, currentIndex + direction));
+        const next = buttons[nextIndex];
+        if (next !== undefined)
+            next.click();
+        return;
+    }
+    moveFocusWithin(buttons, '.issue-card', direction);
+}
+function moveProjectSelection(direction) {
+    moveFocusWithin(Array.from(projectList.querySelectorAll('.project-card button')), '.project-card', direction);
+}
+function moveSelection(direction) {
+    if (!projectsView.hidden) {
+        moveProjectSelection(direction);
+    }
+    else if (!issuesView.hidden || !issueDetailView.hidden) {
+        moveIssueSelection(direction);
+    }
+}
+function beginCreateIssue() {
+    if (activeProject === null)
+        return;
+    selectedIssue = null;
+    switchProjectTab('issues');
+    if (issueFormPanel.hidden) {
+        toggleIssueFormButton.click();
+    }
+    else {
+        issueForm.querySelector('input[name="title"]')?.focus();
+    }
+}
+function editSelectedIssue() {
+    if (selectedIssue === null) {
+        const button = selectedIssueButton();
+        if (button === null)
+            return;
+        button.click();
+    }
+    issueDetailEditButton.click();
+}
+function focusSelectedIssueStatus() {
+    if (selectedIssue !== null) {
+        issueDetailStatus.focus();
+        return;
+    }
+    selectedIssueButton()?.closest('.issue-card')?.querySelector('.issue-status')?.focus();
+}
+function createIssueFromLatestMessage() {
+    latestChatIssueButton()?.click();
+}
+function getPaletteCommands() {
+    const commands = [
+        { label: 'Go to Projects', detail: 'Open the project list', shortcut: 'g p', run: () => showWorkspaceView('projects') },
+        { label: 'Show keyboard shortcuts', detail: 'View key bindings', shortcut: '?', run: showShortcutHelp },
+    ];
+    if (activeUser?.role === 'admin' && !projectsView.hidden) {
+        commands.unshift({
+            label: 'New project',
+            detail: 'Create a project in this workspace',
+            shortcut: '',
+            run: () => {
+                if (projectFormPanel.hidden)
+                    toggleProjectFormButton.click();
+                else
+                    projectForm.querySelector('input[name="name"]')?.focus();
+            },
+        });
+    }
+    if (activeProject !== null) {
+        commands.splice(1, 0, {
+            label: 'New issue',
+            detail: `Create an issue in ${activeProject.name}`,
+            shortcut: 'c',
+            run: beginCreateIssue,
+        });
+        if (hasSelectedIssueInVisibleView()) {
+            commands.splice(2, 0, {
+                label: 'Edit selected issue',
+                detail: 'Edit the title and description',
+                shortcut: 'e',
+                run: editSelectedIssue,
+            }, {
+                label: 'Change issue status',
+                detail: 'Focus the status selector',
+                shortcut: 's',
+                run: focusSelectedIssueStatus,
+            });
+        }
+        if (latestChatIssueButton() !== null) {
+            commands.splice(1, 0, {
+                label: 'Create issue from latest chat message',
+                detail: 'Use the latest project chat message',
+                shortcut: 'i',
+                run: createIssueFromLatestMessage,
+            });
+        }
+    }
+    return commands;
+}
+function renderCommandResults() {
+    const query = commandSearch.value.trim().toLocaleLowerCase();
+    visiblePaletteCommands = paletteCommands.filter((command) => `${command.label} ${command.detail}`.toLocaleLowerCase().includes(query));
+    activePaletteCommandIndex = Math.min(activePaletteCommandIndex, Math.max(visiblePaletteCommands.length - 1, 0));
+    commandResults.replaceChildren();
+    if (visiblePaletteCommands.length === 0) {
+        const empty = document.createElement('li');
+        empty.className = 'command-empty-state';
+        empty.textContent = 'No matching commands.';
+        commandResults.append(empty);
+        return;
+    }
+    visiblePaletteCommands.forEach((command, index) => {
+        const item = document.createElement('li');
+        const button = document.createElement('button');
+        button.className = 'command-item';
+        button.classList.toggle('is-active', index === activePaletteCommandIndex);
+        button.type = 'button';
+        button.setAttribute('role', 'option');
+        button.setAttribute('aria-selected', String(index === activePaletteCommandIndex));
+        button.addEventListener('click', () => runPaletteCommand(index));
+        const label = document.createElement('span');
+        label.textContent = command.label;
+        const detail = document.createElement('span');
+        detail.className = 'command-item-description';
+        detail.textContent = command.detail;
+        button.append(label, detail);
+        if (command.shortcut !== '') {
+            const shortcut = document.createElement('kbd');
+            shortcut.textContent = command.shortcut;
+            button.append(shortcut);
+        }
+        item.append(button);
+        commandResults.append(item);
+    });
+}
+function closeCommandPalette() {
+    if (commandPalette.open)
+        commandPalette.close();
+}
+function runPaletteCommand(index) {
+    const command = visiblePaletteCommands[index];
+    if (command === undefined)
+        return;
+    closeCommandPalette();
+    command.run();
+}
+function openCommandPalette() {
+    if (shortcutHelp.open)
+        shortcutHelp.close();
+    if (commandPalette.open) {
+        closeCommandPalette();
+        return;
+    }
+    paletteCommands = getPaletteCommands();
+    commandSearch.value = '';
+    activePaletteCommandIndex = 0;
+    renderCommandResults();
+    commandPalette.showModal();
+    commandSearch.focus();
+}
+function showShortcutHelp() {
+    if (commandPalette.open)
+        closeCommandPalette();
+    if (shortcutHelp.open) {
+        shortcutHelp.close();
+        return;
+    }
+    shortcutHelp.showModal();
+    shortcutHelpClose.focus();
+}
+function dismissCurrentView() {
+    if (commandPalette.open) {
+        closeCommandPalette();
+    }
+    else if (shortcutHelp.open) {
+        shortcutHelp.close();
+    }
+    else if (!issueDetailEditForm.hidden) {
+        issueDetailCancelButton.click();
+    }
+    else if (!issueDetailView.hidden) {
+        issueBackButton.click();
+    }
+    else if (!issueFormPanel.hidden) {
+        cancelIssueFormButton.click();
+    }
+    else if (!projectFormPanel.hidden) {
+        cancelProjectFormButton.click();
+    }
+    else if (chatReplyParent !== null) {
+        clearChatReplyParent();
+    }
+}
+function executeShortcut(action) {
+    switch (action) {
+        case 'command-palette':
+            openCommandPalette();
+            break;
+        case 'shortcut-help':
+            showShortcutHelp();
+            break;
+        case 'await-projects-key':
+            startGoPrefix();
+            break;
+        case 'projects':
+            clearGoPrefix();
+            showWorkspaceView('projects');
+            break;
+        case 'next-project':
+            moveProjectSelection(1);
+            break;
+        case 'previous-project':
+            moveProjectSelection(-1);
+            break;
+        case 'open-selected-project':
+            selectedProjectButton()?.click();
+            break;
+        case 'next':
+            moveIssueSelection(1);
+            break;
+        case 'previous':
+            moveIssueSelection(-1);
+            break;
+        case 'open-selected':
+            selectedIssueButton()?.click();
+            break;
+        case 'create-issue':
+            beginCreateIssue();
+            break;
+        case 'edit-selected':
+            editSelectedIssue();
+            break;
+        case 'focus-status':
+            focusSelectedIssueStatus();
+            break;
+        case 'issue-from-latest-message':
+            createIssueFromLatestMessage();
+            break;
+        case 'dismiss':
+            dismissCurrentView();
+            break;
+    }
+}
+function handleKeyboardShortcut(event) {
+    if ((commandPalette.open || shortcutHelp.open)
+        && event.key !== 'Escape'
+        && !((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k'))
+        return;
+    const context = shortcutContext(event.target);
+    const action = resolveShortcut(event, context);
+    if (action === null) {
+        if (goPrefixPending && !context.targetIsEditable)
+            clearGoPrefix();
+        return;
+    }
+    event.preventDefault();
+    if (action !== 'await-projects-key' && action !== 'projects')
+        clearGoPrefix();
+    executeShortcut(action);
+}
+function movePaletteCommandSelection(direction) {
+    if (visiblePaletteCommands.length === 0)
+        return;
+    activePaletteCommandIndex = (activePaletteCommandIndex + direction + visiblePaletteCommands.length) % visiblePaletteCommands.length;
+    renderCommandResults();
+    commandResults.querySelectorAll('.command-item')[activePaletteCommandIndex]?.focus();
+}
+commandSearch.addEventListener('input', () => {
+    activePaletteCommandIndex = 0;
+    renderCommandResults();
+});
+commandPalette.addEventListener('keydown', (event) => {
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        event.stopPropagation();
+        movePaletteCommandSelection(event.key === 'ArrowDown' ? 1 : -1);
+    }
+    else if (event.key === 'Enter') {
+        event.preventDefault();
+        event.stopPropagation();
+        runPaletteCommand(activePaletteCommandIndex);
+    }
+});
+commandPaletteClose.addEventListener('click', closeCommandPalette);
+shortcutHelpClose.addEventListener('click', () => shortcutHelp.close());
+document.addEventListener('keydown', handleKeyboardShortcut);
 function scheduleChatPoll(delay = chatPollDelay) {
     if (activeChatProjectId === null)
         return;
@@ -288,6 +699,7 @@ function appendChatMessage(message) {
                 return;
             createIssue.textContent = 'Created';
             report(`Created issue: ${result.issue.title}`);
+            selectedIssue = null;
             switchProjectTab('issues');
         }
         catch (error) {
@@ -304,7 +716,11 @@ function appendChatMessage(message) {
     body.className = 'chat-message-body';
     body.textContent = message.body;
     item.append(heading, body);
-    chatMessageList.append(item);
+    const followingMessage = Array.from(chatMessageList.children).find((child) => {
+        const existingId = Number(child.dataset.messageId);
+        return Number.isFinite(existingId) && existingId > message.id;
+    });
+    chatMessageList.insertBefore(item, followingMessage ?? null);
     chatEmptyState.hidden = true;
     chatCursor = Math.max(chatCursor, message.id);
 }
@@ -525,6 +941,9 @@ async function loadProjects() {
 }
 async function loadProjectDetail(projectId, tab = 'issues') {
     stopChatPolling();
+    selectedIssue = null;
+    issueDetailEditForm.hidden = true;
+    issueDetailDisplay.hidden = false;
     try {
         const result = await api(`/projects/${projectId}`);
         activeProject = result.project;
@@ -547,14 +966,17 @@ async function loadProjectDetail(projectId, tab = 'issues') {
 function switchProjectTab(tab) {
     if (activeProject === null)
         return;
-    issuesView.hidden = tab !== 'issues';
+    const showingIssueDetail = tab === 'issues' && selectedIssue !== null;
+    issuesView.hidden = tab !== 'issues' || showingIssueDetail;
+    issueDetailView.hidden = !showingIssueDetail;
     membersView.hidden = tab !== 'members';
     issuesTabButton.classList.toggle('is-active', tab === 'issues');
     membersTabButton.classList.toggle('is-active', tab === 'members');
     if (tab === 'issues') {
         issuesTabButton.setAttribute('aria-current', 'page');
         membersTabButton.removeAttribute('aria-current');
-        void loadProjectIssues(activeProject.id);
+        if (!showingIssueDetail)
+            void loadProjectIssues(activeProject.id);
         return;
     }
     membersTabButton.setAttribute('aria-current', 'page');
@@ -579,28 +1001,32 @@ async function loadProjectIssues(projectId) {
         report(error instanceof Error ? error.message : 'Could not load project issues.', true);
     }
 }
-function createIssueRow(issue) {
-    const item = document.createElement('li');
-    item.className = 'issue-card';
-    item.dataset.issueId = String(issue.id);
-    const content = document.createElement('div');
-    content.className = 'issue-content';
-    const title = document.createElement('strong');
-    title.className = 'issue-title';
-    title.textContent = issue.title;
-    content.append(title);
-    if (issue.description !== '') {
-        const description = document.createElement('p');
-        description.className = 'issue-description';
-        description.textContent = issue.description;
-        content.append(description);
+function renderIssueDetail() {
+    if (selectedIssue === null)
+        return;
+    issueDetailTitle.textContent = selectedIssue.title;
+    issueDetailDescription.textContent = selectedIssue.description || 'No description yet.';
+    issueDetailDescription.classList.toggle('is-empty', selectedIssue.description === '');
+    issueDetailStatus.value = selectedIssue.status;
+    issueSourceLink.hidden = selectedIssue.source_message_id === null;
+    if (selectedIssue.source_message_id !== null) {
+        issueSourceLink.dataset.messageId = String(selectedIssue.source_message_id);
     }
-    if (issue.source_message_id !== null) {
-        const source = document.createElement('span');
-        source.className = 'issue-source';
-        source.textContent = 'From chat thread';
-        content.append(source);
+    else {
+        delete issueSourceLink.dataset.messageId;
     }
+}
+function openIssue(issue) {
+    selectedIssue = issue;
+    issueList.querySelectorAll('.issue-card').forEach((row) => {
+        row.classList.toggle('is-keyboard-selected', row.dataset.issueId === String(issue.id));
+    });
+    issueDetailDisplay.hidden = false;
+    issueDetailEditForm.hidden = true;
+    renderIssueDetail();
+    switchProjectTab('issues');
+}
+function createIssueStatusSelect(issue) {
     const status = document.createElement('select');
     status.className = 'issue-status';
     status.setAttribute('aria-label', `Status for ${issue.title}`);
@@ -614,27 +1040,143 @@ function createIssueRow(issue) {
         const option = document.createElement('option');
         option.value = entry.value;
         option.textContent = entry.label;
-        option.selected = entry.value === issue.status;
         status.append(option);
     }
-    status.addEventListener('change', async () => {
-        const newStatus = status.value;
-        try {
-            await api(`/issues/${issue.id}`, {
-                method: 'PATCH',
-                body: JSON.stringify({ status: newStatus }),
-            });
-            report('Issue status updated.');
+    status.value = issue.status;
+    status.addEventListener('change', () => void updateIssueStatus(issue, status));
+    return status;
+}
+async function updateIssueStatus(issue, status) {
+    const previousStatus = selectedIssue?.id === issue.id ? selectedIssue.status : issue.status;
+    try {
+        const result = await api(`/issues/${issue.id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ status: status.value }),
+        });
+        if (selectedIssue?.id === issue.id) {
+            selectedIssue = result.issue;
+            renderIssueDetail();
+        }
+        report('Issue status updated.');
+        if (issueDetailView.hidden)
             await loadProjectIssues(issue.project_id);
-        }
-        catch (error) {
-            status.value = issue.status;
-            report(error instanceof Error ? error.message : 'Could not update issue status.', true);
-        }
-    });
-    item.append(content, status);
+    }
+    catch (error) {
+        status.value = previousStatus;
+        report(error instanceof Error ? error.message : 'Could not update the issue status.', true);
+    }
+}
+function createIssueRow(issue) {
+    const item = document.createElement('li');
+    item.className = 'issue-card';
+    item.dataset.issueId = String(issue.id);
+    const content = document.createElement('div');
+    content.className = 'issue-content';
+    const title = document.createElement('button');
+    title.className = 'issue-title issue-title-button';
+    title.type = 'button';
+    title.textContent = issue.title;
+    title.addEventListener('click', () => openIssue(issue));
+    content.append(title);
+    if (issue.description !== '') {
+        const description = document.createElement('p');
+        description.className = 'issue-description';
+        description.textContent = issue.description;
+        content.append(description);
+    }
+    if (issue.source_message_id !== null) {
+        const source = document.createElement('span');
+        source.className = 'issue-source';
+        source.textContent = 'From chat thread';
+        content.append(source);
+    }
+    item.append(content, createIssueStatusSelect(issue));
     return item;
 }
+issueDetailEditButton.addEventListener('click', () => {
+    if (selectedIssue === null)
+        return;
+    issueDetailTitleInput.value = selectedIssue.title;
+    issueDetailDescriptionInput.value = selectedIssue.description;
+    issueDetailDisplay.hidden = true;
+    issueDetailEditForm.hidden = false;
+    issueDetailTitleInput.focus();
+});
+issueDetailCancelButton.addEventListener('click', () => {
+    issueDetailEditForm.reset();
+    issueDetailEditForm.hidden = true;
+    issueDetailDisplay.hidden = false;
+});
+issueBackButton.addEventListener('click', () => {
+    selectedIssue = null;
+    issueDetailEditForm.reset();
+    issueDetailEditForm.hidden = true;
+    issueDetailDisplay.hidden = false;
+    switchProjectTab('issues');
+});
+issueDetailEditForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (selectedIssue === null || activeProject === null)
+        return;
+    const issue = selectedIssue;
+    issueDetailSaveButton.disabled = true;
+    try {
+        const result = await api(`/issues/${issue.id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({
+                title: issueDetailTitleInput.value,
+                description: issueDetailDescriptionInput.value,
+            }),
+        });
+        if (selectedIssue?.id !== issue.id || activeProject?.id !== issue.project_id)
+            return;
+        selectedIssue = result.issue;
+        renderIssueDetail();
+        issueDetailEditForm.hidden = true;
+        issueDetailDisplay.hidden = false;
+        report('Issue updated.');
+    }
+    catch (error) {
+        report(error instanceof Error ? error.message : 'Could not update the issue.', true);
+    }
+    finally {
+        issueDetailSaveButton.disabled = false;
+    }
+});
+issueDetailStatus.addEventListener('change', () => {
+    if (selectedIssue !== null)
+        void updateIssueStatus(selectedIssue, issueDetailStatus);
+});
+issueSourceLink.addEventListener('click', async (event) => {
+    event.preventDefault();
+    const issue = selectedIssue;
+    const projectId = activeProject?.id;
+    const messageId = Number(issueSourceLink.dataset.messageId);
+    if (issue === null || projectId === undefined || !Number.isSafeInteger(messageId) || messageId < 1)
+        return;
+    let sourceMessage = chatMessageList?.querySelector(`[data-message-id="${messageId}"]`) ?? null;
+    if (sourceMessage === null) {
+        try {
+            const result = await api(`/projects/${projectId}/messages?since=${messageId - 1}`);
+            if (activeProject?.id !== projectId || selectedIssue?.id !== issue.id)
+                return;
+            for (const message of result.messages)
+                appendChatMessage(message);
+            sourceMessage = chatMessageList?.querySelector(`[data-message-id="${messageId}"]`) ?? null;
+        }
+        catch (error) {
+            report(error instanceof Error ? error.message : 'Could not open the source chat thread.', true);
+            return;
+        }
+    }
+    if (sourceMessage === null) {
+        report('The source message is unavailable in this project chat.', true);
+        return;
+    }
+    chatMessageList?.querySelector('.is-chat-source')?.classList.remove('is-chat-source');
+    sourceMessage.classList.add('is-chat-source');
+    sourceMessage.scrollIntoView({ behavior: 'smooth', block: 'center' });
+});
 async function loadProjectMembers(projectId) {
     memberList.replaceChildren();
     for (const member of activeProjectMembers) {

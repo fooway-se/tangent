@@ -2,13 +2,13 @@
 
 Chat, projects and issues in one place for developers working remotely. Keyboard-first, built for AI-assisted development, and simple to self-host on ordinary PHP + MySQL hosting.
 
-> **Status: pre-alpha.** Auth, projects, project chat, and core issue creation/status/chat conversion are implemented; broader chat and issue workflows remain planned.
+> **Status: pre-alpha.** Auth, projects, project chat, issue creation/status/chat conversion, issue detail editing, and keyboard navigation are implemented; broader chat and issue workflows remain planned.
 
 ## Why
 
 Most teams spread work across a chat app, an issue tracker and a project board. This tool puts them together and removes the mouse from the daily loop:
 
-- **Keyboard-first direction.** Shortcuts and the command palette are planned; they are not in the current slice.
+- **Keyboard-first workflow.** Use `Ctrl/Cmd+K` for commands, `j`/`k` and `Enter` to move through lists, and issue shortcuts for creation, editing, status, and chat conversion. Press `?` for the full current map.
 - **Chat and issues are connected.** Create a Backlog issue from a chat message; the message thread stays linked as context.
 - **Made for AI-assisted work.** Issue prompt export and agent tokens use the same API; those workflows are planned.
 - **Client view (planned).** Guests will see shared progress and updates; internal work stays hidden.
