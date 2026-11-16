@@ -42,7 +42,7 @@ final class TokenRepository
     public function authenticate(int $workspaceId, string $token, string $type, string $method): ?AuthenticatedUser
     {
         $statement = $this->pdo->prepare(
-            'SELECT u.id, u.workspace_id, u.name, u.email, u.role,
+            'SELECT u.id, u.workspace_id, u.account_id, u.name, u.email, u.role,
                     t.id AS token_id, t.csrf_hash
              FROM api_tokens t
              INNER JOIN users u ON u.workspace_id = t.workspace_id AND u.id = t.user_id
@@ -79,6 +79,7 @@ final class TokenRepository
             $method,
             (int) $row['token_id'],
             $row['csrf_hash'] === null ? null : (string) $row['csrf_hash'],
+            (int) $row['account_id'],
         );
     }
 

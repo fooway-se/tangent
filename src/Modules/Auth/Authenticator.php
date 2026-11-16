@@ -24,13 +24,29 @@ final class Authenticator
             if (!preg_match('/^Bearer\s+([a-fA-F0-9]{64})$/', trim($authorization), $matches)) {
                 throw new ApiException(401, 'unauthenticated', 'A valid authentication token is required.');
             }
-            $user = $this->tokens->authenticate($this->config->workspaceId, $matches[1], 'api', 'bearer');
+            $workspaceId = $this->config->workspaceId;
+            $selectedWorkspace = $request->header('X-Tangent-Workspace');
+            if ($selectedWorkspace !== null) {
+                if (!ctype_digit($selectedWorkspace) || (int) $selectedWorkspace < 1) {
+                    throw new ApiException(401, 'unauthenticated', 'A valid authentication token is required.');
+                }
+                $workspaceId = (int) $selectedWorkspace;
+            }
+            $user = $this->tokens->authenticate($workspaceId, $matches[1], 'api', 'bearer');
         } else {
             $session = $request->cookies['tangent_session'] ?? null;
             if (!is_string($session) || !preg_match('/^[a-fA-F0-9]{64}$/', $session)) {
                 throw new ApiException(401, 'unauthenticated', 'A valid authentication token is required.');
             }
-            $user = $this->tokens->authenticate($this->config->workspaceId, $session, 'session', 'cookie');
+            $workspaceId = $this->config->workspaceId;
+            $selectedWorkspace = $request->cookies['tangent_workspace'] ?? null;
+            if ($selectedWorkspace !== null) {
+                if (!is_string($selectedWorkspace) || !ctype_digit($selectedWorkspace) || (int) $selectedWorkspace < 1) {
+                    throw new ApiException(401, 'unauthenticated', 'A valid authentication token is required.');
+                }
+                $workspaceId = (int) $selectedWorkspace;
+            }
+            $user = $this->tokens->authenticate($workspaceId, $session, 'session', 'cookie');
         }
 
         if ($user === null) {

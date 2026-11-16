@@ -58,53 +58,98 @@ final class UserRepository
     /** @return array<string, mixed> */
     public function createDeveloper(int $workspaceId, string $name, string $email, string $password): array
     {
-        if ($this->findByEmail($workspaceId, $email) !== null) {
-            throw new ApiException(409, 'email_taken', 'A user with this email already exists.');
-        }
-
-        $statement = $this->pdo->prepare(
-            'INSERT INTO users (workspace_id, name, email, password_hash, role, is_active)
-             VALUES (:workspace_id, :name, :email, :password_hash, :role, 1)'
-        );
-
-        try {
-            $statement->execute([
-                'workspace_id' => $workspaceId,
-                'name' => trim($name),
-                'email' => self::normalizeEmail($email),
-                'password_hash' => password_hash($password, PASSWORD_DEFAULT),
-                'role' => 'developer',
-            ]);
-        } catch (PDOException $exception) {
-            if ($exception->getCode() === '23000') {
-                throw new ApiException(409, 'email_taken', 'A user with this email already exists.');
-            }
-            throw $exception;
-        }
-
-        return $this->findById($workspaceId, (int) $this->pdo->lastInsertId()) ?? [];
+        return $this->create($workspaceId, $name, $email, $password, 'developer');
     }
 
     /** @return array<string, mixed> */
     public function createAdmin(int $workspaceId, string $name, string $email, string $password): array
     {
+        return $this->create($workspaceId, $name, $email, $password, 'admin');
+    }
+
+    /** @return array<string, mixed>|null */
+    public function findAccountMember(int $workspaceId, int $accountId): ?array
+    {
+        $statement = $this->pdo->prepare(
+            'SELECT id, workspace_id, account_id, name, email, role, is_active
+             FROM users
+             WHERE workspace_id = :workspace_id AND account_id = :account_id
+             LIMIT 1'
+        );
+        $statement->execute(['workspace_id' => $workspaceId, 'account_id' => $accountId]);
+        $user = $statement->fetch(PDO::FETCH_ASSOC);
+        return $user === false ? null : $user;
+    }
+
+    public function copyAdminMembership(int $sourceWorkspaceId, int $sourceUserId, int $targetWorkspaceId, int $accountId): int
+    {
+        $statement = $this->pdo->prepare(
+            'INSERT INTO users (workspace_id, account_id, name, email, password_hash, role, is_active)
+             SELECT :target_workspace_id, account_id, name, email, password_hash, :role, is_active
+             FROM users
+             WHERE workspace_id = :source_workspace_id AND id = :source_user_id
+               AND account_id = :account_id AND is_active = 1'
+        );
+        $statement->execute([
+            'target_workspace_id' => $targetWorkspaceId,
+            'role' => 'admin',
+            'source_workspace_id' => $sourceWorkspaceId,
+            'source_user_id' => $sourceUserId,
+            'account_id' => $accountId,
+        ]);
+        if ($statement->rowCount() !== 1) {
+            throw new ApiException(404, 'not_found', 'The workspace member was not found.');
+        }
+        return (int) $this->pdo->lastInsertId();
+    }
+
+    /** @return array<string, mixed> */
+    private function create(int $workspaceId, string $name, string $email, string $password, string $role): array
+    {
         if ($this->findByEmail($workspaceId, $email) !== null) {
             throw new ApiException(409, 'email_taken', 'A user with this email already exists.');
         }
 
-        $statement = $this->pdo->prepare(
-            'INSERT INTO users (workspace_id, name, email, password_hash, role, is_active)
-             VALUES (:workspace_id, :name, :email, :password_hash, :role, 1)'
-        );
-        $statement->execute([
-            'workspace_id' => $workspaceId,
-            'name' => trim($name),
-            'email' => self::normalizeEmail($email),
-            'password_hash' => password_hash($password, PASSWORD_DEFAULT),
-            'role' => 'admin',
-        ]);
+        $ownsTransaction = !$this->pdo->inTransaction();
+        if ($ownsTransaction) {
+            $this->pdo->beginTransaction();
+        }
+        try {
+            $account = $this->pdo->prepare('INSERT INTO user_accounts () VALUES ()');
+            $account->execute();
+            $accountId = (int) $this->pdo->lastInsertId();
 
-        return $this->findById($workspaceId, (int) $this->pdo->lastInsertId()) ?? [];
+            $statement = $this->pdo->prepare(
+                'INSERT INTO users (workspace_id, account_id, name, email, password_hash, role, is_active)
+                 VALUES (:workspace_id, :account_id, :name, :email, :password_hash, :role, 1)'
+            );
+            $statement->execute([
+                'workspace_id' => $workspaceId,
+                'account_id' => $accountId,
+                'name' => trim($name),
+                'email' => self::normalizeEmail($email),
+                'password_hash' => password_hash($password, PASSWORD_DEFAULT),
+                'role' => $role,
+            ]);
+            $userId = (int) $this->pdo->lastInsertId();
+            if ($ownsTransaction) {
+                $this->pdo->commit();
+            }
+            return $this->findById($workspaceId, $userId) ?? [];
+        } catch (PDOException $exception) {
+            if ($ownsTransaction && $this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            if ($exception->getCode() === '23000') {
+                throw new ApiException(409, 'email_taken', 'A user with this email already exists.');
+            }
+            throw $exception;
+        } catch (\Throwable $exception) {
+            if ($ownsTransaction && $this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            throw $exception;
+        }
     }
 
     public static function normalizeEmail(string $email): string

@@ -87,6 +87,10 @@ test('g sequences switch between available project features', () => {
   assert.equal(resolve('a', { goPrefixPending: true, canAdmin: false }), null);
 });
 
+test('g then w focuses the workspace switcher', () => {
+  assert.equal(resolve('w', { goPrefixPending: true, hasWorkspace: true }), 'workspace-switcher');
+});
+
 test('chat message selection supports navigation, reply, issue creation, and composer focus', () => {
   const chatSelection = { chatMessagesFocused: true, hasSelectedChatMessage: true };
   assert.equal(resolve('j', chatSelection), 'next-chat-message');

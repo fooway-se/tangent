@@ -216,12 +216,17 @@ final class AuthAndProjectsTest extends ApiTestCase
         $workspace->execute(['name' => 'Other workspace', 'slug' => 'other-' . bin2hex(random_bytes(3))]);
         $otherWorkspaceId = (int) $this->pdo->lastInsertId();
 
+        $account = $this->pdo->prepare('INSERT INTO user_accounts () VALUES ()');
+        $account->execute();
+        $otherAccountId = (int) $this->pdo->lastInsertId();
+
         $otherUser = $this->pdo->prepare(
-            'INSERT INTO users (workspace_id, name, email, password_hash, role, is_active)
-             VALUES (:workspace_id, :name, :email, :password_hash, :role, 1)'
+            'INSERT INTO users (workspace_id, account_id, name, email, password_hash, role, is_active)
+             VALUES (:workspace_id, :account_id, :name, :email, :password_hash, :role, 1)'
         );
         $otherUser->execute([
             'workspace_id' => $otherWorkspaceId,
+            'account_id' => $otherAccountId,
             'name' => 'Other Admin',
             'email' => 'other@example.test',
             'password_hash' => password_hash($this->password, PASSWORD_DEFAULT),
@@ -258,7 +263,7 @@ final class AuthAndProjectsTest extends ApiTestCase
         $logout = $this->cookieRequest('POST', '/api/v1/auth/logout', $login['cookie'], [], $login['csrf']);
 
         self::assertSame(204, $logout->status);
-        self::assertCount(2, $logout->headers['set-cookie']);
+        self::assertCount(3, $logout->headers['set-cookie']);
         self::assertStringContainsString('Max-Age=0', implode(';', $logout->headers['set-cookie']));
         self::assertSame(401, $this->cookieRequest('GET', '/api/v1/auth/me', $login['cookie'])->status);
     }

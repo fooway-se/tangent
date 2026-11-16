@@ -12,6 +12,8 @@ export function resolveShortcut(event, context) {
     if (context.goPrefixPending) {
         if (key === 'p' && context.hasWorkspace)
             return 'projects';
+        if (key === 'w' && context.hasWorkspace)
+            return 'workspace-switcher';
         if (key === 'i' && context.hasProject)
             return 'issues';
         if (key === 'c' && context.hasProject)

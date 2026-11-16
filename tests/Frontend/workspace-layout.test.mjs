@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
+const css = await readFile(new URL('../../public/assets/app.css', import.meta.url), 'utf8');
 const workspaceStart = html.indexOf('id="workspace-panel"');
 const sidebarStart = html.indexOf('class="workspace-sidebar"', workspaceStart);
 const stageStart = html.indexOf('class="workspace-stage"', workspaceStart);
@@ -17,6 +18,17 @@ test('workspace navigation is a persistent left rail beside the main stage', () 
   assert.match(sidebar, /id="workspace-nav"/);
   assert.match(sidebar, /id="project-sidebar-list"/);
   assert.match(sidebar, /id="account-bar"/);
+});
+
+test('the sidebar can switch workspaces and workspace admins can create one', () => {
+  assert.match(html, /id="workspace-switcher"/);
+  assert.match(html, /id="create-workspace-form"/);
+});
+
+test('workspace UI keeps square surfaces with subdued blue-gray dividers', () => {
+  assert.match(css, /--border:\s*rgba\(147,\s*164,\s*184,\s*0\.15\)/);
+  assert.match(css, /--border-strong:\s*rgba\(147,\s*164,\s*184,\s*0\.28\)/);
+  assert.match(css, /\.panel\s*\{[^}]*border-radius:\s*0;/s);
 });
 
 test('project issues and chat occupy the center and right columns', () => {

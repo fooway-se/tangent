@@ -1,14 +1,14 @@
 # Tangent
 
-Chat, projects and issues in one place for developers working remotely. Keyboard-first, built for AI-assisted development, and simple to self-host on ordinary PHP + MySQL hosting.
+Chat, projects and issues in one place for developers working remotely. Keep client work in separate workspaces, switch between them from the sidebar, and self-host on ordinary PHP + MySQL hosting.
 
-> **Status: pre-alpha.** Auth, projects, project chat, issue creation/status/chat conversion, issue detail editing, and keyboard navigation are implemented; broader chat and issue workflows remain planned.
+> **Status: pre-alpha.** Auth, multiple client workspaces with switching, projects, project chat, issue creation/status/chat conversion, issue detail editing, and keyboard navigation are implemented; broader chat and issue workflows remain planned.
 
 ## Why
 
 Most teams spread work across a chat app, an issue tracker and a project board. This tool puts them together and removes the mouse from the daily loop:
 
-- **Keyboard-first workflow.** Use `g` then `i`/`c`/`m` to switch project features, `j`/`k` to move through lists or chat messages, and `r`/`i` for chat replies and issue conversion. In chat, `Enter` sends and `Shift+Enter` inserts a newline. Press `Ctrl/Cmd+K` for commands or `?` for the full shortcut map.
+- **Keyboard-first workflow.** Use `g` then `w` to focus the workspace selector or `i`/`c`/`m` to switch project features, `j`/`k` to move through lists or chat messages, and `r`/`i` for chat replies and issue conversion. In chat, `Enter` sends and `Shift+Enter` inserts a newline. Press `Ctrl/Cmd+K` for commands or `?` for the full shortcut map.
 - **Chat and issues are connected.** Create a Backlog issue from a chat message; the message thread stays linked as context.
 - **Made for AI-assisted work.** Issue prompt export and agent tokens use the same API; those workflows are planned.
 - **Client view (planned).** Guests will see shared progress and updates; internal work stays hidden.

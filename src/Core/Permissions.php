@@ -12,6 +12,10 @@ final class Permissions
         return match ($action) {
             'users.list', 'users.create', 'projects.create', 'projects.update', 'projects.manage_members'
                 => $user->role === 'admin',
+            'workspaces.create'
+                => $user->role === 'admin' && $user->accountId > 0,
+            'workspaces.list', 'workspaces.switch'
+                => $user->accountId > 0,
             'projects.view'
                 => $user->role === 'admin' || ($resource['is_member'] ?? false) === true,
             'chat.read', 'chat.send'

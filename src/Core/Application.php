@@ -20,6 +20,9 @@ use Tangent\Modules\Issues\IssuesService;
 use Tangent\Modules\Projects\ProjectRepository;
 use Tangent\Modules\Projects\ProjectRoutes;
 use Tangent\Modules\Projects\ProjectService;
+use Tangent\Modules\Workspaces\WorkspaceRepository;
+use Tangent\Modules\Workspaces\WorkspaceRoutes;
+use Tangent\Modules\Workspaces\WorkspaceService;
 
 final class Application
 {
@@ -34,7 +37,17 @@ final class Application
         $projects = new ProjectService($projectRepository, $users, $pdo, $chat);
         $router = new Router();
 
-        (new AuthRoutes($auth, $config->cookieSecure))->register($router);
+        (new AuthRoutes(
+            $auth,
+            $config->cookieSecure,
+            $config->workspaceId,
+            $config->sessionLifetimeSeconds,
+        ))->register($router);
+        (new WorkspaceRoutes(
+            new WorkspaceService($pdo, new WorkspaceRepository($pdo), $users, $tokens, $config),
+            $config->cookieSecure,
+            $config->sessionLifetimeSeconds,
+        ))->register($router);
         (new ProjectRoutes($projects))->register($router);
         (new ChatRoutes($chat))->register($router);
         (new IssuesRoutes($issues))->register($router);

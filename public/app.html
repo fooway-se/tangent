@@ -35,6 +35,7 @@
       <aside class="workspace-sidebar" aria-label="Workspace navigation">
         <div class="workspace-brand">
           <a class="brand" href="/app.html" aria-label="Tangent home"><span class="brand-mark" aria-hidden="true">T</span><span>Tangent</span></a>
+          <select id="workspace-switcher" aria-label="Switch workspace" disabled></select>
         </div>
         <nav id="workspace-nav" class="workspace-nav" aria-label="Workspace">
           <button id="projects-nav" class="workspace-nav-button is-active" type="button" aria-current="page">Projects</button>
@@ -201,13 +202,23 @@
                 <button class="button button-primary" type="submit">Add developer</button>
               </form>
             </article>
+            <article class="panel admin-panel workspace-create-panel">
+              <h2>Create a client workspace</h2>
+              <p class="panel-description">Create a separate workspace for another client. You will be its admin and can switch to it from the sidebar.</p>
+              <form id="create-workspace-form" class="form-stack">
+                <label>Workspace name
+                  <input name="name" maxlength="120" required>
+                </label>
+                <button class="button button-primary" type="submit">Create workspace</button>
+              </form>
+            </article>
           </section>
         </main>
         <footer id="keyboard-hints" class="keyboard-hints" hidden>
           <span><kbd>j</kbd>/<kbd>k</kbd> Move</span>
           <span><kbd>Enter</kbd> Open</span>
-          <span><kbd>g</kbd> <kbd>p</kbd> Projects</span>
-          <span id="go-prefix-hint" class="go-prefix-hint" hidden>Press <kbd>p</kbd> for Projects</span>
+          <span><kbd>g</kbd> <kbd>p</kbd> Projects · <kbd>g</kbd> <kbd>w</kbd> Workspace</span>
+          <span id="go-prefix-hint" class="go-prefix-hint" hidden><kbd>p</kbd> Projects · <kbd>w</kbd> Workspace · <kbd>i</kbd> Issues · <kbd>c</kbd> Chat · <kbd>m</kbd> Members</span>
           <span id="project-keyboard-hints" hidden><kbd>g</kbd> <kbd>i</kbd> Issues <kbd>g</kbd> <kbd>c</kbd> Chat <kbd>g</kbd> <kbd>m</kbd> Members · <kbd>c</kbd> Create <kbd>e</kbd> Edit <kbd>s</kbd> Status · Chat: <kbd>j</kbd>/<kbd>k</kbd> Move <kbd>r</kbd> Reply <kbd>i</kbd> Issue · <kbd>Enter</kbd> Send <kbd>Shift</kbd>+<kbd>Enter</kbd> New line</span>
           <span><kbd>Ctrl/Cmd</kbd>+<kbd>K</kbd> Commands</span>
           <span><kbd>?</kbd> Shortcuts</span>
@@ -241,6 +252,7 @@
           <div><dt><kbd>j</kbd>/<kbd>k</kbd></dt><dd>Move through projects or issues</dd></div>
           <div><dt><kbd>Enter</kbd></dt><dd>Open selected project or issue</dd></div>
           <div><dt><kbd>g</kbd>, <kbd>p</kbd></dt><dd>Go to projects</dd></div>
+          <div><dt><kbd>g</kbd>, <kbd>w</kbd></dt><dd>Focus the workspace switcher</dd></div>
           <div><dt><kbd>g</kbd>, <kbd>i</kbd></dt><dd>Open project issues</dd></div>
           <div><dt><kbd>g</kbd>, <kbd>c</kbd></dt><dd>Focus project chat</dd></div>
           <div><dt><kbd>g</kbd>, <kbd>m</kbd></dt><dd>Open project members</dd></div>

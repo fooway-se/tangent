@@ -11,7 +11,12 @@ use Tangent\Core\Router;
 
 final class AuthRoutes
 {
-    public function __construct(private readonly AuthService $service, private readonly bool $cookieSecure)
+    public function __construct(
+        private readonly AuthService $service,
+        private readonly bool $cookieSecure,
+        private readonly int $defaultWorkspaceId,
+        private readonly int $sessionLifetimeSeconds,
+    )
     {
     }
 
@@ -20,7 +25,7 @@ final class AuthRoutes
         $router->add('POST', '/api/v1/auth/login', function (Request $request): Response {
             $login = $this->service->login($request);
             $secure = $this->cookieSecure ? '; Secure' : '';
-            $maxAge = 43200;
+            $maxAge = $this->sessionLifetimeSeconds;
             return Response::json(200, [
                 'user' => $login['user'],
                 'csrf_token' => $login['csrf_token'],
@@ -31,6 +36,8 @@ final class AuthRoutes
                         . '; Path=/api/v1; Max-Age=' . $maxAge . '; HttpOnly; SameSite=Lax' . $secure,
                     'tangent_csrf=' . $login['csrf_token']
                         . '; Path=/; Max-Age=' . $maxAge . '; SameSite=Lax' . $secure,
+                    'tangent_workspace=' . $this->defaultWorkspaceId
+                        . '; Path=/api/v1; Max-Age=' . $maxAge . '; HttpOnly; SameSite=Lax' . $secure,
                 ],
                 'cache-control' => 'no-store',
             ]);
@@ -47,6 +54,7 @@ final class AuthRoutes
                 'set-cookie' => [
                     'tangent_session=; Path=/api/v1; Max-Age=0; HttpOnly; SameSite=Lax' . $secure,
                     'tangent_csrf=; Path=/; Max-Age=0; SameSite=Lax' . $secure,
+                    'tangent_workspace=; Path=/api/v1; Max-Age=0; HttpOnly; SameSite=Lax' . $secure,
                 ],
                 'cache-control' => 'no-store',
             ]);

@@ -145,12 +145,17 @@ abstract class ApiTestCase extends TestCase
 
     private function insertUser(string $email, string $name, string $role): int
     {
+        $account = $this->pdo->prepare('INSERT INTO user_accounts () VALUES ()');
+        $account->execute();
+        $accountId = (int) $this->pdo->lastInsertId();
+
         $statement = $this->pdo->prepare(
-            'INSERT INTO users (workspace_id, name, email, password_hash, role, is_active)
-             VALUES (:workspace_id, :name, :email, :password_hash, :role, 1)'
+            'INSERT INTO users (workspace_id, account_id, name, email, password_hash, role, is_active)
+             VALUES (:workspace_id, :account_id, :name, :email, :password_hash, :role, 1)'
         );
         $statement->execute([
             'workspace_id' => $this->workspaceId,
+            'account_id' => $accountId,
             'name' => $name,
             'email' => $email,
             'password_hash' => password_hash($this->password, PASSWORD_DEFAULT),

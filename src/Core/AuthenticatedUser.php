@@ -15,6 +15,7 @@ final class AuthenticatedUser
         public readonly string $authenticationMethod,
         public readonly int $tokenId,
         public readonly ?string $csrfHash,
+        public readonly int $accountId = 0,
     ) {
     }
 

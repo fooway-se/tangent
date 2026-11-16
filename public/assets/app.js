@@ -12,6 +12,8 @@ const workspacePanel = document.querySelector('#workspace-panel');
 const accountBar = document.querySelector('#account-bar');
 const currentUserLabel = document.querySelector('#current-user');
 const workspaceNav = document.querySelector('#workspace-nav');
+const workspaceSwitcher = document.querySelector('#workspace-switcher');
+const createWorkspaceForm = document.querySelector('#create-workspace-form');
 const breadcrumbProjectsButton = document.querySelector('#breadcrumb-projects');
 const breadcrumbDivider = document.querySelector('#breadcrumb-divider');
 const breadcrumbCurrent = document.querySelector('#breadcrumb-current');
@@ -73,6 +75,7 @@ const statusMessage = document.querySelector('#status-message');
 const loginStatusMessage = document.querySelector('#login-status-message');
 const logoutButton = document.querySelector('#logout-button');
 let activeUser = null;
+let activeWorkspaces = [];
 let activeProject = null;
 let activeProjectMembers = [];
 let selectedIssue = null;
@@ -134,6 +137,9 @@ function showSignedOut() {
     activeProject = null;
     activeProjectMembers = [];
     selectedIssue = null;
+    activeWorkspaces = [];
+    workspaceSwitcher.replaceChildren();
+    workspaceSwitcher.disabled = true;
     loginShell.hidden = false;
     loginPanel.hidden = false;
     workspacePanel.hidden = true;
@@ -160,6 +166,41 @@ function showSignedIn(user) {
     toggleProjectFormButton.hidden = user.role !== 'admin';
     showWorkspaceView('projects');
     report('');
+}
+async function loadWorkspaces() {
+    const result = await api('/workspaces');
+    activeWorkspaces = result.workspaces;
+    workspaceSwitcher.replaceChildren();
+    for (const workspace of activeWorkspaces) {
+        const option = document.createElement('option');
+        option.value = String(workspace.id);
+        option.textContent = workspace.name;
+        workspaceSwitcher.append(option);
+    }
+    workspaceSwitcher.value = String(activeUser?.workspace_id ?? '');
+    workspaceSwitcher.disabled = activeWorkspaces.length === 0;
+}
+async function switchWorkspace(workspaceId) {
+    if (activeUser === null || workspaceId === activeUser.workspace_id)
+        return;
+    workspaceSwitcher.disabled = true;
+    try {
+        const result = await api(`/workspaces/${workspaceId}/switch`, {
+            method: 'POST',
+            body: JSON.stringify({}),
+        });
+        showSignedIn(result.user);
+        await loadWorkspaces();
+        await loadProjects();
+        report(`Switched to ${result.workspace.name}.`);
+    }
+    catch (error) {
+        workspaceSwitcher.value = String(activeUser?.workspace_id ?? '');
+        report(error instanceof Error ? error.message : 'Could not switch workspace.', true);
+    }
+    finally {
+        workspaceSwitcher.disabled = activeWorkspaces.length === 0;
+    }
 }
 function showWorkspaceView(view) {
     if (view !== 'project') {
@@ -427,8 +468,19 @@ function createIssueFromLatestMessage() {
 function getPaletteCommands() {
     const commands = [
         { label: 'Go to Projects', detail: 'Open the project list', shortcut: 'g p', run: () => showWorkspaceView('projects') },
+        { label: 'Switch workspace', detail: 'Focus the workspace selector', shortcut: 'g w', run: () => workspaceSwitcher.focus() },
         { label: 'Show keyboard shortcuts', detail: 'View key bindings', shortcut: '?', run: showShortcutHelp },
     ];
+    for (const workspace of activeWorkspaces) {
+        if (workspace.id === activeUser?.workspace_id)
+            continue;
+        commands.splice(1, 0, {
+            label: `Switch to ${workspace.name}`,
+            detail: `Open the ${workspace.name} client workspace`,
+            shortcut: '',
+            run: () => void switchWorkspace(workspace.id),
+        });
+    }
     if (activeUser?.role === 'admin' && !projectsView.hidden) {
         commands.unshift({
             label: 'New project',
@@ -439,6 +491,17 @@ function getPaletteCommands() {
                     toggleProjectFormButton.click();
                 else
                     projectForm.querySelector('input[name="name"]')?.focus();
+            },
+        });
+    }
+    if (activeUser?.role === 'admin') {
+        commands.unshift({
+            label: 'Create workspace',
+            detail: 'Create a separate workspace for another client',
+            shortcut: '',
+            run: () => {
+                showWorkspaceView('admin');
+                createWorkspaceForm.querySelector('input[name="name"]')?.focus();
             },
         });
     }
@@ -605,6 +668,9 @@ function executeShortcut(action) {
         case 'projects':
             clearGoPrefix();
             showWorkspaceView('projects');
+            break;
+        case 'workspace-switcher':
+            workspaceSwitcher.focus();
             break;
         case 'issues':
             goToProjectIssues();
@@ -1360,10 +1426,32 @@ loginForm.addEventListener('submit', async (event) => {
             body: JSON.stringify({ email: values.get('email'), password: values.get('password') }),
         });
         showSignedIn(result.user);
+        await loadWorkspaces();
         await loadProjects();
     }
     catch (error) {
         report(error instanceof Error ? error.message : 'Could not sign in.', true);
+    }
+});
+workspaceSwitcher.addEventListener('change', () => {
+    const workspaceId = Number(workspaceSwitcher.value);
+    if (Number.isInteger(workspaceId) && workspaceId > 0)
+        void switchWorkspace(workspaceId);
+});
+createWorkspaceForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const values = new FormData(createWorkspaceForm);
+    try {
+        const result = await api('/workspaces', {
+            method: 'POST',
+            body: JSON.stringify({ name: values.get('name') }),
+        });
+        createWorkspaceForm.reset();
+        await loadWorkspaces();
+        await switchWorkspace(result.workspace.id);
+    }
+    catch (error) {
+        report(error instanceof Error ? error.message : 'Could not create the workspace.', true);
     }
 });
 projectForm.addEventListener('submit', async (event) => {
@@ -1414,6 +1502,7 @@ async function start() {
     try {
         const result = await api('/auth/me');
         showSignedIn(result.user);
+        await loadWorkspaces();
         await loadProjects();
     }
     catch (error) {
