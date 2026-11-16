@@ -25,10 +25,13 @@ test('the sidebar can switch workspaces and workspace admins can create one', ()
   assert.match(html, /id="create-workspace-form"/);
 });
 
-test('workspace UI keeps square surfaces with subdued blue-gray dividers', () => {
-  assert.match(css, /--border:\s*rgba\(147,\s*164,\s*184,\s*0\.15\)/);
-  assert.match(css, /--border-strong:\s*rgba\(147,\s*164,\s*184,\s*0\.28\)/);
-  assert.match(css, /\.panel\s*\{[^}]*border-radius:\s*0;/s);
+test('workspace UI uses the warm shell, teal panels, and shared rounded controls', () => {
+  assert.match(css, /--canvas:\s*#[0-9a-f]{6}/i);
+  assert.match(css, /--deep-blue:\s*#[0-9a-f]{6}/i);
+  assert.match(css, /--border:\s*rgba\(159,\s*178,\s*180,\s*0\.19\)/);
+  assert.match(css, /--signal-stripe:\s*linear-gradient/);
+  assert.match(css, /\.workspace-sidebar\s*\{[^}]*background:\s*var\(--canvas\)/s);
+  assert.match(css, /\.panel\s*\{[^}]*border-radius:\s*var\(--radius-card\)/s);
 });
 
 test('project issues and chat occupy the center and right columns', () => {

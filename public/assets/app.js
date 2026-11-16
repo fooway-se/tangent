@@ -975,7 +975,13 @@ function createProjectChat(projectId) {
     const heading = document.createElement('h3');
     heading.className = 'chat-heading';
     const channelName = document.createElement('span');
-    channelName.textContent = `# ${activeProject?.slug ?? 'project'}`;
+    channelName.className = 'chat-channel-name';
+    const channelHash = document.createElement('span');
+    channelHash.className = 'chat-channel-hash';
+    channelHash.textContent = '#';
+    const channelSlug = document.createElement('span');
+    channelSlug.textContent = activeProject?.slug ?? 'project';
+    channelName.append(channelHash, channelSlug);
     const memberCount = document.createElement('span');
     memberCount.className = 'chat-members-count';
     memberCount.textContent = `${activeProjectMembers.length} ${activeProjectMembers.length === 1 ? 'member' : 'members'}`;

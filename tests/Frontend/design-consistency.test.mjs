@@ -18,17 +18,32 @@ function rule(selector) {
   return block.join('\n');
 }
 
-test('all workspace views share one deep-blue canvas', () => {
-  assert.match(rule(':root'), /background:\s*var\(--deep-blue\)/);
+test('all views use the warm shell and dark teal work surface palette', () => {
+  assert.match(rule(':root'), /--canvas:\s*#[0-9a-f]{6}/i);
+  assert.match(rule(':root'), /--accent:\s*#[0-9a-f]{6}/i);
+  for (const selector of ['.workspace-sidebar', '.workspace-stage', '.keyboard-hints']) {
+    assert.match(rule(selector), /background:\s*var\(--canvas\)/, `${selector} uses the warm shell`);
+  }
   for (const selector of ['.workspace-content', '.project-view', '.project-chat-column']) {
-    assert.match(rule(selector), /background:\s*var\(--deep-blue\)/, `${selector} uses the workspace canvas`);
+    assert.match(rule(selector), /background:\s*var\(--deep-blue\)/, `${selector} uses the dark work surface`);
   }
 });
 
-test('panels, controls, and buttons share square corners and theme tokens', () => {
+test('shell, cards, and controls use the mockup corner scale and shared borders', () => {
+  assert.match(rule(':root'), /--radius-shell:\s*\d+px/);
+  assert.match(rule(':root'), /--radius-card:\s*\d+px/);
+  assert.match(rule(':root'), /--radius-control:\s*\d+px/);
+  assert.match(rule('.workspace-topbar'), /border-radius:\s*var\(--radius-shell\)/);
+  assert.match(rule('.workspace-content'), /border-radius:\s*0\s+0\s+var\(--radius-shell\)/);
   for (const selector of ['.panel', '.button', 'input, textarea, select']) {
-    assert.match(rule(selector), /border-radius:\s*0(?:px)?\s*;/, `${selector} has square corners`);
-    assert.match(rule(selector), /border:\s*1px solid var\(--border\)/, `${selector} uses the shared border token`);
+    assert.match(rule(selector), /border-radius:\s*var\(--radius-(?:card|control)\)/, `${selector} uses the shared corner scale`);
+    const borderToken = selector === '.button' ? /border:\s*1px solid var\(--border-strong\)/ : /border:\s*1px solid var\(--border\)/;
+    assert.match(rule(selector), borderToken, `${selector} uses the shared border token`);
   }
   assert.match(rule(':root'), /font-family:\s*ui-monospace/);
+});
+
+test('brand and main panel use the same striped signature accent', () => {
+  assert.match(rule('.workspace-brand::after'), /background:\s*var\(--signal-stripe\)/);
+  assert.match(rule('.workspace-content::before'), /background:\s*var\(--signal-stripe\)/);
 });
