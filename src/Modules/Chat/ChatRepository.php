@@ -155,6 +155,52 @@ final class ChatRepository
         return $statement->fetchColumn() !== false;
     }
 
+    /** @return array<string, mixed>|null */
+    public function messageContext(int $workspaceId, int $messageId): ?array
+    {
+        $statement = $this->pdo->prepare(
+            'SELECT m.id, m.channel_id, m.parent_id, m.body, c.project_id, c.channel_type
+             FROM messages m
+             INNER JOIN channels c ON c.workspace_id = m.workspace_id AND c.id = m.channel_id
+             WHERE m.workspace_id = :workspace_id AND m.id = :id
+             LIMIT 1'
+        );
+        $statement->execute(['workspace_id' => $workspaceId, 'id' => $messageId]);
+        $message = $statement->fetch(PDO::FETCH_ASSOC);
+        if ($message === false) {
+            return null;
+        }
+
+        $message['id'] = (int) $message['id'];
+        $message['channel_id'] = (int) $message['channel_id'];
+        $message['parent_id'] = $message['parent_id'] === null ? null : (int) $message['parent_id'];
+        $message['project_id'] = $message['project_id'] === null ? null : (int) $message['project_id'];
+        return $message;
+    }
+
+    public function threadRootId(int $workspaceId, int $channelId, int $messageId): int
+    {
+        $currentId = $messageId;
+        $statement = $this->pdo->prepare(
+            'SELECT parent_id FROM messages
+             WHERE workspace_id = :workspace_id AND channel_id = :channel_id AND id = :id
+             LIMIT 1'
+        );
+
+        while (true) {
+            $statement->execute([
+                'workspace_id' => $workspaceId,
+                'channel_id' => $channelId,
+                'id' => $currentId,
+            ]);
+            $parentId = $statement->fetchColumn();
+            if ($parentId === false || $parentId === null) {
+                return $currentId;
+            }
+            $currentId = (int) $parentId;
+        }
+    }
+
     /** @return array<string, mixed> */
     public function createMessage(
         int $workspaceId,

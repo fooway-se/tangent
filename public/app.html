@@ -9,154 +9,169 @@
     <script type="module" src="/assets/app.js"></script>
   </head>
   <body>
-    <header class="topbar">
-      <a class="brand" href="/app.html" aria-label="Tangent home">Tangent</a>
-      <div id="account-bar" class="account-bar" hidden>
-        <span id="current-user"></span>
-        <button id="logout-button" class="button button-quiet" type="button">Sign out</button>
-      </div>
-    </header>
+    <section id="login-shell">
+      <header class="topbar login-topbar">
+        <a class="brand" href="/app.html" aria-label="Tangent home">Tangent</a>
+      </header>
+      <main class="page-shell">
+        <p id="login-status-message" class="status-message" role="status" aria-live="polite"></p>
+        <section id="login-panel" class="panel login-panel" aria-labelledby="login-heading">
+          <p class="eyebrow">Your workspace</p>
+          <h1 id="login-heading">Sign in to Tangent</h1>
+          <form id="login-form" class="form-stack">
+            <label>Email
+              <input name="email" type="email" autocomplete="username" required>
+            </label>
+            <label>Password
+              <input name="password" type="password" autocomplete="current-password" required>
+            </label>
+            <button class="button button-primary" type="submit">Sign in</button>
+          </form>
+        </section>
+      </main>
+    </section>
 
-    <main class="page-shell">
-      <p id="status-message" class="status-message" role="status" aria-live="polite"></p>
-
-      <section id="login-panel" class="panel login-panel" aria-labelledby="login-heading">
-        <p class="eyebrow">Your workspace</p>
-        <h1 id="login-heading">Sign in to Tangent</h1>
-        <form id="login-form" class="form-stack">
-          <label>Email
-            <input name="email" type="email" autocomplete="username" required>
-          </label>
-          <label>Password
-            <input name="password" type="password" autocomplete="current-password" required>
-          </label>
-          <button class="button button-primary" type="submit">Sign in</button>
-        </form>
-      </section>
-
-      <section id="workspace-panel" hidden>
+    <section id="workspace-panel" class="workspace-layout" hidden>
+      <aside class="workspace-sidebar" aria-label="Workspace navigation">
+        <div class="workspace-brand">
+          <a class="brand" href="/app.html" aria-label="Tangent home"><span class="brand-mark" aria-hidden="true">T</span><span>Tangent</span></a>
+        </div>
         <nav id="workspace-nav" class="workspace-nav" aria-label="Workspace">
           <button id="projects-nav" class="workspace-nav-button is-active" type="button" aria-current="page">Projects</button>
           <button id="admin-nav" class="workspace-nav-button" type="button" hidden>Workspace admin</button>
         </nav>
-
-        <section id="projects-view" class="workspace-view" aria-labelledby="projects-heading">
-          <header class="page-heading">
-            <div>
-              <p class="eyebrow">Workspace</p>
-              <h1 id="projects-heading">Projects</h1>
-            </div>
-            <button id="toggle-project-form" class="button button-primary" type="button">New project</button>
-          </header>
-
-          <section id="project-form-panel" class="panel project-form-panel" hidden aria-labelledby="new-project-heading">
-            <h2 id="new-project-heading">New project</h2>
-            <form id="project-form" class="form-stack">
-              <label>Name
-                <input name="name" maxlength="120" required>
-              </label>
-              <label>Description
-                <textarea name="description" rows="3" maxlength="5000"></textarea>
-              </label>
-              <div class="form-actions">
-                <button id="cancel-project-form" class="button button-quiet" type="button">Cancel</button>
-                <button class="button button-primary" type="submit">Create project</button>
-              </div>
-            </form>
-          </section>
-
-          <section aria-labelledby="project-list-heading">
-            <h2 id="project-list-heading" class="section-title">Your projects</h2>
-            <ul id="project-list" class="project-list"></ul>
-            <p id="empty-projects" class="empty-state" hidden>No projects yet.</p>
-          </section>
+        <section class="sidebar-projects" aria-labelledby="sidebar-projects-heading">
+          <h2 id="sidebar-projects-heading" class="section-title">Projects</h2>
+          <ul id="project-sidebar-list" class="project-sidebar-list"></ul>
         </section>
+        <div id="account-bar" class="account-bar sidebar-account" hidden>
+          <span id="current-user"></span>
+          <button id="logout-button" class="button button-quiet" type="button">Sign out</button>
+        </div>
+      </aside>
 
-        <section id="project-view" class="workspace-view project-view" hidden aria-live="polite">
-          <aside class="project-sidebar" aria-label="Project navigation">
-            <button id="back-to-projects" class="button button-quiet back-button" type="button">← All projects</button>
-            <h2 class="section-title">Projects</h2>
-            <ul id="project-sidebar-list" class="project-sidebar-list"></ul>
-          </aside>
+      <section class="workspace-stage" aria-label="Workspace content">
+        <header class="workspace-topbar">
+          <nav class="workspace-breadcrumb" aria-label="Breadcrumb">
+            <button id="breadcrumb-projects" class="breadcrumb-link" type="button" hidden>Projects</button>
+            <span id="breadcrumb-divider" aria-hidden="true" hidden>/</span>
+            <strong id="breadcrumb-current">Projects</strong>
+          </nav>
+        </header>
 
-          <section class="project-main" aria-label="Project issues and members">
-            <header class="project-view-heading">
+        <main class="workspace-content">
+          <p id="status-message" class="status-message" role="status" aria-live="polite"></p>
+          <section id="projects-view" class="workspace-view projects-view" aria-labelledby="projects-heading">
+            <header class="page-heading">
               <div>
-                <p class="eyebrow">Project</p>
-                <h1 id="project-title"></h1>
-                <p id="project-description" class="detail-description"></p>
+                <p class="eyebrow">Workspace</p>
+                <h1 id="projects-heading">Projects</h1>
               </div>
-              <span id="project-state" class="project-status"></span>
+              <button id="toggle-project-form" class="button button-primary" type="button">New project</button>
             </header>
-            <nav class="project-tabs" aria-label="Project work">
-              <button id="issues-tab" class="project-tab is-active" type="button" aria-current="page">Issues</button>
-              <button id="members-tab" class="project-tab" type="button">Members</button>
-            </nav>
-            <section id="issues-view" class="project-tab-view" aria-labelledby="issues-tab">
-              <header class="issues-toolbar">
-                <h2 class="section-title">Issues</h2>
-                <button id="toggle-issue-form" class="button button-primary" type="button">New issue</button>
-              </header>
-              <section id="issue-form-panel" class="panel issue-form-panel" hidden aria-labelledby="new-issue-heading">
-                <h3 id="new-issue-heading">New issue</h3>
-                <form id="issue-form" class="form-stack">
-                  <label>Title
-                    <input name="title" maxlength="200" required>
-                  </label>
-                  <label>Description
-                    <textarea name="description" rows="3" maxlength="10000"></textarea>
-                  </label>
-                  <div class="form-actions">
-                    <button id="cancel-issue-form" class="button button-quiet" type="button">Cancel</button>
-                    <button class="button button-primary" type="submit">Create issue</button>
-                  </div>
-                </form>
-              </section>
-              <ul id="issue-list" class="issue-list" aria-live="polite"></ul>
-              <p id="empty-issues" class="empty-state" hidden>No issues yet. Create the first one.</p>
-            </section>
-            <section id="members-view" class="project-tab-view" hidden aria-labelledby="members-tab">
-              <h2 class="section-title">Project members</h2>
-              <ul id="member-list" class="member-list"></ul>
-              <form id="member-form" class="member-form" hidden>
-                <label>Add a developer
-                  <select id="member-select" name="user_id"></select>
+
+            <section id="project-form-panel" class="panel project-form-panel" hidden aria-labelledby="new-project-heading">
+              <h2 id="new-project-heading">New project</h2>
+              <form id="project-form" class="form-stack">
+                <label>Name
+                  <input name="name" maxlength="120" required>
                 </label>
-                <button id="add-member-button" class="button button-secondary" type="submit">Add to project</button>
+                <label>Description
+                  <textarea name="description" rows="3" maxlength="5000"></textarea>
+                </label>
+                <div class="form-actions">
+                  <button id="cancel-project-form" class="button button-quiet" type="button">Cancel</button>
+                  <button class="button button-primary" type="submit">Create project</button>
+                </div>
               </form>
             </section>
+
+            <section aria-labelledby="project-list-heading">
+              <h2 id="project-list-heading" class="section-title">Your projects</h2>
+              <ul id="project-list" class="project-list"></ul>
+              <p id="empty-projects" class="empty-state" hidden>No projects yet.</p>
+            </section>
           </section>
 
-          <aside id="project-chat-column" class="project-chat-column" aria-label="Project chat">
-            <div id="chat-view" class="project-chat-host"></div>
-          </aside>
-        </section>
+          <section id="project-view" class="workspace-view project-view" hidden aria-live="polite">
+            <section class="project-main" aria-label="Project issues and members">
+              <header class="project-view-heading">
+                <div>
+                  <p class="eyebrow">Project</p>
+                  <h1 id="project-title"></h1>
+                  <p id="project-description" class="detail-description"></p>
+                </div>
+                <span id="project-state" class="project-status"></span>
+              </header>
+              <nav class="project-tabs" aria-label="Project work">
+                <button id="issues-tab" class="project-tab is-active" type="button" aria-current="page">Issues</button>
+                <button id="members-tab" class="project-tab" type="button">Members</button>
+              </nav>
+              <section id="issues-view" class="project-tab-view" aria-labelledby="issues-tab">
+                <header class="issues-toolbar">
+                  <h2 class="section-title">Issues</h2>
+                  <button id="toggle-issue-form" class="button button-primary" type="button">New issue</button>
+                </header>
+                <section id="issue-form-panel" class="panel issue-form-panel" hidden aria-labelledby="new-issue-heading">
+                  <h3 id="new-issue-heading">New issue</h3>
+                  <form id="issue-form" class="form-stack">
+                    <label>Title
+                      <input name="title" maxlength="200" required>
+                    </label>
+                    <label>Description
+                      <textarea name="description" rows="3" maxlength="10000"></textarea>
+                    </label>
+                    <div class="form-actions">
+                      <button id="cancel-issue-form" class="button button-quiet" type="button">Cancel</button>
+                      <button class="button button-primary" type="submit">Create issue</button>
+                    </div>
+                  </form>
+                </section>
+                <ul id="issue-list" class="issue-list" aria-live="polite"></ul>
+                <p id="empty-issues" class="empty-state" hidden>No issues yet. Create the first one.</p>
+              </section>
+              <section id="members-view" class="project-tab-view" hidden aria-labelledby="members-tab">
+                <h2 class="section-title">Project members</h2>
+                <ul id="member-list" class="member-list"></ul>
+                <form id="member-form" class="member-form" hidden>
+                  <label>Add a developer
+                    <select id="member-select" name="user_id"></select>
+                  </label>
+                  <button id="add-member-button" class="button button-secondary" type="submit">Add to project</button>
+                </form>
+              </section>
+            </section>
+            <aside id="project-chat-column" class="project-chat-column" aria-label="Project chat">
+              <div id="chat-view" class="project-chat-host"></div>
+            </aside>
+          </section>
 
-        <section id="admin-view" class="workspace-view admin-view" hidden aria-labelledby="admin-heading">
-          <header class="page-heading">
-            <div>
-              <p class="eyebrow">Workspace</p>
-              <h1 id="admin-heading">Administration</h1>
-            </div>
-          </header>
-          <article class="panel admin-panel">
-            <h2>Add a developer</h2>
-            <p class="panel-description">Create a workspace account. Add them to a project from its Members view.</p>
-            <form id="developer-form" class="form-stack">
-              <label>Name
-                <input name="name" maxlength="120" required>
-              </label>
-              <label>Email
-                <input name="email" type="email" maxlength="254" required>
-              </label>
-              <label>Temporary password
-                <input name="password" type="password" minlength="12" autocomplete="new-password" required>
-              </label>
-              <button class="button button-primary" type="submit">Add developer</button>
-            </form>
-          </article>
-        </section>
+          <section id="admin-view" class="workspace-view admin-view" hidden aria-labelledby="admin-heading">
+            <header class="page-heading">
+              <div>
+                <p class="eyebrow">Workspace</p>
+                <h1 id="admin-heading">Administration</h1>
+              </div>
+            </header>
+            <article class="panel admin-panel">
+              <h2>Add a developer</h2>
+              <p class="panel-description">Create a workspace account. Add them to a project from its Members view.</p>
+              <form id="developer-form" class="form-stack">
+                <label>Name
+                  <input name="name" maxlength="120" required>
+                </label>
+                <label>Email
+                  <input name="email" type="email" maxlength="254" required>
+                </label>
+                <label>Temporary password
+                  <input name="password" type="password" minlength="12" autocomplete="new-password" required>
+                </label>
+                <button class="button button-primary" type="submit">Add developer</button>
+              </form>
+            </article>
+          </section>
+        </main>
       </section>
-    </main>
+    </section>
   </body>
 </html>

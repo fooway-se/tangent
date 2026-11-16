@@ -18,6 +18,16 @@ final class IssuesRoutes
 
     public function register(Router $router): void
     {
+        $router->add('POST', '/api/v1/messages/{id}/issue', function (
+            Request $request,
+            array $params,
+            AuthenticatedUser $user,
+        ): Response {
+            return Response::json(201, [
+                'issue' => $this->service->createFromMessage($user, self::positiveId($params['id'])),
+            ]);
+        });
+
         $router->add('GET', '/api/v1/projects/{id}/issues', function (
             Request $request,
             array $params,

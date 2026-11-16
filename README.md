@@ -2,14 +2,14 @@
 
 Chat, projects and issues in one place for developers working remotely. Keyboard-first, built for AI-assisted development, and simple to self-host on ordinary PHP + MySQL hosting.
 
-> **Status: pre-alpha.** Auth, projects, project chat, and the initial issue slice are implemented; broader chat and issue workflows remain planned.
+> **Status: pre-alpha.** Auth, projects, project chat, and core issue creation/status/chat conversion are implemented; broader chat and issue workflows remain planned.
 
 ## Why
 
 Most teams spread work across a chat app, an issue tracker and a project board. This tool puts them together and removes the mouse from the daily loop:
 
 - **Keyboard-first direction.** Shortcuts and the command palette are planned; they are not in the current slice.
-- **Chat and issues will connect.** Message-to-issue conversion is planned, with the message thread kept as context.
+- **Chat and issues are connected.** Create a Backlog issue from a chat message; the message thread stays linked as context.
 - **Made for AI-assisted work.** Issue prompt export and agent tokens use the same API; those workflows are planned.
 - **Client view (planned).** Guests will see shared progress and updates; internal work stays hidden.
 - **Simple to host (planned).** The install wizard is not implemented yet. Production will need no Composer, npm, or framework.
@@ -18,15 +18,15 @@ Most teams spread work across a chat app, an issue tracker and a project board. 
 
 | Area | What |
 |---|---|
-| Chat | Standalone channels, DMs, chat-to-issue actions and broader chat workflows |
-| Issues | Quick-add syntax (`Fix login bug @niklas !high due:fri`), assignment, priorities, milestones, linked PRs and chat conversion |
+| Chat | Standalone channels, DMs and broader chat workflows |
+| Issues | Quick-add syntax (`Fix login bug @niklas !high due:fri`), assignment, priorities, milestones and linked PRs |
 | Inbox | Mentions, assignments, thread replies, status changes and PR events in one list |
 | Guests | Restricted client view with progress, milestones, shared issues and updates; comments on shared content and approvals for designated deliveries |
 | Integrations | GitHub via webhooks (GitLab later through the same interface) |
 | API | REST under `/api/v1/`, opaque Bearer tokens, OpenAPI description |
 
 See [`docs/SPEC.md`](docs/SPEC.md) for the full spec (Swedish) and phases.
-The current API contract is in [`docs/openapi.yaml`](docs/openapi.yaml). Project issues support create, list and status updates; project chat supports threaded text messages and adaptive polling.
+The current API contract is in [`docs/openapi.yaml`](docs/openapi.yaml). Project issues support create, list, status updates and creation from chat; project chat supports threaded text messages and adaptive polling.
 
 ## Tech
 

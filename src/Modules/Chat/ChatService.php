@@ -94,6 +94,27 @@ final class ChatService
         );
     }
 
+    /** @return array{project_id: int, channel_id: int, root_message_id: int, title: string} */
+    public function issueContext(AuthenticatedUser $user, int $messageId): array
+    {
+        $message = $this->chat->messageContext($user->workspaceId, $messageId);
+        if ($message === null || $message['project_id'] === null || $message['channel_type'] !== 'project') {
+            throw new ApiException(404, 'not_found', 'The message was not found.');
+        }
+
+        $this->visibleProjectChannel($user, $message['project_id']);
+        return [
+            'project_id' => $message['project_id'],
+            'channel_id' => $message['channel_id'],
+            'root_message_id' => $this->chat->threadRootId(
+                $user->workspaceId,
+                $message['channel_id'],
+                $message['id'],
+            ),
+            'title' => $message['body'],
+        ];
+    }
+
     private function visibleProjectChannel(
         AuthenticatedUser $user,
         int $projectId,

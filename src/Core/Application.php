@@ -30,7 +30,7 @@ final class Application
         $auth = new AuthService($users, $tokens, new RateLimiter($pdo), $config);
         $projectRepository = new ProjectRepository($pdo);
         $chat = new ChatService(new ChatRepository($pdo), $projectRepository);
-        $issues = new IssuesService(new IssueRepository($pdo), $projectRepository);
+        $issues = new IssuesService(new IssueRepository($pdo), $projectRepository, $chat);
         $projects = new ProjectService($projectRepository, $users, $pdo, $chat);
         $router = new Router();
 

@@ -7,6 +7,7 @@ namespace Tangent\Modules\Issues;
 use Tangent\Core\ApiException;
 use Tangent\Core\AuthenticatedUser;
 use Tangent\Core\Permissions;
+use Tangent\Modules\Chat\ChatService;
 use Tangent\Modules\Projects\ProjectRepository;
 
 final class IssuesService
@@ -14,6 +15,7 @@ final class IssuesService
     public function __construct(
         private readonly IssueRepository $issues,
         private readonly ProjectRepository $projects,
+        private readonly ChatService $chat,
     ) {
     }
 
@@ -38,6 +40,27 @@ final class IssuesService
         }
 
         return $this->issues->create($user->workspaceId, $projectId, $title, $description, $user->id);
+    }
+
+    /** @return array<string, mixed> */
+    public function createFromMessage(AuthenticatedUser $user, int $messageId): array
+    {
+        $context = $this->chat->issueContext($user, $messageId);
+        $this->requireProjectAccess($user, $context['project_id'], 'issues.create');
+        $title = mb_substr(trim($context['title']), 0, 200, 'UTF-8');
+        if ($title === '') {
+            throw new ApiException(422, 'validation_failed', 'The source message cannot create an empty issue title.');
+        }
+
+        return $this->issues->create(
+            $user->workspaceId,
+            $context['project_id'],
+            $title,
+            '',
+            $user->id,
+            $context['channel_id'],
+            $context['root_message_id'],
+        );
     }
 
     /** @param array<string, mixed> $input @return array<string, mixed> */

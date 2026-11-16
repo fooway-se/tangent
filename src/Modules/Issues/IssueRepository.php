@@ -16,7 +16,8 @@ final class IssueRepository
     public function listForProject(int $workspaceId, int $projectId): array
     {
         $statement = $this->pdo->prepare(
-            "SELECT id, workspace_id, project_id, title, description, status, created_by, created_at, updated_at
+            "SELECT id, workspace_id, project_id, title, description, status, created_by,
+                    source_channel_id, source_message_id, created_at, updated_at
              FROM issues
              WHERE workspace_id = :workspace_id AND project_id = :project_id
              ORDER BY FIELD(status, 'backlog', 'todo', 'doing', 'done'), id DESC"
@@ -32,10 +33,16 @@ final class IssueRepository
         string $title,
         string $description,
         int $creatorId,
+        ?int $sourceChannelId = null,
+        ?int $sourceMessageId = null,
     ): array {
         $statement = $this->pdo->prepare(
-            "INSERT INTO issues (workspace_id, project_id, title, description, status, created_by)
-             VALUES (:workspace_id, :project_id, :title, :description, 'backlog', :created_by)"
+            "INSERT INTO issues (
+                workspace_id, project_id, title, description, status, created_by, source_channel_id, source_message_id
+             ) VALUES (
+                :workspace_id, :project_id, :title, :description, 'backlog', :created_by,
+                :source_channel_id, :source_message_id
+             )"
         );
         $statement->execute([
             'workspace_id' => $workspaceId,
@@ -43,6 +50,8 @@ final class IssueRepository
             'title' => $title,
             'description' => $description,
             'created_by' => $creatorId,
+            'source_channel_id' => $sourceChannelId,
+            'source_message_id' => $sourceMessageId,
         ]);
 
         return $this->find($workspaceId, (int) $this->pdo->lastInsertId()) ?? [];
@@ -52,7 +61,8 @@ final class IssueRepository
     public function find(int $workspaceId, int $issueId): ?array
     {
         $statement = $this->pdo->prepare(
-            'SELECT id, workspace_id, project_id, title, description, status, created_by, created_at, updated_at
+            'SELECT id, workspace_id, project_id, title, description, status, created_by,
+                    source_channel_id, source_message_id, created_at, updated_at
              FROM issues WHERE workspace_id = :workspace_id AND id = :id LIMIT 1'
         );
         $statement->execute(['workspace_id' => $workspaceId, 'id' => $issueId]);
@@ -82,6 +92,9 @@ final class IssueRepository
     {
         foreach (['id', 'workspace_id', 'project_id', 'created_by'] as $field) {
             $issue[$field] = (int) $issue[$field];
+        }
+        foreach (['source_channel_id', 'source_message_id'] as $field) {
+            $issue[$field] = $issue[$field] === null ? null : (int) $issue[$field];
         }
         return $issue;
     }
