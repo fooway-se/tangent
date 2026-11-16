@@ -96,38 +96,53 @@
 
           <section id="project-view" class="workspace-view project-view" hidden aria-live="polite">
             <section class="project-main" aria-label="Project issues and members">
-              <header class="project-view-heading">
-                <div>
-                  <p class="eyebrow">Project</p>
-                  <h1 id="project-title"></h1>
-                  <p id="project-description" class="detail-description"></p>
-                </div>
-                <span id="project-state" class="project-status"></span>
-              </header>
               <nav class="project-tabs" aria-label="Project work">
                 <button id="issues-tab" class="project-tab is-active" type="button" aria-current="page">Issues</button>
                 <button id="members-tab" class="project-tab" type="button">Members</button>
               </nav>
+              <p id="project-description" class="project-intro"></p>
+              <section class="issue-progress-strip" aria-label="Project issue progress">
+                <div class="issue-progress-status">
+                  <span class="eyebrow">Project status</span>
+                  <span id="project-state" class="project-status"></span>
+                </div>
+                <div class="issue-progress-content">
+                  <strong id="issue-progress-label">0 of 0 issues done</strong>
+                  <progress id="issue-progress" max="1" value="0" aria-label="Completed project issues"></progress>
+                </div>
+              </section>
               <section id="issues-view" class="project-tab-view" aria-labelledby="issues-tab">
-                <header class="issues-toolbar">
-                  <h2 class="section-title">Issues</h2>
-                  <button id="toggle-issue-form" class="button button-primary" type="button">New issue <kbd>c</kbd></button>
-                </header>
-                <section id="issue-form-panel" class="panel issue-form-panel" hidden aria-labelledby="new-issue-heading">
-                  <h3 id="new-issue-heading">New issue</h3>
-                  <form id="issue-form" class="form-stack">
-                    <label>Title
-                      <input name="title" maxlength="200" required>
+                <form id="issue-form" class="issue-quick-add">
+                  <span class="issue-quick-add-plus" aria-hidden="true">+</span>
+                  <label class="visually-hidden" for="issue-quick-add-title">New issue title</label>
+                  <input id="issue-quick-add-title" name="title" maxlength="200" placeholder="Add an issue…" autocomplete="off" required>
+                  <details id="issue-description-details" class="issue-description-details">
+                    <summary>Description</summary>
+                    <label>Issue description
+                      <textarea name="description" rows="2" maxlength="10000"></textarea>
                     </label>
-                    <label>Description
-                      <textarea name="description" rows="3" maxlength="10000"></textarea>
+                  </details>
+                  <button class="issue-quick-add-submit" type="submit" aria-label="Create issue">
+                    <kbd>Enter</kbd>
+                  </button>
+                </form>
+                <div class="issue-board-toolbar">
+                  <div class="issue-board-controls">
+                    <label class="issue-filter-control">
+                      <span>Filter</span>
+                      <input id="issue-filter" type="search" placeholder="Title, ID, description" aria-label="Filter issues">
                     </label>
-                    <div class="form-actions">
-                      <button id="cancel-issue-form" class="button button-quiet" type="button">Cancel</button>
-                      <button class="button button-primary" type="submit">Create issue</button>
-                    </div>
-                  </form>
-                </section>
+                    <span class="issue-grouping-label">Group: Status</span>
+                    <label class="visually-hidden" for="issue-order">Issue order</label>
+                    <select id="issue-order" class="issue-order-select" aria-label="Order issues">
+                      <option value="updated">Order: Updated</option>
+                      <option value="newest">Order: Newest</option>
+                      <option value="oldest">Order: Oldest</option>
+                      <option value="title">Order: Title</option>
+                    </select>
+                  </div>
+                  <span id="issue-count-summary" class="issue-count-summary"></span>
+                </div>
                 <ul id="issue-list" class="issue-list" aria-live="polite"></ul>
                 <p id="empty-issues" class="empty-state" hidden>No issues yet. Create the first one.</p>
               </section>

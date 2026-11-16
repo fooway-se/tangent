@@ -1,4 +1,12 @@
 import { resolveShortcut, shouldSendChatOnEnter, type ShortcutAction } from './shortcuts.js';
+import {
+  filterIssues,
+  groupIssues,
+  sortIssues,
+  type BoardIssue,
+  type IssueSortOrder,
+  type IssueStatus,
+} from './issue-board.js';
 
 type Role = 'admin' | 'developer';
 
@@ -26,20 +34,12 @@ interface Project {
   status: 'active' | 'archived';
 }
 
-type IssueStatus = 'backlog' | 'todo' | 'doing' | 'done';
-
-interface Issue {
-  id: number;
+interface Issue extends BoardIssue {
   workspace_id: number;
   project_id: number;
-  title: string;
-  description: string;
-  status: IssueStatus;
   created_by: number;
   source_channel_id: number | null;
   source_message_id: number | null;
-  created_at: string;
-  updated_at: string;
 }
 
 interface Member extends User {
@@ -104,7 +104,6 @@ const loginForm = document.querySelector<HTMLFormElement>('#login-form')!;
 const projectList = document.querySelector<HTMLUListElement>('#project-list')!;
 const emptyProjects = document.querySelector<HTMLElement>('#empty-projects')!;
 const projectFormPanel = document.querySelector<HTMLElement>('#project-form-panel')!;
-const projectTitle = document.querySelector<HTMLElement>('#project-title')!;
 const projectDescription = document.querySelector<HTMLElement>('#project-description')!;
 const projectState = document.querySelector<HTMLElement>('#project-state')!;
 const chatView = document.querySelector<HTMLElement>('#chat-view')!;
@@ -136,11 +135,15 @@ const issuesTabButton = document.querySelector<HTMLButtonElement>('#issues-tab')
 const issueBackButton = document.querySelector<HTMLButtonElement>('#issue-back-button')!;
 const issueDetailCancelButton = document.querySelector<HTMLButtonElement>('#issue-detail-cancel-button')!;
 const issueForm = document.querySelector<HTMLFormElement>('#issue-form')!;
-const issueFormPanel = document.querySelector<HTMLElement>('#issue-form-panel')!;
+const issueQuickAddTitle = document.querySelector<HTMLInputElement>('#issue-quick-add-title')!;
+const issueDescriptionDetails = document.querySelector<HTMLDetailsElement>('#issue-description-details')!;
+const issueProgress = document.querySelector<HTMLProgressElement>('#issue-progress')!;
+const issueProgressLabel = document.querySelector<HTMLElement>('#issue-progress-label')!;
+const issueFilter = document.querySelector<HTMLInputElement>('#issue-filter')!;
+const issueOrder = document.querySelector<HTMLSelectElement>('#issue-order')!;
+const issueCountSummary = document.querySelector<HTMLElement>('#issue-count-summary')!;
 const issueList = document.querySelector<HTMLUListElement>('#issue-list')!;
 const emptyIssues = document.querySelector<HTMLElement>('#empty-issues')!;
-const toggleIssueFormButton = document.querySelector<HTMLButtonElement>('#toggle-issue-form')!;
-const cancelIssueFormButton = document.querySelector<HTMLButtonElement>('#cancel-issue-form')!;
 const memberList = document.querySelector<HTMLUListElement>('#member-list')!;
 const memberForm = document.querySelector<HTMLFormElement>('#member-form')!;
 const memberSelect = document.querySelector<HTMLSelectElement>('#member-select')!;
@@ -153,6 +156,7 @@ let activeUser: User | null = null;
 let activeWorkspaces: Workspace[] = [];
 let activeProject: Project | null = null;
 let activeProjectMembers: Member[] = [];
+let projectIssues: Issue[] = [];
 let selectedIssue: Issue | null = null;
 let activeChatProjectId: number | null = null;
 let chatPollTimer: number | null = null;
@@ -347,9 +351,17 @@ function selectedIssueButton(): HTMLButtonElement | null {
   const focused = document.activeElement;
   if (focused instanceof HTMLElement) {
     const focusedRow = focused.closest<HTMLElement>('.issue-card');
-    if (focusedRow !== null) return focusedRow.querySelector<HTMLButtonElement>('.issue-title-button');
+    if (focusedRow !== null && focusedRow.closest<HTMLDetailsElement>('.issue-group')?.open !== false) {
+      return focusedRow.querySelector<HTMLButtonElement>('.issue-title-button');
+    }
   }
-  return issueList.querySelector<HTMLButtonElement>('.issue-card.is-keyboard-selected .issue-title-button');
+  return Array.from(issueList.querySelectorAll<HTMLButtonElement>('.issue-card.is-keyboard-selected .issue-title-button'))
+    .find((button) => button.closest<HTMLDetailsElement>('.issue-group')?.open !== false) ?? null;
+}
+
+function visibleIssueTitleButtons(): HTMLButtonElement[] {
+  return Array.from(issueList.querySelectorAll<HTMLButtonElement>('.issue-title-button'))
+    .filter((button) => button.closest<HTMLDetailsElement>('.issue-group')?.open !== false);
 }
 
 function hasSelectedIssueInVisibleView(): boolean {
@@ -433,7 +445,8 @@ function goToProjectIssues(): void {
 
 function isEditableTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
-  return target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName);
+  return target.isContentEditable || target.closest('summary') !== null
+    || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName);
 }
 
 function shortcutContext(target: EventTarget | null) {
@@ -454,7 +467,7 @@ function shortcutContext(target: EventTarget | null) {
     hasSelectedChatMessage: selectedChatMessageId !== null && selectedChatMessageId > 0
       && chatMessagesById.has(selectedChatMessageId),
     canDismiss: commandPalette.open || shortcutHelp.open || !issueDetailView.hidden
-      || !issueDetailEditForm.hidden || !issueFormPanel.hidden || !projectFormPanel.hidden
+      || !issueDetailEditForm.hidden || !projectFormPanel.hidden
       || chatReplyParent !== null,
   };
 }
@@ -490,7 +503,7 @@ function moveFocusWithin<T extends HTMLElement>(buttons: T[], rowSelector: strin
 }
 
 function moveIssueSelection(direction: -1 | 1): void {
-  const buttons = Array.from(issueList.querySelectorAll<HTMLButtonElement>('.issue-title-button'));
+  const buttons = visibleIssueTitleButtons();
   if (!issueDetailView.hidden && selectedIssue !== null) {
     const currentIndex = buttons.findIndex((button) => button.closest<HTMLElement>('.issue-card')?.dataset.issueId === String(selectedIssue?.id));
     const nextIndex = currentIndex < 0
@@ -523,11 +536,7 @@ function beginCreateIssue(): void {
   if (activeProject === null) return;
   selectedIssue = null;
   switchProjectTab('issues');
-  if (issueFormPanel.hidden) {
-    toggleIssueFormButton.click();
-  } else {
-    issueForm.querySelector<HTMLInputElement>('input[name="title"]')?.focus();
-  }
+  issueQuickAddTitle.focus();
 }
 
 function editSelectedIssue(): void {
@@ -732,8 +741,6 @@ function dismissCurrentView(): void {
     issueDetailCancelButton.click();
   } else if (!issueDetailView.hidden) {
     issueBackButton.click();
-  } else if (!issueFormPanel.hidden) {
-    cancelIssueFormButton.click();
   } else if (!projectFormPanel.hidden) {
     cancelProjectFormButton.click();
   } else if (chatReplyParent !== null) {
@@ -902,8 +909,22 @@ function appendChatMessage(message: ChatMessage): void {
 
   const heading = document.createElement('div');
   heading.className = 'chat-message-heading';
+  const avatar = document.createElement('span');
+  avatar.className = 'chat-message-avatar';
+  avatar.setAttribute('aria-hidden', 'true');
+  avatar.textContent = avatarInitials(message.author_name);
+  const authorDetails = document.createElement('span');
+  authorDetails.className = 'chat-message-author';
   const author = document.createElement('strong');
   author.textContent = message.author_name;
+  const time = document.createElement('time');
+  time.className = 'chat-message-time';
+  time.dateTime = message.created_at;
+  const parsedDate = new Date(message.created_at);
+  time.textContent = Number.isNaN(parsedDate.getTime())
+    ? ''
+    : new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' }).format(parsedDate);
+  authorDetails.append(author, time);
   const reply = document.createElement('button');
   reply.className = 'button button-quiet chat-reply-button';
   reply.type = 'button';
@@ -938,7 +959,7 @@ function appendChatMessage(message: ChatMessage): void {
   const actions = document.createElement('div');
   actions.className = 'chat-message-actions';
   actions.append(reply, createIssue);
-  heading.append(author, actions);
+  heading.append(avatar, authorDetails, actions);
 
   const body = document.createElement('p');
   body.className = 'chat-message-body';
@@ -951,6 +972,10 @@ function appendChatMessage(message: ChatMessage): void {
   chatMessageList.insertBefore(item, followingMessage ?? null);
   chatEmptyState!.hidden = true;
   chatCursor = Math.max(chatCursor, message.id);
+}
+
+function avatarInitials(name: string): string {
+  return name.trim().split(/\s+/).slice(0, 2).map((part) => part[0] ?? '').join('').toUpperCase();
 }
 
 function setChatReplyParent(message: ChatMessage): void {
@@ -975,7 +1000,12 @@ function createProjectChat(projectId: number): HTMLElement {
 
   const heading = document.createElement('h3');
   heading.className = 'chat-heading';
-  heading.textContent = 'Project chat';
+  const channelName = document.createElement('span');
+  channelName.textContent = `# ${activeProject?.slug ?? 'project'}`;
+  const memberCount = document.createElement('span');
+  memberCount.className = 'chat-members-count';
+  memberCount.textContent = `${activeProjectMembers.length} ${activeProjectMembers.length === 1 ? 'member' : 'members'}`;
+  heading.append(channelName, memberCount);
 
   chatMessageList = document.createElement('div');
   chatMessageList.className = 'chat-message-list';
@@ -993,7 +1023,7 @@ function createProjectChat(projectId: number): HTMLElement {
   chatInput.rows = 2;
   chatInput.maxLength = 10_000;
   chatInput.required = true;
-  chatInput.placeholder = 'Write a message…';
+  chatInput.placeholder = `Message #${activeProject?.slug ?? 'project'}…`;
   chatInput.setAttribute('aria-label', 'Message');
   chatInput.addEventListener('keydown', (event) => {
     if (!shouldSendChatOnEnter(event.key, event.shiftKey, event.isComposing)) return;
@@ -1084,6 +1114,8 @@ adminNavButton.addEventListener('click', () => showWorkspaceView('admin'));
 breadcrumbProjectsButton.addEventListener('click', () => showWorkspaceView('projects'));
 issuesTabButton.addEventListener('click', () => switchProjectTab('issues'));
 membersTabButton.addEventListener('click', () => switchProjectTab('members'));
+issueFilter.addEventListener('input', renderProjectIssueBoard);
+issueOrder.addEventListener('change', renderProjectIssueBoard);
 
 toggleProjectFormButton.addEventListener('click', () => {
   projectFormPanel.hidden = !projectFormPanel.hidden;
@@ -1092,15 +1124,6 @@ toggleProjectFormButton.addEventListener('click', () => {
 cancelProjectFormButton.addEventListener('click', () => {
   projectForm.reset();
   projectFormPanel.hidden = true;
-});
-
-toggleIssueFormButton.addEventListener('click', () => {
-  issueFormPanel.hidden = !issueFormPanel.hidden;
-  if (!issueFormPanel.hidden) issueForm.querySelector<HTMLInputElement>('input[name="title"]')?.focus();
-});
-cancelIssueFormButton.addEventListener('click', () => {
-  issueForm.reset();
-  issueFormPanel.hidden = true;
 });
 
 issueForm.addEventListener('submit', async (event) => {
@@ -1114,7 +1137,7 @@ issueForm.addEventListener('submit', async (event) => {
       body: JSON.stringify({ title: values.get('title'), description: values.get('description') }),
     });
     issueForm.reset();
-    issueFormPanel.hidden = true;
+    issueDescriptionDetails.open = false;
     report('Issue created.');
     await loadProjectIssues(projectId);
   } catch (error) {
@@ -1192,9 +1215,14 @@ async function loadProjectDetail(projectId: number, tab: 'issues' | 'members' = 
     projectSidebarList.querySelectorAll<HTMLButtonElement>('.project-sidebar-link').forEach((button) => {
       button.classList.toggle('is-active', button.dataset.projectId === String(result.project.id));
     });
-    projectTitle.textContent = result.project.name;
-    projectDescription.textContent = result.project.description || 'No description yet.';
+    projectDescription.textContent = result.project.description;
+    projectDescription.hidden = result.project.description.trim() === '';
     projectState.textContent = result.project.status;
+    projectIssues = [];
+    issueFilter.value = '';
+    issueOrder.value = 'updated';
+    issueDescriptionDetails.open = false;
+    renderProjectIssueBoard();
     showWorkspaceView('project');
     chatView.replaceChildren(createProjectChat(projectId));
     switchProjectTab(tab);
@@ -1228,15 +1256,56 @@ async function loadProjectIssues(projectId: number): Promise<void> {
   try {
     const result = await api<{ issues: Issue[] }>(`/projects/${projectId}/issues`);
     if (activeProject?.id !== projectId || issuesView.hidden) return;
-    issueList.replaceChildren();
-    emptyIssues.hidden = result.issues.length > 0;
-    for (const issue of result.issues) issueList.append(createIssueRow(issue));
+    projectIssues = result.issues;
+    renderProjectIssueBoard();
   } catch (error) {
     if (error instanceof ApiFailure && error.status === 401) {
       showSignedOut();
       return;
     }
     report(error instanceof Error ? error.message : 'Could not load project issues.', true);
+  }
+}
+
+function renderProjectIssueBoard(): void {
+  const total = projectIssues.length;
+  const completed = projectIssues.filter((issue) => issue.status === 'done').length;
+  const open = total - completed;
+  issueProgress.max = Math.max(total, 1);
+  issueProgress.value = completed;
+  issueProgressLabel.textContent = `${completed} of ${total} issues done`;
+  issueCountSummary.textContent = `${open} open · ${completed} done`;
+
+  const ordered = sortIssues(projectIssues, issueOrder.value as IssueSortOrder);
+  const visible = filterIssues(ordered, issueFilter.value);
+  issueList.replaceChildren();
+  emptyIssues.hidden = visible.length > 0;
+  emptyIssues.textContent = total === 0 ? 'No issues yet. Create the first one.' : 'No issues match that filter.';
+
+  for (const group of groupIssues(visible)) {
+    const details = document.createElement('details');
+    details.className = 'issue-group';
+    details.open = true;
+
+    const summary = document.createElement('summary');
+    summary.className = 'issue-group-summary';
+    const chevron = document.createElement('span');
+    chevron.className = 'issue-group-chevron';
+    chevron.setAttribute('aria-hidden', 'true');
+    chevron.textContent = '›';
+    const name = document.createElement('span');
+    name.className = 'issue-group-name';
+    name.textContent = group.status;
+    const count = document.createElement('span');
+    count.className = 'issue-group-count';
+    count.textContent = String(group.issues.length);
+    summary.append(chevron, name, count);
+
+    const rows = document.createElement('ul');
+    rows.className = 'issue-group-items';
+    for (const issue of group.issues) rows.append(createIssueRow(issue));
+    details.append(summary, rows);
+    issueList.append(details);
   }
 }
 
@@ -1312,12 +1381,21 @@ function createIssueRow(issue: Issue): HTMLElement {
 
   const content = document.createElement('div');
   content.className = 'issue-content';
+  const mainline = document.createElement('div');
+  mainline.className = 'issue-mainline';
+  const indicator = document.createElement('span');
+  indicator.className = `issue-status-indicator is-${issue.status}`;
+  indicator.setAttribute('aria-hidden', 'true');
+  const key = document.createElement('span');
+  key.className = 'issue-key';
+  key.textContent = `#${issue.id}`;
   const title = document.createElement('button');
   title.className = 'issue-title issue-title-button';
   title.type = 'button';
   title.textContent = issue.title;
   title.addEventListener('click', () => openIssue(issue));
-  content.append(title);
+  mainline.append(indicator, key, title);
+  content.append(mainline);
   if (issue.description !== '') {
     const description = document.createElement('p');
     description.className = 'issue-description';

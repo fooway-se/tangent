@@ -1,4 +1,5 @@
 import { resolveShortcut, shouldSendChatOnEnter } from './shortcuts.js';
+import { filterIssues, groupIssues, sortIssues, } from './issue-board.js';
 class ApiFailure extends Error {
     status;
     constructor(message, status) {
@@ -30,7 +31,6 @@ const loginForm = document.querySelector('#login-form');
 const projectList = document.querySelector('#project-list');
 const emptyProjects = document.querySelector('#empty-projects');
 const projectFormPanel = document.querySelector('#project-form-panel');
-const projectTitle = document.querySelector('#project-title');
 const projectDescription = document.querySelector('#project-description');
 const projectState = document.querySelector('#project-state');
 const chatView = document.querySelector('#chat-view');
@@ -62,11 +62,15 @@ const issuesTabButton = document.querySelector('#issues-tab');
 const issueBackButton = document.querySelector('#issue-back-button');
 const issueDetailCancelButton = document.querySelector('#issue-detail-cancel-button');
 const issueForm = document.querySelector('#issue-form');
-const issueFormPanel = document.querySelector('#issue-form-panel');
+const issueQuickAddTitle = document.querySelector('#issue-quick-add-title');
+const issueDescriptionDetails = document.querySelector('#issue-description-details');
+const issueProgress = document.querySelector('#issue-progress');
+const issueProgressLabel = document.querySelector('#issue-progress-label');
+const issueFilter = document.querySelector('#issue-filter');
+const issueOrder = document.querySelector('#issue-order');
+const issueCountSummary = document.querySelector('#issue-count-summary');
 const issueList = document.querySelector('#issue-list');
 const emptyIssues = document.querySelector('#empty-issues');
-const toggleIssueFormButton = document.querySelector('#toggle-issue-form');
-const cancelIssueFormButton = document.querySelector('#cancel-issue-form');
 const memberList = document.querySelector('#member-list');
 const memberForm = document.querySelector('#member-form');
 const memberSelect = document.querySelector('#member-select');
@@ -78,6 +82,7 @@ let activeUser = null;
 let activeWorkspaces = [];
 let activeProject = null;
 let activeProjectMembers = [];
+let projectIssues = [];
 let selectedIssue = null;
 let activeChatProjectId = null;
 let chatPollTimer = null;
@@ -268,10 +273,16 @@ function selectedIssueButton() {
     const focused = document.activeElement;
     if (focused instanceof HTMLElement) {
         const focusedRow = focused.closest('.issue-card');
-        if (focusedRow !== null)
+        if (focusedRow !== null && focusedRow.closest('.issue-group')?.open !== false) {
             return focusedRow.querySelector('.issue-title-button');
+        }
     }
-    return issueList.querySelector('.issue-card.is-keyboard-selected .issue-title-button');
+    return Array.from(issueList.querySelectorAll('.issue-card.is-keyboard-selected .issue-title-button'))
+        .find((button) => button.closest('.issue-group')?.open !== false) ?? null;
+}
+function visibleIssueTitleButtons() {
+    return Array.from(issueList.querySelectorAll('.issue-title-button'))
+        .filter((button) => button.closest('.issue-group')?.open !== false);
 }
 function hasSelectedIssueInVisibleView() {
     return !projectView.hidden && (!issuesView.hidden || !issueDetailView.hidden)
@@ -355,7 +366,8 @@ function goToProjectIssues() {
 function isEditableTarget(target) {
     if (!(target instanceof HTMLElement))
         return false;
-    return target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName);
+    return target.isContentEditable || target.closest('summary') !== null
+        || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName);
 }
 function shortcutContext(target) {
     return {
@@ -375,7 +387,7 @@ function shortcutContext(target) {
         hasSelectedChatMessage: selectedChatMessageId !== null && selectedChatMessageId > 0
             && chatMessagesById.has(selectedChatMessageId),
         canDismiss: commandPalette.open || shortcutHelp.open || !issueDetailView.hidden
-            || !issueDetailEditForm.hidden || !issueFormPanel.hidden || !projectFormPanel.hidden
+            || !issueDetailEditForm.hidden || !projectFormPanel.hidden
             || chatReplyParent !== null,
     };
 }
@@ -410,7 +422,7 @@ function moveFocusWithin(buttons, rowSelector, direction) {
     next.focus();
 }
 function moveIssueSelection(direction) {
-    const buttons = Array.from(issueList.querySelectorAll('.issue-title-button'));
+    const buttons = visibleIssueTitleButtons();
     if (!issueDetailView.hidden && selectedIssue !== null) {
         const currentIndex = buttons.findIndex((button) => button.closest('.issue-card')?.dataset.issueId === String(selectedIssue?.id));
         const nextIndex = currentIndex < 0
@@ -439,12 +451,7 @@ function beginCreateIssue() {
         return;
     selectedIssue = null;
     switchProjectTab('issues');
-    if (issueFormPanel.hidden) {
-        toggleIssueFormButton.click();
-    }
-    else {
-        issueForm.querySelector('input[name="title"]')?.focus();
-    }
+    issueQuickAddTitle.focus();
 }
 function editSelectedIssue() {
     if (selectedIssue === null) {
@@ -643,9 +650,6 @@ function dismissCurrentView() {
     }
     else if (!issueDetailView.hidden) {
         issueBackButton.click();
-    }
-    else if (!issueFormPanel.hidden) {
-        cancelIssueFormButton.click();
     }
     else if (!projectFormPanel.hidden) {
         cancelProjectFormButton.click();
@@ -879,8 +883,22 @@ function appendChatMessage(message) {
     });
     const heading = document.createElement('div');
     heading.className = 'chat-message-heading';
+    const avatar = document.createElement('span');
+    avatar.className = 'chat-message-avatar';
+    avatar.setAttribute('aria-hidden', 'true');
+    avatar.textContent = avatarInitials(message.author_name);
+    const authorDetails = document.createElement('span');
+    authorDetails.className = 'chat-message-author';
     const author = document.createElement('strong');
     author.textContent = message.author_name;
+    const time = document.createElement('time');
+    time.className = 'chat-message-time';
+    time.dateTime = message.created_at;
+    const parsedDate = new Date(message.created_at);
+    time.textContent = Number.isNaN(parsedDate.getTime())
+        ? ''
+        : new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' }).format(parsedDate);
+    authorDetails.append(author, time);
     const reply = document.createElement('button');
     reply.className = 'button button-quiet chat-reply-button';
     reply.type = 'button';
@@ -918,7 +936,7 @@ function appendChatMessage(message) {
     const actions = document.createElement('div');
     actions.className = 'chat-message-actions';
     actions.append(reply, createIssue);
-    heading.append(author, actions);
+    heading.append(avatar, authorDetails, actions);
     const body = document.createElement('p');
     body.className = 'chat-message-body';
     body.textContent = message.body;
@@ -930,6 +948,9 @@ function appendChatMessage(message) {
     chatMessageList.insertBefore(item, followingMessage ?? null);
     chatEmptyState.hidden = true;
     chatCursor = Math.max(chatCursor, message.id);
+}
+function avatarInitials(name) {
+    return name.trim().split(/\s+/).slice(0, 2).map((part) => part[0] ?? '').join('').toUpperCase();
 }
 function setChatReplyParent(message) {
     chatReplyParent = { id: message.id, name: message.author_name };
@@ -953,7 +974,12 @@ function createProjectChat(projectId) {
     section.className = 'project-chat';
     const heading = document.createElement('h3');
     heading.className = 'chat-heading';
-    heading.textContent = 'Project chat';
+    const channelName = document.createElement('span');
+    channelName.textContent = `# ${activeProject?.slug ?? 'project'}`;
+    const memberCount = document.createElement('span');
+    memberCount.className = 'chat-members-count';
+    memberCount.textContent = `${activeProjectMembers.length} ${activeProjectMembers.length === 1 ? 'member' : 'members'}`;
+    heading.append(channelName, memberCount);
     chatMessageList = document.createElement('div');
     chatMessageList.className = 'chat-message-list';
     chatEmptyState = document.createElement('p');
@@ -969,7 +995,7 @@ function createProjectChat(projectId) {
     chatInput.rows = 2;
     chatInput.maxLength = 10_000;
     chatInput.required = true;
-    chatInput.placeholder = 'Write a message…';
+    chatInput.placeholder = `Message #${activeProject?.slug ?? 'project'}…`;
     chatInput.setAttribute('aria-label', 'Message');
     chatInput.addEventListener('keydown', (event) => {
         if (!shouldSendChatOnEnter(event.key, event.shiftKey, event.isComposing))
@@ -1060,6 +1086,8 @@ adminNavButton.addEventListener('click', () => showWorkspaceView('admin'));
 breadcrumbProjectsButton.addEventListener('click', () => showWorkspaceView('projects'));
 issuesTabButton.addEventListener('click', () => switchProjectTab('issues'));
 membersTabButton.addEventListener('click', () => switchProjectTab('members'));
+issueFilter.addEventListener('input', renderProjectIssueBoard);
+issueOrder.addEventListener('change', renderProjectIssueBoard);
 toggleProjectFormButton.addEventListener('click', () => {
     projectFormPanel.hidden = !projectFormPanel.hidden;
     if (!projectFormPanel.hidden)
@@ -1068,15 +1096,6 @@ toggleProjectFormButton.addEventListener('click', () => {
 cancelProjectFormButton.addEventListener('click', () => {
     projectForm.reset();
     projectFormPanel.hidden = true;
-});
-toggleIssueFormButton.addEventListener('click', () => {
-    issueFormPanel.hidden = !issueFormPanel.hidden;
-    if (!issueFormPanel.hidden)
-        issueForm.querySelector('input[name="title"]')?.focus();
-});
-cancelIssueFormButton.addEventListener('click', () => {
-    issueForm.reset();
-    issueFormPanel.hidden = true;
 });
 issueForm.addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -1090,7 +1109,7 @@ issueForm.addEventListener('submit', async (event) => {
             body: JSON.stringify({ title: values.get('title'), description: values.get('description') }),
         });
         issueForm.reset();
-        issueFormPanel.hidden = true;
+        issueDescriptionDetails.open = false;
         report('Issue created.');
         await loadProjectIssues(projectId);
     }
@@ -1164,9 +1183,14 @@ async function loadProjectDetail(projectId, tab = 'issues') {
         projectSidebarList.querySelectorAll('.project-sidebar-link').forEach((button) => {
             button.classList.toggle('is-active', button.dataset.projectId === String(result.project.id));
         });
-        projectTitle.textContent = result.project.name;
-        projectDescription.textContent = result.project.description || 'No description yet.';
+        projectDescription.textContent = result.project.description;
+        projectDescription.hidden = result.project.description.trim() === '';
         projectState.textContent = result.project.status;
+        projectIssues = [];
+        issueFilter.value = '';
+        issueOrder.value = 'updated';
+        issueDescriptionDetails.open = false;
+        renderProjectIssueBoard();
         showWorkspaceView('project');
         chatView.replaceChildren(createProjectChat(projectId));
         switchProjectTab(tab);
@@ -1201,10 +1225,8 @@ async function loadProjectIssues(projectId) {
         const result = await api(`/projects/${projectId}/issues`);
         if (activeProject?.id !== projectId || issuesView.hidden)
             return;
-        issueList.replaceChildren();
-        emptyIssues.hidden = result.issues.length > 0;
-        for (const issue of result.issues)
-            issueList.append(createIssueRow(issue));
+        projectIssues = result.issues;
+        renderProjectIssueBoard();
     }
     catch (error) {
         if (error instanceof ApiFailure && error.status === 401) {
@@ -1212,6 +1234,44 @@ async function loadProjectIssues(projectId) {
             return;
         }
         report(error instanceof Error ? error.message : 'Could not load project issues.', true);
+    }
+}
+function renderProjectIssueBoard() {
+    const total = projectIssues.length;
+    const completed = projectIssues.filter((issue) => issue.status === 'done').length;
+    const open = total - completed;
+    issueProgress.max = Math.max(total, 1);
+    issueProgress.value = completed;
+    issueProgressLabel.textContent = `${completed} of ${total} issues done`;
+    issueCountSummary.textContent = `${open} open · ${completed} done`;
+    const ordered = sortIssues(projectIssues, issueOrder.value);
+    const visible = filterIssues(ordered, issueFilter.value);
+    issueList.replaceChildren();
+    emptyIssues.hidden = visible.length > 0;
+    emptyIssues.textContent = total === 0 ? 'No issues yet. Create the first one.' : 'No issues match that filter.';
+    for (const group of groupIssues(visible)) {
+        const details = document.createElement('details');
+        details.className = 'issue-group';
+        details.open = true;
+        const summary = document.createElement('summary');
+        summary.className = 'issue-group-summary';
+        const chevron = document.createElement('span');
+        chevron.className = 'issue-group-chevron';
+        chevron.setAttribute('aria-hidden', 'true');
+        chevron.textContent = '›';
+        const name = document.createElement('span');
+        name.className = 'issue-group-name';
+        name.textContent = group.status;
+        const count = document.createElement('span');
+        count.className = 'issue-group-count';
+        count.textContent = String(group.issues.length);
+        summary.append(chevron, name, count);
+        const rows = document.createElement('ul');
+        rows.className = 'issue-group-items';
+        for (const issue of group.issues)
+            rows.append(createIssueRow(issue));
+        details.append(summary, rows);
+        issueList.append(details);
     }
 }
 function renderIssueDetail() {
@@ -1285,12 +1345,21 @@ function createIssueRow(issue) {
     item.dataset.issueId = String(issue.id);
     const content = document.createElement('div');
     content.className = 'issue-content';
+    const mainline = document.createElement('div');
+    mainline.className = 'issue-mainline';
+    const indicator = document.createElement('span');
+    indicator.className = `issue-status-indicator is-${issue.status}`;
+    indicator.setAttribute('aria-hidden', 'true');
+    const key = document.createElement('span');
+    key.className = 'issue-key';
+    key.textContent = `#${issue.id}`;
     const title = document.createElement('button');
     title.className = 'issue-title issue-title-button';
     title.type = 'button';
     title.textContent = issue.title;
     title.addEventListener('click', () => openIssue(issue));
-    content.append(title);
+    mainline.append(indicator, key, title);
+    content.append(mainline);
     if (issue.description !== '') {
         const description = document.createElement('p');
         description.className = 'issue-description';
