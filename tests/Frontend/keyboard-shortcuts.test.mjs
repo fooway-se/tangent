@@ -1,13 +1,14 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
-import { resolveShortcut } from '../../public/assets/shortcuts.js';
+import { resolveShortcut, shouldSendChatOnEnter } from '../../public/assets/shortcuts.js';
 
 const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
 const baseContext = {
   targetIsEditable: false,
   goPrefixPending: false,
   hasWorkspace: true,
+  canAdmin: false,
   hasProject: false,
   projectListVisible: false,
   hasSelectedProject: false,
@@ -15,6 +16,8 @@ const baseContext = {
   issueDetailVisible: false,
   hasSelectedIssue: false,
   hasLatestChatMessage: false,
+  chatMessagesFocused: false,
+  hasSelectedChatMessage: false,
   canDismiss: false,
 };
 
@@ -73,6 +76,32 @@ test('the g then p sequence returns to the project list and Escape dismisses tra
   assert.equal(resolve('g', { hasWorkspace: false }), null);
   assert.equal(resolve('Escape', { canDismiss: true }), 'dismiss');
   assert.equal(resolve('Escape'), null);
+});
+
+test('g sequences switch between available project features', () => {
+  const project = { hasProject: true };
+  assert.equal(resolve('i', { ...project, goPrefixPending: true }), 'issues');
+  assert.equal(resolve('c', { ...project, goPrefixPending: true }), 'chat');
+  assert.equal(resolve('m', { ...project, goPrefixPending: true }), 'members');
+  assert.equal(resolve('a', { goPrefixPending: true, canAdmin: true }), 'workspace-admin');
+  assert.equal(resolve('a', { goPrefixPending: true, canAdmin: false }), null);
+});
+
+test('chat message selection supports navigation, reply, issue creation, and composer focus', () => {
+  const chatSelection = { chatMessagesFocused: true, hasSelectedChatMessage: true };
+  assert.equal(resolve('j', chatSelection), 'next-chat-message');
+  assert.equal(resolve('k', chatSelection), 'previous-chat-message');
+  assert.equal(resolve('r', chatSelection), 'reply-to-chat-message');
+  assert.equal(resolve('i', chatSelection), 'issue-from-selected-chat-message');
+  assert.equal(resolve('Enter', chatSelection), 'focus-chat-composer');
+  assert.equal(resolve('r'), null);
+});
+
+test('Enter sends chat unless Shift is held or an IME composition is active', () => {
+  assert.equal(shouldSendChatOnEnter('Enter', false, false), true);
+  assert.equal(shouldSendChatOnEnter('Enter', true, false), false);
+  assert.equal(shouldSendChatOnEnter('Enter', false, true), false);
+  assert.equal(shouldSendChatOnEnter('a', false, false), false);
 });
 
 test('command palette, shortcut help, and contextual hints are present in the workspace UI', () => {

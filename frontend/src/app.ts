@@ -1,4 +1,4 @@
-import { resolveShortcut, type ShortcutAction } from './shortcuts.js';
+import { resolveShortcut, shouldSendChatOnEnter, type ShortcutAction } from './shortcuts.js';
 
 type Role = 'admin' | 'developer';
 
@@ -152,6 +152,8 @@ let chatPollDelay = 1000;
 let chatMessageList: HTMLElement | null = null;
 let chatEmptyState: HTMLElement | null = null;
 let chatInput: HTMLTextAreaElement | null = null;
+let selectedChatMessageId: number | null = null;
+const chatMessagesById = new Map<number, ChatMessage>();
 let chatReplyHint: HTMLElement | null = null;
 let chatCancelReply: HTMLButtonElement | null = null;
 let chatReplyParent: { id: number; name: string } | null = null;
@@ -281,6 +283,8 @@ function stopChatPolling(): void {
   chatReplyHint = null;
   chatCancelReply = null;
   chatReplyParent = null;
+  selectedChatMessageId = null;
+  chatMessagesById.clear();
 }
 
 function selectedProjectButton(): HTMLButtonElement | null {
@@ -313,6 +317,73 @@ function latestChatIssueButton(): HTMLButtonElement | null {
   return messages.at(-1)?.querySelector<HTMLButtonElement>('.chat-create-issue-button:not(:disabled)') ?? null;
 }
 
+function chatMessageElements(): HTMLElement[] {
+  if (chatMessageList === null) return [];
+  return Array.from(chatMessageList.querySelectorAll<HTMLElement>('.chat-message'))
+    .filter((message) => Number(message.dataset.messageId) > 0);
+}
+
+function selectChatMessage(id: number, focus = true): void {
+  const item = chatMessageList?.querySelector<HTMLElement>(`.chat-message[data-message-id="${id}"]`);
+  if (item === null || item === undefined) return;
+  selectedChatMessageId = id;
+  chatMessageList?.querySelectorAll<HTMLElement>('.chat-message').forEach((message) => {
+    message.classList.toggle('is-keyboard-selected', message === item);
+  });
+  if (focus) item.focus();
+}
+
+function moveChatMessageSelection(direction: -1 | 1): void {
+  const messages = chatMessageElements();
+  if (messages.length === 0) {
+    chatInput?.focus();
+    return;
+  }
+  const currentIndex = messages.findIndex((message) => Number(message.dataset.messageId) === selectedChatMessageId);
+  const nextIndex = currentIndex < 0
+    ? direction > 0 ? 0 : messages.length - 1
+    : Math.max(0, Math.min(messages.length - 1, currentIndex + direction));
+  const next = messages[nextIndex];
+  if (next !== undefined) selectChatMessage(Number(next.dataset.messageId));
+}
+
+function focusProjectChat(): void {
+  const messages = chatMessageElements();
+  const latest = messages.at(-1);
+  if (latest !== undefined) {
+    selectChatMessage(Number(latest.dataset.messageId));
+  } else {
+    chatInput?.focus();
+  }
+}
+
+function replyToSelectedChatMessage(): void {
+  if (selectedChatMessageId === null || selectedChatMessageId <= 0) return;
+  const message = chatMessagesById.get(selectedChatMessageId);
+  if (message !== undefined) setChatReplyParent(message);
+}
+
+function createIssueFromSelectedChatMessage(): void {
+  if (selectedChatMessageId !== null) {
+    const selectedButton = chatMessageList
+      ?.querySelector<HTMLElement>(`.chat-message[data-message-id="${selectedChatMessageId}"]`)
+      ?.querySelector<HTMLButtonElement>('.chat-create-issue-button:not(:disabled)');
+    if (selectedButton !== null && selectedButton !== undefined) {
+      selectedButton.click();
+      return;
+    }
+  }
+  createIssueFromLatestMessage();
+}
+
+function goToProjectIssues(): void {
+  if (activeProject === null) return;
+  selectedIssue = null;
+  issueDetailEditForm.hidden = true;
+  issueDetailDisplay.hidden = false;
+  switchProjectTab('issues');
+}
+
 function isEditableTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
   return target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName);
@@ -323,6 +394,7 @@ function shortcutContext(target: EventTarget | null) {
     targetIsEditable: isEditableTarget(target),
     goPrefixPending,
     hasWorkspace: activeUser !== null,
+    canAdmin: activeUser?.role === 'admin',
     hasProject: activeProject !== null && !projectView.hidden,
     projectListVisible: !workspacePanel.hidden && !projectsView.hidden,
     hasSelectedProject: selectedProjectButton() !== null,
@@ -330,6 +402,10 @@ function shortcutContext(target: EventTarget | null) {
     issueDetailVisible: !projectView.hidden && !issueDetailView.hidden,
     hasSelectedIssue: hasSelectedIssueInVisibleView(),
     hasLatestChatMessage: latestChatIssueButton() !== null,
+    chatMessagesFocused: document.activeElement instanceof HTMLElement
+      && document.activeElement.matches('.chat-message'),
+    hasSelectedChatMessage: selectedChatMessageId !== null && selectedChatMessageId > 0
+      && chatMessagesById.has(selectedChatMessageId),
     canDismiss: commandPalette.open || shortcutHelp.open || !issueDetailView.hidden
       || !issueDetailEditForm.hidden || !issueFormPanel.hidden || !projectFormPanel.hidden
       || chatReplyParent !== null,
@@ -445,6 +521,34 @@ function getPaletteCommands(): PaletteCommand[] {
     });
   }
   if (activeProject !== null) {
+    commands.splice(1, 0,
+      {
+        label: 'Project issues',
+        detail: `Open issues in ${activeProject.name}`,
+        shortcut: 'g i',
+        run: goToProjectIssues,
+      },
+      {
+        label: 'Project chat',
+        detail: 'Focus the latest project chat message or composer',
+        shortcut: 'g c',
+        run: focusProjectChat,
+      },
+      {
+        label: 'Project members',
+        detail: `Open members in ${activeProject.name}`,
+        shortcut: 'g m',
+        run: () => switchProjectTab('members'),
+      },
+    );
+    if (activeUser?.role === 'admin') {
+      commands.splice(4, 0, {
+        label: 'Workspace admin',
+        detail: 'Open workspace administration',
+        shortcut: 'g a',
+        run: () => showWorkspaceView('admin'),
+      });
+    }
     commands.splice(1, 0, {
       label: 'New issue',
       detail: `Create an issue in ${activeProject.name}`,
@@ -466,10 +570,10 @@ function getPaletteCommands(): PaletteCommand[] {
     }
     if (latestChatIssueButton() !== null) {
       commands.splice(1, 0, {
-        label: 'Create issue from latest chat message',
-        detail: 'Use the latest project chat message',
+        label: 'Create issue from selected chat message',
+        detail: 'Use the selected message, or the latest message',
         shortcut: 'i',
-        run: createIssueFromLatestMessage,
+        run: createIssueFromSelectedChatMessage,
       });
     }
   }
@@ -575,6 +679,10 @@ function executeShortcut(action: ShortcutAction): void {
     case 'shortcut-help': showShortcutHelp(); break;
     case 'await-projects-key': startGoPrefix(); break;
     case 'projects': clearGoPrefix(); showWorkspaceView('projects'); break;
+    case 'issues': goToProjectIssues(); break;
+    case 'chat': focusProjectChat(); break;
+    case 'members': if (activeProject !== null) switchProjectTab('members'); break;
+    case 'workspace-admin': showWorkspaceView('admin'); break;
     case 'next-project': moveProjectSelection(1); break;
     case 'previous-project': moveProjectSelection(-1); break;
     case 'open-selected-project': selectedProjectButton()?.click(); break;
@@ -585,6 +693,11 @@ function executeShortcut(action: ShortcutAction): void {
     case 'edit-selected': editSelectedIssue(); break;
     case 'focus-status': focusSelectedIssueStatus(); break;
     case 'issue-from-latest-message': createIssueFromLatestMessage(); break;
+    case 'next-chat-message': moveChatMessageSelection(1); break;
+    case 'previous-chat-message': moveChatMessageSelection(-1); break;
+    case 'focus-chat-composer': chatInput?.focus(); break;
+    case 'reply-to-chat-message': replyToSelectedChatMessage(); break;
+    case 'issue-from-selected-chat-message': createIssueFromSelectedChatMessage(); break;
     case 'dismiss': dismissCurrentView(); break;
   }
 }
@@ -705,10 +818,18 @@ async function loadProjectChatHistory(projectId: number): Promise<void> {
 function appendChatMessage(message: ChatMessage): void {
   if (chatMessageList === null) return;
   if (chatMessageList.querySelector(`[data-message-id="${message.id}"]`)) return;
+  chatMessagesById.set(message.id, message);
 
   const item = document.createElement('article');
   item.className = message.parent_id === null ? 'chat-message' : 'chat-message chat-reply';
   item.dataset.messageId = String(message.id);
+  item.tabIndex = -1;
+  item.addEventListener('focus', () => selectChatMessage(message.id, false));
+  item.addEventListener('click', (event) => {
+    if (!(event.target instanceof HTMLElement) || event.target.closest('button') === null) {
+      selectChatMessage(message.id);
+    }
+  });
 
   const heading = document.createElement('div');
   heading.className = 'chat-message-heading';
@@ -718,12 +839,16 @@ function appendChatMessage(message: ChatMessage): void {
   reply.className = 'button button-quiet chat-reply-button';
   reply.type = 'button';
   reply.textContent = 'Reply';
-  reply.addEventListener('click', () => setChatReplyParent(message));
+  reply.addEventListener('click', () => {
+    selectChatMessage(message.id, false);
+    setChatReplyParent(message);
+  });
   const createIssue = document.createElement('button');
   createIssue.className = 'button button-quiet chat-create-issue-button';
   createIssue.type = 'button';
   createIssue.textContent = 'Create issue';
   createIssue.addEventListener('click', async () => {
+    selectChatMessage(message.id, false);
     const projectId = activeProject?.id;
     if (projectId === undefined || activeChatProjectId !== projectId) return;
     createIssue.disabled = true;
@@ -801,6 +926,11 @@ function createProjectChat(projectId: number): HTMLElement {
   chatInput.required = true;
   chatInput.placeholder = 'Write a message…';
   chatInput.setAttribute('aria-label', 'Message');
+  chatInput.addEventListener('keydown', (event) => {
+    if (!shouldSendChatOnEnter(event.key, event.shiftKey, event.isComposing)) return;
+    event.preventDefault();
+    form.requestSubmit();
+  });
   label.append(chatInput);
 
   chatReplyHint = document.createElement('p');

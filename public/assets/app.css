@@ -182,7 +182,7 @@ textarea { resize: vertical; }
 .chat-message-list { display: grid; flex: 1; align-content: start; gap: .2rem; min-height: 140px; overflow-y: auto; }
 .chat-empty-state { margin: 0; padding: .55rem 0; color: var(--muted); font-size: .82rem; }
 .chat-message { border-bottom: 1px solid var(--border); padding: .45rem .5rem; }
-.chat-message.is-chat-source { outline: 1px solid var(--accent); background: var(--surface-raised); }
+.chat-message.is-chat-source, .chat-message.is-keyboard-selected { outline: 1px solid var(--accent); background: var(--surface-raised); }
 .chat-reply { border-left: 2px solid var(--accent); margin-left: .65rem; }
 .chat-message-heading, .chat-composer-actions { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
 .chat-message-actions { display: flex; align-items: center; gap: .15rem; }

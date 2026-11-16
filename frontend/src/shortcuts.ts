@@ -3,9 +3,18 @@ export type ShortcutAction =
   | 'shortcut-help'
   | 'await-projects-key'
   | 'projects'
+  | 'issues'
+  | 'chat'
+  | 'members'
+  | 'workspace-admin'
   | 'next-project'
   | 'previous-project'
   | 'open-selected-project'
+  | 'next-chat-message'
+  | 'previous-chat-message'
+  | 'focus-chat-composer'
+  | 'reply-to-chat-message'
+  | 'issue-from-selected-chat-message'
   | 'next'
   | 'previous'
   | 'open-selected'
@@ -27,6 +36,7 @@ export interface ShortcutContext {
   targetIsEditable: boolean;
   goPrefixPending: boolean;
   hasWorkspace: boolean;
+  canAdmin: boolean;
   hasProject: boolean;
   projectListVisible: boolean;
   hasSelectedProject: boolean;
@@ -34,7 +44,13 @@ export interface ShortcutContext {
   issueDetailVisible: boolean;
   hasSelectedIssue: boolean;
   hasLatestChatMessage: boolean;
+  chatMessagesFocused: boolean;
+  hasSelectedChatMessage: boolean;
   canDismiss: boolean;
+}
+
+export function shouldSendChatOnEnter(key: string, shiftKey: boolean, isComposing: boolean): boolean {
+  return key === 'Enter' && !shiftKey && !isComposing;
 }
 
 export function resolveShortcut(event: ShortcutEvent, context: ShortcutContext): ShortcutAction | null {
@@ -44,10 +60,23 @@ export function resolveShortcut(event: ShortcutEvent, context: ShortcutContext):
   if (event.altKey || event.ctrlKey || event.metaKey || context.targetIsEditable) return null;
 
   if (context.goPrefixPending) {
-    return key === 'p' && context.hasWorkspace ? 'projects' : null;
+    if (key === 'p' && context.hasWorkspace) return 'projects';
+    if (key === 'i' && context.hasProject) return 'issues';
+    if (key === 'c' && context.hasProject) return 'chat';
+    if (key === 'm' && context.hasProject) return 'members';
+    if (key === 'a' && context.canAdmin) return 'workspace-admin';
+    return null;
   }
   if (event.key === '?') return 'shortcut-help';
   if (key === 'g' && context.hasWorkspace) return 'await-projects-key';
+
+  if (context.chatMessagesFocused && context.hasSelectedChatMessage) {
+    if (key === 'j') return 'next-chat-message';
+    if (key === 'k') return 'previous-chat-message';
+    if (event.key === 'Enter') return 'focus-chat-composer';
+    if (key === 'r') return 'reply-to-chat-message';
+    if (key === 'i') return 'issue-from-selected-chat-message';
+  }
 
   if (context.projectListVisible) {
     if (key === 'j') return 'next-project';

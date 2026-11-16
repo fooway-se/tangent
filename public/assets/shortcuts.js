@@ -1,3 +1,6 @@
+export function shouldSendChatOnEnter(key, shiftKey, isComposing) {
+    return key === 'Enter' && !shiftKey && !isComposing;
+}
 export function resolveShortcut(event, context) {
     const key = event.key.toLowerCase();
     if ((event.ctrlKey || event.metaKey) && !event.altKey && key === 'k')
@@ -7,12 +10,34 @@ export function resolveShortcut(event, context) {
     if (event.altKey || event.ctrlKey || event.metaKey || context.targetIsEditable)
         return null;
     if (context.goPrefixPending) {
-        return key === 'p' && context.hasWorkspace ? 'projects' : null;
+        if (key === 'p' && context.hasWorkspace)
+            return 'projects';
+        if (key === 'i' && context.hasProject)
+            return 'issues';
+        if (key === 'c' && context.hasProject)
+            return 'chat';
+        if (key === 'm' && context.hasProject)
+            return 'members';
+        if (key === 'a' && context.canAdmin)
+            return 'workspace-admin';
+        return null;
     }
     if (event.key === '?')
         return 'shortcut-help';
     if (key === 'g' && context.hasWorkspace)
         return 'await-projects-key';
+    if (context.chatMessagesFocused && context.hasSelectedChatMessage) {
+        if (key === 'j')
+            return 'next-chat-message';
+        if (key === 'k')
+            return 'previous-chat-message';
+        if (event.key === 'Enter')
+            return 'focus-chat-composer';
+        if (key === 'r')
+            return 'reply-to-chat-message';
+        if (key === 'i')
+            return 'issue-from-selected-chat-message';
+    }
     if (context.projectListVisible) {
         if (key === 'j')
             return 'next-project';
