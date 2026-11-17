@@ -24,6 +24,7 @@ abstract class ApiTestCase extends TestCase
     protected string $adminEmail = 'admin@example.test';
     protected string $developerEmail = 'developer@example.test';
     protected string $password = 'correct-horse-battery';
+    private static ?string $fixturePasswordHash = null;
 
     protected function setUp(): void
     {
@@ -145,20 +146,20 @@ abstract class ApiTestCase extends TestCase
 
     private function insertUser(string $email, string $name, string $role): int
     {
-        $account = $this->pdo->prepare('INSERT INTO user_accounts () VALUES ()');
-        $account->execute();
+        $account = $this->pdo->prepare('INSERT INTO user_accounts (email, password_hash) VALUES (:email, :password_hash)');
+        self::$fixturePasswordHash ??= password_hash($this->password, PASSWORD_ARGON2ID);
+        $account->execute(['email' => $email, 'password_hash' => self::$fixturePasswordHash]);
         $accountId = (int) $this->pdo->lastInsertId();
 
         $statement = $this->pdo->prepare(
-            'INSERT INTO users (workspace_id, account_id, name, email, password_hash, role, is_active)
-             VALUES (:workspace_id, :account_id, :name, :email, :password_hash, :role, 1)'
+            'INSERT INTO users (workspace_id, account_id, name, email, role, is_active)
+             VALUES (:workspace_id, :account_id, :name, :email, :role, 1)'
         );
         $statement->execute([
             'workspace_id' => $this->workspaceId,
             'account_id' => $accountId,
             'name' => $name,
             'email' => $email,
-            'password_hash' => password_hash($this->password, PASSWORD_DEFAULT),
             'role' => $role,
         ]);
 

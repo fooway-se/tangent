@@ -41,6 +41,14 @@ final class WorkspaceRepository
         return $workspace === false ? null : self::workspace($workspace);
     }
 
+    public function nameById(int $workspaceId): string
+    {
+        $statement = $this->pdo->prepare('SELECT name FROM workspaces WHERE id = :id LIMIT 1');
+        $statement->execute(['id' => $workspaceId]);
+        $name = $statement->fetchColumn();
+        return is_string($name) ? $name : '';
+    }
+
     /** @return array{id: int, name: string, slug: string} */
     public function create(string $name, string $slug): array
     {

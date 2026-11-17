@@ -8,6 +8,9 @@ use PDO;
 use Tangent\Modules\Auth\AuthRoutes;
 use Tangent\Modules\Auth\AuthService;
 use Tangent\Modules\Auth\Authenticator;
+use Tangent\Modules\Auth\CredentialService;
+use Tangent\Modules\Auth\CredentialTokenRepository;
+use Tangent\Modules\Auth\PasswordSecurity;
 use Tangent\Modules\Auth\RateLimiter;
 use Tangent\Modules\Auth\TokenRepository;
 use Tangent\Modules\Auth\UserRepository;
@@ -37,10 +40,25 @@ final class Application
 {
     public static function create(PDO $pdo, AppConfig $config): Gateway
     {
-        $users = new UserRepository($pdo);
+        $passwords = new PasswordSecurity($config->hibpEnabled);
+        $users = new UserRepository($pdo, $passwords);
         $tokens = new TokenRepository($pdo);
-        $auth = new AuthService($users, $tokens, new RateLimiter($pdo), $config);
+        $rateLimiter = new RateLimiter($pdo);
+        $workspaceRepository = new WorkspaceRepository($pdo);
+        $auth = new AuthService($users, $tokens, $rateLimiter, $config, $passwords, $workspaceRepository);
         $projectRepository = new ProjectRepository($pdo);
+        $credentials = new CredentialService(
+            $pdo,
+            $users,
+            new CredentialTokenRepository($pdo),
+            $tokens,
+            $rateLimiter,
+            $projectRepository,
+            $workspaceRepository,
+            $auth,
+            $passwords,
+            $config,
+        );
         $inboxEvents = new InboxEvents(new InboxEventRepository($pdo), $projectRepository, $users);
         $chat = new ChatService(new ChatRepository($pdo), $projectRepository, $inboxEvents, $pdo);
         $issueRepository = new IssueRepository($pdo);
@@ -54,12 +72,13 @@ final class Application
 
         (new AuthRoutes(
             $auth,
+            $credentials,
             $config->cookieSecure,
             $config->workspaceId,
             $config->sessionLifetimeSeconds,
         ))->register($router);
         (new WorkspaceRoutes(
-            new WorkspaceService($pdo, new WorkspaceRepository($pdo), $users, $tokens, $config),
+            new WorkspaceService($pdo, $workspaceRepository, $users, $tokens, $config),
             $config->cookieSecure,
             $config->sessionLifetimeSeconds,
         ))->register($router);

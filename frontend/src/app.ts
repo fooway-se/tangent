@@ -59,6 +59,31 @@ interface Project {
   status: 'active' | 'archived';
 }
 
+interface WorkspaceMember extends User {
+  is_active: boolean;
+  created_at: string;
+}
+
+interface WorkspaceInvite {
+  id: number;
+  email: string;
+  name: string;
+  role: 'developer' | 'guest';
+  project_ids: number[];
+  expires_at: string;
+  created_at: string;
+}
+
+interface InvitePreview {
+  name: string;
+  email: string;
+  role: 'developer' | 'guest';
+  project_ids: number[];
+  password_required: boolean;
+}
+
+type CredentialFragment = { type: 'invite' | 'reset'; token: string };
+
 interface GuestProject {
   id: number;
   name: string;
@@ -251,10 +276,32 @@ const inboxEmptyState = document.querySelector<HTMLElement>('#inbox-empty-state'
 const projectView = document.querySelector<HTMLElement>('#project-view')!;
 const adminView = document.querySelector<HTMLElement>('#admin-view')!;
 const adminHeading = document.querySelector<HTMLHeadingElement>('#admin-heading')!;
+const workspaceMembersList = document.querySelector<HTMLUListElement>('#workspace-members-list')!;
+const workspaceMembersEmpty = document.querySelector<HTMLElement>('#workspace-members-empty')!;
+const inviteForm = document.querySelector<HTMLFormElement>('#invite-form')!;
+const generatedCredentialLink = document.querySelector<HTMLElement>('#generated-credential-link')!;
+const generatedCredentialHeading = document.querySelector<HTMLElement>('#generated-credential-heading')!;
+const generatedCredentialDescription = document.querySelector<HTMLElement>('#generated-credential-description')!;
+const generatedCredentialUrl = document.querySelector<HTMLInputElement>('#generated-credential-url')!;
+const copyGeneratedCredentialLink = document.querySelector<HTMLButtonElement>('#copy-generated-credential-link')!;
+const generatedCredentialCopyStatus = document.querySelector<HTMLElement>('#generated-credential-copy-status')!;
+const inviteRoleInput = document.querySelector<HTMLSelectElement>('#invite-role')!;
+const inviteProjectSelection = document.querySelector<HTMLElement>('#invite-project-selection')!;
+const inviteProjectOptions = document.querySelector<HTMLElement>('#invite-project-options')!;
+const workspaceInvitesList = document.querySelector<HTMLUListElement>('#workspace-invites-list')!;
+const workspaceInvitesEmpty = document.querySelector<HTMLElement>('#workspace-invites-empty')!;
+const loginAdminHelp = document.querySelector<HTMLElement>('#login-admin-help')!;
+const credentialFlow = document.querySelector<HTMLElement>('#credential-flow')!;
+const credentialFlowHeading = document.querySelector<HTMLHeadingElement>('#credential-flow-heading')!;
+const credentialFlowDescription = document.querySelector<HTMLElement>('#credential-flow-description')!;
+const credentialFlowError = document.querySelector<HTMLElement>('#credential-flow-error')!;
+const credentialForm = document.querySelector<HTMLFormElement>('#credential-form')!;
+const credentialPasswordFields = document.querySelector<HTMLElement>('#credential-password-fields')!;
+const credentialSubmit = document.querySelector<HTMLButtonElement>('#credential-submit')!;
+const credentialCancel = document.querySelector<HTMLButtonElement>('#credential-cancel')!;
 const projectForm = document.querySelector<HTMLFormElement>('#project-form')!;
 const toggleProjectFormButton = document.querySelector<HTMLButtonElement>('#toggle-project-form')!;
 const cancelProjectFormButton = document.querySelector<HTMLButtonElement>('#cancel-project-form')!;
-const developerForm = document.querySelector<HTMLFormElement>('#developer-form')!;
 const loginForm = document.querySelector<HTMLFormElement>('#login-form')!;
 const projectList = document.querySelector<HTMLUListElement>('#project-list')!;
 const emptyProjects = document.querySelector<HTMLElement>('#empty-projects')!;
@@ -361,6 +408,9 @@ const loginStatusMessage = document.querySelector<HTMLElement>('#login-status-me
 const logoutButton = document.querySelector<HTMLButtonElement>('#logout-button')!;
 
 let activeUser: User | null = null;
+let credentialFragment: CredentialFragment | null = null;
+let invitePreview: InvitePreview | null = null;
+let adminProjects: Project[] = [];
 let activeWorkspaces: Workspace[] = [];
 let activeProject: Project | null = null;
 let projectReturnFocusId: number | null = null;
@@ -537,6 +587,7 @@ function report(message: string, isError = false): void {
 }
 
 function showSignedOut(): void {
+  resetAuthForms();
   workspaceViewHistory.length = 0;
   projectReturnFocusId = null;
   issueQuickAddSourceMessageId = null;
@@ -774,6 +825,165 @@ function openWorkspaceAdmin(): void {
   if (currentLocation.view !== 'admin') workspaceViewHistory.push(currentLocation);
   showWorkspaceView('admin');
   adminHeading.focus();
+  void loadWorkspaceAdmin();
+}
+
+async function loadWorkspaceAdmin(): Promise<void> {
+  if (activeUser?.role !== 'admin') return;
+  try {
+    const [members, invites, projects] = await Promise.all([
+      api<{ users: WorkspaceMember[] }>('/users'),
+      api<{ invites: WorkspaceInvite[] }>('/users/invites'),
+      api<{ projects: Project[] }>('/projects'),
+    ]);
+    if (adminView.hidden) return;
+    adminProjects = projects.projects.filter((project) => project.status === 'active');
+    renderWorkspaceMembers(members.users);
+    renderWorkspaceInvites(invites.invites);
+    renderInviteProjectOptions();
+  } catch (error) {
+    report(error instanceof Error ? error.message : 'Could not load workspace administration.', true);
+  }
+}
+
+function renderWorkspaceMembers(members: readonly WorkspaceMember[]): void {
+  workspaceMembersList.replaceChildren();
+  workspaceMembersEmpty.hidden = members.length > 0;
+  for (const member of members) {
+    const item = document.createElement('li');
+    const label = document.createElement('span');
+    label.textContent = `${member.name} · ${member.email} · ${member.role}${member.is_active ? '' : ' · inactive'}`;
+    const resetLinkButton = document.createElement('button');
+    resetLinkButton.type = 'button';
+    resetLinkButton.className = 'button button-quiet';
+    resetLinkButton.textContent = 'Generate reset link';
+    resetLinkButton.setAttribute('aria-label', `Generate password reset link for ${member.name}`);
+    resetLinkButton.addEventListener('click', () => void generateMemberPasswordResetLink(member));
+    item.append(label, resetLinkButton);
+    workspaceMembersList.append(item);
+  }
+}
+
+function renderWorkspaceInvites(invites: readonly WorkspaceInvite[]): void {
+  workspaceInvitesList.replaceChildren();
+  workspaceInvitesEmpty.hidden = invites.length > 0;
+  for (const invite of invites) {
+    const item = document.createElement('li');
+    item.className = 'workspace-invite-row';
+    const details = document.createElement('span');
+    details.textContent = `${invite.name} · ${invite.email} · ${invite.role} · Expires ${new Date(`${invite.expires_at}Z`).toLocaleDateString()}`;
+    const actions = document.createElement('div');
+    actions.className = 'workspace-invite-actions';
+    const newLink = document.createElement('button');
+    newLink.type = 'button';
+    newLink.className = 'button button-quiet';
+    newLink.textContent = 'Generate new link';
+    newLink.dataset.inviteId = String(invite.id);
+    newLink.dataset.inviteAction = 'link';
+    newLink.addEventListener('click', () => void generateNewInviteLink(invite.id));
+    const revoke = document.createElement('button');
+    revoke.type = 'button';
+    revoke.className = 'button button-quiet button-danger';
+    revoke.textContent = 'Revoke';
+    revoke.dataset.inviteId = String(invite.id);
+    revoke.dataset.inviteAction = 'revoke';
+    revoke.addEventListener('click', () => void revokeWorkspaceInvite(invite.id));
+    actions.append(newLink, revoke);
+    item.append(details, actions);
+    workspaceInvitesList.append(item);
+  }
+}
+
+function renderInviteProjectOptions(): void {
+  inviteProjectOptions.replaceChildren();
+  for (const project of adminProjects) {
+    const label = document.createElement('label');
+    label.className = 'admin-project-option';
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.name = 'project_ids';
+    checkbox.value = String(project.id);
+    label.append(checkbox, document.createTextNode(project.name));
+    inviteProjectOptions.append(label);
+  }
+  inviteProjectSelection.hidden = inviteRoleInput.value !== 'guest';
+  if (adminProjects.length === 0) {
+    const empty = document.createElement('p');
+    empty.className = 'panel-description';
+    empty.textContent = 'Create a project before inviting a guest.';
+    inviteProjectOptions.append(empty);
+  }
+}
+
+function showGeneratedCredentialLink(heading: string, description: string, url: string): void {
+  generatedCredentialHeading.textContent = heading;
+  generatedCredentialDescription.textContent = description;
+  generatedCredentialUrl.value = url;
+  generatedCredentialCopyStatus.textContent = '';
+  generatedCredentialLink.hidden = false;
+  copyGeneratedCredentialLink.focus();
+}
+
+async function generateMemberPasswordResetLink(member: WorkspaceMember): Promise<void> {
+  generatedCredentialLink.hidden = true;
+  try {
+    const result = await api<{ reset_url: string }>(`/users/${member.id}/password-reset`, {
+      method: 'POST',
+      body: JSON.stringify({}),
+    });
+    showGeneratedCredentialLink(
+      'Password reset link',
+      `Copy this one-hour link and send it to ${member.email}.`,
+      result.reset_url,
+    );
+    report('Password reset link generated.');
+  } catch (error) {
+    report(error instanceof Error ? error.message : 'Could not generate the password reset link.', true);
+  }
+}
+
+async function generateNewInviteLink(inviteId: number): Promise<void> {
+  generatedCredentialLink.hidden = true;
+  try {
+    const result = await api<{ invite: WorkspaceInvite & { invite_url: string } }>(`/users/invites/${inviteId}/link`, {
+      method: 'POST',
+      body: JSON.stringify({}),
+    });
+    showGeneratedCredentialLink(
+      'New invite link',
+      `Copy this seven-day link and send it to ${result.invite.email}. The previous link no longer works.`,
+      result.invite.invite_url,
+    );
+    report('New invite link generated.');
+    await loadWorkspaceAdmin();
+    copyGeneratedCredentialLink.focus();
+  } catch (error) {
+    report(error instanceof Error ? error.message : 'Could not generate a new invite link.', true);
+  }
+}
+
+copyGeneratedCredentialLink.addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText(generatedCredentialUrl.value);
+    generatedCredentialCopyStatus.textContent = 'Link copied.';
+  } catch {
+    generatedCredentialUrl.focus();
+    generatedCredentialUrl.select();
+    generatedCredentialCopyStatus.textContent = 'Link selected. Copy it with Ctrl+C or Command+C.';
+  }
+});
+
+async function revokeWorkspaceInvite(inviteId: number): Promise<void> {
+  try {
+    await api(`/users/invites/${inviteId}`, { method: 'DELETE' });
+    report('Invite revoked.');
+    await loadWorkspaceAdmin();
+    const nextAction = workspaceInvitesList.querySelector<HTMLButtonElement>('.workspace-invite-actions button')
+      ?? inviteForm.querySelector<HTMLButtonElement>('button[type="submit"]');
+    nextAction?.focus();
+  } catch (error) {
+    report(error instanceof Error ? error.message : 'Could not revoke the invite.', true);
+  }
 }
 
 function currentWorkspaceLocation(): WorkspaceLocation {
@@ -4065,8 +4275,140 @@ function updateMembersPanelTabIndex(): void {
   membersView.tabIndex = hasFocusableContent ? -1 : 0;
 }
 
+function consumeCredentialFragment(): CredentialFragment | null {
+  const fragment = new URLSearchParams(location.hash.slice(1));
+  const inviteToken = fragment.get('invite');
+  const resetToken = fragment.get('reset');
+  const credential = inviteToken !== null
+    ? { type: 'invite' as const, token: inviteToken }
+    : resetToken !== null ? { type: 'reset' as const, token: resetToken } : null;
+  if (credential === null || !/^[a-f0-9]{64}$/.test(credential.token)) return null;
+  history.replaceState(null, '', location.pathname + location.search);
+  return credential;
+}
+
+function resetAuthForms(): void {
+  credentialFragment = null;
+  invitePreview = null;
+  loginForm.reset();
+  loginForm.hidden = false;
+  loginAdminHelp.hidden = true;
+  credentialFlow.hidden = true;
+  credentialFlowError.hidden = true;
+  credentialFlowError.textContent = '';
+  credentialForm.reset();
+  const password = credentialForm.elements.namedItem('password');
+  const confirmation = credentialForm.elements.namedItem('confirmation');
+  if (password instanceof HTMLInputElement) password.required = true;
+  if (confirmation instanceof HTMLInputElement) confirmation.required = true;
+  credentialPasswordFields.hidden = true;
+}
+
+function showCredentialFlow(): void {
+  loginForm.hidden = true;
+  loginAdminHelp.hidden = true;
+  credentialFlow.hidden = false;
+  credentialFlowError.hidden = true;
+  credentialFlowError.textContent = '';
+}
+
+async function openCredentialFlow(credential: CredentialFragment): Promise<void> {
+  credentialFragment = credential;
+  showCredentialFlow();
+  if (credential.type === 'reset') {
+    credentialFlowHeading.textContent = 'Choose a new password';
+    credentialFlowDescription.textContent = 'Your workspace admin provided this one-time reset link. Use at least 15 characters; spaces and Unicode are allowed.';
+    credentialPasswordFields.hidden = false;
+    credentialSubmit.textContent = 'Reset password';
+    const password = credentialForm.elements.namedItem('password');
+    const confirmation = credentialForm.elements.namedItem('confirmation');
+    if (password instanceof HTMLInputElement) password.required = true;
+    if (confirmation instanceof HTMLInputElement) confirmation.required = true;
+    credentialForm.querySelector<HTMLInputElement>('input[name="password"]')?.focus();
+    return;
+  }
+
+  credentialFlowHeading.textContent = 'Accept workspace invite';
+  credentialFlowDescription.textContent = 'Checking invite…';
+  credentialSubmit.disabled = true;
+  try {
+    const result = await api<{ invite: InvitePreview }>('/auth/invites/inspect', {
+      method: 'POST',
+      body: JSON.stringify({ token: credential.token }),
+    });
+    invitePreview = result.invite;
+    credentialFlowDescription.textContent = `You’re invited as ${result.invite.role}. ${result.invite.email} will be connected to this workspace.`;
+    credentialPasswordFields.hidden = !result.invite.password_required;
+    const password = credentialForm.elements.namedItem('password');
+    const confirmation = credentialForm.elements.namedItem('confirmation');
+    if (password instanceof HTMLInputElement) password.required = result.invite.password_required;
+    if (confirmation instanceof HTMLInputElement) confirmation.required = result.invite.password_required;
+    credentialSubmit.textContent = result.invite.password_required ? 'Set password and join' : 'Join workspace';
+    credentialSubmit.disabled = false;
+    if (result.invite.password_required) credentialForm.querySelector<HTMLInputElement>('input[name="password"]')?.focus();
+    else credentialSubmit.focus();
+  } catch (error) {
+    credentialFlowDescription.textContent = 'This invite link cannot be used.';
+    credentialFlowError.textContent = error instanceof Error ? error.message : 'This invite link is invalid or expired.';
+    credentialFlowError.hidden = false;
+  }
+}
+
+credentialCancel.addEventListener('click', () => {
+  resetAuthForms();
+  loginForm.querySelector<HTMLInputElement>('input[name="email"]')?.focus();
+});
+
+credentialForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const credential = credentialFragment;
+  if (credential === null) return;
+  const values = new FormData(credentialForm);
+  const password = values.get('password');
+  const confirmation = values.get('confirmation');
+  if (!credentialPasswordFields.hidden && password !== confirmation) {
+    credentialFlowError.textContent = 'The passwords do not match.';
+    credentialFlowError.hidden = false;
+    credentialForm.querySelector<HTMLInputElement>('input[name="confirmation"]')?.focus();
+    return;
+  }
+  credentialSubmit.disabled = true;
+  credentialFlowError.hidden = true;
+  try {
+    if (credential.type === 'invite') {
+      const result = await api<LoginResponse>('/auth/invites/accept', {
+        method: 'POST',
+        body: JSON.stringify({
+          token: credential.token,
+          ...(invitePreview?.password_required ? { password } : {}),
+        }),
+      });
+      credentialFragment = null;
+      showSignedIn(result.user);
+      if (result.user.role !== 'guest') {
+        await loadWorkspaces();
+        await loadProjects();
+      }
+    } else {
+      await api('/auth/password-reset/complete', {
+        method: 'POST',
+        body: JSON.stringify({ token: credential.token, password }),
+      });
+      resetAuthForms();
+      report('Password reset. Sign in with your new password.');
+      loginForm.querySelector<HTMLInputElement>('input[name="email"]')?.focus();
+    }
+  } catch (error) {
+    credentialFlowError.textContent = error instanceof Error ? error.message : 'Could not complete this request.';
+    credentialFlowError.hidden = false;
+  } finally {
+    credentialSubmit.disabled = false;
+  }
+});
+
 loginForm.addEventListener('submit', async (event) => {
   event.preventDefault();
+  loginAdminHelp.hidden = true;
   const values = new FormData(loginForm);
   try {
     const result = await api<LoginResponse>('/auth/login', {
@@ -4078,6 +4420,9 @@ loginForm.addEventListener('submit', async (event) => {
     await loadWorkspaces();
     await loadProjects();
   } catch (error) {
+    if (error instanceof ApiFailure && error.status === 429) {
+      loginAdminHelp.hidden = false;
+    }
     report(error instanceof Error ? error.message : 'Could not sign in.', true);
   }
 });
@@ -4138,26 +4483,43 @@ projectForm.addEventListener('submit', async (event) => {
   }
 });
 
-developerForm.addEventListener('submit', async (event) => {
+inviteRoleInput.addEventListener('change', () => {
+  inviteProjectSelection.hidden = inviteRoleInput.value !== 'guest';
+});
+
+inviteForm.addEventListener('submit', async (event) => {
   event.preventDefault();
-  const values = new FormData(developerForm);
+  generatedCredentialLink.hidden = true;
+  const values = new FormData(inviteForm);
   const role = values.get('role') === 'guest' ? 'guest' : 'developer';
+  const projectIds = values.getAll('project_ids').map(Number).filter(Number.isSafeInteger);
+  if (role === 'guest' && projectIds.length === 0) {
+    report('Choose at least one project for a guest invite.', true);
+    inviteProjectOptions.querySelector<HTMLInputElement>('input')?.focus();
+    return;
+  }
   try {
-    await api('/users', {
+    const result = await api<{ invite: WorkspaceInvite & { invite_url: string } }>('/users/invites', {
       method: 'POST',
       body: JSON.stringify({
         name: values.get('name'),
         email: values.get('email'),
-        password: values.get('password'),
         role,
+        project_ids: role === 'guest' ? projectIds : [],
       }),
     });
-    developerForm.reset();
-    report(role === 'guest'
-      ? 'Guest added. Open a project to add them and share the client view.'
-      : 'Developer added. Open a project to add them as a member.');
+    inviteForm.reset();
+    inviteProjectSelection.hidden = true;
+    showGeneratedCredentialLink(
+      'Invite link',
+      `Copy this seven-day link and send it to ${result.invite.email}.`,
+      result.invite.invite_url,
+    );
+    report('Invite link generated. Copy and send it manually.');
+    await loadWorkspaceAdmin();
+    copyGeneratedCredentialLink.focus();
   } catch (error) {
-    report(error instanceof Error ? error.message : 'Could not add developer.', true);
+    report(error instanceof Error ? error.message : 'Could not create the invite link.', true);
   }
 });
 
@@ -4230,6 +4592,12 @@ async function signOut(): Promise<void> {
 logoutButton.addEventListener('click', () => { void signOut(); });
 
 async function start(): Promise<void> {
+  const credentialState = consumeCredentialFragment();
+  if (credentialState !== null) {
+    showSignedOut();
+    await openCredentialFlow(credentialState);
+    return;
+  }
   try {
     const result = await api<{ user: User }>('/auth/me');
     showSignedIn(result.user);

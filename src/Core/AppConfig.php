@@ -10,6 +10,8 @@ final class AppConfig
         public readonly int $workspaceId,
         public readonly bool $cookieSecure = true,
         public readonly int $sessionLifetimeSeconds = 43200,
+        public readonly string $publicAppUrl = 'http://localhost:8080',
+        public readonly bool $hibpEnabled = false,
     ) {
     }
 
@@ -18,6 +20,9 @@ final class AppConfig
         return new self(
             max(1, (int) (getenv('TANGENT_WORKSPACE_ID') ?: 1)),
             filter_var(getenv('TANGENT_COOKIE_SECURE') ?: 'true', FILTER_VALIDATE_BOOL),
+            43200,
+            rtrim(getenv('TANGENT_APP_URL') ?: 'http://localhost:8080', '/'),
+            filter_var(getenv('TANGENT_HIBP_ENABLED') ?: 'false', FILTER_VALIDATE_BOOL),
         );
     }
 }

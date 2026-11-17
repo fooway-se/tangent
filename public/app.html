@@ -28,6 +28,25 @@
             </label>
             <button class="button button-primary" type="submit">Sign in</button>
           </form>
+          <p id="login-admin-help" class="login-admin-help" hidden>Contact a workspace admin to generate a password reset link.</p>
+          <section id="credential-flow" class="auth-flow" hidden aria-live="polite">
+            <h2 id="credential-flow-heading"></h2>
+            <p id="credential-flow-description" class="panel-description"></p>
+            <p id="credential-flow-error" class="form-error" role="alert" hidden></p>
+            <form id="credential-form" class="form-stack">
+              <div id="credential-password-fields" class="form-stack" hidden>
+                <label>New password
+                  <input name="password" type="password" autocomplete="new-password" required>
+                </label>
+                <label>Confirm password
+                  <input name="confirmation" type="password" autocomplete="new-password" required>
+                </label>
+                <p class="panel-description">Use at least 15 characters. Spaces and all Unicode characters are allowed.</p>
+              </div>
+              <button id="credential-submit" class="button button-primary" type="submit">Continue</button>
+              <button id="credential-cancel" class="auth-text-button" type="button">Back to sign in</button>
+            </form>
+          </section>
           <div id="login-status-message" class="status-message login-terminal" role="status" aria-live="polite">
             <span class="login-terminal-label">READY.</span>
             <span class="login-terminal-line"><span aria-hidden="true">&gt;</span><span class="login-terminal-cursor" aria-hidden="true"></span></span>
@@ -330,26 +349,47 @@
               </div>
             </header>
             <article class="panel admin-panel">
-              <h2>Add a workspace member</h2>
-              <p class="panel-description">Create a developer or guest account, then add them to a project from its Members view.</p>
-              <form id="developer-form" class="form-stack">
+              <h2>Workspace members</h2>
+              <p class="panel-description">Members can belong to one or more workspaces using the same account.</p>
+              <p id="workspace-members-empty" class="panel-description" hidden>No members yet.</p>
+              <ul id="workspace-members-list" class="member-list"></ul>
+            </article>
+            <article class="panel admin-panel">
+              <h2>Invite a member</h2>
+              <p class="panel-description">Tangent creates a single-use link. Copy it and send it manually; the invitee sets a password when they accept.</p>
+              <form id="invite-form" class="form-stack">
                 <label>Name
                   <input name="name" maxlength="120" required>
                 </label>
                 <label>Email
                   <input name="email" type="email" maxlength="254" required>
                 </label>
-                <label>Temporary password
-                  <input name="password" type="password" minlength="12" autocomplete="new-password" required>
-                </label>
                 <label>Role
-                  <select name="role">
+                  <select id="invite-role" name="role">
                     <option value="developer">Developer</option>
                     <option value="guest">Guest</option>
                   </select>
                 </label>
-                <button class="button button-primary" type="submit">Add member</button>
+                <div id="invite-project-selection" class="admin-project-selection" hidden>
+                  <span class="field-label">Projects this guest can see</span>
+                  <div id="invite-project-options" class="admin-project-options"></div>
+                </div>
+                <button class="button button-primary" type="submit">Create invite link</button>
               </form>
+              <section id="generated-credential-link" class="generated-credential-link" hidden aria-live="polite" aria-labelledby="generated-credential-heading">
+                <h3 id="generated-credential-heading"></h3>
+                <p id="generated-credential-description" class="panel-description"></p>
+                <label>Link
+                  <input id="generated-credential-url" type="url" readonly aria-label="Generated credential link">
+                </label>
+                <button id="copy-generated-credential-link" class="button button-quiet" type="button">Copy link</button>
+                <p id="generated-credential-copy-status" class="panel-description" role="status" aria-live="polite"></p>
+              </section>
+            </article>
+            <article class="panel admin-panel">
+              <h2>Pending invites</h2>
+              <p id="workspace-invites-empty" class="panel-description" hidden>No pending invites.</p>
+              <ul id="workspace-invites-list" class="member-list workspace-invites-list"></ul>
             </article>
             <article class="panel admin-panel workspace-create-panel">
               <h2>Create a client workspace</h2>

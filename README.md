@@ -2,7 +2,7 @@
 
 Chat, projects and issues in one place for developers working remotely. Keep client work in separate workspaces, switch between them from the sidebar, and self-host on ordinary PHP + MySQL hosting.
 
-> **Status: pre-alpha.** Auth, multiple client workspaces with switching, projects, project chat, issue creation and editing, status changes, issue types, project-member assignment, event Inbox, a restricted guest client view, chat conversion, and keyboard navigation are implemented; broader chat and issue workflows remain planned.
+> **Status: pre-alpha.** Auth, workspace invites and password resets, multiple client workspaces with switching, projects, project chat, issue creation and editing, status changes, issue types, project-member assignment, event Inbox, a restricted guest client view, chat conversion, and keyboard navigation are implemented; broader chat and issue workflows remain planned.
 
 ## Why
 
@@ -49,7 +49,9 @@ Not available yet. The plan:
 2. Upload it to your web host.
 3. Open the install wizard. It checks PHP version and extensions, takes database details, runs migrations, creates the first admin and writes `config.php`.
 
-Requirements: PHP >= 8.5.12 with `pdo_mysql`, `mbstring`, and `iconv`, plus a MySQL/MariaDB database.
+Requirements: PHP >= 8.5.12 with `pdo_mysql`, `mbstring`, `iconv`, `intl` (for consistent Unicode password normalization), and Argon2id support, plus a MySQL/MariaDB database.
+
+Workspace admins create developer and guest accounts through one-use invite links that they copy and send manually. New accounts set a password through the invite link; an invite to an existing account adds a workspace membership while preserving its password. Admins can also generate one-use password reset links for members and send them manually. Tangent has no mail integration. See [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) for link configuration and the optional breached-password check.
 
 ## Development
 

@@ -216,20 +216,22 @@ final class AuthAndProjectsTest extends ApiTestCase
         $workspace->execute(['name' => 'Other workspace', 'slug' => 'other-' . bin2hex(random_bytes(3))]);
         $otherWorkspaceId = (int) $this->pdo->lastInsertId();
 
-        $account = $this->pdo->prepare('INSERT INTO user_accounts () VALUES ()');
-        $account->execute();
+        $account = $this->pdo->prepare('INSERT INTO user_accounts (email, password_hash) VALUES (:email, :password_hash)');
+        $account->execute([
+            'email' => 'other@example.test',
+            'password_hash' => password_hash($this->password, PASSWORD_ARGON2ID),
+        ]);
         $otherAccountId = (int) $this->pdo->lastInsertId();
 
         $otherUser = $this->pdo->prepare(
-            'INSERT INTO users (workspace_id, account_id, name, email, password_hash, role, is_active)
-             VALUES (:workspace_id, :account_id, :name, :email, :password_hash, :role, 1)'
+            'INSERT INTO users (workspace_id, account_id, name, email, role, is_active)
+             VALUES (:workspace_id, :account_id, :name, :email, :role, 1)'
         );
         $otherUser->execute([
             'workspace_id' => $otherWorkspaceId,
             'account_id' => $otherAccountId,
             'name' => 'Other Admin',
             'email' => 'other@example.test',
-            'password_hash' => password_hash($this->password, PASSWORD_DEFAULT),
             'role' => 'admin',
         ]);
         $otherUserId = (int) $this->pdo->lastInsertId();

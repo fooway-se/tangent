@@ -32,10 +32,15 @@ final class Runtime
             'TANGENT_COOKIE_SECURE',
             $fileConfig['cookie_secure'] ?? 'true',
         );
+        $publicAppUrl = self::environment('TANGENT_APP_URL', $fileConfig['app_url'] ?? 'http://localhost:8080');
+        $hibpEnabled = self::environment('TANGENT_HIBP_ENABLED', $fileConfig['hibp_enabled'] ?? 'false');
 
         return new AppConfig(
             max(1, $workspaceId),
             filter_var($cookieSecure, FILTER_VALIDATE_BOOL),
+            43200,
+            rtrim($publicAppUrl, '/'),
+            filter_var($hibpEnabled, FILTER_VALIDATE_BOOL),
         );
     }
 

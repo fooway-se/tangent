@@ -9,6 +9,7 @@ use Tangent\Core\AppConfig;
 use Tangent\Core\AuthenticatedUser;
 use Tangent\Core\Permissions;
 use Tangent\Core\Request;
+use Tangent\Modules\Workspaces\WorkspaceRepository;
 
 final class AuthService
 {
@@ -17,6 +18,8 @@ final class AuthService
         private readonly TokenRepository $tokens,
         private readonly RateLimiter $rateLimiter,
         private readonly AppConfig $config,
+        private readonly PasswordSecurity $passwords,
+        private readonly WorkspaceRepository $workspaces,
     ) {
     }
 
@@ -36,23 +39,34 @@ final class AuthService
         }
 
         $user = $this->users->findByEmail($this->config->workspaceId, $email);
-        if ($user === null || !(bool) $user['is_active'] || !password_verify($password, (string) $user['password_hash'])) {
+        if ($user === null || !(bool) $user['is_active'] || !$this->passwords->verify($password, (string) $user['password_hash'])) {
             throw new ApiException(401, 'invalid_credentials', 'Email or password is incorrect.');
         }
+        if ($this->passwords->needsRehash((string) $user['password_hash'])) {
+            $this->users->updateAccountPassword((int) $user['account_id'], $password);
+        }
+        return $this->createSessionForMember($this->config->workspaceId, (int) $user['id']);
+    }
 
+    /** @return array{user: array<string, mixed>, session_token: string, csrf_token: string, expires_at: string} */
+    public function createSessionForMember(int $workspaceId, int $userId): array
+    {
+        $user = $this->users->findById($workspaceId, $userId);
+        if ($user === null || !(bool) $user['is_active']) {
+            throw new ApiException(404, 'not_found', 'The workspace member was not found.');
+        }
         $sessionToken = bin2hex(random_bytes(32));
         $csrfToken = bin2hex(random_bytes(32));
         $expiresAt = gmdate('Y-m-d H:i:s', time() + $this->config->sessionLifetimeSeconds);
         $this->tokens->create(
-            $this->config->workspaceId,
-            (int) $user['id'],
+            $workspaceId,
+            $userId,
             hash('sha256', $sessionToken),
             'session',
             'Browser session',
             hash('sha256', $csrfToken),
             $expiresAt,
         );
-
         return [
             'user' => $this->publicUser($user),
             'session_token' => $sessionToken,
@@ -147,9 +161,12 @@ final class AuthService
         if (!filter_var($email, FILTER_VALIDATE_EMAIL) || mb_strlen($email, 'UTF-8') > 254) {
             throw new ApiException(422, 'validation_failed', 'A valid email address is required.');
         }
-        if (strlen($password) < 12) {
-            throw new ApiException(422, 'validation_failed', 'Password must be at least 12 characters.');
-        }
+        $reason = $this->passwords->validate($password, [
+            'name' => $name,
+            'email' => $email,
+            'workspace' => $this->workspaces->nameById($actor->workspaceId),
+        ]);
+        if ($reason !== null) throw new ApiException(422, 'password_rejected', $reason);
         if (!in_array($role, ['developer', 'guest'], true)) {
             throw new ApiException(422, 'validation_failed', 'Role must be developer or guest.');
         }
