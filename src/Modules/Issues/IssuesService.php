@@ -12,6 +12,8 @@ use Tangent\Modules\Projects\ProjectRepository;
 
 final class IssuesService
 {
+    private const ISSUE_TYPES = ['task', 'bug', 'feature', 'research', 'maintenance'];
+
     public function __construct(
         private readonly IssueRepository $issues,
         private readonly ProjectRepository $projects,
@@ -45,8 +47,21 @@ final class IssuesService
         if (mb_strlen($description, 'UTF-8') > 10_000) {
             throw new ApiException(422, 'validation_failed', 'Issue description cannot exceed 10000 characters.');
         }
+        $type = self::issueType($input['type'] ?? 'task');
+        $assigneeId = self::assigneeId($input['assignee_id'] ?? null);
+        $this->requireProjectMemberAssignee($user->workspaceId, $projectId, $assigneeId);
 
-        return $this->issues->create($user->workspaceId, $projectId, $title, $description, $user->id);
+        return $this->issues->create(
+            $user->workspaceId,
+            $projectId,
+            $title,
+            $description,
+            $user->id,
+            null,
+            null,
+            $type,
+            $assigneeId,
+        );
     }
 
     /** @return array<string, mixed> */
@@ -82,6 +97,8 @@ final class IssuesService
         $updated = [
             'title' => $issue['title'],
             'description' => $issue['description'],
+            'type' => $issue['type'],
+            'assignee_id' => $issue['assignee_id'],
             'status' => $issue['status'],
         ];
         if (array_key_exists('title', $input)) {
@@ -102,13 +119,20 @@ final class IssuesService
         if (mb_strlen($updated['description'], 'UTF-8') > 10_000) {
             throw new ApiException(422, 'validation_failed', 'Issue description cannot exceed 10000 characters.');
         }
+        if (array_key_exists('type', $input)) {
+            $updated['type'] = self::issueType($input['type']);
+        }
+        if (array_key_exists('assignee_id', $input)) {
+            $updated['assignee_id'] = self::assigneeId($input['assignee_id']);
+            $this->requireProjectMemberAssignee($user->workspaceId, $issue['project_id'], $updated['assignee_id']);
+        }
         if (array_key_exists('status', $input)) {
             if (!is_string($input['status']) || !in_array($input['status'], ['backlog', 'todo', 'doing', 'done', 'cancelled'], true)) {
                 throw new ApiException(422, 'validation_failed', 'Issue status must be backlog, todo, doing, done, or cancelled.');
             }
             $updated['status'] = $input['status'];
         }
-        if (!array_intersect(['title', 'description', 'status'], array_keys($input))) {
+        if (!array_intersect(['title', 'description', 'status', 'type', 'assignee_id'], array_keys($input))) {
             throw new ApiException(422, 'validation_failed', 'At least one issue field must be supplied.');
         }
 
@@ -136,6 +160,39 @@ final class IssuesService
         $this->requireProjectAccess($user, $issue['project_id'], 'issues.update');
         $this->issues->restore($user->workspaceId, $issueId);
         return $this->issues->find($user->workspaceId, $issueId) ?? [];
+    }
+
+    public function unassignRemovedMember(AuthenticatedUser $user, int $projectId, int $userId): void
+    {
+        if (!Permissions::can($user, 'projects.manage_members')) {
+            throw new ApiException(403, 'forbidden', 'You cannot manage project members.');
+        }
+        $this->requireProjectAccess($user, $projectId, 'issues.update');
+        $this->issues->unassignMember($user->workspaceId, $projectId, $userId);
+    }
+
+    private function requireProjectMemberAssignee(int $workspaceId, int $projectId, ?int $assigneeId): void
+    {
+        if ($assigneeId !== null && !$this->projects->isMember($workspaceId, $projectId, $assigneeId)) {
+            throw new ApiException(422, 'validation_failed', 'Issue assignees must be members of the project.');
+        }
+    }
+
+    private static function issueType(mixed $value): string
+    {
+        if (!is_string($value) || !in_array($value, self::ISSUE_TYPES, true)) {
+            throw new ApiException(422, 'validation_failed', 'Issue type must be task, bug, feature, research, or maintenance.');
+        }
+        return $value;
+    }
+
+    private static function assigneeId(mixed $value): ?int
+    {
+        if ($value === null) return null;
+        if (!is_int($value) || $value < 1) {
+            throw new ApiException(422, 'validation_failed', 'Issue assignee must be a project member or null.');
+        }
+        return $value;
     }
 
     private function requireProjectAccess(AuthenticatedUser $user, int $projectId, string $action): void

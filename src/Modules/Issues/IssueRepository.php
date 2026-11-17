@@ -16,7 +16,7 @@ final class IssueRepository
     public function listForProject(int $workspaceId, int $projectId): array
     {
         $statement = $this->pdo->prepare(
-            "SELECT id, workspace_id, project_id, title, description, status, created_by,
+            "SELECT id, workspace_id, project_id, title, description, issue_type AS type, assignee_id, status, created_by,
                     source_channel_id, source_message_id, created_at, updated_at, deleted_at
              FROM issues
              WHERE workspace_id = :workspace_id AND project_id = :project_id AND deleted_at IS NULL
@@ -30,7 +30,7 @@ final class IssueRepository
     public function listDeletedForProject(int $workspaceId, int $projectId): array
     {
         $statement = $this->pdo->prepare(
-            'SELECT id, workspace_id, project_id, title, description, status, created_by,
+            'SELECT id, workspace_id, project_id, title, description, issue_type AS type, assignee_id, status, created_by,
                     source_channel_id, source_message_id, created_at, updated_at, deleted_at
              FROM issues
              WHERE workspace_id = :workspace_id AND project_id = :project_id AND deleted_at IS NOT NULL
@@ -49,12 +49,15 @@ final class IssueRepository
         int $creatorId,
         ?int $sourceChannelId = null,
         ?int $sourceMessageId = null,
+        string $type = 'task',
+        ?int $assigneeId = null,
     ): array {
         $statement = $this->pdo->prepare(
             "INSERT INTO issues (
-                workspace_id, project_id, title, description, status, created_by, source_channel_id, source_message_id
+                workspace_id, project_id, title, description, issue_type, status, created_by, assignee_id,
+                source_channel_id, source_message_id
              ) VALUES (
-                :workspace_id, :project_id, :title, :description, 'backlog', :created_by,
+                :workspace_id, :project_id, :title, :description, :type, 'backlog', :created_by, :assignee_id,
                 :source_channel_id, :source_message_id
              )"
         );
@@ -63,7 +66,9 @@ final class IssueRepository
             'project_id' => $projectId,
             'title' => $title,
             'description' => $description,
+            'type' => $type,
             'created_by' => $creatorId,
+            'assignee_id' => $assigneeId,
             'source_channel_id' => $sourceChannelId,
             'source_message_id' => $sourceMessageId,
         ]);
@@ -75,7 +80,7 @@ final class IssueRepository
     public function find(int $workspaceId, int $issueId): ?array
     {
         $statement = $this->pdo->prepare(
-            'SELECT id, workspace_id, project_id, title, description, status, created_by,
+            'SELECT id, workspace_id, project_id, title, description, issue_type AS type, assignee_id, status, created_by,
                     source_channel_id, source_message_id, created_at, updated_at, deleted_at
              FROM issues WHERE workspace_id = :workspace_id AND id = :id AND deleted_at IS NULL LIMIT 1'
         );
@@ -88,7 +93,7 @@ final class IssueRepository
     public function findDeleted(int $workspaceId, int $issueId): ?array
     {
         $statement = $this->pdo->prepare(
-            'SELECT id, workspace_id, project_id, title, description, status, created_by,
+            'SELECT id, workspace_id, project_id, title, description, issue_type AS type, assignee_id, status, created_by,
                     source_channel_id, source_message_id, created_at, updated_at, deleted_at
              FROM issues WHERE workspace_id = :workspace_id AND id = :id AND deleted_at IS NOT NULL LIMIT 1'
         );
@@ -97,12 +102,12 @@ final class IssueRepository
         return $issue === false ? null : self::normalize($issue);
     }
 
-    /** @param array{title: string, description: string, status: string} $issue */
+    /** @param array{title: string, description: string, status: string, type: string, assignee_id: ?int} $issue */
     public function update(int $workspaceId, int $issueId, array $issue): void
     {
         $statement = $this->pdo->prepare(
             'UPDATE issues
-             SET title = :title, description = :description, status = :status
+             SET title = :title, description = :description, issue_type = :type, assignee_id = :assignee_id, status = :status
              WHERE workspace_id = :workspace_id AND id = :id AND deleted_at IS NULL'
         );
         $statement->execute([
@@ -110,6 +115,8 @@ final class IssueRepository
             'id' => $issueId,
             'title' => $issue['title'],
             'description' => $issue['description'],
+            'type' => $issue['type'],
+            'assignee_id' => $issue['assignee_id'],
             'status' => $issue['status'],
         ]);
     }
@@ -132,12 +139,26 @@ final class IssueRepository
         $statement->execute(['workspace_id' => $workspaceId, 'id' => $issueId]);
     }
 
+    public function unassignMember(int $workspaceId, int $projectId, int $userId): void
+    {
+        $statement = $this->pdo->prepare(
+            'UPDATE issues SET assignee_id = NULL
+             WHERE workspace_id = :workspace_id AND project_id = :project_id AND assignee_id = :user_id'
+        );
+        $statement->execute([
+            'workspace_id' => $workspaceId,
+            'project_id' => $projectId,
+            'user_id' => $userId,
+        ]);
+    }
+
     /** @param array<string, mixed> $issue @return array<string, mixed> */
     private static function normalize(array $issue): array
     {
         foreach (['id', 'workspace_id', 'project_id', 'created_by'] as $field) {
             $issue[$field] = (int) $issue[$field];
         }
+        $issue['assignee_id'] = $issue['assignee_id'] === null ? null : (int) $issue['assignee_id'];
         foreach (['source_channel_id', 'source_message_id'] as $field) {
             $issue[$field] = $issue[$field] === null ? null : (int) $issue[$field];
         }

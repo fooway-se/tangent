@@ -9,6 +9,7 @@ import {
 } from './issue-board.js';
 
 type Role = 'admin' | 'developer';
+type IssueType = 'task' | 'bug' | 'feature' | 'research' | 'maintenance';
 
 type WorkspaceLocation =
   | { view: 'projects'; focusedProjectId?: number }
@@ -40,6 +41,8 @@ interface Project {
 }
 
 interface Issue extends BoardIssue {
+  type: IssueType;
+  assignee_id: number | null;
   workspace_id: number;
   project_id: number;
   created_by: number;
@@ -56,8 +59,39 @@ const ISSUE_STATUS_OPTIONS: Array<{ value: IssueStatus; label: string }> = [
   { value: 'cancelled', label: 'Cancelled' },
 ];
 
+const ISSUE_TYPE_OPTIONS: Array<{ value: IssueType; label: string }> = [
+  { value: 'task', label: 'Task' },
+  { value: 'bug', label: 'Bug' },
+  { value: 'feature', label: 'Feature' },
+  { value: 'research', label: 'Research' },
+  { value: 'maintenance', label: 'Maintenance' },
+];
+
 function issueStatusLabel(status: IssueStatus): string {
   return ISSUE_STATUS_OPTIONS.find((option) => option.value === status)?.label ?? status;
+}
+
+function issueTypeLabel(type: IssueType): string {
+  return ISSUE_TYPE_OPTIONS.find((option) => option.value === type)?.label ?? type;
+}
+
+function issueAssigneeLabel(assigneeId: number | null): string {
+  if (assigneeId === null) return 'Unassigned';
+  return activeProjectMembers.find((member) => member.id === assigneeId)?.name ?? 'Former project member';
+}
+
+function populateIssueAssigneeSelect(select: HTMLSelectElement, selectedAssigneeId: number | null): void {
+  const unassigned = document.createElement('option');
+  unassigned.value = '';
+  unassigned.textContent = 'Unassigned';
+  select.replaceChildren(unassigned);
+  for (const member of activeProjectMembers) {
+    const option = document.createElement('option');
+    option.value = String(member.id);
+    option.textContent = member.name;
+    select.append(option);
+  }
+  select.value = selectedAssigneeId === null ? '' : String(selectedAssigneeId);
 }
 
 interface Member extends User {
@@ -166,6 +200,11 @@ const issueBackButton = document.querySelector<HTMLButtonElement>('#issue-back-b
 const issueDetailCancelButton = document.querySelector<HTMLButtonElement>('#issue-detail-cancel-button')!;
 const issueForm = document.querySelector<HTMLFormElement>('#issue-form')!;
 const issueQuickAddTitle = document.querySelector<HTMLInputElement>('#issue-quick-add-title')!;
+const issueQuickAddAssignee = document.querySelector<HTMLSelectElement>('#issue-quick-add-assignee')!;
+const issueDetailType = document.querySelector<HTMLElement>('#issue-detail-type')!;
+const issueDetailAssignee = document.querySelector<HTMLElement>('#issue-detail-assignee')!;
+const issueDetailTypeInput = document.querySelector<HTMLSelectElement>('#issue-detail-type-input')!;
+const issueDetailAssigneeInput = document.querySelector<HTMLSelectElement>('#issue-detail-assignee-input')!;
 const issueDescriptionDetails = document.querySelector<HTMLDetailsElement>('#issue-description-details')!;
 const issueProgress = document.querySelector<HTMLProgressElement>('#issue-progress')!;
 const issueProgressLabel = document.querySelector<HTMLElement>('#issue-progress-label')!;
@@ -190,6 +229,10 @@ const memberList = document.querySelector<HTMLUListElement>('#member-list')!;
 const memberForm = document.querySelector<HTMLFormElement>('#member-form')!;
 const memberSelect = document.querySelector<HTMLSelectElement>('#member-select')!;
 const addMemberButton = document.querySelector<HTMLButtonElement>('#add-member-button')!;
+const memberRemovalConfirmation = document.querySelector<HTMLDialogElement>('#member-removal-confirmation')!;
+const memberRemovalDescription = document.querySelector<HTMLElement>('#member-removal-description')!;
+const memberRemovalCancel = document.querySelector<HTMLButtonElement>('#member-removal-cancel')!;
+const memberRemovalConfirm = document.querySelector<HTMLButtonElement>('#member-removal-confirm')!;
 const statusMessage = document.querySelector<HTMLElement>('#status-message')!;
 const loginStatusMessage = document.querySelector<HTMLElement>('#login-status-message')!;
 const logoutButton = document.querySelector<HTMLButtonElement>('#logout-button')!;
@@ -227,6 +270,7 @@ let issueStatusPickerIssue: Issue | null = null;
 let issueStatusPickerReturnFocus: HTMLElement | null = null;
 let issueStatusPickerOptionIndex = 0;
 let issueDeleteTarget: Issue | null = null;
+let memberRemovalTarget: { member: Member; button: HTMLButtonElement } | null = null;
 let paletteCommands: PaletteCommand[] = [];
 let visiblePaletteCommands: PaletteCommand[] = [];
 let activePaletteCommandIndex = 0;
@@ -781,7 +825,7 @@ function shortcutContext(target: EventTarget | null) {
     hasSelectedChatMessage: selectedChatMessageId !== null && selectedChatMessageId > 0
       && chatMessagesById.has(selectedChatMessageId),
     textInputFocused: shouldBlurOnEscape(target),
-    modalOpen: commandPalette.open || shortcutHelp.open || issueStatusPicker.open || issueDeleteConfirmation.open || workspacePicker.open,
+    modalOpen: commandPalette.open || shortcutHelp.open || issueStatusPicker.open || issueDeleteConfirmation.open || memberRemovalConfirmation.open || workspacePicker.open,
     canDismiss: commandPalette.open || shortcutHelp.open || (!workspacePanel.hidden && (
       pendingWorkspaceId !== null
       || (!projectView.hidden && (!issueDetailView.hidden || !issueDetailEditForm.hidden
@@ -1147,6 +1191,7 @@ function openCommandPalette(): void {
   if (workspacePicker.open) resetPendingWorkspaceSwitch();
   if (issueStatusPicker.open) closeIssueStatusPicker();
   if (issueDeleteConfirmation.open) closeIssueDeleteConfirmation();
+  if (memberRemovalConfirmation.open) closeMemberRemovalConfirmation();
   if (shortcutHelp.open) shortcutHelp.close();
   if (commandPalette.open) {
     closeCommandPalette();
@@ -1164,6 +1209,7 @@ function showShortcutHelp(): void {
   if (workspacePicker.open) resetPendingWorkspaceSwitch();
   if (issueStatusPicker.open) closeIssueStatusPicker();
   if (issueDeleteConfirmation.open) closeIssueDeleteConfirmation();
+  if (memberRemovalConfirmation.open) closeMemberRemovalConfirmation();
   if (commandPalette.open) closeCommandPalette();
   if (shortcutHelp.open) {
     shortcutHelp.close();
@@ -1178,6 +1224,8 @@ function dismissCurrentView(): void {
     resetPendingWorkspaceSwitch();
   } else if (issueDeleteConfirmation.open) {
     closeIssueDeleteConfirmation();
+  } else if (memberRemovalConfirmation.open) {
+    closeMemberRemovalConfirmation();
   } else if (issueStatusPicker.open) {
     closeIssueStatusPicker();
   } else if (commandPalette.open) {
@@ -1301,7 +1349,7 @@ function executeShortcut(action: ShortcutAction): void {
 }
 
 function handleKeyboardShortcut(event: KeyboardEvent): void {
-  if ((commandPalette.open || shortcutHelp.open || issueStatusPicker.open || issueDeleteConfirmation.open || workspacePicker.open)
+  if ((commandPalette.open || shortcutHelp.open || issueStatusPicker.open || issueDeleteConfirmation.open || memberRemovalConfirmation.open || workspacePicker.open)
     && event.key !== 'Escape'
     && !((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k')) return;
   const context = shortcutContext(event.target);
@@ -1714,10 +1762,16 @@ issueForm.addEventListener('submit', async (event) => {
   if (activeProject === null) return;
   const projectId = activeProject.id;
   const values = new FormData(issueForm);
+  const assigneeValue = values.get('assignee_id');
   try {
     await api(`/projects/${projectId}/issues`, {
       method: 'POST',
-      body: JSON.stringify({ title: values.get('title'), description: values.get('description') }),
+      body: JSON.stringify({
+        title: values.get('title'),
+        description: values.get('description'),
+        type: values.get('type'),
+        assignee_id: typeof assigneeValue === 'string' && assigneeValue !== '' ? Number(assigneeValue) : null,
+      }),
     });
     issueForm.reset();
     issueDescriptionDetails.open = false;
@@ -1807,6 +1861,8 @@ async function loadProjectDetail(
     }
     activeProject = result.project;
     activeProjectMembers = result.members;
+    populateIssueAssigneeSelect(issueQuickAddAssignee, null);
+    populateIssueAssigneeSelect(issueDetailAssigneeInput, null);
     projectSidebarList.querySelectorAll<HTMLButtonElement>('.project-sidebar-link').forEach((button) => {
       button.classList.toggle('is-active', button.dataset.projectId === String(result.project.id));
     });
@@ -1895,7 +1951,11 @@ function renderProjectIssueBoard(): void {
     ? `${open} open · ${completed} done · ${cancelled} cancelled`
     : `${open} open · ${completed} done`;
 
-  const ordered = sortIssues(projectIssues, issueOrder.value as IssueSortOrder);
+  const searchableIssues = projectIssues.map((issue) => ({
+    ...issue,
+    assignee_name: issueAssigneeLabel(issue.assignee_id),
+  }));
+  const ordered = sortIssues(searchableIssues, issueOrder.value as IssueSortOrder);
   const visible = filterIssues(ordered, issueFilter.value);
   issueList.replaceChildren();
   emptyIssues.hidden = visible.length > 0;
@@ -1962,6 +2022,8 @@ function createDeletedIssueRow(issue: Issue): HTMLLIElement {
 function renderIssueDetail(): void {
   if (selectedIssue === null) return;
   issueDetailTitle.textContent = selectedIssue.title;
+  issueDetailType.textContent = issueTypeLabel(selectedIssue.type);
+  issueDetailAssignee.textContent = issueAssigneeLabel(selectedIssue.assignee_id);
   issueDetailDescription.textContent = selectedIssue.description || 'No description yet.';
   issueDetailDescription.classList.toggle('is-empty', selectedIssue.description === '');
   issueDetailStatusLabel.textContent = issueStatusLabel(selectedIssue.status);
@@ -2216,7 +2278,16 @@ function createIssueRow(issue: Issue): HTMLElement {
   title.textContent = issue.title;
   title.addEventListener('click', () => openIssue(issue));
   mainline.append(indicator, key, title);
-  content.append(mainline);
+  const metadata = document.createElement('div');
+  metadata.className = 'issue-metadata';
+  const type = document.createElement('span');
+  type.className = 'issue-type-tag';
+  type.textContent = issueTypeLabel(issue.type);
+  const assignee = document.createElement('span');
+  assignee.className = 'issue-assignee-label';
+  assignee.textContent = `Assignee: ${issueAssigneeLabel(issue.assignee_id)}`;
+  metadata.append(type, assignee);
+  content.append(mainline, metadata);
   if (issue.description !== '') {
     const description = document.createElement('p');
     description.className = 'issue-description';
@@ -2238,6 +2309,8 @@ issueDetailEditButton.addEventListener('click', () => {
   if (selectedIssue === null) return;
   issueDetailTitleInput.value = selectedIssue.title;
   issueDetailDescriptionInput.value = selectedIssue.description;
+  issueDetailTypeInput.value = selectedIssue.type;
+  populateIssueAssigneeSelect(issueDetailAssigneeInput, selectedIssue.assignee_id);
   issueDetailDisplay.hidden = true;
   issueDetailEditForm.hidden = false;
   issueDetailTitleInput.focus();
@@ -2271,11 +2344,15 @@ issueDetailEditForm.addEventListener('submit', async (event) => {
       body: JSON.stringify({
         title: issueDetailTitleInput.value,
         description: issueDetailDescriptionInput.value,
+        type: issueDetailTypeInput.value,
+        assignee_id: issueDetailAssigneeInput.value === '' ? null : Number(issueDetailAssigneeInput.value),
       }),
     });
     if (selectedIssue?.id !== issue.id || activeProject?.id !== issue.project_id) return;
     selectedIssue = result.issue;
+    projectIssues = projectIssues.map((candidate) => candidate.id === issue.id ? result.issue : candidate);
     renderIssueDetail();
+    renderProjectIssueBoard();
     closeIssueDetailEditForm();
     report('Issue updated.');
   } catch (error) {
@@ -2335,7 +2412,7 @@ async function loadProjectMembers(projectId: number): Promise<void> {
       removeButton.textContent = 'Remove';
       removeButton.dataset.userId = String(member.id);
       removeButton.setAttribute('aria-label', `Remove ${member.name} from this project`);
-      removeButton.addEventListener('click', () => void removeProjectMember(member, removeButton));
+      removeButton.addEventListener('click', () => openMemberRemovalConfirmation(member, removeButton));
       item.append(removeButton);
     }
     memberList.append(item);
@@ -2364,6 +2441,26 @@ async function loadProjectMembers(projectId: number): Promise<void> {
   }
 }
 
+function openMemberRemovalConfirmation(member: Member, button: HTMLButtonElement): void {
+  memberRemovalTarget = { member, button };
+  memberRemovalDescription.textContent = `“${member.name}” will be removed from the project.`;
+  memberRemovalConfirmation.showModal();
+  memberRemovalCancel.focus();
+}
+
+function closeMemberRemovalConfirmation(): void {
+  if (memberRemovalConfirmation.open) memberRemovalConfirmation.close();
+  memberRemovalTarget = null;
+  memberRemovalConfirm.disabled = false;
+}
+
+async function confirmMemberRemoval(): Promise<void> {
+  const target = memberRemovalTarget;
+  if (target === null) return;
+  closeMemberRemovalConfirmation();
+  await removeProjectMember(target.member, target.button);
+}
+
 async function removeProjectMember(member: Member, removeButton: HTMLButtonElement): Promise<void> {
   const projectId = activeProject?.id;
   if (projectId === undefined) return;
@@ -2373,8 +2470,7 @@ async function removeProjectMember(member: Member, removeButton: HTMLButtonEleme
   try {
     await api<void>(`/projects/${projectId}/members/${member.id}`, { method: 'DELETE' });
     if (activeProject?.id === projectId) {
-      activeProjectMembers = activeProjectMembers.filter((candidate) => candidate.id !== member.id);
-      await loadProjectMembers(projectId);
+      await loadProjectDetail(projectId, 'members');
       if (activeProject?.id === projectId && !membersView.hidden) {
         const nextIndex = Math.min(memberIndex, activeProjectMembers.length - 1);
         const nextMember = activeProjectMembers[nextIndex];
@@ -2391,6 +2487,9 @@ async function removeProjectMember(member: Member, removeButton: HTMLButtonEleme
     removeButton.disabled = false;
   }
 }
+
+memberRemovalCancel.addEventListener('click', closeMemberRemovalConfirmation);
+memberRemovalConfirm.addEventListener('click', () => void confirmMemberRemoval());
 
 function updateMembersPanelTabIndex(): void {
   const hasFocusableContent = Array.from(membersView.querySelectorAll<HTMLElement>(

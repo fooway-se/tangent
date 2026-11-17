@@ -6,6 +6,8 @@ export interface BoardIssue {
   title: string;
   description: string;
   status: IssueStatus;
+  type?: string;
+  assignee_name?: string;
   created_at: string;
   updated_at: string;
 }
@@ -16,7 +18,7 @@ export function filterIssues<T extends BoardIssue>(issues: readonly T[], query: 
   const normalized = query.trim().toLocaleLowerCase();
   if (normalized === '') return [...issues];
   return issues.filter((issue) =>
-    `#${issue.id} ${issue.title} ${issue.description} ${issue.status}`
+    `#${issue.id} ${issue.title} ${issue.description} ${issue.status} ${issue.type ?? ''} ${issue.assignee_name ?? ''}`
       .toLocaleLowerCase()
       .includes(normalized),
   );

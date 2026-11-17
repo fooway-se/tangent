@@ -130,10 +130,26 @@
                   <label class="visually-hidden" for="issue-quick-add-title">New issue title</label>
                   <input id="issue-quick-add-title" name="title" maxlength="200" placeholder="Add an issue…" autocomplete="off" required>
                   <details id="issue-description-details" class="issue-description-details">
-                    <summary>Description</summary>
+                    <summary>Details</summary>
                     <label>Issue description
                       <textarea name="description" rows="2" maxlength="10000"></textarea>
                     </label>
+                    <div class="issue-quick-add-fields">
+                      <label>Type
+                        <select id="issue-quick-add-type" name="type">
+                          <option value="task">Task</option>
+                          <option value="bug">Bug</option>
+                          <option value="feature">Feature</option>
+                          <option value="research">Research</option>
+                          <option value="maintenance">Maintenance</option>
+                        </select>
+                      </label>
+                      <label>Assignee
+                        <select id="issue-quick-add-assignee" name="assignee_id">
+                          <option value="">Unassigned</option>
+                        </select>
+                      </label>
+                    </div>
                   </details>
                   <button class="issue-quick-add-submit" type="submit" aria-label="Create issue">
                     <kbd>Enter</kbd>
@@ -143,7 +159,7 @@
                   <div class="issue-board-controls">
                     <label class="issue-filter-control">
                       <span>Filter</span>
-                      <input id="issue-filter" type="search" placeholder="Title, ID, description" aria-label="Filter issues">
+                      <input id="issue-filter" type="search" placeholder="Title, ID, description, type, assignee" aria-label="Filter issues by title, type, or assignee">
                     </label>
                     <span class="issue-grouping-label">Group: Status</span>
                     <label class="visually-hidden" for="issue-order">Issue order</label>
@@ -189,6 +205,10 @@
                 </div>
                 <div id="issue-detail-display" class="issue-detail-display">
                   <h2 id="issue-detail-title" class="issue-detail-title"></h2>
+                  <div class="issue-detail-metadata">
+                    <span>Type: <strong id="issue-detail-type"></strong></span>
+                    <span>Assignee: <strong id="issue-detail-assignee"></strong></span>
+                  </div>
                   <p id="issue-detail-description" class="issue-detail-description"></p>
                   <a id="issue-source-link" class="issue-source-link" href="#project-chat-column" hidden>Open source chat thread</a>
                 </div>
@@ -198,6 +218,20 @@
                   </label>
                   <label>Description
                     <textarea id="issue-detail-description-input" name="description" rows="8" maxlength="10000"></textarea>
+                  </label>
+                  <label>Type
+                    <select id="issue-detail-type-input" name="type">
+                      <option value="task">Task</option>
+                      <option value="bug">Bug</option>
+                      <option value="feature">Feature</option>
+                      <option value="research">Research</option>
+                      <option value="maintenance">Maintenance</option>
+                    </select>
+                  </label>
+                  <label>Assignee
+                    <select id="issue-detail-assignee-input" name="assignee_id">
+                      <option value="">Unassigned</option>
+                    </select>
                   </label>
                   <div class="form-actions">
                     <button id="issue-detail-cancel-button" class="button button-quiet" type="button">Cancel</button>
@@ -296,6 +330,20 @@
         <div class="form-actions">
           <button id="issue-delete-cancel" class="button button-quiet" type="button">Cancel</button>
           <button id="issue-delete-confirm" class="button button-primary button-danger" type="button">Move to Deleted issues</button>
+        </div>
+      </section>
+    </dialog>
+
+    <dialog id="member-removal-confirmation" class="issue-delete-confirmation" aria-labelledby="member-removal-heading" aria-describedby="member-removal-description member-removal-impact">
+      <section class="issue-delete-confirmation-content">
+        <header class="dialog-heading">
+          <h2 id="member-removal-heading">Remove project member?</h2>
+        </header>
+        <p id="member-removal-description" class="issue-delete-description"></p>
+        <p id="member-removal-impact" class="issue-delete-recovery-note">Issues assigned to this person will become unassigned.</p>
+        <div class="form-actions">
+          <button id="member-removal-cancel" class="button button-quiet" type="button">Cancel</button>
+          <button id="member-removal-confirm" class="button button-primary button-danger" type="button">Remove member</button>
         </div>
       </section>
     </dialog>

@@ -11,6 +11,7 @@ use Tangent\Core\AuthenticatedUser;
 use Tangent\Core\Permissions;
 use Tangent\Modules\Auth\UserRepository;
 use Tangent\Modules\Chat\ChatService;
+use Tangent\Modules\Issues\IssuesService;
 
 final class ProjectService
 {
@@ -19,6 +20,7 @@ final class ProjectService
         private readonly UserRepository $users,
         private readonly PDO $pdo,
         private readonly ChatService $chat,
+        private readonly IssuesService $issues,
     ) {
     }
 
@@ -155,8 +157,24 @@ final class ProjectService
         if ($member === null) {
             throw new ApiException(404, 'not_found', 'The user was not found.');
         }
-        if (!$this->projects->removeMember($user->workspaceId, $projectId, $userId)) {
-            throw new ApiException(404, 'not_found', 'The project membership was not found.');
+        $ownsTransaction = !$this->pdo->inTransaction();
+        if ($ownsTransaction) {
+            $this->pdo->beginTransaction();
+        }
+
+        try {
+            if (!$this->projects->removeMember($user->workspaceId, $projectId, $userId)) {
+                throw new ApiException(404, 'not_found', 'The project membership was not found.');
+            }
+            $this->issues->unassignRemovedMember($user, $projectId, $userId);
+            if ($ownsTransaction) {
+                $this->pdo->commit();
+            }
+        } catch (Throwable $exception) {
+            if ($ownsTransaction && $this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            throw $exception;
         }
     }
 

@@ -3,7 +3,7 @@ export function filterIssues(issues, query) {
     const normalized = query.trim().toLocaleLowerCase();
     if (normalized === '')
         return [...issues];
-    return issues.filter((issue) => `#${issue.id} ${issue.title} ${issue.description} ${issue.status}`
+    return issues.filter((issue) => `#${issue.id} ${issue.title} ${issue.description} ${issue.status} ${issue.type ?? ''} ${issue.assignee_name ?? ''}`
         .toLocaleLowerCase()
         .includes(normalized));
 }
