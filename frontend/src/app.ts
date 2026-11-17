@@ -1463,6 +1463,13 @@ function renderIssueDetail(): void {
   }
 }
 
+function closeIssueDetailEditForm(): void {
+  issueDetailEditForm.reset();
+  issueDetailEditForm.hidden = true;
+  issueDetailDisplay.hidden = false;
+  if (!issueDetailView.hidden) issueDetailEditButton.focus();
+}
+
 function openIssue(issue: Issue): void {
   selectedIssue = issue;
   issueList.querySelectorAll<HTMLElement>('.issue-card').forEach((row) => {
@@ -1563,9 +1570,7 @@ issueDetailEditButton.addEventListener('click', () => {
 });
 
 issueDetailCancelButton.addEventListener('click', () => {
-  issueDetailEditForm.reset();
-  issueDetailEditForm.hidden = true;
-  issueDetailDisplay.hidden = false;
+  closeIssueDetailEditForm();
 });
 
 issueBackButton.addEventListener('click', () => {
@@ -1592,10 +1597,12 @@ issueDetailEditForm.addEventListener('submit', async (event) => {
     if (selectedIssue?.id !== issue.id || activeProject?.id !== issue.project_id) return;
     selectedIssue = result.issue;
     renderIssueDetail();
-    issueDetailEditForm.hidden = true;
-    issueDetailDisplay.hidden = false;
+    closeIssueDetailEditForm();
     report('Issue updated.');
   } catch (error) {
+    if (selectedIssue?.id === issue.id && activeProject?.id === issue.project_id) {
+      issueDetailTitleInput.focus();
+    }
     report(error instanceof Error ? error.message : 'Could not update the issue.', true);
   } finally {
     issueDetailSaveButton.disabled = false;

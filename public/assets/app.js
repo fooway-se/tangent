@@ -1438,6 +1438,13 @@ function renderIssueDetail() {
         delete issueSourceLink.dataset.messageId;
     }
 }
+function closeIssueDetailEditForm() {
+    issueDetailEditForm.reset();
+    issueDetailEditForm.hidden = true;
+    issueDetailDisplay.hidden = false;
+    if (!issueDetailView.hidden)
+        issueDetailEditButton.focus();
+}
 function openIssue(issue) {
     selectedIssue = issue;
     issueList.querySelectorAll('.issue-card').forEach((row) => {
@@ -1534,9 +1541,7 @@ issueDetailEditButton.addEventListener('click', () => {
     issueDetailTitleInput.focus();
 });
 issueDetailCancelButton.addEventListener('click', () => {
-    issueDetailEditForm.reset();
-    issueDetailEditForm.hidden = true;
-    issueDetailDisplay.hidden = false;
+    closeIssueDetailEditForm();
 });
 issueBackButton.addEventListener('click', () => {
     selectedIssue = null;
@@ -1563,11 +1568,13 @@ issueDetailEditForm.addEventListener('submit', async (event) => {
             return;
         selectedIssue = result.issue;
         renderIssueDetail();
-        issueDetailEditForm.hidden = true;
-        issueDetailDisplay.hidden = false;
+        closeIssueDetailEditForm();
         report('Issue updated.');
     }
     catch (error) {
+        if (selectedIssue?.id === issue.id && activeProject?.id === issue.project_id) {
+            issueDetailTitleInput.focus();
+        }
         report(error instanceof Error ? error.message : 'Could not update the issue.', true);
     }
     finally {
