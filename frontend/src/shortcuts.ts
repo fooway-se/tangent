@@ -50,6 +50,7 @@ export interface ShortcutContext {
   canAdmin: boolean;
   hasProject: boolean;
   projectListVisible: boolean;
+  issueFilterFocused: boolean;
   hasSelectedProject: boolean;
   issueListVisible: boolean;
   issueDetailVisible: boolean;
@@ -76,7 +77,12 @@ export function resolveShortcut(event: ShortcutEvent, context: ShortcutContext):
     if (context.textInputFocused) return 'blur-text-input';
     if (context.canDismiss) return 'dismiss';
   }
-  if (event.altKey || event.ctrlKey || event.metaKey || context.targetIsEditable) return null;
+  if (event.altKey || event.ctrlKey || event.metaKey) return null;
+  if (context.issueFilterFocused && context.issueListVisible) {
+    if (key === 'arrowdown') return 'first-issue';
+    if (key === 'arrowup') return 'last-issue';
+  }
+  if (context.targetIsEditable) return null;
 
   if (context.goPrefixPending) {
     if (key === 'p' && context.hasWorkspace) return 'projects';

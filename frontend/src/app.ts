@@ -651,6 +651,7 @@ function shortcutContext(target: EventTarget | null) {
     canAdmin: activeUser?.role === 'admin',
     hasProject: activeProject !== null && !projectView.hidden,
     projectListVisible: !workspacePanel.hidden && !projectsView.hidden,
+    issueFilterFocused: target === issueFilter,
     hasSelectedProject: selectedProjectButton() !== null,
     issueListVisible: !projectView.hidden && !issuesView.hidden,
     issueDetailVisible: !projectView.hidden && !issueDetailView.hidden,

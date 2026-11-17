@@ -14,7 +14,15 @@ export function resolveShortcut(event, context) {
         if (context.canDismiss)
             return 'dismiss';
     }
-    if (event.altKey || event.ctrlKey || event.metaKey || context.targetIsEditable)
+    if (event.altKey || event.ctrlKey || event.metaKey)
+        return null;
+    if (context.issueFilterFocused && context.issueListVisible) {
+        if (key === 'arrowdown')
+            return 'first-issue';
+        if (key === 'arrowup')
+            return 'last-issue';
+    }
+    if (context.targetIsEditable)
         return null;
     if (context.goPrefixPending) {
         if (key === 'p' && context.hasWorkspace)
