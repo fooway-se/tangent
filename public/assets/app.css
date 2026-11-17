@@ -80,29 +80,12 @@ kbd {
 .workspace-sidebar::before { display: block; flex: 0 0 30px; margin-bottom: 16px; border-radius: 4px; background: repeating-linear-gradient(90deg, var(--vent-dark) 0 2px, var(--vent-light) 2px 6px); box-shadow: inset 0 2px 4px rgba(60, 50, 30, 0.35), 0 1px 0 var(--case-light); content: ""; }
 .workspace-brand { display: block; margin: 0; padding: 10px 12px; border-radius: 4px; background: var(--plate); color: var(--plate-ink); box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6), 0 1px 0 var(--case-light); }
 .workspace-brand .brand { color: var(--plate-ink); }
-#workspace-switcher {
-  display: block;
-  width: auto;
-  min-width: 0;
-  max-width: calc(100% - 36px);
-  margin: 6px 0 0 36px;
-  border: 0;
-  border-radius: 0;
-  padding: 0 14px 0 0;
-  color: var(--plate-muted);
-  background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath d='M2 3.5l3 3 3-3' fill='none' stroke='%23cfc6ae' stroke-width='1.5'/%3E%3C/svg%3E") right center / 10px no-repeat;
-  box-shadow: none;
-  font-size: 11px;
-  appearance: none;
-  cursor: pointer;
-}
-#workspace-switcher:disabled { background-image: none; cursor: default; opacity: 1; }
-#workspace-switcher:focus { box-shadow: none; outline: 1.5px solid var(--accent); outline-offset: 2px; }
-.workspace-switch-actions { margin: 8px 0 0 36px; }
-.workspace-switch-actions[hidden] { display: none; }
-.workspace-switch-prompt { margin: 0 0 6px; color: var(--plate-muted); font-size: 11px; line-height: 1.35; }
-.workspace-switch-buttons { display: flex; gap: 6px; }
-.workspace-switch-actions .button { padding: 4px 7px; font-size: 11px; }
+.workspace-picker-trigger { display: flex; width: calc(100% - 36px); min-width: 0; align-items: center; justify-content: space-between; gap: 8px; margin: 6px 0 0 36px; border: 1px solid transparent; border-radius: 4px; padding: 4px 5px; color: var(--plate-muted); background: transparent; box-shadow: none; font-size: 11px; text-align: left; cursor: pointer; }
+.workspace-picker-trigger:hover { color: var(--plate-ink); background: rgba(255, 255, 255, 0.06); }
+.workspace-picker-trigger:focus-visible { outline: 1.5px solid var(--accent); outline-offset: 2px; }
+.workspace-picker-trigger:disabled { cursor: default; opacity: 0.65; }
+#workspace-switcher-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.workspace-picker-caret { flex: 0 0 auto; font-size: 10px; }
 .workspace-nav { display: flex; flex-direction: column; gap: 8px; margin: 0; }
 .workspace-nav::before { display: block; height: 8px; margin: 6px 0 10px; border-radius: 2px; background: var(--signal-stripe); box-shadow: 0 1px 0 var(--case-light); content: ""; }
 .workspace-nav-button, .project-sidebar-link {
@@ -356,6 +339,16 @@ dialog::backdrop { background: rgba(38, 35, 30, 0.6); }
 .issue-status-option[aria-selected="true"] { box-shadow: 0 0 0 1px var(--accent-edge); }
 .issue-status-current { color: var(--screen-muted); font-size: 11px; }
 .issue-status-picker-help { margin: 12px 18px 0; color: var(--screen-muted); font-size: 12px; }
+.workspace-picker { width: min(460px, calc(100vw - 32px)); margin: auto; }
+.workspace-picker-content { padding: 0 0 18px; }
+.workspace-picker-description { margin: 0 18px 12px; color: var(--screen-muted); font-size: 12px; }
+.workspace-picker-options { display: grid; gap: 4px; max-height: min(48vh, 420px); overflow-y: auto; margin: 0 18px; }
+.workspace-picker-option { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 12px; text-align: left; }
+.workspace-picker-option.is-active, .workspace-picker-option:hover { border-color: var(--accent-edge); background: var(--screen-hover); }
+.workspace-picker-option[aria-selected="true"] { box-shadow: 0 0 0 1px var(--accent-edge); }
+.workspace-picker-current { color: var(--screen-muted); font-size: 11px; }
+.workspace-picker-actions { display: flex; justify-content: flex-end; margin: 12px 18px 0; }
+.workspace-picker-help { margin: 12px 18px 0; color: var(--screen-muted); font-size: 12px; }
 .shortcut-help { width: min(560px, calc(100vw - 32px)); max-height: 85vh; overflow: auto; margin: auto; }
 .shortcut-list { display: grid; gap: 2px; margin: 0 18px; }
 .shortcut-list > div { display: grid; grid-template-columns: 150px minmax(0, 1fr); align-items: center; gap: 12px; border-bottom: 1px solid var(--screen-line); padding: 7px 0; }

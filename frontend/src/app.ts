@@ -102,11 +102,13 @@ const workspacePanel = document.querySelector<HTMLElement>('#workspace-panel')!;
 const accountBar = document.querySelector<HTMLElement>('#account-bar')!;
 const currentUserLabel = document.querySelector<HTMLElement>('#current-user')!;
 const workspaceNav = document.querySelector<HTMLElement>('#workspace-nav')!;
-const workspaceSwitcher = document.querySelector<HTMLSelectElement>('#workspace-switcher')!;
-const workspaceSwitchActions = document.querySelector<HTMLElement>('#workspace-switch-actions')!;
-const workspaceSwitchPrompt = document.querySelector<HTMLElement>('#workspace-switch-prompt')!;
-const workspaceSwitchConfirm = document.querySelector<HTMLButtonElement>('#workspace-switch-confirm')!;
-const workspaceSwitchCancel = document.querySelector<HTMLButtonElement>('#workspace-switch-cancel')!;
+const workspaceSwitcher = document.querySelector<HTMLButtonElement>('#workspace-switcher')!;
+const workspaceSwitcherLabel = document.querySelector<HTMLElement>('#workspace-switcher-label')!;
+const workspacePicker = document.querySelector<HTMLDialogElement>('#workspace-picker')!;
+const workspacePickerCancel = document.querySelector<HTMLButtonElement>('#workspace-picker-cancel')!;
+const workspacePickerConfirm = document.querySelector<HTMLButtonElement>('#workspace-picker-confirm')!;
+const workspacePickerDescription = document.querySelector<HTMLElement>('#workspace-picker-description')!;
+const workspacePickerOptions = document.querySelector<HTMLElement>('#workspace-picker-options')!;
 const createWorkspaceForm = document.querySelector<HTMLFormElement>('#create-workspace-form')!;
 const breadcrumbProjectsButton = document.querySelector<HTMLButtonElement>('#breadcrumb-projects')!;
 const breadcrumbDivider = document.querySelector<HTMLElement>('#breadcrumb-divider')!;
@@ -184,6 +186,7 @@ let activeWorkspaces: Workspace[] = [];
 let activeProject: Project | null = null;
 let projectReturnFocusId: number | null = null;
 let pendingWorkspaceId: number | null = null;
+let workspacePickerOptionIndex = 0;
 const workspaceViewHistory: WorkspaceLocation[] = [];
 let activeProjectMembers: Member[] = [];
 let projectIssues: Issue[] = [];
@@ -285,7 +288,8 @@ function showSignedOut(): void {
   activeProjectMembers = [];
   selectedIssue = null;
   activeWorkspaces = [];
-  workspaceSwitcher.replaceChildren();
+  workspaceSwitcherLabel.textContent = 'Choose workspace';
+  workspaceSwitcher.setAttribute('aria-label', 'Choose workspace');
   workspaceSwitcher.disabled = true;
   loginShell.hidden = false;
   loginPanel.hidden = false;
@@ -324,15 +328,7 @@ async function loadWorkspaces(): Promise<void> {
   resetPendingWorkspaceSwitch();
   const result = await api<{ workspaces: Workspace[] }>('/workspaces');
   activeWorkspaces = result.workspaces;
-  workspaceSwitcher.replaceChildren();
-  for (const workspace of activeWorkspaces) {
-    const option = document.createElement('option');
-    option.value = String(workspace.id);
-    option.textContent = workspace.name;
-    workspaceSwitcher.append(option);
-  }
-  workspaceSwitcher.value = String(activeUser?.workspace_id ?? '');
-  workspaceSwitcher.disabled = activeWorkspaces.length === 0;
+  renderWorkspaceSwitcher();
 }
 
 async function switchWorkspace(workspaceId: number, restoreSwitcherFocus = false): Promise<void> {
@@ -349,40 +345,91 @@ async function switchWorkspace(workspaceId: number, restoreSwitcherFocus = false
     await loadProjects();
     report(`Switched to ${result.workspace.name}.`);
   } catch (error) {
-    workspaceSwitcher.value = String(activeUser?.workspace_id ?? '');
+    renderWorkspaceSwitcher();
     report(error instanceof Error ? error.message : 'Could not switch workspace.', true);
   } finally {
-    workspaceSwitcher.disabled = activeWorkspaces.length === 0;
+    renderWorkspaceSwitcher();
     if (restoreSwitcherFocus && !workspaceSwitcher.disabled) workspaceSwitcher.focus();
   }
 }
 
-function resetPendingWorkspaceSwitch(restoreActiveSelection = false, focusSwitcher = false): void {
-  pendingWorkspaceId = null;
-  workspaceSwitchActions.hidden = true;
-  workspaceSwitchPrompt.textContent = '';
-  if (restoreActiveSelection) workspaceSwitcher.value = String(activeUser?.workspace_id ?? '');
-  if (focusSwitcher) workspaceSwitcher.focus();
+function renderWorkspaceSwitcher(): void {
+  const currentName = activeWorkspaces.find((workspace) => workspace.id === activeUser?.workspace_id)?.name
+    ?? 'Choose workspace';
+  workspaceSwitcherLabel.textContent = currentName;
+  workspaceSwitcher.setAttribute('aria-label', `Choose workspace. Current workspace: ${currentName}.`);
+  workspaceSwitcher.disabled = activeWorkspaces.length === 0;
 }
 
-function stageWorkspaceSwitch(): void {
-  const workspaceId = Number(workspaceSwitcher.value);
-  if (!Number.isInteger(workspaceId) || workspaceId <= 0
-    || activeUser === null || workspaceId === activeUser.workspace_id) {
+function resetPendingWorkspaceSwitch(): void {
+  pendingWorkspaceId = null;
+  if (workspacePicker.open) workspacePicker.close();
+}
+
+function updateWorkspacePickerSelection(index: number): void {
+  const workspace = activeWorkspaces[index];
+  if (workspace === undefined) return;
+  workspacePickerOptionIndex = index;
+  pendingWorkspaceId = workspace.id;
+  const currentName = activeWorkspaces.find((candidate) => candidate.id === activeUser?.workspace_id)?.name ?? 'Current workspace';
+  workspacePickerDescription.textContent = `Current: ${currentName}. Proposed: ${workspace.name}.`;
+  workspacePickerConfirm.disabled = workspace.id === activeUser?.workspace_id;
+  workspacePickerConfirm.textContent = workspacePickerConfirm.disabled ? 'Already in this workspace' : `Switch to ${workspace.name}`;
+  const options = Array.from(workspacePickerOptions.querySelectorAll<HTMLButtonElement>('.workspace-picker-option'));
+  options.forEach((option, optionIndex) => {
+    const active = optionIndex === index;
+    option.classList.toggle('is-active', active);
+    option.setAttribute('aria-selected', String(active));
+    option.tabIndex = active ? 0 : -1;
+  });
+  options[index]?.focus();
+}
+
+function stageWorkspaceSwitch(workspaceId: number): void {
+  const index = activeWorkspaces.findIndex((workspace) => workspace.id === workspaceId);
+  if (index >= 0) updateWorkspacePickerSelection(index);
+}
+
+function openWorkspacePicker(proposedWorkspaceId?: number): void {
+  if (activeUser === null || activeWorkspaces.length === 0) return;
+  if (workspacePicker.open) {
     resetPendingWorkspaceSwitch();
     return;
   }
-  pendingWorkspaceId = workspaceId;
-  const workspaceName = activeWorkspaces.find((workspace) => workspace.id === workspaceId)?.name ?? 'selected workspace';
-  workspaceSwitchPrompt.textContent = `Switch to ${workspaceName}? Press Enter to confirm or Escape to cancel.`;
-  workspaceSwitchActions.hidden = false;
+  const currentWorkspaceId = activeUser.workspace_id;
+  pendingWorkspaceId = currentWorkspaceId;
+  workspacePickerOptionIndex = 0;
+  workspacePickerOptions.replaceChildren();
+  activeWorkspaces.forEach((workspace, index) => {
+    const option = document.createElement('button');
+    option.className = 'button workspace-picker-option';
+    option.type = 'button';
+    option.setAttribute('role', 'option');
+    option.dataset.workspaceId = String(workspace.id);
+    const name = document.createElement('span');
+    name.textContent = workspace.name;
+    option.append(name);
+    if (workspace.id === currentWorkspaceId) {
+      const current = document.createElement('span');
+      current.className = 'workspace-picker-current';
+      current.textContent = 'Current';
+      option.append(current);
+    }
+    option.addEventListener('click', () => stageWorkspaceSwitch(workspace.id));
+    workspacePickerOptions.append(option);
+    if (workspace.id === currentWorkspaceId) workspacePickerOptionIndex = index;
+  });
+  const proposedIndex = activeWorkspaces.findIndex((workspace) => workspace.id === proposedWorkspaceId);
+  if (proposedIndex >= 0) workspacePickerOptionIndex = proposedIndex;
+  workspacePicker.showModal();
+  updateWorkspacePickerSelection(workspacePickerOptionIndex);
 }
 
 function commitPendingWorkspaceSwitch(): void {
   const workspaceId = pendingWorkspaceId;
-  if (workspaceId === null) return;
-  resetPendingWorkspaceSwitch();
-  workspaceSwitcher.focus();
+  pendingWorkspaceId = null;
+  if (workspacePicker.open) workspacePicker.close();
+  if (workspaceId === null || activeUser === null || workspaceId === activeUser.workspace_id) return;
   void switchWorkspace(workspaceId, true);
 }
 
@@ -680,7 +727,7 @@ function shortcutContext(target: EventTarget | null) {
     hasSelectedChatMessage: selectedChatMessageId !== null && selectedChatMessageId > 0
       && chatMessagesById.has(selectedChatMessageId),
     textInputFocused: shouldBlurOnEscape(target),
-    modalOpen: commandPalette.open || shortcutHelp.open || issueStatusPicker.open,
+    modalOpen: commandPalette.open || shortcutHelp.open || issueStatusPicker.open || workspacePicker.open,
     canDismiss: commandPalette.open || shortcutHelp.open || (!workspacePanel.hidden && (
       pendingWorkspaceId !== null
       || (!projectView.hidden && (!issueDetailView.hidden || !issueDetailEditForm.hidden
@@ -867,16 +914,16 @@ function createIssueFromLatestMessage(): void {
 function getPaletteCommands(): PaletteCommand[] {
   const commands: PaletteCommand[] = [
     { label: 'Go to Projects', detail: 'Open the project list', shortcut: 'g p', run: goToProjects },
-    { label: 'Switch workspace', detail: 'Choose a workspace; Enter switches, Escape cancels', shortcut: 'g w', run: () => workspaceSwitcher.focus() },
+    { label: 'Switch workspace', detail: 'Choose a workspace; Enter switches, Escape cancels', shortcut: 'g w', run: openWorkspacePicker },
     { label: 'Show keyboard shortcuts', detail: 'View key bindings', shortcut: '?', run: showShortcutHelp },
   ];
   for (const workspace of activeWorkspaces) {
     if (workspace.id === activeUser?.workspace_id) continue;
     commands.splice(1, 0, {
       label: `Switch to ${workspace.name}`,
-      detail: `Open the ${workspace.name} client workspace`,
+      detail: `Review and confirm switching to ${workspace.name}`,
       shortcut: '',
-      run: () => void switchWorkspace(workspace.id, true),
+      run: () => openWorkspacePicker(workspace.id),
     });
   }
   if (activeUser?.role === 'admin' && !projectsView.hidden) {
@@ -1019,6 +1066,7 @@ function runPaletteCommand(index: number): void {
 }
 
 function openCommandPalette(): void {
+  if (workspacePicker.open) resetPendingWorkspaceSwitch();
   if (issueStatusPicker.open) closeIssueStatusPicker();
   if (shortcutHelp.open) shortcutHelp.close();
   if (commandPalette.open) {
@@ -1034,6 +1082,7 @@ function openCommandPalette(): void {
 }
 
 function showShortcutHelp(): void {
+  if (workspacePicker.open) resetPendingWorkspaceSwitch();
   if (issueStatusPicker.open) closeIssueStatusPicker();
   if (commandPalette.open) closeCommandPalette();
   if (shortcutHelp.open) {
@@ -1045,14 +1094,14 @@ function showShortcutHelp(): void {
 }
 
 function dismissCurrentView(): void {
-  if (issueStatusPicker.open) {
+  if (workspacePicker.open) {
+    resetPendingWorkspaceSwitch();
+  } else if (issueStatusPicker.open) {
     closeIssueStatusPicker();
   } else if (commandPalette.open) {
     closeCommandPalette();
   } else if (shortcutHelp.open) {
     shortcutHelp.close();
-  } else if (pendingWorkspaceId !== null) {
-    resetPendingWorkspaceSwitch(true, true);
   } else if (!workspacePanel.hidden && !projectView.hidden && !issueDetailEditForm.hidden) {
     issueDetailCancelButton.click();
   } else if (!workspacePanel.hidden && !projectView.hidden && !issueDetailView.hidden) {
@@ -1103,10 +1152,6 @@ function blurTextInput(): void {
   const focused = document.activeElement;
   if (!(focused instanceof HTMLElement)) return;
   focused.blur();
-  if (focused === workspaceSwitcher) {
-    resetPendingWorkspaceSwitch(true);
-    return;
-  }
   if (issueForm.contains(focused)) {
     if (issueQuickAddHasDraft()) {
       issueQuickAddEscapePending = true;
@@ -1139,7 +1184,7 @@ function executeShortcut(action: ShortcutAction): void {
     case 'shortcut-help': showShortcutHelp(); break;
     case 'await-projects-key': startGoPrefix(); break;
     case 'projects': clearGoPrefix(); goToProjects(); break;
-    case 'workspace-switcher': workspaceSwitcher.focus(); break;
+    case 'workspace-switcher': openWorkspacePicker(); break;
     case 'issues': goToProjectIssues(); break;
     case 'chat': focusProjectChat(); break;
     case 'members': goToProjectMembers(); break;
@@ -1174,7 +1219,7 @@ function executeShortcut(action: ShortcutAction): void {
 }
 
 function handleKeyboardShortcut(event: KeyboardEvent): void {
-  if ((commandPalette.open || shortcutHelp.open || issueStatusPicker.open)
+  if ((commandPalette.open || shortcutHelp.open || issueStatusPicker.open || workspacePicker.open)
     && event.key !== 'Escape'
     && !((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k')) return;
   const context = shortcutContext(event.target);
@@ -1217,7 +1262,8 @@ issueStatusPicker.addEventListener('close', () => {
   const returnFocus = issueStatusPickerReturnFocus;
   issueStatusPickerIssue = null;
   issueStatusPickerReturnFocus = null;
-  if (returnFocus !== null && returnFocus.isConnected && returnFocus.closest('[hidden]') === null) {
+  if (returnFocus !== null && returnFocus.isConnected && returnFocus.closest('[hidden]') === null
+    && !commandPalette.open && !shortcutHelp.open && !workspacePicker.open) {
     returnFocus.focus();
   }
 });
@@ -2079,26 +2125,28 @@ loginForm.addEventListener('submit', async (event) => {
   }
 });
 
-workspaceSwitcher.addEventListener('change', stageWorkspaceSwitch);
-workspaceSwitcher.addEventListener('keydown', (event) => {
-  if (event.key === 'Enter' && !event.isComposing) {
-    if (pendingWorkspaceId === null && Number(workspaceSwitcher.value) !== activeUser?.workspace_id) {
-      stageWorkspaceSwitch();
-    }
-    if (pendingWorkspaceId !== null) commitPendingWorkspaceSwitch();
-  } else if (event.key === 'Escape' && pendingWorkspaceId !== null) {
-    event.stopPropagation();
-    workspaceSwitcher.blur();
-    resetPendingWorkspaceSwitch(true);
-  }
+workspaceSwitcher.addEventListener('click', () => openWorkspacePicker());
+workspacePickerCancel.addEventListener('click', () => resetPendingWorkspaceSwitch());
+workspacePickerConfirm.addEventListener('click', commitPendingWorkspaceSwitch);
+workspacePicker.addEventListener('close', () => {
+  pendingWorkspaceId = null;
+  if (!workspacePanel.hidden && !workspaceSwitcher.disabled
+    && !commandPalette.open && !shortcutHelp.open && !issueStatusPicker.open) workspaceSwitcher.focus();
 });
-workspaceSwitcher.addEventListener('keyup', (event) => {
-  if (event.key === 'Enter' && !event.isComposing && pendingWorkspaceId !== null) {
+workspacePicker.addEventListener('keydown', (event) => {
+  if (!(event.target instanceof HTMLElement) || !event.target.matches('.workspace-picker-option')) return;
+  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+    event.preventDefault();
+    event.stopPropagation();
+    const offset = event.key === 'ArrowDown' ? 1 : -1;
+    const index = Math.max(0, Math.min(activeWorkspaces.length - 1, workspacePickerOptionIndex + offset));
+    updateWorkspacePickerSelection(index);
+  } else if (event.key === 'Enter') {
+    event.preventDefault();
+    event.stopPropagation();
     commitPendingWorkspaceSwitch();
   }
 });
-workspaceSwitchConfirm.addEventListener('click', commitPendingWorkspaceSwitch);
-workspaceSwitchCancel.addEventListener('click', () => resetPendingWorkspaceSwitch(true, true));
 
 createWorkspaceForm.addEventListener('submit', async (event) => {
   event.preventDefault();

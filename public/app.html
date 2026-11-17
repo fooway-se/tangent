@@ -36,14 +36,10 @@
       <aside class="workspace-sidebar" aria-label="Workspace navigation">
         <div class="workspace-brand">
           <a class="brand" href="/app.html" aria-label="Tangent home"><span class="brand-mark" aria-hidden="true">T</span><span>Tangent</span></a>
-          <select id="workspace-switcher" aria-label="Choose workspace" disabled></select>
-          <div id="workspace-switch-actions" class="workspace-switch-actions" hidden>
-            <p id="workspace-switch-prompt" class="workspace-switch-prompt" role="status" aria-live="polite"></p>
-            <div class="workspace-switch-buttons">
-              <button id="workspace-switch-confirm" class="button button-quiet" type="button">Switch</button>
-              <button id="workspace-switch-cancel" class="button button-quiet" type="button">Cancel</button>
-            </div>
-          </div>
+          <button id="workspace-switcher" class="workspace-picker-trigger" type="button" aria-haspopup="dialog" aria-label="Choose workspace" disabled>
+            <span id="workspace-switcher-label">Choose workspace</span>
+            <span class="workspace-picker-caret" aria-hidden="true">▾</span>
+          </button>
         </div>
         <nav id="workspace-nav" class="workspace-nav" aria-label="Workspace">
           <button id="projects-nav" class="workspace-nav-button is-active" type="button" aria-current="page">Projects</button>
@@ -277,6 +273,21 @@
       </section>
     </dialog>
 
+    <dialog id="workspace-picker" class="workspace-picker" aria-labelledby="workspace-picker-heading" aria-describedby="workspace-picker-description">
+      <section class="workspace-picker-content">
+        <header class="dialog-heading">
+          <h2 id="workspace-picker-heading">Switch workspace</h2>
+          <button id="workspace-picker-cancel" class="button button-quiet" type="button">Cancel</button>
+        </header>
+        <p id="workspace-picker-description" class="workspace-picker-description" role="status" aria-live="polite"></p>
+        <div id="workspace-picker-options" class="workspace-picker-options" role="listbox" aria-label="Choose a workspace"></div>
+        <div class="workspace-picker-actions">
+          <button id="workspace-picker-confirm" class="button button-primary" type="button" disabled>Choose a workspace</button>
+        </div>
+        <p class="workspace-picker-help"><kbd>↑</kbd>/<kbd>↓</kbd> Choose · <kbd>Enter</kbd> Switch · <kbd>Esc</kbd> Cancel</p>
+      </section>
+    </dialog>
+
     <dialog id="shortcut-help" class="shortcut-help" aria-labelledby="shortcut-help-heading">
       <section class="shortcut-help-content">
         <header class="dialog-heading">
@@ -292,7 +303,7 @@
           <div><dt><kbd>/</kbd></dt><dd>Focus the issue filter</dd></div>
           <div><dt><kbd>Enter</kbd></dt><dd>Open a selected project or issue; submit a form</dd></div>
           <div><dt><kbd>g</kbd>, <kbd>p</kbd></dt><dd>Go to projects</dd></div>
-          <div><dt><kbd>g</kbd>, <kbd>w</kbd></dt><dd>Choose a workspace; Enter switches, Escape cancels</dd></div>
+          <div><dt><kbd>g</kbd>, <kbd>w</kbd></dt><dd>Open the workspace picker; arrows choose, Enter switches, Escape cancels</dd></div>
           <div><dt><kbd>g</kbd>, <kbd>i</kbd></dt><dd>Focus project issues</dd></div>
           <div><dt><kbd>g</kbd>, <kbd>c</kbd></dt><dd>Focus project chat</dd></div>
           <div><dt><kbd>g</kbd>, <kbd>m</kbd></dt><dd>Focus project members</dd></div>
