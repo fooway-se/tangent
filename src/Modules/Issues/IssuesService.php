@@ -78,6 +78,20 @@ final class IssuesService
             throw new ApiException(422, 'validation_failed', 'Guest approval can only be requested for a shared issue.');
         }
 
+        $sourceChannelId = null;
+        $sourceMessageId = null;
+        if (array_key_exists('source_message_id', $input) && $input['source_message_id'] !== null) {
+            if (!is_int($input['source_message_id']) || $input['source_message_id'] < 1) {
+                throw new ApiException(422, 'validation_failed', 'source_message_id must be a positive integer or null.');
+            }
+            $sourceContext = $this->chat->issueContext($user, $input['source_message_id']);
+            if ($sourceContext['project_id'] !== $projectId) {
+                throw new ApiException(422, 'validation_failed', 'The source message must belong to the issue project.');
+            }
+            $sourceChannelId = $sourceContext['channel_id'];
+            $sourceMessageId = $sourceContext['root_message_id'];
+        }
+
         $ownsTransaction = !$this->pdo->inTransaction();
         if ($ownsTransaction) $this->pdo->beginTransaction();
         try {
@@ -87,8 +101,8 @@ final class IssuesService
                 $title,
                 $description,
                 $user->id,
-                null,
-                null,
+                $sourceChannelId,
+                $sourceMessageId,
                 $type,
                 $assigneeId,
                 $milestoneId,

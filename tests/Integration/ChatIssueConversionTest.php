@@ -49,6 +49,48 @@ final class ChatIssueConversionTest extends ApiTestCase
         self::assertSame($parent->body['message']['id'], $created->body['issue']['source_message_id']);
     }
 
+    public function testQuickAddCanCreateAnEditedIssueFromAChatMessage(): void
+    {
+        $admin = $this->login($this->adminEmail);
+        $projectId = $this->createProject($admin, 'Edited chat issue');
+        $parent = $this->postMessage($projectId, $admin, ['body' => 'Original thread context']);
+        self::assertSame(201, $parent->status, json_encode($parent->body));
+        $reply = $this->postMessage($projectId, $admin, [
+            'body' => 'The source reply to turn into an issue',
+            'parent_id' => $parent->body['message']['id'],
+        ]);
+        self::assertSame(201, $reply->status, json_encode($reply->body));
+
+        $created = $this->apiCookieRequest(
+            'POST',
+            "/api/v1/projects/{$projectId}/issues",
+            $admin['cookie'],
+            [
+                'title' => 'Edited issue title',
+                'description' => 'Details added before submitting.',
+                'source_message_id' => $reply->body['message']['id'],
+            ],
+            $admin['csrf'],
+        );
+        self::assertSame(201, $created->status, json_encode($created->body));
+        self::assertSame('Edited issue title', $created->body['issue']['title']);
+        self::assertSame('Details added before submitting.', $created->body['issue']['description']);
+        self::assertSame($reply->body['message']['channel_id'], $created->body['issue']['source_channel_id']);
+        self::assertSame($parent->body['message']['id'], $created->body['issue']['source_message_id']);
+
+        $otherProjectId = $this->createProject($admin, 'Other source project');
+        $otherMessage = $this->postMessage($otherProjectId, $admin, ['body' => 'Wrong project source']);
+        self::assertSame(201, $otherMessage->status, json_encode($otherMessage->body));
+        $mismatched = $this->apiCookieRequest(
+            'POST',
+            "/api/v1/projects/{$projectId}/issues",
+            $admin['cookie'],
+            ['title' => 'Must not link cross-project context', 'source_message_id' => $otherMessage->body['message']['id']],
+            $admin['csrf'],
+        );
+        self::assertSame(422, $mismatched->status);
+    }
+
     public function testNonMemberCannotCreateIssueFromAnotherProjectsMessage(): void
     {
         $admin = $this->login($this->adminEmail);

@@ -390,6 +390,8 @@ let chatCancelReply: HTMLButtonElement | null = null;
 let chatReplyParent: { id: number; name: string; body: string } | null = null;
 let issueQuickAddEscapePending = false;
 let issueQuickAddReturnFocus: HTMLElement | null = null;
+let issueQuickAddSourceMessageId: number | null = null;
+let issueQuickAddSourceProjectId: number | null = null;
 let goPrefixPending = false;
 let goPrefixTimer: number | null = null;
 let statusMessageTimer: number | null = null;
@@ -504,6 +506,9 @@ function report(message: string, isError = false): void {
 function showSignedOut(): void {
   workspaceViewHistory.length = 0;
   projectReturnFocusId = null;
+  issueQuickAddSourceMessageId = null;
+  issueQuickAddSourceProjectId = null;
+  issueQuickAddReturnFocus = null;
   stopIssuePolling();
   resetPendingWorkspaceSwitch();
   stopChatPolling();
@@ -1358,6 +1363,36 @@ function createIssueFromLatestMessage(): void {
   latestChatIssueButton()?.click();
 }
 
+function beginCreateIssueFromChatMessage(message: ChatMessage, trigger: HTMLButtonElement): void {
+  const projectId = activeProject?.id;
+  if (projectId === undefined || activeChatProjectId !== projectId) return;
+  if (issueQuickAddSourceMessageId === message.id && issueQuickAddSourceProjectId === projectId) {
+    issueQuickAddTitle.focus();
+    return;
+  }
+  if (issueQuickAddHasDraft()) {
+    report('Finish or cancel the current issue draft first.');
+    issueQuickAddTitle.focus();
+    return;
+  }
+
+  issueForm.reset();
+  issueQuickAddSourceMessageId = message.id;
+  issueQuickAddSourceProjectId = projectId;
+  issueQuickAddReturnFocus = trigger;
+  issueQuickAddTitle.value = Array.from(message.body).slice(0, 200).join('');
+  issueDescriptionDetails.open = false;
+  issueQuickAddEscapePending = false;
+  updateIssueQuickAddApproval();
+  selectedIssue = null;
+  issueDetailEditForm.hidden = true;
+  issueDetailDisplay.hidden = false;
+  switchProjectTab('issues');
+  setIssueQuickAddActive(true);
+  issueQuickAddTitle.focus();
+  issueQuickAddTitle.setSelectionRange(issueQuickAddTitle.value.length, issueQuickAddTitle.value.length);
+}
+
 function getPaletteCommands(): PaletteCommand[] {
   const commands: PaletteCommand[] = [
     { label: 'Go to Projects', detail: 'Open the project list', shortcut: 'g p', run: goToProjects },
@@ -1605,7 +1640,8 @@ function dismissCurrentView(): void {
 function focusIssueQuickAddReturnTarget(): void {
   const target = issueQuickAddReturnFocus;
   const dialog = target?.closest('dialog') ?? null;
-  if (target !== null && projectView.contains(target) && target.isConnected && target.closest('[hidden]') === null
+  if (target !== null && (projectView.contains(target) || projectChatColumn.contains(target))
+    && target.isConnected && target.closest('[hidden]') === null
     && (dialog === null || dialog.open)) {
     target.focus();
   } else {
@@ -1626,11 +1662,14 @@ function updateIssueQuickAddApproval(): void {
 function cancelIssueQuickAdd(): void {
   issueForm.reset();
   issueQuickAddTitle.setCustomValidity('');
+  issueQuickAddSourceMessageId = null;
+  issueQuickAddSourceProjectId = null;
   issueDescriptionDetails.open = false;
   issueQuickAddEscapePending = false;
   setIssueQuickAddActive(false);
   updateIssueQuickAddApproval();
   focusIssueQuickAddReturnTarget();
+  issueQuickAddReturnFocus = null;
   resumeDeferredIssuePolling();
 }
 
@@ -1924,24 +1963,11 @@ function appendChatMessage(message: ChatMessage, scrollToBottom = false): void {
   createIssue.className = 'button button-quiet chat-create-issue-button';
   createIssue.type = 'button';
   createIssue.textContent = 'Create issue';
-  createIssue.addEventListener('click', async () => {
+  createIssue.addEventListener('click', () => {
     selectChatMessage(message.id, false);
     const projectId = activeProject?.id;
     if (projectId === undefined || activeChatProjectId !== projectId) return;
-    createIssue.disabled = true;
-    createIssue.textContent = 'Creating…';
-    try {
-      const result = await api<{ issue: Issue }>(`/messages/${message.id}/issue`, { method: 'POST' });
-      if (activeProject?.id !== projectId) return;
-      createIssue.textContent = 'Created';
-      report(`Created issue: ${result.issue.title}`);
-      selectedIssue = null;
-      switchProjectTab('issues');
-    } catch (error) {
-      createIssue.disabled = false;
-      createIssue.textContent = 'Create issue';
-      report(error instanceof Error ? error.message : 'Could not create an issue from this message.', true);
-    }
+    beginCreateIssueFromChatMessage(message, createIssue);
   });
   const actions = document.createElement('div');
   actions.className = 'chat-message-actions';
@@ -2361,6 +2387,7 @@ issueForm.addEventListener('submit', async (event) => {
   else if (typeof milestoneValue === 'string' && milestoneValue !== '') issueInput.milestone_id = Number(milestoneValue);
   if (issueQuickAddShared.checked) issueInput.is_shared = true;
   if (issueQuickAddApproval.checked) issueInput.approval_requested = true;
+  if (issueQuickAddSourceMessageId !== null) issueInput.source_message_id = issueQuickAddSourceMessageId;
   try {
     await api(`/projects/${projectId}/issues`, {
       method: 'POST',
@@ -2368,6 +2395,9 @@ issueForm.addEventListener('submit', async (event) => {
     });
     issueForm.reset();
     issueQuickAddTitle.setCustomValidity('');
+    issueQuickAddSourceMessageId = null;
+    issueQuickAddSourceProjectId = null;
+    issueQuickAddReturnFocus = issuesTabButton;
     issueDescriptionDetails.open = false;
     issueQuickAddEscapePending = false;
     updateIssueQuickAddApproval();
@@ -2772,6 +2802,16 @@ async function loadProjectDetail(
   if (milestoneManagerDialog.open) closeMilestoneManager();
   stopChatPolling();
   stopIssuePolling();
+  if (issueQuickAddSourceProjectId !== null && issueQuickAddSourceProjectId !== projectId) {
+    issueForm.reset();
+    issueQuickAddSourceMessageId = null;
+    issueQuickAddSourceProjectId = null;
+    issueQuickAddReturnFocus = null;
+    issueQuickAddEscapePending = false;
+    issueDescriptionDetails.open = false;
+    setIssueQuickAddActive(false);
+    updateIssueQuickAddApproval();
+  }
   selectedIssue = null;
   issueDetailEditForm.hidden = true;
   issueDetailDisplay.hidden = false;
