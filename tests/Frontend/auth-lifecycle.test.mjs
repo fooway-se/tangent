@@ -70,6 +70,10 @@ test('workspace administration renders member and invite data as text', () => {
   assert.match(app, /await loadWorkspaceAdmin\(\)/);
 });
 
+test('generated credential links remain visible outside the hidden admin tabs', () => {
+  assert.match(html, /id="workspace-admin-workspaces-panel"[\s\S]*?<\/section>\s*<section id="generated-credential-link"/);
+});
+
 test('workspace administration has keyboard tabs and member activation controls', () => {
   assert.ok(/function switchWorkspaceAdminTab\(/.test(app), 'Workspace admin tab switching is implemented.');
   assert.ok(/workspaceAdminTabs\.addEventListener\('keydown'/.test(app), 'Workspace admin tabs support keyboard navigation.');

@@ -383,15 +383,6 @@
                   </div>
                   <button class="button button-primary" type="submit">Create invite link</button>
                 </form>
-                <section id="generated-credential-link" class="generated-credential-link" hidden aria-live="polite" aria-labelledby="generated-credential-heading">
-                  <h3 id="generated-credential-heading"></h3>
-                  <p id="generated-credential-description" class="panel-description"></p>
-                  <label>Link
-                    <input id="generated-credential-url" type="url" readonly aria-label="Generated credential link">
-                  </label>
-                  <button id="copy-generated-credential-link" class="button button-quiet" type="button">Copy link</button>
-                  <p id="generated-credential-copy-status" class="panel-description" role="status" aria-live="polite"></p>
-                </section>
               </article>
               <article class="panel admin-panel">
                 <h2>Pending invites</h2>
@@ -410,6 +401,15 @@
                   <button class="button button-primary" type="submit">Create workspace</button>
                 </form>
               </article>
+            </section>
+            <section id="generated-credential-link" class="panel admin-panel generated-credential-link" hidden aria-live="polite" aria-labelledby="generated-credential-heading">
+              <h3 id="generated-credential-heading"></h3>
+              <p id="generated-credential-description" class="panel-description"></p>
+              <label>Link
+                <input id="generated-credential-url" type="url" readonly aria-label="Generated credential link">
+              </label>
+              <button id="copy-generated-credential-link" class="button button-quiet" type="button">Copy link</button>
+              <p id="generated-credential-copy-status" class="panel-description" role="status" aria-live="polite"></p>
             </section>
             <dialog id="workspace-member-deactivation-dialog" class="issue-delete-confirmation" aria-labelledby="workspace-member-deactivation-heading" aria-describedby="workspace-member-deactivation-description">
               <section class="issue-delete-confirmation-content">
