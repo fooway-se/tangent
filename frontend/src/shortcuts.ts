@@ -80,21 +80,21 @@ export function resolveShortcut(event: ShortcutEvent, context: ShortcutContext):
   if (key === 'g' && context.hasWorkspace) return 'await-projects-key';
 
   if (context.chatMessagesFocused && context.hasSelectedChatMessage) {
-    if (key === 'j') return 'next-chat-message';
-    if (key === 'k') return 'previous-chat-message';
+    if (key === 'j' || key === 'arrowdown') return 'next-chat-message';
+    if (key === 'k' || key === 'arrowup') return 'previous-chat-message';
     if (event.key === 'Enter') return 'focus-chat-composer';
     if (key === 'r') return 'reply-to-chat-message';
     if (key === 'i') return 'issue-from-selected-chat-message';
   }
 
   if (context.projectListVisible) {
-    if (key === 'j') return 'next-project';
-    if (key === 'k') return 'previous-project';
+    if (key === 'j' || key === 'arrowdown') return 'next-project';
+    if (key === 'k' || key === 'arrowup') return 'previous-project';
     if (event.key === 'Enter' && context.hasSelectedProject) return 'open-selected-project';
   }
   if (context.issueListVisible || context.issueDetailVisible) {
-    if (key === 'j') return 'next';
-    if (key === 'k') return 'previous';
+    if (key === 'j' || key === 'arrowdown') return 'next';
+    if (key === 'k' || key === 'arrowup') return 'previous';
     if (event.key === 'Enter' && context.issueListVisible && context.hasSelectedIssue) return 'open-selected';
   }
   if (key === 'c' && context.hasProject) return 'create-issue';

@@ -35,9 +35,9 @@ export function resolveShortcut(event, context) {
     if (key === 'g' && context.hasWorkspace)
         return 'await-projects-key';
     if (context.chatMessagesFocused && context.hasSelectedChatMessage) {
-        if (key === 'j')
+        if (key === 'j' || key === 'arrowdown')
             return 'next-chat-message';
-        if (key === 'k')
+        if (key === 'k' || key === 'arrowup')
             return 'previous-chat-message';
         if (event.key === 'Enter')
             return 'focus-chat-composer';
@@ -47,17 +47,17 @@ export function resolveShortcut(event, context) {
             return 'issue-from-selected-chat-message';
     }
     if (context.projectListVisible) {
-        if (key === 'j')
+        if (key === 'j' || key === 'arrowdown')
             return 'next-project';
-        if (key === 'k')
+        if (key === 'k' || key === 'arrowup')
             return 'previous-project';
         if (event.key === 'Enter' && context.hasSelectedProject)
             return 'open-selected-project';
     }
     if (context.issueListVisible || context.issueDetailVisible) {
-        if (key === 'j')
+        if (key === 'j' || key === 'arrowdown')
             return 'next';
-        if (key === 'k')
+        if (key === 'k' || key === 'arrowup')
             return 'previous';
         if (event.key === 'Enter' && context.issueListVisible && context.hasSelectedIssue)
             return 'open-selected';
