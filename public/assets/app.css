@@ -596,6 +596,16 @@ dialog::backdrop { background: rgba(38, 35, 30, 0.6); }
 .guest-update-item { display: grid; grid-template-columns: minmax(90px, 130px) minmax(0, 1fr); align-items: baseline; gap: 12px; border-top: 1px solid var(--screen-line); padding: 10px 0; }
 .guest-update-date { color: var(--screen-muted); font-size: 11px; white-space: nowrap; }
 .guest-update-item p { margin: 0; color: var(--screen-ink); font-size: 13px; overflow-wrap: anywhere; }
+.guest-conversation-list { display: grid; gap: 9px; margin: 0; padding: 0; list-style: none; }
+.guest-conversation-message { width: min(100%, 780px); border: 1px solid var(--screen-border); border-radius: 6px; padding: 10px 12px; background: var(--screen-panel); }
+.guest-conversation-message.is-own { margin-left: 0; border-color: var(--accent-edge); }
+.guest-conversation-message.is-reply { margin-left: auto; }
+.guest-conversation-message.is-own.is-reply { margin-right: auto; margin-left: 0; }
+.guest-conversation-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.guest-conversation-author { color: var(--screen-ink); font: 700 12px var(--font-display); }
+.guest-conversation-message.is-own .guest-conversation-author { color: var(--accent); }
+.guest-conversation-date { color: var(--screen-muted); font-size: 10px; }
+.guest-conversation-body { margin: 5px 0 0; color: var(--screen-ink); font-size: 13px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
 .guest-write { display: grid; gap: 0; overflow: hidden; border: 1px solid var(--screen-border); border-radius: 6px; background: var(--screen-panel); }
 .guest-write textarea { display: block; width: 100%; min-height: 92px; resize: vertical; border: 0; border-radius: 0; padding: 14px; background: var(--screen-inset); box-shadow: none; font-size: 13px; }
 .guest-composer-footer { display: flex; min-height: 54px; align-items: center; justify-content: space-between; gap: 12px; border-top: 1px solid var(--screen-border); padding: 8px 14px; }
@@ -618,6 +628,7 @@ dialog::backdrop { background: rgba(38, 35, 30, 0.6); }
   .guest-screen-heading { min-height: 54px; padding: 0 16px 8px; }
   .guest-project-breadcrumb { gap: 8px; font-size: 12px; }
   .guest-page-content { gap: 22px; padding: 22px 16px 24px; }
+  .guest-conversation-message.is-reply { margin-left: auto; }
   .guest-project-description { font-size: 12px; }
   .guest-stats { grid-template-columns: minmax(0, 1fr); gap: 9px; }
   .guest-stat { min-height: 0; padding: 11px 12px; }

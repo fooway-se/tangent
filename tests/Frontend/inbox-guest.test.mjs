@@ -82,6 +82,17 @@ test('guest progress bars reuse the shared segmented progress treatment', () => 
   assert.match(css, /#issue-progress\.is-complete::-webkit-progress-value, \.guest-progress\.is-complete::-webkit-progress-value\s*\{[^}]*var\(--success\)/);
 });
 
+test('guest view renders its shared conversation alongside the composer', () => {
+  assert.match(guestSource, /guest-conversation-list/);
+  assert.match(guestSource, /message\.author_id === handlers\.userId/);
+  assert.match(guestSource, /message\.author_name/);
+  assert.match(app, /await api\(`\/projects\/\$\{projectId\}\/client-comments`[\s\S]*?await loadClientView\(projectId\)/);
+  assert.match(app, /Your reply will be visible to the guest/);
+  assert.doesNotMatch(app, /Message sent to the team/);
+  assert.match(css, /\.guest-conversation-message\.is-own\s*\{[^}]*margin-left:\s*0/);
+  assert.match(css, /\.guest-conversation-message\.is-reply\s*\{[^}]*margin-left:\s*auto/);
+});
+
 test('guest with no projects gets the same framed customer screen', () => {
   assert.match(app, /renderClientEmptyState\(guestMain/);
   assert.match(guestSource, /export function renderClientEmptyState\(/);

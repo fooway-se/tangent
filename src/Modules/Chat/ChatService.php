@@ -58,6 +58,13 @@ final class ChatService
         return $message;
     }
 
+    /** @return list<array{id: int, parent_id: ?int, author_id: int, author_name: string, body: string, created_at: string}> */
+    public function clientConversationMessages(AuthenticatedUser $user, int $projectId): array
+    {
+        $channelId = $this->visibleProjectChannel($user, $projectId, 'client_view.read');
+        return $this->chat->listClientConversationMessages($user->workspaceId, $channelId);
+    }
+
     /** @return array{events: list<array<string, mixed>>, etag: string, not_modified: bool} */
     public function events(AuthenticatedUser $user, int $sinceId, ?string $ifNoneMatch): array
     {
@@ -100,14 +107,17 @@ final class ChatService
         }
 
         $threadParticipants = [];
+        $clientVisible = false;
         if ($parentId !== null) {
             $rootId = $this->chat->threadRootId($user->workspaceId, $channelId, $parentId);
             $threadParticipants = $this->chat->threadParticipantIds($user->workspaceId, $channelId, $rootId);
+            $rootMessage = $this->chat->getMessage($user->workspaceId, $channelId, $rootId);
+            $clientVisible = ($rootMessage['is_client_visible'] ?? false) === true;
         }
         $ownsTransaction = !$this->pdo->inTransaction();
         if ($ownsTransaction) $this->pdo->beginTransaction();
         try {
-            $message = $this->chat->createMessage($user->workspaceId, $channelId, $user->id, $parentId, $body);
+            $message = $this->chat->createMessage($user->workspaceId, $channelId, $user->id, $parentId, $body, $clientVisible);
             $this->inboxEvents->recordMessage($user->workspaceId, $projectId, $user->id, $message, $threadParticipants);
             if ($ownsTransaction) $this->pdo->commit();
             return $message;

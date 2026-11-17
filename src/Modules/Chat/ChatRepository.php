@@ -140,6 +140,48 @@ final class ChatRepository
         return array_map(self::normalize(...), $statement->fetchAll(PDO::FETCH_ASSOC));
     }
 
+    /** @return list<array{id: int, parent_id: ?int, author_id: int, author_name: string, body: string, created_at: string}> */
+    public function listClientConversationMessages(int $workspaceId, int $channelId): array
+    {
+        $statement = $this->pdo->prepare(
+            'WITH RECURSIVE client_conversation AS (
+                SELECT m.id, m.parent_id, m.author_id, m.body, m.created_at
+                FROM messages m
+                WHERE m.workspace_id = :workspace_id AND m.channel_id = :channel_id
+                  AND m.parent_id IS NULL AND m.is_client_visible = 1
+                UNION ALL
+                SELECT child.id, child.parent_id, child.author_id, child.body, child.created_at
+                FROM messages child
+                INNER JOIN client_conversation parent ON child.parent_id = parent.id
+                WHERE child.workspace_id = :child_workspace_id AND child.channel_id = :child_channel_id
+            ), latest_messages AS (
+                SELECT id, parent_id, author_id, body, created_at
+                FROM client_conversation
+                ORDER BY id DESC
+                LIMIT 100
+            )
+            SELECT messages.id, messages.parent_id, messages.author_id,
+                   users.name AS author_name, messages.body, messages.created_at
+            FROM latest_messages messages
+            INNER JOIN users ON users.workspace_id = :author_workspace_id AND users.id = messages.author_id
+            ORDER BY messages.id ASC'
+        );
+        $statement->execute([
+            'workspace_id' => $workspaceId,
+            'channel_id' => $channelId,
+            'child_workspace_id' => $workspaceId,
+            'child_channel_id' => $channelId,
+            'author_workspace_id' => $workspaceId,
+        ]);
+
+        return array_map(static function (array $message): array {
+            $message['id'] = (int) $message['id'];
+            $message['parent_id'] = $message['parent_id'] === null ? null : (int) $message['parent_id'];
+            $message['author_id'] = (int) $message['author_id'];
+            return $message;
+        }, $statement->fetchAll(PDO::FETCH_ASSOC));
+    }
+
     public function messageExists(int $workspaceId, int $channelId, int $messageId): bool
     {
         $statement = $this->pdo->prepare(

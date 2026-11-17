@@ -7,6 +7,7 @@ namespace Tangent\Modules\Projects;
 use Tangent\Core\ApiException;
 use Tangent\Core\AuthenticatedUser;
 use Tangent\Core\Permissions;
+use Tangent\Modules\Chat\ChatService;
 use Tangent\Modules\Issues\IssueRepository;
 
 final class ClientViewService
@@ -15,6 +16,7 @@ final class ClientViewService
         private readonly ProjectRepository $projects,
         private readonly MilestoneRepository $milestones,
         private readonly IssueRepository $issues,
+        private readonly ChatService $chat,
     ) {
     }
 
@@ -71,6 +73,7 @@ final class ClientViewService
             'milestones' => $milestones,
             'items' => $items,
             'updates' => $this->issues->sharedStatusUpdates($user->workspaceId, $projectId),
+            'messages' => $this->chat->clientConversationMessages($user, $projectId),
         ];
     }
 }

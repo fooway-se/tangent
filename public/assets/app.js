@@ -1707,9 +1707,13 @@ function avatarInitials(name) {
     return name.trim().split(/\s+/).slice(0, 2).map((part) => part[0] ?? '').join('').toUpperCase();
 }
 function setChatReplyParent(message) {
+    const clientVisible = message.is_client_visible === true;
     chatReplyParent = { id: message.id, name: message.author_name };
     if (chatReplyHint !== null) {
-        chatReplyHint.textContent = `Replying to ${message.author_name}`;
+        chatReplyHint.textContent = clientVisible
+            ? `Replying to ${message.author_name}. Your reply will be visible to the guest.`
+            : `Replying to ${message.author_name}`;
+        chatReplyHint.classList.toggle('is-client-visible', clientVisible);
         chatReplyHint.hidden = false;
     }
     if (chatCancelReply !== null)
@@ -1718,8 +1722,10 @@ function setChatReplyParent(message) {
 }
 function clearChatReplyParent() {
     chatReplyParent = null;
-    if (chatReplyHint !== null)
+    if (chatReplyHint !== null) {
         chatReplyHint.hidden = true;
+        chatReplyHint.classList.remove('is-client-visible');
+    }
     if (chatCancelReply !== null)
         chatCancelReply.hidden = true;
 }
@@ -3247,13 +3253,14 @@ async function loadClientView(projectId) {
         const view = await api(`/projects/${projectId}/client-view`);
         guestTitle.textContent = 'Client portal';
         renderClientView(guestMain, view, {
+            userId: activeUser?.id ?? 0,
             approve: async (approvalId) => {
                 await api(`/approvals/${approvalId}/approve`, { method: 'POST' });
                 await loadClientView(projectId);
             },
             comment: async (body) => {
                 await api(`/projects/${projectId}/client-comments`, { method: 'POST', body: JSON.stringify({ body }) });
-                report('Message sent to the team.');
+                await loadClientView(projectId);
             },
         });
     }

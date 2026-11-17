@@ -88,6 +88,36 @@ final class GuestViewTest extends ApiTestCase
         self::assertSame(201, $comment->status, json_encode($comment->body));
         self::assertSame('Please include the due date.', $comment->body['message']['body']);
 
+        $reply = $this->cookieRequest(
+            'POST',
+            "/api/v1/projects/{$projectId}/messages",
+            $admin['cookie'],
+            ['body' => 'We will add it today.', 'parent_id' => $comment->body['message']['id']],
+            $admin['csrf'],
+        );
+        self::assertSame(201, $reply->status, json_encode($reply->body));
+        self::assertTrue($reply->body['message']['is_client_visible']);
+        $legacyReply = $this->pdo->prepare(
+            'UPDATE messages SET is_client_visible = 0 WHERE workspace_id = :workspace_id AND id = :id'
+        );
+        $legacyReply->execute(['workspace_id' => $this->workspaceId, 'id' => $reply->body['message']['id']]);
+        $internal = $this->cookieRequest(
+            'POST',
+            "/api/v1/projects/{$projectId}/messages",
+            $admin['cookie'],
+            ['body' => 'SECRET INTERNAL DISCUSSION'],
+            $admin['csrf'],
+        );
+        self::assertSame(201, $internal->status, json_encode($internal->body));
+
+        $clientView = $this->cookieRequest('GET', "/api/v1/projects/{$projectId}/client-view", $guest['cookie']);
+        self::assertSame(200, $clientView->status, json_encode($clientView->body));
+        self::assertSame(
+            ['Please include the due date.', 'We will add it today.'],
+            array_column($clientView->body['messages'], 'body'),
+        );
+        self::assertNotContains('SECRET INTERNAL DISCUSSION', array_column($clientView->body['messages'], 'body'));
+
         $visibility = $this->pdo->prepare(
             'SELECT is_client_visible FROM messages WHERE workspace_id = :workspace_id AND id = :id'
         );

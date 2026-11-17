@@ -151,6 +151,7 @@ interface ChatMessage {
   author_name: string;
   body: string;
   created_at: string;
+  is_client_visible?: boolean;
 }
 
 interface ChatEvent extends ChatMessage {
@@ -1732,9 +1733,13 @@ function avatarInitials(name: string): string {
 }
 
 function setChatReplyParent(message: ChatMessage): void {
+  const clientVisible = message.is_client_visible === true;
   chatReplyParent = { id: message.id, name: message.author_name };
   if (chatReplyHint !== null) {
-    chatReplyHint.textContent = `Replying to ${message.author_name}`;
+    chatReplyHint.textContent = clientVisible
+      ? `Replying to ${message.author_name}. Your reply will be visible to the guest.`
+      : `Replying to ${message.author_name}`;
+    chatReplyHint.classList.toggle('is-client-visible', clientVisible);
     chatReplyHint.hidden = false;
   }
   if (chatCancelReply !== null) chatCancelReply.hidden = false;
@@ -1743,7 +1748,10 @@ function setChatReplyParent(message: ChatMessage): void {
 
 function clearChatReplyParent(): void {
   chatReplyParent = null;
-  if (chatReplyHint !== null) chatReplyHint.hidden = true;
+  if (chatReplyHint !== null) {
+    chatReplyHint.hidden = true;
+    chatReplyHint.classList.remove('is-client-visible');
+  }
   if (chatCancelReply !== null) chatCancelReply.hidden = true;
 }
 
@@ -3275,13 +3283,14 @@ async function loadClientView(projectId: number): Promise<void> {
     const view = await api<ClientView>(`/projects/${projectId}/client-view`);
     guestTitle.textContent = 'Client portal';
     renderClientView(guestMain, view, {
+      userId: activeUser?.id ?? 0,
       approve: async (approvalId) => {
         await api(`/approvals/${approvalId}/approve`, { method: 'POST' });
         await loadClientView(projectId);
       },
       comment: async (body) => {
         await api(`/projects/${projectId}/client-comments`, { method: 'POST', body: JSON.stringify({ body }) });
-        report('Message sent to the team.');
+        await loadClientView(projectId);
       },
     });
   } catch (error) {

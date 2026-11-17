@@ -18,6 +18,15 @@ export interface ClientItem {
   milestone_name: string | null;
 }
 
+export interface ClientMessage {
+  id: number;
+  parent_id: number | null;
+  author_id: number;
+  author_name: string;
+  body: string;
+  created_at: string;
+}
+
 export interface ClientView {
   project: { id: number; name: string };
   progress: { percent: number; done: number; total: number };
@@ -27,6 +36,7 @@ export interface ClientView {
   milestones: ClientMilestone[];
   items: ClientItem[];
   updates: Array<{ id: number; text: string; created_at: string }>;
+  messages: ClientMessage[];
 }
 
 export function progressRange(done: number, total: number): { max: number; value: number } {
@@ -170,6 +180,7 @@ function milestoneButton(
 }
 
 export interface GuestHandlers {
+  userId: number;
   approve: (approvalId: number) => Promise<void>;
   comment: (body: string) => Promise<void>;
 }
@@ -320,6 +331,33 @@ export function renderClientView(container: HTMLElement, view: ClientView, handl
   updates.append(updateList);
   if (view.updates.length === 0) updates.append(el('p', 'guest-empty', 'No updates yet.'));
   page.append(updates);
+
+  const conversation = el('section', 'guest-section guest-conversation');
+  conversation.setAttribute('aria-label', 'Conversation');
+  conversation.append(el('h2', 'guest-heading', 'Conversation'));
+  const conversationList = el('ol', 'guest-conversation-list');
+  for (const message of view.messages) {
+    const isOwnMessage = message.author_id === handlers.userId;
+    const row = el(
+      'li',
+      `guest-conversation-message${isOwnMessage ? ' is-own' : ''}${message.parent_id === null ? '' : ' is-reply'}`,
+    );
+    const meta = el('div', 'guest-conversation-meta');
+    meta.append(
+      el('strong', 'guest-conversation-author', isOwnMessage ? 'You' : message.author_name),
+    );
+    const time = el('time', 'guest-conversation-date', updateDateLabel(message.created_at));
+    time.dateTime = message.created_at;
+    meta.append(time);
+    row.append(meta, el('p', 'guest-conversation-body', message.body));
+    conversationList.append(row);
+  }
+  if (view.messages.length === 0) {
+    conversation.append(el('p', 'guest-empty', 'Your messages and replies from the team will appear here.'));
+  } else {
+    conversation.append(conversationList);
+  }
+  page.append(conversation);
 
   const write = el('form', 'guest-write');
   write.setAttribute('aria-label', 'Write to the team');

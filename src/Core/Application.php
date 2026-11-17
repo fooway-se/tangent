@@ -48,7 +48,7 @@ final class Application
         $issues = new IssuesService($issueRepository, $projectRepository, $chat, $inboxEvents, $pdo, $milestoneRepository);
         $projects = new ProjectService($projectRepository, $users, $pdo, $chat, $issues);
         $inbox = new InboxService($issueRepository, $projects);
-        $clientView = new ClientViewService($projectRepository, $milestoneRepository, $issueRepository);
+        $clientView = new ClientViewService($projectRepository, $milestoneRepository, $issueRepository, $chat);
         $milestones = new MilestoneService($milestoneRepository, $issueRepository, $projectRepository, $pdo);
         $router = new Router();
 
