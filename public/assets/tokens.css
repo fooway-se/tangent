@@ -12,6 +12,10 @@
  * /assets/fonts/; otherwise the stacks fall back to platform fonts.
  */
 :root {
+  /* Night sky (sign-in backdrop) */
+  --night: #0e1119;
+  --night-glow: #27425a;
+  --night-muted: #c9c1ac;
   /* Type */
   --font-display: "Archivo", "Helvetica Neue", Helvetica, Arial, "Liberation Sans", system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
