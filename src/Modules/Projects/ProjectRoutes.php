@@ -30,6 +30,18 @@ final class ProjectRoutes
             return Response::json(200, ['members' => $this->service->members($user, self::positiveId($params['id']))]);
         });
 
+        $router->add('GET', '/api/v1/users/{userId}/projects', function (Request $request, array $params, AuthenticatedUser $user): Response {
+            return Response::json(200, $this->service->guestProjectAccess($user, self::positiveId($params['userId'])));
+        });
+
+        $router->add('PUT', '/api/v1/users/{userId}/projects', function (Request $request, array $params, AuthenticatedUser $user): Response {
+            return Response::json(200, $this->service->updateGuestProjectAccess(
+                $user,
+                self::positiveId($params['userId']),
+                $request->body,
+            ));
+        });
+
         $router->add('PUT', '/api/v1/projects/{id}/members/{userId}', function (Request $request, array $params, AuthenticatedUser $user): Response {
             $member = $this->service->addMember(
                 $user,

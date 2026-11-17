@@ -436,6 +436,22 @@
                 </div>
               </section>
             </dialog>
+            <dialog id="workspace-guest-projects-dialog" class="issue-delete-confirmation workspace-guest-projects-dialog" aria-labelledby="workspace-guest-projects-heading" aria-describedby="workspace-guest-projects-description workspace-guest-projects-keyboard-hint">
+              <section class="issue-delete-confirmation-content">
+                <header class="dialog-heading">
+                  <h2 id="workspace-guest-projects-heading">Manage guest project access</h2>
+                </header>
+                <p id="workspace-guest-projects-description" class="issue-delete-description"></p>
+                <p id="workspace-guest-projects-keyboard-hint" class="workspace-guest-projects-keyboard-hint">Tab between projects · Space toggles</p>
+                <div id="workspace-guest-project-options" class="admin-project-options workspace-guest-project-options" role="group" aria-label="Projects this guest can access"></div>
+                <p id="workspace-guest-projects-empty" class="panel-description" hidden></p>
+                <p id="workspace-guest-projects-status" class="panel-description" role="status" aria-live="polite"></p>
+                <div class="form-actions">
+                  <button id="workspace-guest-projects-cancel" class="button button-quiet" type="button">Cancel</button>
+                  <button id="workspace-guest-projects-save" class="button button-primary" type="button" disabled>Save access</button>
+                </div>
+              </section>
+            </dialog>
           </section>
         </main>
         </div>

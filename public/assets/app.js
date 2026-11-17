@@ -122,6 +122,13 @@ const workspaceMemberRoleHeading = document.querySelector('#workspace-member-rol
 const workspaceMemberRoleDescription = document.querySelector('#workspace-member-role-description');
 const workspaceMemberRoleCancel = document.querySelector('#workspace-member-role-cancel');
 const workspaceMemberRoleConfirm = document.querySelector('#workspace-member-role-confirm');
+const workspaceGuestProjectsDialog = document.querySelector('#workspace-guest-projects-dialog');
+const workspaceGuestProjectsDescription = document.querySelector('#workspace-guest-projects-description');
+const workspaceGuestProjectOptions = document.querySelector('#workspace-guest-project-options');
+const workspaceGuestProjectsEmpty = document.querySelector('#workspace-guest-projects-empty');
+const workspaceGuestProjectsStatus = document.querySelector('#workspace-guest-projects-status');
+const workspaceGuestProjectsCancel = document.querySelector('#workspace-guest-projects-cancel');
+const workspaceGuestProjectsSave = document.querySelector('#workspace-guest-projects-save');
 const loginAdminHelp = document.querySelector('#login-admin-help');
 const credentialFlow = document.querySelector('#credential-flow');
 const credentialFlowHeading = document.querySelector('#credential-flow-heading');
@@ -245,6 +252,7 @@ let adminProjects = [];
 let workspaceAdminTab = 'members';
 let workspaceMemberDeactivationTarget = null;
 let workspaceMemberRoleChangeTarget = null;
+let workspaceGuestProjectsTarget = null;
 let activeWorkspaces = [];
 let activeProject = null;
 let projectReturnFocusId = null;
@@ -722,10 +730,8 @@ function renderWorkspaceMembers(members) {
     for (const member of members) {
         const item = document.createElement('li');
         const label = document.createElement('span');
+        label.className = 'workspace-admin-member-identity';
         label.textContent = `${member.name} · ${member.email}${member.is_active ? '' : ' · inactive'}`;
-        const details = document.createElement('div');
-        details.className = 'workspace-admin-member-details';
-        details.append(label);
         const roleControl = document.createElement('div');
         roleControl.className = 'workspace-admin-role-control';
         const roleSelect = document.createElement('select');
@@ -769,7 +775,6 @@ function renderWorkspaceMembers(members) {
             }
         });
         roleControl.append(roleSelect, roleSaveButton);
-        details.append(roleControl);
         item.classList.add('workspace-admin-member-row');
         const actions = document.createElement('div');
         actions.className = 'workspace-admin-member-actions';
@@ -780,6 +785,17 @@ function renderWorkspaceMembers(members) {
         resetLinkButton.setAttribute('aria-label', `Generate password reset link for ${member.name}`);
         resetLinkButton.disabled = !member.is_active;
         resetLinkButton.addEventListener('click', () => void generateMemberPasswordResetLink(member));
+        if (member.role === 'guest') {
+            const manageProjectsButton = document.createElement('button');
+            manageProjectsButton.type = 'button';
+            manageProjectsButton.className = 'button button-quiet';
+            manageProjectsButton.textContent = 'Manage projects';
+            manageProjectsButton.dataset.memberId = String(member.id);
+            manageProjectsButton.dataset.memberAction = 'projects';
+            manageProjectsButton.setAttribute('aria-label', `Manage project access for ${member.name}`);
+            manageProjectsButton.addEventListener('click', () => void openWorkspaceGuestProjectAccess(member, manageProjectsButton));
+            actions.append(manageProjectsButton);
+        }
         const statusButton = document.createElement('button');
         statusButton.type = 'button';
         statusButton.className = member.is_active ? 'button button-quiet button-danger' : 'button button-quiet';
@@ -800,7 +816,10 @@ function renderWorkspaceMembers(members) {
                 void setWorkspaceMemberActive(member, true);
         });
         actions.append(resetLinkButton, statusButton);
-        item.append(details, actions);
+        const memberTools = document.createElement('div');
+        memberTools.className = 'workspace-admin-member-tools';
+        memberTools.append(roleControl, actions);
+        item.append(label, memberTools);
         workspaceMembersList.append(item);
     }
 }
@@ -874,6 +893,82 @@ async function setWorkspaceMemberRole(member, role, select) {
         report(error instanceof Error ? error.message : `Could not change ${member.name}'s role.`, true);
         if (!adminView.hidden && select.isConnected)
             select.focus();
+    }
+}
+async function openWorkspaceGuestProjectAccess(member, button) {
+    workspaceGuestProjectsTarget = { member, button };
+    workspaceGuestProjectsDescription.textContent = `Choose the active projects ${member.name} can access. An empty selection removes access to every active project.`;
+    workspaceGuestProjectOptions.replaceChildren();
+    workspaceGuestProjectsEmpty.hidden = true;
+    workspaceGuestProjectsStatus.textContent = 'Loading project access…';
+    workspaceGuestProjectsSave.disabled = true;
+    workspaceGuestProjectsDialog.showModal();
+    workspaceGuestProjectsCancel.focus();
+    try {
+        const result = await api(`/users/${member.id}/projects`);
+        if (!workspaceGuestProjectsDialog.open || workspaceGuestProjectsTarget?.member.id !== member.id)
+            return;
+        workspaceGuestProjectOptions.replaceChildren();
+        workspaceGuestProjectsStatus.textContent = '';
+        workspaceGuestProjectsEmpty.hidden = adminProjects.length > 0;
+        if (adminProjects.length === 0) {
+            workspaceGuestProjectsEmpty.textContent = 'There are no active projects. This guest will have no project access.';
+        }
+        for (const project of adminProjects) {
+            const label = document.createElement('label');
+            label.className = 'admin-project-option';
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.name = 'guest_project_ids';
+            checkbox.value = String(project.id);
+            checkbox.checked = result.project_ids.includes(project.id);
+            label.append(checkbox, document.createTextNode(project.name));
+            workspaceGuestProjectOptions.append(label);
+        }
+        const firstProjectCheckbox = workspaceGuestProjectOptions.querySelector('input[type="checkbox"]');
+        if (firstProjectCheckbox !== null && document.activeElement === workspaceGuestProjectsCancel) {
+            firstProjectCheckbox.focus();
+        }
+        workspaceGuestProjectsSave.disabled = false;
+    }
+    catch (error) {
+        if (!workspaceGuestProjectsDialog.open || workspaceGuestProjectsTarget?.member.id !== member.id)
+            return;
+        report(error instanceof Error ? error.message : `Could not load ${member.name}'s project access.`, true);
+        closeWorkspaceGuestProjectAccess();
+    }
+}
+function closeWorkspaceGuestProjectAccess(restoreFocus = true) {
+    if (workspaceGuestProjectsDialog.open)
+        workspaceGuestProjectsDialog.close();
+    const target = workspaceGuestProjectsTarget;
+    workspaceGuestProjectsTarget = null;
+    workspaceGuestProjectsSave.disabled = false;
+    if (restoreFocus && !adminView.hidden && target?.button.isConnected)
+        target.button.focus();
+}
+async function saveWorkspaceGuestProjectAccess() {
+    const target = workspaceGuestProjectsTarget;
+    if (target === null)
+        return;
+    const projectIds = Array.from(workspaceGuestProjectOptions.querySelectorAll('input[name="guest_project_ids"]:checked')).map((checkbox) => Number(checkbox.value));
+    workspaceGuestProjectsSave.disabled = true;
+    workspaceGuestProjectsStatus.textContent = 'Saving project access…';
+    try {
+        await api(`/users/${target.member.id}/projects`, {
+            method: 'PUT',
+            body: JSON.stringify({ project_ids: projectIds }),
+        });
+        closeWorkspaceGuestProjectAccess(false);
+        report(`${target.member.name}'s project access updated.`);
+        if (!adminView.hidden && target.button.isConnected)
+            target.button.focus();
+    }
+    catch (error) {
+        report(error instanceof Error ? error.message : `Could not update ${target.member.name}'s project access.`, true);
+        workspaceGuestProjectsStatus.textContent = 'The project access could not be saved. Review the selection and try again.';
+        workspaceGuestProjectsSave.disabled = false;
+        workspaceGuestProjectsSave.focus();
     }
 }
 function renderWorkspaceInvites(invites) {
@@ -1100,7 +1195,7 @@ function issuePollingIsActive(projectId) {
 function issueUpdatesAreDeferred() {
     const dialogOpen = issueStatusPicker.open || issueDeleteConfirmation.open
         || memberRemovalConfirmation.open || workspaceMemberDeactivationDialog.open
-        || workspaceMemberRoleDialog.open || milestoneManagerDialog.open;
+        || workspaceMemberRoleDialog.open || workspaceGuestProjectsDialog.open || milestoneManagerDialog.open;
     return shouldDeferIssueUpdates({
         issueEditorOpen: !issueDetailEditForm.hidden,
         quickAddActive: issueForm.classList.contains('is-active') || issueQuickAddHasDraft(),
@@ -1430,6 +1525,7 @@ function shortcutContext(target) {
         textInputFocused: shouldBlurOnEscape(target),
         modalOpen: commandPalette.open || shortcutHelp.open || issueStatusPicker.open || issueDeleteConfirmation.open
             || memberRemovalConfirmation.open || workspaceMemberDeactivationDialog.open || workspaceMemberRoleDialog.open
+            || workspaceGuestProjectsDialog.open
             || workspacePicker.open,
         canDismiss: commandPalette.open || shortcutHelp.open || (!workspacePanel.hidden && (pendingWorkspaceId !== null
             || (!projectView.hidden && (!issueDetailView.hidden || !issueDetailEditForm.hidden
@@ -1845,6 +1941,8 @@ function openCommandPalette() {
         closeWorkspaceMemberDeactivationConfirmation();
     if (workspaceMemberRoleDialog.open)
         closeWorkspaceMemberRoleConfirmation();
+    if (workspaceGuestProjectsDialog.open)
+        closeWorkspaceGuestProjectAccess();
     if (shortcutHelp.open)
         shortcutHelp.close();
     if (commandPalette.open) {
@@ -1873,6 +1971,8 @@ function showShortcutHelp() {
         closeWorkspaceMemberDeactivationConfirmation();
     if (workspaceMemberRoleDialog.open)
         closeWorkspaceMemberRoleConfirmation();
+    if (workspaceGuestProjectsDialog.open)
+        closeWorkspaceGuestProjectAccess();
     if (commandPalette.open)
         closeCommandPalette();
     if (shortcutHelp.open) {
@@ -1900,6 +2000,9 @@ function dismissCurrentView() {
     }
     else if (workspaceMemberRoleDialog.open) {
         closeWorkspaceMemberRoleConfirmation();
+    }
+    else if (workspaceGuestProjectsDialog.open) {
+        closeWorkspaceGuestProjectAccess();
     }
     else if (issueStatusPicker.open) {
         closeIssueStatusPicker();
@@ -2145,7 +2248,7 @@ function executeShortcut(action) {
     }
 }
 function handleKeyboardShortcut(event) {
-    if ((commandPalette.open || shortcutHelp.open || issueStatusPicker.open || issueDeleteConfirmation.open || memberRemovalConfirmation.open || workspaceMemberDeactivationDialog.open || workspaceMemberRoleDialog.open || milestoneManagerDialog.open || workspacePicker.open)
+    if ((commandPalette.open || shortcutHelp.open || issueStatusPicker.open || issueDeleteConfirmation.open || memberRemovalConfirmation.open || workspaceMemberDeactivationDialog.open || workspaceMemberRoleDialog.open || workspaceGuestProjectsDialog.open || milestoneManagerDialog.open || workspacePicker.open)
         && event.key !== 'Escape'
         && !((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k'))
         return;
@@ -4414,6 +4517,12 @@ workspaceMemberRoleConfirm.addEventListener('click', () => {
     closeWorkspaceMemberRoleConfirmation(false);
     void setWorkspaceMemberRole(target.member, target.role, target.select);
 });
+workspaceGuestProjectsCancel.addEventListener('click', () => closeWorkspaceGuestProjectAccess());
+workspaceGuestProjectsDialog.addEventListener('cancel', (event) => {
+    event.preventDefault();
+    closeWorkspaceGuestProjectAccess();
+});
+workspaceGuestProjectsSave.addEventListener('click', () => void saveWorkspaceGuestProjectAccess());
 function updateMembersPanelTabIndex() {
     const hasFocusableContent = Array.from(membersView.querySelectorAll('a[href], button, input, select, textarea, [tabindex]')).some((element) => element.tabIndex >= 0 && !element.matches(':disabled') && element.closest('[hidden]') === null);
     membersView.tabIndex = hasFocusableContent ? -1 : 0;

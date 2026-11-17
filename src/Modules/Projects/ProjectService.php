@@ -12,6 +12,7 @@ use Tangent\Core\Permissions;
 use Tangent\Modules\Auth\UserRepository;
 use Tangent\Modules\Chat\ChatService;
 use Tangent\Modules\Issues\IssuesService;
+use Tangent\Modules\Workspaces\WorkspaceRepository;
 
 final class ProjectService
 {
@@ -21,6 +22,7 @@ final class ProjectService
         private readonly PDO $pdo,
         private readonly ChatService $chat,
         private readonly IssuesService $issues,
+        private readonly WorkspaceRepository $workspaces,
     ) {
     }
 
@@ -179,6 +181,89 @@ final class ProjectService
                 $this->pdo->rollBack();
             }
             throw $exception;
+        }
+    }
+
+    public function guestProjectAccess(AuthenticatedUser $actor, int $memberId): array
+    {
+        $this->requireWorkspaceAdmin($actor);
+        $member = $this->users->findById($actor->workspaceId, $memberId);
+        if ($member === null) {
+            throw new ApiException(404, 'not_found', 'The workspace member was not found.');
+        }
+        if ($member['role'] !== 'guest') {
+            throw new ApiException(409, 'not_guest', 'Project access can only be managed for guest members.');
+        }
+
+        return ['project_ids' => $this->projects->activeProjectIdsForMember($actor->workspaceId, $memberId)];
+    }
+
+    public function updateGuestProjectAccess(AuthenticatedUser $actor, int $memberId, array $body): array
+    {
+        $this->requireWorkspaceAdmin($actor);
+        $rawProjectIds = $body['project_ids'] ?? null;
+        if (!is_array($rawProjectIds) || !array_is_list($rawProjectIds)) {
+            throw new ApiException(422, 'validation_failed', 'Project selections must be a list.');
+        }
+
+        $projectIds = [];
+        foreach ($rawProjectIds as $projectId) {
+            if (!is_int($projectId) || $projectId < 1) {
+                throw new ApiException(422, 'validation_failed', 'Each selected project must be valid.');
+            }
+            $projectIds[] = $projectId;
+        }
+        $projectIds = array_values(array_unique($projectIds));
+
+        $ownsTransaction = !$this->pdo->inTransaction();
+        if ($ownsTransaction) $this->pdo->beginTransaction();
+        try {
+            $this->workspaces->lockForMemberUpdate($actor->workspaceId);
+            $currentActor = $this->users->findById($actor->workspaceId, $actor->id);
+            if ($currentActor === null || !(bool) $currentActor['is_active'] || $currentActor['role'] !== 'admin') {
+                throw new ApiException(403, 'forbidden', 'You cannot manage workspace members.');
+            }
+            $member = $this->users->findById($actor->workspaceId, $memberId);
+            if ($member === null) {
+                throw new ApiException(404, 'not_found', 'The workspace member was not found.');
+            }
+            if ($member['role'] !== 'guest') {
+                throw new ApiException(409, 'not_guest', 'Project access can only be managed for guest members.');
+            }
+
+            $activeProjects = array_values(array_filter(
+                $this->projects->listForWorkspace($actor->workspaceId),
+                static fn (array $project): bool => $project['status'] === 'active',
+            ));
+            $activeProjectIds = array_column($activeProjects, 'id');
+            foreach ($projectIds as $projectId) {
+                if (!in_array($projectId, $activeProjectIds, true)) {
+                    throw new ApiException(422, 'validation_failed', 'Choose active projects in this workspace.');
+                }
+            }
+
+            $currentProjectIds = $this->projects->activeProjectIdsForMember($actor->workspaceId, $memberId);
+            foreach (array_diff($currentProjectIds, $projectIds) as $projectId) {
+                if ($this->projects->removeMember($actor->workspaceId, (int) $projectId, $memberId)) {
+                    $this->issues->unassignRemovedMember($actor, (int) $projectId, $memberId);
+                }
+            }
+            foreach (array_diff($projectIds, $currentProjectIds) as $projectId) {
+                $this->projects->addMember($actor->workspaceId, (int) $projectId, $memberId);
+            }
+
+            if ($ownsTransaction) $this->pdo->commit();
+            return ['project_ids' => $this->projects->activeProjectIdsForMember($actor->workspaceId, $memberId)];
+        } catch (Throwable $exception) {
+            if ($ownsTransaction && $this->pdo->inTransaction()) $this->pdo->rollBack();
+            throw $exception;
+        }
+    }
+
+    private function requireWorkspaceAdmin(AuthenticatedUser $actor): void
+    {
+        if (!Permissions::can($actor, 'users.manage_members')) {
+            throw new ApiException(403, 'forbidden', 'You cannot manage workspace members.');
         }
     }
 

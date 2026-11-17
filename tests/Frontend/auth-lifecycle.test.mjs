@@ -4,6 +4,7 @@ import test from 'node:test';
 
 const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
+const css = await readFile(new URL('../../public/assets/app.css', import.meta.url), 'utf8');
 const openapi = await readFile(new URL('../../docs/openapi.yaml', import.meta.url), 'utf8');
 const compose = await readFile(new URL('../../compose.yaml', import.meta.url), 'utf8');
 
@@ -87,10 +88,38 @@ test('workspace administrators can change member roles with confirmation for adm
   assert.match(app, /role !== member.role && \(role === 'admin' \|\| member.role === 'admin'\)/);
 });
 
+test('workspace administrators can manage a guest member project access', () => {
+  assert.match(html, /id="workspace-guest-projects-dialog"/);
+  assert.match(html, /id="workspace-guest-project-options"/);
+  assert.match(app, /manageProjectsButton\.textContent = 'Manage projects'/);
+  assert.match(app, /function openWorkspaceGuestProjectAccess\(/);
+  assert.match(app, /\/users\/\$\{member\.id\}\/projects/);
+  assert.match(app, /function saveWorkspaceGuestProjectAccess\(/);
+});
+
+test('guest project checkboxes have compact layout and visible keyboard focus', () => {
+  assert.match(html, /workspace-guest-projects-keyboard-hint/);
+  assert.match(html, /Tab between projects[\s\S]*Space toggles/);
+  assert.match(css, /\.admin-project-option input\[type="checkbox"\]\s*\{[^}]*width:\s*16px[^}]*height:\s*16px/s);
+  assert.match(css, /\.admin-project-option:focus-within\s*\{[^}]*outline:/s);
+  assert.match(app, /firstProjectCheckbox\.focus\(\)/);
+  assert.match(app, /workspaceGuestProjectsDialog\.open[\s\S]{0,150}event\.key !== 'Escape'/);
+});
+
+test('workspace member rows give identity its own line and group role/actions below', () => {
+  const renderer = app.slice(app.indexOf('function renderWorkspaceMembers('), app.indexOf('function openWorkspaceMemberDeactivationConfirmation('));
+  assert.match(renderer, /label\.className = 'workspace-admin-member-identity'/);
+  assert.match(renderer, /memberTools\.className = 'workspace-admin-member-tools'/);
+  assert.match(renderer, /memberTools\.append\(roleControl, actions\)/);
+  assert.match(renderer, /item\.append\(label, memberTools\)/);
+  assert.match(css, /\.workspace-admin-member-row\s*\{[^}]*display:\s*grid/s);
+});
+
 test('OpenAPI exposes public token completion and manual admin credential-link routes', () => {
   for (const path of [
     '/auth/invites/inspect', '/auth/invites/accept', '/auth/password-reset/complete',
     '/users/invites', '/users/invites/{id}/link', '/users/{id}/password-reset', '/users/{id}/status', '/users/{id}/role',
+    '/users/{id}/projects',
   ]) {
     assert.ok(openapi.includes(`  ${path}:`), `Missing ${path}`);
   }

@@ -71,7 +71,11 @@ kbd {
 .auth-flow .button-primary { margin-top: 2px; }
 .admin-project-selection { display: grid; gap: 8px; border-top: 1px solid var(--screen-border); padding-top: 10px; color: var(--screen-muted); font-size: 12px; }
 .admin-project-options { display: grid; gap: 6px; }
-.admin-project-option { display: flex; align-items: center; gap: 8px; color: var(--screen-ink); }
+.admin-project-option { display: flex; min-height: 30px; align-items: center; gap: 9px; border: 1px solid transparent; border-radius: 4px; padding: 4px 8px; color: var(--screen-ink); cursor: pointer; }
+.admin-project-option:hover { background: var(--screen-hover); }
+.admin-project-option:focus-within { border-color: var(--accent-edge); outline: 2px solid var(--focus-ring); outline-offset: 1px; background: var(--screen-hover); }
+.admin-project-option input[type="checkbox"] { flex: 0 0 16px; width: 16px; height: 16px; margin: 0; padding: 0; accent-color: var(--accent); box-shadow: none; cursor: inherit; }
+.admin-project-option input[type="checkbox"]:focus { box-shadow: none; }
 .workspace-invites-list { margin-bottom: 0; }
 .workspace-invite-row { align-items: flex-start !important; }
 .workspace-invite-actions { display: flex; flex: 0 0 auto; gap: 6px; }
@@ -240,13 +244,14 @@ select { padding-right: 28px; background: var(--screen-inset) url("data:image/sv
 .admin-panel { max-width: 620px; padding: 16px; }
 .workspace-admin-tabs { margin-top: 0; }
 .workspace-admin-tab-panel { padding-top: 14px; }
-.workspace-admin-member-row { align-items: center !important; }
-.workspace-admin-member-details { display: grid; flex: 1 1 auto; gap: 7px; min-width: 0; }
-.workspace-admin-role-control { display: flex; align-items: center; gap: 6px; }
+.member-list .workspace-admin-member-row { display: grid; grid-template-columns: minmax(0, 1fr); align-items: stretch; gap: 8px; }
+.workspace-admin-member-identity { min-width: 0; overflow-wrap: anywhere; }
+.workspace-admin-member-tools { display: flex; min-width: 0; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 12px; }
+.workspace-admin-role-control { display: flex; flex: 0 0 auto; align-items: center; gap: 6px; }
 .workspace-admin-role-control select { width: auto; min-width: 116px; }
 .workspace-admin-role-control .button:disabled,
 .workspace-admin-member-actions .button:disabled { cursor: not-allowed; opacity: 0.45; }
-.workspace-admin-member-actions { display: flex; flex: 0 0 auto; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+.workspace-admin-member-actions { display: flex; flex: 1 1 300px; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
 .workspace-create-panel { margin-top: 12px; }
 
 /* Project view */
@@ -376,6 +381,10 @@ select { padding-right: 28px; background: var(--screen-inset) url("data:image/sv
 .issue-delete-recovery-note, .issue-delete-error { margin: 0 18px 12px; color: var(--screen-muted); font-size: 12px; }
 .issue-delete-error { color: var(--danger); }
 .issue-delete-confirmation .form-actions { margin: 16px 18px 0; }
+.workspace-guest-projects-dialog { max-height: min(82vh, 640px); overflow: auto; }
+.workspace-guest-project-options { max-height: min(48vh, 380px); overflow-y: auto; margin: 0 18px; }
+.workspace-guest-projects-dialog .panel-description { margin: 8px 18px 0; color: var(--screen-muted); font-size: 12px; }
+.workspace-guest-projects-keyboard-hint { margin: 0 18px 8px; color: var(--screen-muted); font: 10px/1.4 var(--font-mono); }
 .milestone-manager { width: min(600px, calc(100vw - 32px)); max-height: min(82vh, 720px); overflow: auto; }
 .milestone-manager-content { padding: 0 0 18px; }
 .milestone-manager-description { margin: 0 18px 12px; color: var(--screen-muted); font-size: 12px; }
@@ -527,7 +536,7 @@ dialog::backdrop { background: rgba(38, 35, 30, 0.6); }
   .workspace-content, .project-view { overflow: visible; }
   .project-main { overflow: visible; padding: 12px 14px 18px; }
   .projects-view, .inbox-view, .admin-view { padding: 12px 14px 18px; }
-  .workspace-admin-member-row { align-items: stretch !important; flex-direction: column; }
+  .workspace-admin-member-tools { align-items: flex-start; flex-direction: column; }
   .workspace-admin-member-actions { justify-content: flex-start; }
   .project-chat-column { flex: none; min-width: 0; min-height: 420px; }
   .keyboard-hints { grid-row: 3; }

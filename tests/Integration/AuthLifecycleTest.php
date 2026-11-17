@@ -162,6 +162,93 @@ final class AuthLifecycleTest extends ApiTestCase
             ['role' => 'guest'],
             $developer['csrf'],
         )->status);
+        self::assertSame(403, $this->cookieRequest(
+            'GET',
+            '/api/v1/users/' . $this->adminId . '/projects',
+            $developer['cookie'],
+        )->status);
+        self::assertSame(403, $this->cookieRequest(
+            'PUT',
+            '/api/v1/users/' . $this->adminId . '/projects',
+            $developer['cookie'],
+            ['project_ids' => []],
+            $developer['csrf'],
+        )->status);
+    }
+
+    public function testWorkspaceAdminCanManageGuestProjectsInOnlyTheCurrentWorkspace(): void
+    {
+        $admin = $this->login($this->adminEmail);
+        $createdGuest = $this->cookieRequest('POST', '/api/v1/users', $admin['cookie'], [
+            'name' => 'Guest Contact',
+            'email' => 'guest-access@example.test',
+            'password' => 'a calm guest access password phrase',
+            'role' => 'guest',
+        ], $admin['csrf']);
+        self::assertSame(201, $createdGuest->status, json_encode($createdGuest->body));
+        $guestId = (int) $createdGuest->body['user']['id'];
+
+        $firstProjectId = $this->insertProject('First guest project', 'first-guest-project', $this->adminId);
+        $secondProjectId = $this->insertProject('Second guest project', 'second-guest-project', $this->adminId);
+        $archivedProjectId = $this->insertProject('Archived guest project', 'archived-guest-project', $this->adminId);
+        $archive = $this->pdo->prepare('UPDATE projects SET status = :status WHERE workspace_id = :workspace_id AND id = :id');
+        $archive->execute(['status' => 'archived', 'workspace_id' => $this->workspaceId, 'id' => $archivedProjectId]);
+        $memberships = $this->pdo->prepare(
+            'INSERT INTO project_memberships (workspace_id, project_id, user_id)
+             VALUES (:workspace_id, :project_id, :user_id)'
+        );
+        foreach ([$firstProjectId, $archivedProjectId] as $projectId) {
+            $memberships->execute(['workspace_id' => $this->workspaceId, 'project_id' => $projectId, 'user_id' => $guestId]);
+        }
+
+        $read = $this->cookieRequest('GET', '/api/v1/users/' . $guestId . '/projects', $admin['cookie']);
+        self::assertSame(200, $read->status, json_encode($read->body));
+        self::assertSame([$firstProjectId], $read->body['project_ids']);
+
+        $updated = $this->cookieRequest('PUT', '/api/v1/users/' . $guestId . '/projects', $admin['cookie'], [
+            'project_ids' => [$secondProjectId],
+        ], $admin['csrf']);
+        self::assertSame(200, $updated->status, json_encode($updated->body));
+        self::assertSame([$secondProjectId], $updated->body['project_ids']);
+        self::assertFalse($this->projectHasMember($firstProjectId, $guestId));
+        self::assertTrue($this->projectHasMember($secondProjectId, $guestId));
+        self::assertTrue($this->projectHasMember($archivedProjectId, $guestId), 'Archived project access is preserved.');
+
+        $empty = $this->cookieRequest('PUT', '/api/v1/users/' . $guestId . '/projects', $admin['cookie'], [
+            'project_ids' => [],
+        ], $admin['csrf']);
+        self::assertSame(200, $empty->status, json_encode($empty->body));
+        self::assertSame([], $empty->body['project_ids']);
+
+        $otherWorkspaceId = $this->insertWorkspace('Other guest workspace');
+        $otherAdminAccountId = $this->insertAccount('other-admin@example.test', 'another secure password phrase');
+        $otherAdminId = $this->insertWorkspaceMembership(
+            $otherWorkspaceId,
+            $otherAdminAccountId,
+            'Other Admin',
+            'other-admin@example.test',
+            'admin',
+        );
+        $otherProject = $this->pdo->prepare(
+            'INSERT INTO projects (workspace_id, name, slug, description, status, created_by)
+             VALUES (:workspace_id, :name, :slug, :description, :status, :created_by)'
+        );
+        $otherProject->execute([
+            'workspace_id' => $otherWorkspaceId,
+            'name' => 'Other workspace project',
+            'slug' => 'other-workspace-project',
+            'description' => '',
+            'status' => 'active',
+            'created_by' => $otherAdminId,
+        ]);
+        $otherProjectId = (int) $this->pdo->lastInsertId();
+        $invalid = $this->cookieRequest('PUT', '/api/v1/users/' . $guestId . '/projects', $admin['cookie'], [
+            'project_ids' => [$otherProjectId],
+        ], $admin['csrf']);
+        self::assertSame(422, $invalid->status);
+
+        $notGuest = $this->cookieRequest('GET', '/api/v1/users/' . $this->developerId . '/projects', $admin['cookie']);
+        self::assertSame(409, $notGuest->status, json_encode($notGuest->body));
     }
 
     public function testWorkspaceAdminCanChangeMemberRoleInOnlyTheCurrentWorkspace(): void

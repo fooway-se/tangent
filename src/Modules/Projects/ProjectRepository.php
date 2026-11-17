@@ -54,6 +54,23 @@ final class ProjectRepository
         return $statement->fetchColumn() !== false;
     }
 
+    public function activeProjectIdsForMember(int $workspaceId, int $userId): array
+    {
+        $statement = $this->pdo->prepare(
+            'SELECT pm.project_id
+             FROM project_memberships pm
+             INNER JOIN projects p ON p.workspace_id = pm.workspace_id AND p.id = pm.project_id
+             WHERE pm.workspace_id = :workspace_id AND pm.user_id = :user_id AND p.status = :status
+             ORDER BY p.name, p.id'
+        );
+        $statement->execute([
+            'workspace_id' => $workspaceId,
+            'user_id' => $userId,
+            'status' => 'active',
+        ]);
+        return array_map('intval', $statement->fetchAll(PDO::FETCH_COLUMN));
+    }
+
     public function visibilityForUser(int $workspaceId, int $userId): array
     {
         $statement = $this->pdo->prepare(
