@@ -2708,6 +2708,8 @@ async function saveMilestone(event) {
     if (projectId === undefined)
         return;
     const editingId = editingMilestoneId;
+    const quickAddMilestoneId = issueQuickAddMilestone.value === '' ? null : Number(issueQuickAddMilestone.value);
+    const detailMilestoneId = issueDetailMilestoneInput.value === '' ? null : Number(issueDetailMilestoneInput.value);
     const path = editingId === null
         ? `/projects/${projectId}/milestones`
         : `/projects/${projectId}/milestones/${editingId}`;
@@ -2732,9 +2734,11 @@ async function saveMilestone(event) {
             return;
         projectMilestones = result.milestones;
         renderMilestoneList();
+        populateIssueMilestoneSelect(issueQuickAddMilestone, quickAddMilestoneId);
+        populateIssueMilestoneSelect(issueDetailMilestoneInput, issueDetailEditForm.hidden ? selectedIssue?.milestone_id ?? null : detailMilestoneId);
+        renderProjectIssueBoard();
         if (selectedIssue !== null)
             renderIssueDetail();
-        populateIssueMilestoneSelect(issueDetailMilestoneInput, selectedIssue?.milestone_id ?? null);
         resetMilestoneForm();
         report(editingId === null ? 'Milestone created.' : 'Milestone updated.');
         if (milestoneManagerDialog.open)
@@ -3539,7 +3543,9 @@ async function moveIssue(issue, direction, button) {
             return;
         projectIssues = projectIssues.map((candidate) => candidate.id === issue.id ? result.issue : candidate);
         renderProjectIssueBoard();
-        issueList.querySelector(`.issue-card[data-issue-id="${issue.id}"] [data-move-direction="${direction}"]`)?.focus();
+        const movedIssueRow = issueList.querySelector(`.issue-card[data-issue-id="${issue.id}"]`);
+        const focusTarget = movedIssueRow?.querySelector(`[data-move-direction="${direction}"]:not(:disabled)`) ?? movedIssueRow?.querySelector('.issue-title-button');
+        focusTarget?.focus();
     }
     catch (error) {
         if (error instanceof ApiFailure && error.status === 401) {

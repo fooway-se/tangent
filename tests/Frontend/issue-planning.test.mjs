@@ -21,6 +21,15 @@ test('issue rows show their milestone and Next Up exposes accessible move contro
   assert.match(app, /className: 'issue-group milestone-issue-group'/);
 });
 
+test('Next Up keeps keyboard focus when a move disables the selected arrow', () => {
+  const moveStart = app.indexOf('async function moveIssue(');
+  const moveEnd = app.indexOf('\nfunction ', moveStart + 1);
+  const move = app.slice(moveStart, moveEnd === -1 ? undefined : moveEnd);
+
+  assert.match(move, /\[data-move-direction="\$\{direction\}"\]:not\(:disabled\)/);
+  assert.match(move, /\?\?\s*movedIssueRow\?\.querySelector<HTMLElement>\('\.issue-title-button'\)/);
+});
+
 test('milestone groups are collapsible and their headings show issue counts', () => {
   assert.match(app, /function createIssueGroupSummary\(name: string, count: number\)/);
   assert.match(app, /details\.open = true/);

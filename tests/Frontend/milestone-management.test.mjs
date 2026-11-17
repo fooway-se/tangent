@@ -28,6 +28,15 @@ test('milestone manager loads and saves project milestones through the existing 
   assert.match(app, /`\/projects\/\$\{projectId\}\/milestones\/\$\{editingId\}`/);
 });
 
+test('saving a milestone refreshes issue labels and quick-add choices', () => {
+  const saveStart = app.indexOf('async function saveMilestone(');
+  const saveEnd = app.indexOf('\nasync function ', saveStart + 1);
+  const save = app.slice(saveStart, saveEnd === -1 ? undefined : saveEnd);
+
+  assert.match(save, /populateIssueMilestoneSelect\(issueQuickAddMilestone,/);
+  assert.match(save, /renderProjectIssueBoard\(\)/);
+});
+
 test('milestone list shows issue progress and a green completion indicator', () => {
   assert.match(app, /milestoneProgress\(milestoneIssues\)/);
   assert.match(app, /milestone-row-progress/);
