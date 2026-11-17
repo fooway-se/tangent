@@ -83,7 +83,6 @@ final class TokenRepository
         );
     }
 
-    /** @return list<array<string, mixed>> */
     public function listForUser(int $workspaceId, int $userId): array
     {
         $statement = $this->pdo->prepare(

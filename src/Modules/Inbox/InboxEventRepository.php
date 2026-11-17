@@ -12,7 +12,6 @@ final class InboxEventRepository
     {
     }
 
-    /** @param list<int> $recipientIds */
     public function record(
         int $workspaceId,
         array $recipientIds,
@@ -46,7 +45,6 @@ final class InboxEventRepository
         }
     }
 
-    /** @param list<int> $projectIds @return list<array<string, mixed>> */
     public function listForUser(int $workspaceId, int $userId, array $projectIds): array
     {
         if ($projectIds === []) return [];
@@ -66,7 +64,6 @@ final class InboxEventRepository
         return array_map(self::normalize(...), $statement->fetchAll(PDO::FETCH_ASSOC));
     }
 
-    /** @param list<int> $projectIds @return array<string, mixed>|null */
     public function updateForUser(int $workspaceId, int $userId, int $eventId, array $changes, array $projectIds): ?array
     {
         if ($projectIds === []) return null;
@@ -90,7 +87,6 @@ final class InboxEventRepository
         return null;
     }
 
-    /** @param list<int> $projectIds */
     public function markAllRead(int $workspaceId, int $userId, array $projectIds): void
     {
         if ($projectIds === []) return;
@@ -103,7 +99,6 @@ final class InboxEventRepository
         $statement->execute(['workspace_id' => $workspaceId, 'recipient_id' => $userId, ...$parameters]);
     }
 
-    /** @param list<int> $projectIds */
     private function existsForUser(int $workspaceId, int $userId, int $eventId, array $projectIds): bool
     {
         [$filter, $parameters] = self::idFilter($projectIds, 'project');
@@ -115,7 +110,6 @@ final class InboxEventRepository
         return $statement->fetchColumn() !== false;
     }
 
-    /** @param list<int> $ids @return array{string, array<string, int>} */
     private static function idFilter(array $ids, string $prefix): array
     {
         $placeholders = [];
@@ -128,7 +122,6 @@ final class InboxEventRepository
         return [implode(', ', $placeholders), $parameters];
     }
 
-    /** @param array<string, mixed> $event @return array<string, mixed> */
     private static function normalize(array $event): array
     {
         foreach (['id', 'project_id'] as $field) $event[$field] = (int) $event[$field];

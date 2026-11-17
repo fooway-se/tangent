@@ -18,7 +18,6 @@ final class InboxService
     ) {
     }
 
-    /** @return list<array<string, mixed>> */
     public function list(AuthenticatedUser $user): array
     {
         if (!Permissions::can($user, 'inbox.read')) {

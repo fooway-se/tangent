@@ -54,7 +54,6 @@ final class ChatRepository
         return (int) $statement->fetchColumn();
     }
 
-    /** @param list<int> $projectIds */
     public function latestEventId(int $workspaceId, array $projectIds): int
     {
         if ($projectIds === []) {
@@ -76,7 +75,6 @@ final class ChatRepository
         return (int) $statement->fetchColumn();
     }
 
-    /** @param list<int> $projectIds @return list<array<string, mixed>> */
     public function listEvents(int $workspaceId, array $projectIds, int $sinceId): array
     {
         if ($projectIds === []) {
@@ -141,7 +139,6 @@ final class ChatRepository
         }, $statement->fetchAll(PDO::FETCH_ASSOC));
     }
 
-    /** @return list<array<string, mixed>> */
     public function listMessages(int $workspaceId, int $channelId, ?int $sinceId): array
     {
         $selectedMessages = $sinceId === null
@@ -197,7 +194,6 @@ final class ChatRepository
         return array_map(self::normalize(...), $statement->fetchAll(PDO::FETCH_ASSOC));
     }
 
-    /** @return list<array{id: int, parent_id: ?int, author_id: int, author_name: string, body: string, created_at: string}> */
     public function listClientConversationMessages(int $workspaceId, int $channelId): array
     {
         $statement = $this->pdo->prepare(
@@ -254,13 +250,11 @@ final class ChatRepository
         return $statement->fetchColumn() !== false;
     }
 
-    /** @return array<string, mixed>|null */
     public function getMessage(int $workspaceId, int $channelId, int $messageId): ?array
     {
         return $this->findMessage($workspaceId, $channelId, $messageId);
     }
 
-    /** @return array<string, mixed>|null */
     public function messageContext(int $workspaceId, int $messageId): ?array
     {
         $statement = $this->pdo->prepare(
@@ -306,7 +300,6 @@ final class ChatRepository
         }
     }
 
-    /** @return list<int> */
     public function threadParticipantIds(int $workspaceId, int $channelId, int $rootMessageId): array
     {
         $statement = $this->pdo->prepare(
@@ -330,7 +323,6 @@ final class ChatRepository
         return array_map('intval', $statement->fetchAll(PDO::FETCH_COLUMN));
     }
 
-    /** @return array<string, mixed> */
     public function createMessage(
         int $workspaceId,
         int $channelId,
@@ -356,7 +348,6 @@ final class ChatRepository
         return $message ?? [];
     }
 
-    /** @return array<string, mixed>|null */
     private function findMessage(int $workspaceId, int $channelId, int $messageId): ?array
     {
         $statement = $this->pdo->prepare(
@@ -390,7 +381,6 @@ final class ChatRepository
         return $message === false ? null : self::normalize($message);
     }
 
-    /** @param array<string, mixed> $message @return array<string, mixed> */
     private static function normalize(array $message): array
     {
         $message['id'] = (int) $message['id'];
@@ -405,7 +395,6 @@ final class ChatRepository
         return $message;
     }
 
-    /** @param list<int> $projectIds @return array{string, array<string, int>} */
     private static function projectFilter(array $projectIds): array
     {
         $placeholders = [];

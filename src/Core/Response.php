@@ -6,7 +6,6 @@ namespace Tangent\Core;
 
 final class Response
 {
-    /** @param array<string, mixed> $body @param array<string, string|list<string>> $headers */
     public function __construct(
         public readonly int $status,
         public readonly array $body = [],
@@ -14,7 +13,6 @@ final class Response
     ) {
     }
 
-    /** @param array<string, mixed> $body @param array<string, string|list<string>> $headers */
     public static function json(int $status, array $body = [], array $headers = []): self
     {
         $normalized = ['content-type' => 'application/json; charset=utf-8'];
@@ -25,7 +23,6 @@ final class Response
         return new self($status, $body, $normalized);
     }
 
-    /** @param array<string, string|list<string>> $headers */
     public static function notModified(array $headers = []): self
     {
         $normalized = [];

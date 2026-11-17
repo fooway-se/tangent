@@ -6,7 +6,6 @@ namespace Tangent\Core;
 
 final class Request
 {
-    /** @param array<string, mixed> $body @param array<string, string> $headers @param array<string, mixed> $query */
     public function __construct(
         public readonly string $method,
         public readonly string $path,
@@ -19,7 +18,6 @@ final class Request
     ) {
     }
 
-    /** @param array<string, mixed> $body @param array<string, string> $headers @param array<string, mixed> $query */
     public static function json(
         string $method,
         string $path,
@@ -32,7 +30,6 @@ final class Request
         return new self(strtoupper($method), $path, $body, $headers, $cookies, $remoteAddress, true, $query);
     }
 
-    /** @param array<string, mixed> $query @param array<string, string> $headers */
     public static function fromHttp(
         string $method,
         string $uri,

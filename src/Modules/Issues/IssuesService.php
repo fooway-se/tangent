@@ -28,21 +28,18 @@ final class IssuesService
     ) {
     }
 
-    /** @return list<array<string, mixed>> */
     public function list(AuthenticatedUser $user, int $projectId): array
     {
         $this->requireProjectAccess($user, $projectId, 'issues.read');
         return $this->issues->listForProject($user->workspaceId, $projectId);
     }
 
-    /** @return list<array<string, mixed>> */
     public function listDeleted(AuthenticatedUser $user, int $projectId): array
     {
         $this->requireProjectAccess($user, $projectId, 'issues.read');
         return $this->issues->listDeletedForProject($user->workspaceId, $projectId);
     }
 
-    /** @return list<array{id: int, from_status: ?string, to_status: string, actor_name: string, created_at: string}> */
     public function statusHistory(AuthenticatedUser $user, int $issueId): array
     {
         $issue = $this->issues->find($user->workspaceId, $issueId);
@@ -53,7 +50,6 @@ final class IssuesService
         return $this->issues->statusHistory($user->workspaceId, $issueId);
     }
 
-    /** @param array<string, mixed> $input @return array<string, mixed> */
     public function create(AuthenticatedUser $user, int $projectId, array $input): array
     {
         $this->requireProjectAccess($user, $projectId, 'issues.create');
@@ -129,7 +125,6 @@ final class IssuesService
         }
     }
 
-    /** @return array<string, mixed> */
     public function createFromMessage(AuthenticatedUser $user, int $messageId): array
     {
         $context = $this->chat->issueContext($user, $messageId);
@@ -150,7 +145,6 @@ final class IssuesService
         );
     }
 
-    /** @param array<string, mixed> $input @return array<string, mixed> */
     public function update(AuthenticatedUser $user, int $issueId, array $input): array
     {
         $issue = $this->issues->find($user->workspaceId, $issueId);
@@ -314,7 +308,6 @@ final class IssuesService
         }
     }
 
-    /** @param array<string, mixed> $input @return array<string, mixed> */
     public function move(AuthenticatedUser $user, int $issueId, array $input): array
     {
         $issue = $this->issues->find($user->workspaceId, $issueId);
@@ -358,7 +351,6 @@ final class IssuesService
         $this->issues->softDelete($user->workspaceId, $issueId);
     }
 
-    /** @return array<string, mixed> */
     public function restore(AuthenticatedUser $user, int $issueId): array
     {
         $issue = $this->issues->findDeleted($user->workspaceId, $issueId);

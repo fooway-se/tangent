@@ -12,7 +12,6 @@ final class IssueRepository
     {
     }
 
-    /** @return list<array<string, mixed>> */
     public function listForProject(int $workspaceId, int $projectId): array
     {
         $statement = $this->pdo->prepare(
@@ -27,7 +26,6 @@ final class IssueRepository
         return array_map(self::normalize(...), $statement->fetchAll(PDO::FETCH_ASSOC));
     }
 
-    /** @param list<int> $projectIds @return list<array<string, mixed>> */
     public function listOpenAssignedToUser(int $workspaceId, int $userId, array $projectIds): array
     {
         if ($projectIds === []) {
@@ -56,7 +54,6 @@ final class IssueRepository
         return array_map(self::normalize(...), $statement->fetchAll(PDO::FETCH_ASSOC));
     }
 
-    /** @return list<array<string, mixed>> */
     public function listDeletedForProject(int $workspaceId, int $projectId): array
     {
         $statement = $this->pdo->prepare(
@@ -71,7 +68,6 @@ final class IssueRepository
         return array_map(self::normalize(...), $statement->fetchAll(PDO::FETCH_ASSOC));
     }
 
-    /** @return array<string, mixed> */
     public function create(
         int $workspaceId,
         int $projectId,
@@ -120,7 +116,6 @@ final class IssueRepository
         return $this->find($workspaceId, $issueId) ?? [];
     }
 
-    /** @return array<string, mixed>|null */
     public function find(int $workspaceId, int $issueId): ?array
     {
         $statement = $this->pdo->prepare(
@@ -134,7 +129,6 @@ final class IssueRepository
         return $issue === false ? null : self::normalize($issue);
     }
 
-    /** @return array<string, mixed>|null */
     public function findDeleted(int $workspaceId, int $issueId): ?array
     {
         $statement = $this->pdo->prepare(
@@ -147,7 +141,6 @@ final class IssueRepository
         return $issue === false ? null : self::normalize($issue);
     }
 
-    /** @param array<string, mixed> $issue */
     public function update(int $workspaceId, int $issueId, array $issue): void
     {
         $statement = $this->pdo->prepare(
@@ -245,7 +238,6 @@ final class IssueRepository
         ]);
     }
 
-    /** @return list<array{id: int, from_status: ?string, to_status: string, actor_name: string, created_at: string}> */
     public function statusHistory(int $workspaceId, int $issueId): array
     {
         $statement = $this->pdo->prepare(
@@ -290,7 +282,6 @@ final class IssueRepository
         }
     }
 
-    /** @return list<array<string, mixed>> */
     public function sharedItems(int $workspaceId, int $projectId): array
     {
         $statement = $this->pdo->prepare(
@@ -311,7 +302,6 @@ final class IssueRepository
         return $rows;
     }
 
-    /** @return array{done: int, total: int} */
     public function sharedProgress(int $workspaceId, int $projectId): array
     {
         $statement = $this->pdo->prepare(
@@ -324,7 +314,6 @@ final class IssueRepository
         return ['done' => (int) ($row['done'] ?? 0), 'total' => (int) $row['total']];
     }
 
-    /** @return array<int, array{done: int, total: int}> */
     public function sharedMilestoneProgress(int $workspaceId, int $projectId): array
     {
         $statement = $this->pdo->prepare(
@@ -341,7 +330,6 @@ final class IssueRepository
         return $progress;
     }
 
-    /** @return list<array<string, mixed>> */
     public function pendingSharedApprovals(int $workspaceId, int $projectId): array
     {
         $statement = $this->pdo->prepare(
@@ -371,7 +359,6 @@ final class IssueRepository
         return (int) $statement->fetchColumn();
     }
 
-    /** @return list<array{id: int, text: string, created_at: string}> */
     public function sharedStatusUpdates(int $workspaceId, int $projectId): array
     {
         $statement = $this->pdo->prepare(
@@ -395,7 +382,6 @@ final class IssueRepository
         }, $statement->fetchAll(PDO::FETCH_ASSOC));
     }
 
-    /** @return array{project_id: int, title: string, created_by: int, is_shared: bool, approval_requested_at: ?string, approved_at: ?string, status: string}|null */
     public function approvalIssue(int $workspaceId, int $issueId): ?array
     {
         $statement = $this->pdo->prepare(
@@ -459,7 +445,6 @@ final class IssueRepository
         ]);
     }
 
-    /** @param array<string, mixed> $issue @return array<string, mixed> */
     private static function normalize(array $issue): array
     {
         foreach (['id', 'workspace_id', 'project_id', 'created_by', 'sort_order'] as $field) {

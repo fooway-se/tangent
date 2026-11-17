@@ -20,7 +20,6 @@ final class ClientViewService
     ) {
     }
 
-    /** @return array<string, mixed> */
     public function get(AuthenticatedUser $user, int $projectId): array
     {
         $project = $this->projects->find($user->workspaceId, $projectId);

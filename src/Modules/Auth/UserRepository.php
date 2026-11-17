@@ -16,7 +16,6 @@ final class UserRepository
     ) {
     }
 
-    /** @return array<string, mixed>|null */
     public function findByEmail(int $workspaceId, string $email): ?array
     {
         $statement = $this->pdo->prepare(
@@ -31,7 +30,6 @@ final class UserRepository
         return $user === false ? null : $user;
     }
 
-    /** @return array<string, mixed>|null */
     public function findById(int $workspaceId, int $userId): ?array
     {
         $statement = $this->pdo->prepare(
@@ -46,7 +44,6 @@ final class UserRepository
         return $user === false ? null : $user;
     }
 
-    /** @return list<array<string, mixed>> */
     public function list(int $workspaceId): array
     {
         $statement = $this->pdo->prepare(
@@ -81,7 +78,6 @@ final class UserRepository
         ]);
     }
 
-    /** @return array<string, mixed>|null */
     public function findAccountByEmail(string $email): ?array
     {
         $statement = $this->pdo->prepare(
@@ -95,7 +91,6 @@ final class UserRepository
         return $account === false ? null : $account;
     }
 
-    /** @return array<string, mixed>|null */
     public function findAccountMember(int $workspaceId, int $accountId): ?array
     {
         $statement = $this->pdo->prepare(
@@ -133,7 +128,6 @@ final class UserRepository
         return (int) $this->pdo->lastInsertId();
     }
 
-    /** @return array<string, mixed> */
     public function createWorkspaceUser(int $workspaceId, string $name, string $email, string $password, string $role): array
     {
         if (!in_array($role, ['developer', 'guest'], true)) {
@@ -146,13 +140,11 @@ final class UserRepository
         return $this->createAccountAndMembership($workspaceId, $name, $email, $password, $role);
     }
 
-    /** @return array<string, mixed> */
     public function createAdmin(int $workspaceId, string $name, string $email, string $password): array
     {
         return $this->createAccountAndMembership($workspaceId, $name, $email, $password, 'admin');
     }
 
-    /** @return array<string, mixed> */
     public function createMembershipForAccount(int $workspaceId, int $accountId, string $name, string $email, string $role): array
     {
         $account = $this->findAccountByEmail($email);
@@ -186,7 +178,6 @@ final class UserRepository
         $statement->execute(['password_hash' => $this->passwords->hash($password), 'id' => $accountId]);
     }
 
-    /** @return array<string, mixed> */
     private function createAccountAndMembership(int $workspaceId, string $name, string $email, string $password, string $role): array
     {
         $normalizedEmail = self::normalizeEmail($email);

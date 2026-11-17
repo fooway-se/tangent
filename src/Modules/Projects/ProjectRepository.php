@@ -14,7 +14,6 @@ final class ProjectRepository
     {
     }
 
-    /** @return list<array<string, mixed>> */
     public function listForWorkspace(int $workspaceId): array
     {
         $statement = $this->pdo->prepare(
@@ -27,7 +26,6 @@ final class ProjectRepository
         return array_map(self::normalize(...), $statement->fetchAll(PDO::FETCH_ASSOC));
     }
 
-    /** @return array<string, mixed>|null */
     public function find(int $workspaceId, int $projectId): ?array
     {
         $statement = $this->pdo->prepare(
@@ -56,7 +54,6 @@ final class ProjectRepository
         return $statement->fetchColumn() !== false;
     }
 
-    /** @return list<array{id: int, is_member: bool}> */
     public function visibilityForUser(int $workspaceId, int $userId): array
     {
         $statement = $this->pdo->prepare(
@@ -74,7 +71,6 @@ final class ProjectRepository
         ], $statement->fetchAll(PDO::FETCH_ASSOC));
     }
 
-    /** @return array<string, mixed> */
     public function create(int $workspaceId, string $name, string $slug, string $description, int $creatorId): array
     {
         $ownsTransaction = !$this->pdo->inTransaction();
@@ -118,7 +114,6 @@ final class ProjectRepository
         return $this->find($workspaceId, $projectId) ?? [];
     }
 
-    /** @param array{name: string, description: string, status: string} $project */
     public function update(int $workspaceId, int $projectId, array $project): void
     {
         $statement = $this->pdo->prepare(
@@ -135,7 +130,6 @@ final class ProjectRepository
         ]);
     }
 
-    /** @return list<array<string, mixed>> */
     public function members(int $workspaceId, int $projectId): array
     {
         $statement = $this->pdo->prepare(
@@ -180,7 +174,6 @@ final class ProjectRepository
         return $statement->rowCount() > 0;
     }
 
-    /** @param array<string, mixed> $project @return array<string, mixed> */
     private static function normalize(array $project): array
     {
         foreach (['id', 'workspace_id', 'created_by'] as $field) {

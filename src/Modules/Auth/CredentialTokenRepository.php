@@ -12,7 +12,6 @@ final class CredentialTokenRepository
     {
     }
 
-    /** @param list<int> $projectIds */
     public function createInvite(
         int $workspaceId,
         int $creatorId,
@@ -44,7 +43,6 @@ final class CredentialTokenRepository
         return $id;
     }
 
-    /** @return list<array<string, mixed>> */
     public function listInvites(int $workspaceId): array
     {
         $statement = $this->pdo->prepare(
@@ -61,7 +59,6 @@ final class CredentialTokenRepository
         }, $statement->fetchAll(PDO::FETCH_ASSOC));
     }
 
-    /** @return array<string, mixed>|null */
     public function findInvite(int $workspaceId, int $inviteId, bool $forUpdate = false): ?array
     {
         $statement = $this->pdo->prepare(
@@ -76,7 +73,6 @@ final class CredentialTokenRepository
         return $invite === false ? null : $invite;
     }
 
-    /** @param list<int> $projectIds */
     public function replaceInviteToken(int $workspaceId, int $inviteId, string $tokenHash, string $expiresAt, array $projectIds): bool
     {
         $statement = $this->pdo->prepare(
@@ -135,7 +131,6 @@ final class CredentialTokenRepository
         ]);
     }
 
-    /** @return array<string, mixed>|null */
     public function findValid(string $tokenHash, string $type, bool $forUpdate = false): ?array
     {
         $statement = $this->pdo->prepare(
@@ -175,7 +170,6 @@ final class CredentialTokenRepository
         ]);
     }
 
-    /** @return list<int> */
     public function projectIds(int $workspaceId, int $tokenId): array
     {
         $statement = $this->pdo->prepare(
@@ -211,7 +205,6 @@ final class CredentialTokenRepository
         $statement->execute(['account_id' => $accountId, 'token_type' => 'password_reset']);
     }
 
-    /** @param list<int> $projectIds */
     private function setProjectIds(int $workspaceId, int $tokenId, array $projectIds): void
     {
         $delete = $this->pdo->prepare(

@@ -204,7 +204,6 @@ final class ProjectChatTest extends ApiTestCase
         self::assertSame(404, $reply->status);
     }
 
-    /** @param array{cookie: string, csrf: string} $admin */
     private function createProject(array $admin, string $name): int
     {
         $response = $this->cookieRequest(
@@ -218,7 +217,6 @@ final class ProjectChatTest extends ApiTestCase
         return (int) $response->body['project']['id'];
     }
 
-    /** @param array{cookie: string, csrf: string} $user @param array<string, mixed> $body */
     private function postMessage(int $projectId, array $user, array $body): Response
     {
         return $this->apiRequest(
@@ -230,7 +228,6 @@ final class ProjectChatTest extends ApiTestCase
         );
     }
 
-    /** @param array<string, mixed> $query @param array<string, string> $headers */
     private function getMessages(int $projectId, string $cookie, array $query = [], array $headers = []): Response
     {
         return $this->apiRequest(
@@ -243,7 +240,6 @@ final class ProjectChatTest extends ApiTestCase
         );
     }
 
-    /** @param array<string, string> $headers */
     private function getEvents(string $cookie, array $headers = []): Response
     {
         return $this->apiRequest(
@@ -256,7 +252,6 @@ final class ProjectChatTest extends ApiTestCase
         );
     }
 
-    /** @param array<string, mixed> $body @param array<string, string> $headers @param array<string, string> $cookies @param array<string, mixed> $query */
     private function apiRequest(
         string $method,
         string $path,

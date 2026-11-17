@@ -27,7 +27,6 @@ final class ChatService
         $this->chat->createProjectChannel($workspaceId, $projectId);
     }
 
-    /** @return array{messages: list<array<string, mixed>>, etag: string, not_modified: bool} */
     public function messages(
         AuthenticatedUser $user,
         int $projectId,
@@ -49,7 +48,6 @@ final class ChatService
         ];
     }
 
-    /** @return array<string, mixed> */
     public function message(AuthenticatedUser $user, int $projectId, int $messageId): array
     {
         $channelId = $this->visibleProjectChannel($user, $projectId);
@@ -58,14 +56,12 @@ final class ChatService
         return $message;
     }
 
-    /** @return list<array{id: int, parent_id: ?int, author_id: int, author_name: string, body: string, created_at: string}> */
     public function clientConversationMessages(AuthenticatedUser $user, int $projectId): array
     {
         $channelId = $this->visibleProjectChannel($user, $projectId, 'client_view.read');
         return $this->chat->listClientConversationMessages($user->workspaceId, $channelId);
     }
 
-    /** @return array{events: list<array<string, mixed>>, etag: string, not_modified: bool} */
     public function events(AuthenticatedUser $user, int $sinceId, ?string $ifNoneMatch): array
     {
         $projectIds = [];
@@ -89,7 +85,6 @@ final class ChatService
         ];
     }
 
-    /** @param array<string, mixed> $input @return array<string, mixed> */
     public function sendMessage(AuthenticatedUser $user, int $projectId, array $input): array
     {
         $channelId = $this->visibleProjectChannel($user, $projectId, 'chat.send');
@@ -127,7 +122,6 @@ final class ChatService
         }
     }
 
-    /** @param array<string, mixed> $input @return array<string, mixed> */
     public function sendClientComment(AuthenticatedUser $user, int $projectId, array $input): array
     {
         $channelId = $this->visibleProjectChannel($user, $projectId, 'client_comments.create');
@@ -148,7 +142,6 @@ final class ChatService
         }
     }
 
-    /** @return array{project_id: int, channel_id: int, root_message_id: int, title: string} */
     public function issueContext(AuthenticatedUser $user, int $messageId): array
     {
         $message = $this->chat->messageContext($user->workspaceId, $messageId);

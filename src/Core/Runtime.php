@@ -6,7 +6,6 @@ namespace Tangent\Core;
 
 final class Runtime
 {
-    /** @var array<string, mixed>|null */
     private static ?array $fileConfig = null;
 
     public static function database(): Database
@@ -50,7 +49,6 @@ final class Runtime
         return $value === false || $value === '' ? (string) $fallback : $value;
     }
 
-    /** @return array<string, mixed> */
     private static function fileConfig(): array
     {
         if (self::$fileConfig !== null) {

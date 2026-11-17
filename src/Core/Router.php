@@ -6,7 +6,6 @@ namespace Tangent\Core;
 
 final class Router
 {
-    /** @var list<array{method: string, regex: string, names: list<string>, handler: callable, authenticated: bool}> */
     private array $routes = [];
 
     public function add(string $method, string $path, callable $handler, bool $authenticated = true): void
@@ -31,7 +30,6 @@ final class Router
         ];
     }
 
-    /** @return array{handler: callable, authenticated: bool, params: array<string, string>}|null */
     public function match(Request $request): ?array
     {
         foreach ($this->routes as $route) {

@@ -74,7 +74,6 @@ abstract class ApiTestCase extends TestCase
         );
     }
 
-    /** @return array{cookie: string, csrf: string, user: array<string, mixed>, set_cookies: list<string>} */
     protected function login(string $email, ?string $password = null): array
     {
         $response = $this->request('POST', '/api/v1/auth/login', [

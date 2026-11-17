@@ -26,7 +26,6 @@ final class AuthService
     ) {
     }
 
-    /** @return array{user: array<string, mixed>, session_token: string, csrf_token: string, expires_at: string} */
     public function login(Request $request): array
     {
         $email = UserRepository::normalizeEmail((string) ($request->body['email'] ?? ''));
@@ -51,7 +50,6 @@ final class AuthService
         return $this->createSessionForMember($this->config->workspaceId, (int) $user['id']);
     }
 
-    /** @return array{user: array<string, mixed>, session_token: string, csrf_token: string, expires_at: string} */
     public function createSessionForMember(int $workspaceId, int $userId): array
     {
         $user = $this->users->findById($workspaceId, $userId);
@@ -112,7 +110,6 @@ final class AuthService
         return ['id' => $id, 'label' => $label, 'token' => $token];
     }
 
-    /** @return list<array<string, mixed>> */
     public function listApiTokens(AuthenticatedUser $user): array
     {
         if (!Permissions::can($user, 'tokens.list')) {
@@ -138,7 +135,6 @@ final class AuthService
         $this->tokens->revoke($user->workspaceId, $user->tokenId, $user->id);
     }
 
-    /** @return list<array<string, mixed>> */
     public function listUsers(AuthenticatedUser $actor): array
     {
         if (!Permissions::can($actor, 'users.list')) {
@@ -147,7 +143,6 @@ final class AuthService
         return $this->users->list($actor->workspaceId);
     }
 
-    /** @param array<string, mixed> $body @return array<string, mixed> */
     public function setWorkspaceMemberActive(AuthenticatedUser $actor, int $memberId, array $body): array
     {
         if (!Permissions::can($actor, 'users.manage_members')) {
@@ -202,7 +197,6 @@ final class AuthService
         }
     }
 
-    /** @return array<string, mixed> */
     public function createDeveloper(AuthenticatedUser $actor, array $body): array
     {
         if (!Permissions::can($actor, 'users.create')) {
@@ -232,7 +226,6 @@ final class AuthService
         return $this->users->createWorkspaceUser($actor->workspaceId, $name, $email, $password, $role);
     }
 
-    /** @param array<string, mixed> $user @return array<string, mixed> */
     private function publicUser(array $user): array
     {
         return [

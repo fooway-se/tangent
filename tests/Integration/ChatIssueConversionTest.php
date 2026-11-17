@@ -110,7 +110,6 @@ final class ChatIssueConversionTest extends ApiTestCase
         self::assertSame(404, $response->status);
     }
 
-    /** @param array{cookie: string, csrf: string} $user @param array<string, mixed> $body */
     private function postMessage(int $projectId, array $user, array $body): Response
     {
         return $this->apiCookieRequest(
@@ -122,7 +121,6 @@ final class ChatIssueConversionTest extends ApiTestCase
         );
     }
 
-    /** @param array{cookie: string, csrf: string} $admin */
     private function createProject(array $admin, string $name): int
     {
         $response = $this->apiCookieRequest(
@@ -136,7 +134,6 @@ final class ChatIssueConversionTest extends ApiTestCase
         return (int) $response->body['project']['id'];
     }
 
-    /** @param array<string, mixed> $body */
     private function apiCookieRequest(
         string $method,
         string $path,

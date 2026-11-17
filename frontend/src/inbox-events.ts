@@ -36,7 +36,6 @@ export function iconFor(type: InboxEventType): string {
   return ICONS[type];
 }
 
-/** "Assigned" is served by the assigned-issues endpoint, not by events. */
 export function eventsForTab(events: readonly InboxEvent[], tab: InboxTab): InboxEvent[] {
   switch (tab) {
     case 'unread': return events.filter((event) => !event.done && !event.read);
@@ -70,7 +69,6 @@ export interface EventRowHandlers {
   toggleDone: (event: InboxEvent) => void;
 }
 
-/** Builds one row with textContent only: event text is user-influenced. */
 export function createEventRow(event: InboxEvent, handlers: EventRowHandlers): HTMLLIElement {
   const item = document.createElement('li');
   item.className = `issue-card inbox-issue-card inbox-event-card${event.read ? '' : ' is-unread'}`;

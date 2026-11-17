@@ -6,7 +6,6 @@ namespace Tangent\Core;
 
 final class Permissions
 {
-    /** @param array<string, mixed> $resource */
     public static function can(AuthenticatedUser $user, string $action, array $resource = []): bool
     {
         if ($user->role === 'guest') {

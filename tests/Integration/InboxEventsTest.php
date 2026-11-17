@@ -236,7 +236,6 @@ final class InboxEventsTest extends ApiTestCase
         self::assertSame([], $this->events($developer['cookie']));
     }
 
-    /** @param array{cookie: string, csrf: string} $admin */
     private function createProject(array $admin, string $name): int
     {
         $response = $this->cookieRequest('POST', '/api/v1/projects', $admin['cookie'], ['name' => $name], $admin['csrf']);
@@ -244,7 +243,6 @@ final class InboxEventsTest extends ApiTestCase
         return (int) $response->body['project']['id'];
     }
 
-    /** @param array{cookie: string, csrf: string} $admin */
     private function addMember(array $admin, int $projectId, int $userId): void
     {
         $response = $this->cookieRequest(
@@ -257,7 +255,6 @@ final class InboxEventsTest extends ApiTestCase
         self::assertSame(200, $response->status);
     }
 
-    /** @param array{cookie: string, csrf: string} $admin */
     private function createDeveloper(array $admin, string $name, string $email): int
     {
         $response = $this->cookieRequest('POST', '/api/v1/users', $admin['cookie'], [
@@ -269,7 +266,6 @@ final class InboxEventsTest extends ApiTestCase
         return (int) $response->body['user']['id'];
     }
 
-    /** @param array{cookie: string, csrf: string} $user @param array<string, mixed> $body */
     private function sendMessage(int $projectId, array $user, array $body): Response
     {
         return $this->cookieRequest(
@@ -281,7 +277,6 @@ final class InboxEventsTest extends ApiTestCase
         );
     }
 
-    /** @param array{cookie: string, csrf: string} $user */
     private function createIssue(array $user, int $projectId, string $title, int $assigneeId): int
     {
         $response = $this->cookieRequest(
@@ -295,13 +290,11 @@ final class InboxEventsTest extends ApiTestCase
         return (int) $response->body['issue']['id'];
     }
 
-    /** @param array{cookie: string, csrf: string} $user @param array<string, mixed> $body */
     private function patchIssue(array $user, int $issueId, array $body): Response
     {
         return $this->cookieRequest('PATCH', "/api/v1/issues/{$issueId}", $user['cookie'], $body, $user['csrf']);
     }
 
-    /** @return list<array<string, mixed>> */
     private function events(string $cookie): array
     {
         $response = $this->cookieRequest('GET', '/api/v1/inbox/events', $cookie);
@@ -309,7 +302,6 @@ final class InboxEventsTest extends ApiTestCase
         return $response->body['events'];
     }
 
-    /** @return array<string, mixed> */
     private function eventById(string $cookie, int $eventId): array
     {
         foreach ($this->events($cookie) as $event) {

@@ -138,7 +138,6 @@ export function renderClientEmptyState(container, message) {
     page.append(overview, el('p', 'guest-empty guest-no-projects', message));
     container.replaceChildren(screenHeading, page);
 }
-/** Renders the client view. Everything is textContent; the API already filters visibility. */
 export function renderClientView(container, view, handlers) {
     const screenHeading = el('div', 'guest-screen-heading');
     const breadcrumb = el('div', 'guest-project-breadcrumb');

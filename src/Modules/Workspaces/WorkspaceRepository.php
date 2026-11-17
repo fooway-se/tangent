@@ -12,7 +12,6 @@ final class WorkspaceRepository
     {
     }
 
-    /** @return list<array{id: int, name: string, slug: string, role: string}> */
     public function listForAccount(int $accountId): array
     {
         $statement = $this->pdo->prepare(
@@ -26,7 +25,6 @@ final class WorkspaceRepository
         return array_map(self::workspace(...), $statement->fetchAll(PDO::FETCH_ASSOC));
     }
 
-    /** @return array{id: int, name: string, slug: string, role: string}|null */
     public function findForAccount(int $workspaceId, int $accountId): ?array
     {
         $statement = $this->pdo->prepare(
@@ -56,7 +54,6 @@ final class WorkspaceRepository
         $statement->fetchColumn();
     }
 
-    /** @return array{id: int, name: string, slug: string} */
     public function create(string $name, string $slug): array
     {
         $statement = $this->pdo->prepare(
@@ -70,7 +67,6 @@ final class WorkspaceRepository
         ];
     }
 
-    /** @param array<string, mixed> $row @return array{id: int, name: string, slug: string, role: string} */
     private static function workspace(array $row): array
     {
         return [

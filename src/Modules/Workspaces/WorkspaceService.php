@@ -24,7 +24,6 @@ final class WorkspaceService
     ) {
     }
 
-    /** @return list<array{id: int, name: string, slug: string, role: string}> */
     public function list(AuthenticatedUser $user): array
     {
         if (!Permissions::can($user, 'workspaces.list')) {
@@ -33,7 +32,6 @@ final class WorkspaceService
         return $this->workspaces->listForAccount($user->accountId);
     }
 
-    /** @param array<string, mixed> $body @return array{id: int, name: string, slug: string, role: string} */
     public function create(AuthenticatedUser $user, array $body): array
     {
         if (!Permissions::can($user, 'workspaces.create')) {
@@ -68,7 +66,6 @@ final class WorkspaceService
         }
     }
 
-    /** @return array{user: array<string, mixed>, workspace: array{id: int, name: string, slug: string, role: string}, session_token: string, csrf_token: string, expires_at: string} */
     public function switch(AuthenticatedUser $user, int $workspaceId): array
     {
         if (!Permissions::can($user, 'workspaces.switch')) {

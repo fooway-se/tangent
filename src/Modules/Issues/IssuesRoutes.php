@@ -119,7 +119,6 @@ final class IssuesRoutes
         });
     }
 
-    /** @param list<array<string, mixed>> $issues */
     private static function issueListResponse(Request $request, array $issues): Response
     {
         $etag = '"' . hash('sha256', json_encode($issues, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR)) . '"';

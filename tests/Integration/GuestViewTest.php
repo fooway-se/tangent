@@ -285,7 +285,6 @@ final class GuestViewTest extends ApiTestCase
         self::assertSame(200, $clientView->status);
     }
 
-    /** @param array{cookie: string, csrf: string} $admin */
     private function createProject(array $admin, string $name): int
     {
         $response = $this->cookieRequest('POST', '/api/v1/projects', $admin['cookie'], ['name' => $name], $admin['csrf']);
@@ -293,7 +292,6 @@ final class GuestViewTest extends ApiTestCase
         return (int) $response->body['project']['id'];
     }
 
-    /** @param array{cookie: string, csrf: string} $admin */
     private function createUser(array $admin, string $name, string $email, string $role): int
     {
         $response = $this->cookieRequest('POST', '/api/v1/users', $admin['cookie'], [
@@ -306,13 +304,11 @@ final class GuestViewTest extends ApiTestCase
         return (int) $response->body['user']['id'];
     }
 
-    /** @param array{cookie: string, csrf: string} $admin */
     private function createDeveloper(array $admin, string $name, string $email, string $role): int
     {
         return $this->createUser($admin, $name, $email, $role);
     }
 
-    /** @param array{cookie: string, csrf: string} $admin */
     private function addMember(array $admin, int $projectId, int $userId): void
     {
         $response = $this->cookieRequest(
@@ -325,7 +321,6 @@ final class GuestViewTest extends ApiTestCase
         self::assertSame(200, $response->status, json_encode($response->body));
     }
 
-    /** @param array{cookie: string, csrf: string} $user */
     private function createMilestone(array $user, int $projectId, string $name): int
     {
         $date = (new DateTimeImmutable('tomorrow'))->modify('+14 days')->format('Y-m-d');
@@ -340,7 +335,6 @@ final class GuestViewTest extends ApiTestCase
         return (int) $response->body['milestone']['id'];
     }
 
-    /** @param array{cookie: string, csrf: string} $user */
     private function createIssue(array $user, int $projectId, string $title): int
     {
         $response = $this->cookieRequest(
@@ -354,7 +348,6 @@ final class GuestViewTest extends ApiTestCase
         return (int) $response->body['issue']['id'];
     }
 
-    /** @param array{cookie: string, csrf: string} $user @param array<string, mixed> $fields */
     private function updateIssue(array $user, int $issueId, array $fields): void
     {
         $response = $this->cookieRequest(
@@ -367,7 +360,6 @@ final class GuestViewTest extends ApiTestCase
         self::assertSame(200, $response->status, json_encode($response->body));
     }
 
-    /** @param list<array<string, mixed>> $items @return array<string, mixed> */
     private function itemById(array $items, int $id): array
     {
         foreach ($items as $item) {

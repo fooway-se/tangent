@@ -19,7 +19,6 @@ final class AuthenticatedUser
     ) {
     }
 
-    /** @return array{id: int, workspace_id: int, name: string, email: string, role: string} */
     public function publicData(): array
     {
         return [

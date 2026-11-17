@@ -206,7 +206,6 @@ export function renderClientEmptyState(container: HTMLElement, message: string):
   container.replaceChildren(screenHeading, page);
 }
 
-/** Renders the client view. Everything is textContent; the API already filters visibility. */
 export function renderClientView(container: HTMLElement, view: ClientView, handlers: GuestHandlers): void {
   const screenHeading = el('div', 'guest-screen-heading');
   const breadcrumb = el('div', 'guest-project-breadcrumb');

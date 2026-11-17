@@ -19,14 +19,12 @@ final class InboxEvents
     ) {
     }
 
-    /** @return list<array<string, mixed>> */
     public function list(AuthenticatedUser $user): array
     {
         $this->requireRead($user);
         return $this->events->listForUser($user->workspaceId, $user->id, $this->visibleProjectIds($user));
     }
 
-    /** @param array<string, mixed> $changes @return array<string, mixed> */
     public function update(AuthenticatedUser $user, int $eventId, array $changes): array
     {
         $this->requireRead($user);
@@ -56,7 +54,6 @@ final class InboxEvents
         $this->events->markAllRead($user->workspaceId, $user->id, $this->visibleProjectIds($user));
     }
 
-    /** @param array<string, mixed> $message @param list<int> $threadParticipantIds */
     public function recordMessage(
         int $workspaceId,
         int $projectId,
@@ -99,7 +96,6 @@ final class InboxEvents
         }
     }
 
-    /** @param list<?int> $recipientIds */
     public function recordStatus(int $workspaceId, int $projectId, int $actorId, array $recipientIds, int $issueId, string $title, string $status): void
     {
         $this->record($workspaceId, $projectId, array_map('intval', array_filter($recipientIds)), $actorId, 'status', $issueId, null, 'changed issue status to ' . $status, $title);
@@ -116,7 +112,6 @@ final class InboxEvents
         $this->record($workspaceId, $projectId, [$creatorId], $actorId, 'status', $issueId, null, 'approved a shared issue', $title);
     }
 
-    /** @param list<int> $recipientIds */
     private function record(
         int $workspaceId,
         int $projectId,
@@ -140,7 +135,6 @@ final class InboxEvents
         $this->events->record($workspaceId, $recipients, $actorId, $type, $projectId, $issueId, $messageId, $summary, $detail);
     }
 
-    /** @return list<int> */
     private function visibleProjectIds(AuthenticatedUser $user): array
     {
         $visible = [];

@@ -24,7 +24,6 @@ final class ProjectService
     ) {
     }
 
-    /** @return list<array<string, mixed>> */
     public function list(AuthenticatedUser $user): array
     {
         if ($user->role === 'guest') {
@@ -45,7 +44,6 @@ final class ProjectService
         ));
     }
 
-    /** @return array{project: array<string, mixed>, members: list<array<string, mixed>>} */
     public function get(AuthenticatedUser $user, int $projectId): array
     {
         $project = $this->findVisible($user, $projectId);
@@ -55,7 +53,6 @@ final class ProjectService
         ];
     }
 
-    /** @param array<string, mixed> $body @return array<string, mixed> */
     public function create(AuthenticatedUser $user, array $body): array
     {
         if (!Permissions::can($user, 'projects.create')) {
@@ -92,7 +89,6 @@ final class ProjectService
         }
     }
 
-    /** @param array<string, mixed> $body @return array<string, mixed> */
     public function update(AuthenticatedUser $user, int $projectId, array $body): array
     {
         $project = $this->projects->find($user->workspaceId, $projectId);
@@ -140,14 +136,12 @@ final class ProjectService
         return $this->projects->find($user->workspaceId, $projectId) ?? [];
     }
 
-    /** @return list<array<string, mixed>> */
     public function members(AuthenticatedUser $user, int $projectId): array
     {
         $this->findVisible($user, $projectId);
         return $this->projects->members($user->workspaceId, $projectId);
     }
 
-    /** @return array<string, mixed> */
     public function addMember(AuthenticatedUser $user, int $projectId, int $userId): array
     {
         $this->requireMemberManagement($user, $projectId);
@@ -198,7 +192,6 @@ final class ProjectService
         }
     }
 
-    /** @return array<string, mixed> */
     private function findVisible(AuthenticatedUser $user, int $projectId): array
     {
         $project = $this->projects->find($user->workspaceId, $projectId);

@@ -39,7 +39,6 @@ final class InboxRoutes
         });
     }
 
-    /** @param 'issues'|'events' $key @param list<array<string, mixed>> $items */
     private static function conditionalListResponse(Request $request, string $key, array $items): Response
     {
         $etag = '"' . hash('sha256', json_encode($items, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR)) . '"';

@@ -35,7 +35,6 @@ final class CredentialService
     ) {
     }
 
-    /** @param array<string, mixed> $body @return array<string, mixed> */
     public function createInvite(AuthenticatedUser $actor, array $body, string $remoteAddress): array
     {
         $this->requireAdmin($actor);
@@ -91,7 +90,6 @@ final class CredentialService
         return $invite;
     }
 
-    /** @return list<array<string, mixed>> */
     public function listInvites(AuthenticatedUser $actor): array
     {
         $this->requireAdmin($actor);
@@ -101,7 +99,6 @@ final class CredentialService
         }, $this->credentialTokens->listInvites($actor->workspaceId));
     }
 
-    /** @return array<string, mixed> */
     public function regenerateInviteLink(AuthenticatedUser $actor, int $inviteId, string $remoteAddress): array
     {
         $this->requireAdmin($actor);
@@ -147,7 +144,6 @@ final class CredentialService
         }
     }
 
-    /** @return array<string, mixed> */
     public function inspectInvite(Request $request): array
     {
         $this->limitPublicTokenRequest('invite-accept:' . $request->remoteAddress);
@@ -167,7 +163,6 @@ final class CredentialService
         ];
     }
 
-    /** @return array{user: array<string, mixed>, session_token: string, csrf_token: string, expires_at: string} */
     public function acceptInvite(Request $request): array
     {
         $this->limitPublicTokenRequest('invite-accept:' . $request->remoteAddress);
@@ -224,7 +219,6 @@ final class CredentialService
         }
     }
 
-    /** @return array{reset_url: string, expires_at: string} */
     public function generatePasswordResetLink(AuthenticatedUser $actor, int $memberId, string $remoteAddress): array
     {
         $this->requireAdmin($actor);
@@ -287,7 +281,6 @@ final class CredentialService
         }
     }
 
-    /** @return list<int> */
     private function validateProjectIds(int $workspaceId, mixed $value, string $role): array
     {
         if (!is_array($value) || !array_is_list($value)) {

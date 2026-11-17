@@ -12,7 +12,6 @@ final class MilestoneRepository
     {
     }
 
-    /** @return list<array<string, mixed>> */
     public function list(int $workspaceId, int $projectId): array
     {
         $statement = $this->pdo->prepare(
@@ -24,7 +23,6 @@ final class MilestoneRepository
         return array_map(self::normalize(...), $statement->fetchAll(PDO::FETCH_ASSOC));
     }
 
-    /** @return array<string, mixed>|null */
     public function find(int $workspaceId, int $projectId, int $milestoneId): ?array
     {
         $statement = $this->pdo->prepare(
@@ -36,7 +34,6 @@ final class MilestoneRepository
         return $row === false ? null : self::normalize($row);
     }
 
-    /** @return array<string, mixed> */
     public function create(int $workspaceId, int $projectId, string $name, ?string $dueDate): array
     {
         $statement = $this->pdo->prepare(
@@ -70,7 +67,6 @@ final class MilestoneRepository
         $statement->execute(['workspace_id' => $workspaceId, 'project_id' => $projectId, 'id' => $milestoneId]);
     }
 
-    /** @param array<string, mixed> $row @return array<string, mixed> */
     private static function normalize(array $row): array
     {
         foreach (['id', 'workspace_id', 'project_id'] as $field) $row[$field] = (int) $row[$field];

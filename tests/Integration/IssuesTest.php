@@ -345,7 +345,6 @@ final class IssuesTest extends ApiTestCase
         self::assertSame(422, $invalidDirection->status);
     }
 
-    /** @param array{cookie: string, csrf: string} $admin */
     private function createProject(array $admin, string $name): int
     {
         $response = $this->cookieRequest(
@@ -359,7 +358,6 @@ final class IssuesTest extends ApiTestCase
         return (int) $response->body['project']['id'];
     }
 
-    /** @param array<string, mixed> $body */
     private function apiCookieRequest(
         string $method,
         string $path,

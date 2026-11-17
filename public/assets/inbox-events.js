@@ -15,7 +15,6 @@ const ICONS = {
 export function iconFor(type) {
     return ICONS[type];
 }
-/** "Assigned" is served by the assigned-issues endpoint, not by events. */
 export function eventsForTab(events, tab) {
     switch (tab) {
         case 'unread': return events.filter((event) => !event.done && !event.read);
@@ -45,7 +44,6 @@ export function relativeTime(iso, now = new Date()) {
         return `${days} d`;
     return then.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 }
-/** Builds one row with textContent only: event text is user-influenced. */
 export function createEventRow(event, handlers) {
     const item = document.createElement('li');
     item.className = `issue-card inbox-issue-card inbox-event-card${event.read ? '' : ' is-unread'}`;

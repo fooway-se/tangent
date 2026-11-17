@@ -12,17 +12,10 @@ final class PasswordSecurity
     public const MIN_LENGTH = 15;
     public const MAX_LENGTH = 128;
 
-    /** @var array<string, true>|null */
     private static ?array $commonPasswords = null;
 
     private readonly ?Closure $hibpLookup;
 
-    /**
-     * The optional callback returns the Pwned Passwords range response for a five-character
-     * SHA-1 prefix. It exists so the network check can be tested without sending passwords.
-     *
-     * @param null|Closure(string):(?string) $hibpLookup
-     */
     public function __construct(
         private readonly bool $hibpEnabled = false,
         ?Closure $hibpLookup = null,
@@ -31,7 +24,6 @@ final class PasswordSecurity
         self::$commonPasswords ??= $this->loadCommonPasswords();
     }
 
-    /** @param array{name?: string, email?: string, workspace?: string} $context */
     public function validate(string $password, array $context = []): ?string
     {
         $normalized = self::normalize($password);
@@ -89,7 +81,6 @@ final class PasswordSecurity
         return is_string($normalized) ? $normalized : null;
     }
 
-    /** @return array<string, true> */
     private function loadCommonPasswords(): array
     {
         $path = dirname(__DIR__, 3) . '/resources/common-passwords.txt';
@@ -116,7 +107,6 @@ final class PasswordSecurity
         return $base !== $candidate && isset(self::$commonPasswords[$base]);
     }
 
-    /** @param array{name?: string, email?: string, workspace?: string} $context */
     private function matchesContext(string $password, array $context): bool
     {
         $candidate = self::canonicalVariant($password);

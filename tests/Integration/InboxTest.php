@@ -61,7 +61,6 @@ final class InboxTest extends ApiTestCase
         self::assertSame(401, $response->status);
     }
 
-    /** @param array{cookie: string, csrf: string} $admin */
     private function createProject(array $admin, string $name): int
     {
         $response = $this->cookieRequest('POST', '/api/v1/projects', $admin['cookie'], ['name' => $name], $admin['csrf']);
@@ -69,7 +68,6 @@ final class InboxTest extends ApiTestCase
         return (int) $response->body['project']['id'];
     }
 
-    /** @param array{cookie: string, csrf: string} $admin */
     private function addDeveloperToProject(array $admin, int $projectId): void
     {
         $response = $this->cookieRequest(
@@ -82,7 +80,6 @@ final class InboxTest extends ApiTestCase
         self::assertSame(200, $response->status);
     }
 
-    /** @param array{cookie: string, csrf: string} $developer */
     private function createAssignedIssue(
         array $developer,
         int $projectId,
@@ -100,7 +97,6 @@ final class InboxTest extends ApiTestCase
         return (int) $response->body['issue']['id'];
     }
 
-    /** @param array{cookie: string, csrf: string} $developer @param array<string, mixed> $fields */
     private function updateIssue(array $developer, int $issueId, array $fields): void
     {
         $response = $this->cookieRequest(

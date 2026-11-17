@@ -122,7 +122,6 @@ final class WorkspaceSwitchingTest extends ApiTestCase
         self::assertSame(404, $crossWorkspaceProject->status);
     }
 
-    /** @param array{csrf?: string, body?: array<string, mixed>} $options */
     private function requestForWorkspace(
         string $method,
         string $path,

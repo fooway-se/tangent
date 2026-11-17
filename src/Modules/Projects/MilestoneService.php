@@ -22,14 +22,12 @@ final class MilestoneService
     ) {
     }
 
-    /** @return list<array<string, mixed>> */
     public function list(AuthenticatedUser $user, int $projectId): array
     {
         $this->requireManage($user, $projectId);
         return $this->milestones->list($user->workspaceId, $projectId);
     }
 
-    /** @param array<string, mixed> $input @return array<string, mixed> */
     public function create(AuthenticatedUser $user, int $projectId, array $input): array
     {
         $this->requireManage($user, $projectId);
@@ -37,7 +35,6 @@ final class MilestoneService
         return $this->milestones->create($user->workspaceId, $projectId, $name, $dueDate);
     }
 
-    /** @param array<string, mixed> $input @return array<string, mixed> */
     public function update(AuthenticatedUser $user, int $projectId, int $milestoneId, array $input): array
     {
         $this->requireManage($user, $projectId);
@@ -66,7 +63,6 @@ final class MilestoneService
         }
     }
 
-    /** @return array{string, ?string} */
     private static function fields(array $input, ?string $currentName, ?string $currentDate, bool $partial): array
     {
         if ($partial && !array_intersect(['name', 'due_date'], array_keys($input))) {

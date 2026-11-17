@@ -50,7 +50,6 @@ final class MigrationRunner
         }
     }
 
-    /** @return list<string> */
     private function statements(string $sql): array
     {
         $statements = [];

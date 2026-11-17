@@ -127,7 +127,6 @@ final class AuthRoutes
         return (int) $value;
     }
 
-    /** @param array{user: array<string, mixed>, session_token: string, csrf_token: string, expires_at: string} $session */
     private function sessionResponse(array $session, int $workspaceId): Response
     {
         $secure = $this->cookieSecure ? '; Secure' : '';
