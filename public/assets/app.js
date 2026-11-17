@@ -502,6 +502,9 @@ function isTextInputTarget(target) {
         return false;
     return ['email', 'number', 'password', 'search', 'tel', 'text', 'url'].includes(target.type);
 }
+function shouldBlurOnEscape(target) {
+    return target instanceof HTMLSelectElement || isTextInputTarget(target);
+}
 function shortcutContext(target) {
     return {
         targetIsEditable: isEditableTarget(target),
@@ -519,7 +522,7 @@ function shortcutContext(target) {
             && document.activeElement.matches('.chat-message'),
         hasSelectedChatMessage: selectedChatMessageId !== null && selectedChatMessageId > 0
             && chatMessagesById.has(selectedChatMessageId),
-        textInputFocused: isTextInputTarget(target),
+        textInputFocused: shouldBlurOnEscape(target),
         modalOpen: commandPalette.open || shortcutHelp.open,
         canDismiss: commandPalette.open || shortcutHelp.open || (!workspacePanel.hidden && ((!projectView.hidden && (!issueDetailView.hidden || !issueDetailEditForm.hidden
             || issueQuickAddEscapePending || chatReplyParent !== null))
