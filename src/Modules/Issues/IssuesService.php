@@ -46,6 +46,10 @@ final class IssuesService
     public function create(AuthenticatedUser $user, int $projectId, array $input): array
     {
         $this->requireProjectAccess($user, $projectId, 'issues.create');
+        $shareFields = ['is_shared', 'milestone_id', 'approval_requested'];
+        if (array_intersect($shareFields, array_keys($input)) !== []) {
+            $this->requireProjectAccess($user, $projectId, 'issues.share');
+        }
         $title = is_string($input['title'] ?? null) ? trim($input['title']) : '';
         $description = is_string($input['description'] ?? null) ? trim($input['description']) : '';
         if (mb_strlen($title, 'UTF-8') < 1 || mb_strlen($title, 'UTF-8') > 200) {
@@ -57,6 +61,22 @@ final class IssuesService
         $type = self::issueType($input['type'] ?? 'task');
         $assigneeId = self::assigneeId($input['assignee_id'] ?? null);
         $this->requireProjectMemberAssignee($user->workspaceId, $projectId, $assigneeId);
+        $milestoneId = $input['milestone_id'] ?? null;
+        if ($milestoneId !== null && (!is_int($milestoneId) || $milestoneId < 1)) {
+            throw new ApiException(422, 'validation_failed', 'milestone_id must be a positive integer or null.');
+        }
+        if ($milestoneId !== null && $this->milestones->find($user->workspaceId, $projectId, $milestoneId) === null) {
+            throw new ApiException(422, 'validation_failed', 'Milestones must belong to the issue project.');
+        }
+        $isShared = $input['is_shared'] ?? false;
+        if (!is_bool($isShared)) throw new ApiException(422, 'validation_failed', 'is_shared must be a boolean.');
+        $approvalRequested = $input['approval_requested'] ?? false;
+        if (!is_bool($approvalRequested)) {
+            throw new ApiException(422, 'validation_failed', 'approval_requested must be a boolean.');
+        }
+        if ($approvalRequested && !$isShared) {
+            throw new ApiException(422, 'validation_failed', 'Guest approval can only be requested for a shared issue.');
+        }
 
         $ownsTransaction = !$this->pdo->inTransaction();
         if ($ownsTransaction) $this->pdo->beginTransaction();
@@ -71,6 +91,9 @@ final class IssuesService
                 null,
                 $type,
                 $assigneeId,
+                $milestoneId,
+                $isShared,
+                $approvalRequested,
             );
             $this->inboxEvents->recordAssigned($user->workspaceId, $projectId, $user->id, $assigneeId, (int) $issue['id'], $title);
             if ($ownsTransaction) $this->pdo->commit();

@@ -245,7 +245,10 @@ select { padding-right: 28px; background: var(--screen-inset) url("data:image/sv
 #issue-progress.is-complete::-moz-progress-bar, .guest-progress.is-complete::-moz-progress-bar { background: var(--success); }
 
 /* Quick add and issue toolbar */
-.issue-quick-add { display: grid; grid-template-columns: auto minmax(0, 1fr) max-content auto; align-items: center; gap: 6px 12px; min-height: 42px; margin-top: 12px; border: 1px solid var(--screen-border); border-radius: var(--radius-panel); padding: 0 12px; background: var(--screen-inset); box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.7); }
+.issue-quick-add { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 6px 12px; min-height: 42px; margin-top: 12px; border: 1px solid var(--screen-border); border-radius: var(--radius-panel); padding: 0 12px; background: var(--screen-inset); box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.7); }
+.issue-quick-add.is-active { grid-template-columns: auto minmax(0, 1fr) max-content auto; }
+.issue-quick-add:not(.is-active) .issue-description-details,
+.issue-quick-add:not(.is-active) .issue-quick-add-actions { display: none; }
 .issue-quick-add:focus-within { border-color: var(--accent); }
 .issue-quick-add-plus { color: var(--accent); font-size: 18px; line-height: 1; }
 .issue-quick-add > input { min-width: 0; border: 0; border-radius: 0; padding: 8px 0; background: transparent; box-shadow: none; font-size: 14px; }
@@ -256,9 +259,13 @@ select { padding-right: 28px; background: var(--screen-inset) url("data:image/sv
 .issue-description-details[open] { z-index: 1; grid-column: 2 / 4; align-self: start; padding: 6px 0; }
 .issue-description-details[open] label { margin-top: 6px; }
 .issue-description-details textarea { min-height: 32px; padding: 6px 8px; font-size: 12px; }
-.issue-quick-add-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
+.issue-quick-add-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
 .issue-quick-add-fields label { display: grid; gap: 4px; color: var(--screen-muted); font-size: 11px; }
 .issue-quick-add-fields select { width: 100%; }
+.issue-quick-add-sharing { display: flex; flex-wrap: wrap; gap: 4px 18px; margin-top: 8px; }
+.issue-quick-add-actions { display: flex; align-items: center; align-self: center; gap: 6px; }
+.issue-quick-add.is-active:has(.issue-description-details[open]) .issue-quick-add-actions { align-self: start; padding-top: 6px; }
+.issue-quick-add-cancel { padding: 4px 7px; font-size: 11px; }
 .issue-quick-add-submit { border: 0; padding: 0; background: transparent; cursor: pointer; }
 .issue-board-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; }
 .issue-board-controls { display: flex; flex-wrap: wrap; min-width: 0; align-items: center; gap: 8px; }
@@ -505,6 +512,7 @@ dialog::backdrop { background: rgba(38, 35, 30, 0.6); }
   .issue-key { width: 2.2rem; }
   .issue-description, .issue-source, .issue-metadata { margin-left: 4.25rem; }
   .issue-quick-add-fields { grid-template-columns: 1fr; }
+  .issue-quick-add-sharing { align-items: flex-start; flex-direction: column; }
   .deleted-issue-item { flex-wrap: wrap; }
   .shortcut-list > div { grid-template-columns: 1fr; gap: 2px; }
 }

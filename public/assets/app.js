@@ -135,6 +135,10 @@ const issueDetailCancelButton = document.querySelector('#issue-detail-cancel-but
 const issueForm = document.querySelector('#issue-form');
 const issueQuickAddTitle = document.querySelector('#issue-quick-add-title');
 const issueQuickAddAssignee = document.querySelector('#issue-quick-add-assignee');
+const issueQuickAddMilestone = document.querySelector('#issue-quick-add-milestone');
+const issueQuickAddShared = document.querySelector('#issue-quick-add-shared');
+const issueQuickAddApproval = document.querySelector('#issue-quick-add-approval');
+const issueQuickAddCancelButton = document.querySelector('#issue-quick-add-cancel');
 const issueDetailType = document.querySelector('#issue-detail-type');
 const issueDetailAssignee = document.querySelector('#issue-detail-assignee');
 const issueDetailMilestone = document.querySelector('#issue-detail-milestone');
@@ -1280,11 +1284,9 @@ function dismissCurrentView() {
     else if (!workspacePanel.hidden && !projectsView.hidden && !projectFormPanel.hidden) {
         cancelProjectFormButton.click();
     }
-    else if (!workspacePanel.hidden && !projectView.hidden && issueQuickAddEscapePending) {
-        issueForm.reset();
-        issueDescriptionDetails.open = false;
-        issueQuickAddEscapePending = false;
-        focusIssueQuickAddReturnTarget();
+    else if (!workspacePanel.hidden && !projectView.hidden
+        && (issueQuickAddEscapePending || issueForm.classList.contains('is-active'))) {
+        cancelIssueQuickAdd();
     }
     else if (!workspacePanel.hidden && !projectView.hidden && chatReplyParent !== null) {
         clearChatReplyParent();
@@ -1296,7 +1298,7 @@ function dismissCurrentView() {
 function focusIssueQuickAddReturnTarget() {
     const target = issueQuickAddReturnFocus;
     const dialog = target?.closest('dialog') ?? null;
-    if (target !== null && target.isConnected && target.closest('[hidden]') === null
+    if (target !== null && projectView.contains(target) && target.isConnected && target.closest('[hidden]') === null
         && (dialog === null || dialog.open)) {
         target.focus();
     }
@@ -1304,9 +1306,33 @@ function focusIssueQuickAddReturnTarget() {
         issuesTabButton.focus();
     }
 }
+function setIssueQuickAddActive(active) {
+    issueForm.classList.toggle('is-active', active);
+    issueQuickAddCancelButton.hidden = !active;
+}
+function updateIssueQuickAddApproval() {
+    issueQuickAddApproval.disabled = !issueQuickAddShared.checked;
+    if (issueQuickAddApproval.disabled)
+        issueQuickAddApproval.checked = false;
+}
+function cancelIssueQuickAdd() {
+    issueForm.reset();
+    issueDescriptionDetails.open = false;
+    issueQuickAddEscapePending = false;
+    setIssueQuickAddActive(false);
+    updateIssueQuickAddApproval();
+    focusIssueQuickAddReturnTarget();
+}
 function issueQuickAddHasDraft() {
     const description = issueForm.querySelector('textarea[name="description"]');
-    return issueQuickAddTitle.value.trim() !== '' || (description?.value.trim() ?? '') !== '';
+    const type = issueForm.querySelector('select[name="type"]');
+    return issueQuickAddTitle.value.trim() !== ''
+        || (description?.value.trim() ?? '') !== ''
+        || (type?.value ?? 'task') !== 'task'
+        || issueQuickAddAssignee.value !== ''
+        || issueQuickAddMilestone.value !== ''
+        || issueQuickAddShared.checked
+        || issueQuickAddApproval.checked;
 }
 function closeProjectForm() {
     projectForm.reset();
@@ -1331,6 +1357,7 @@ function blurTextInput() {
         else {
             issueQuickAddEscapePending = false;
             issueDescriptionDetails.open = false;
+            setIssueQuickAddActive(false);
             focusIssueQuickAddReturnTarget();
         }
         return;
@@ -1946,8 +1973,27 @@ const rememberIssueQuickAddOpener = (event) => {
     }
     issueQuickAddEscapePending = false;
 };
-issueQuickAddTitle.addEventListener('focus', rememberIssueQuickAddOpener);
-issueDescriptionInput?.addEventListener('focus', rememberIssueQuickAddOpener);
+issueForm.addEventListener('focusin', (event) => {
+    rememberIssueQuickAddOpener(event);
+    setIssueQuickAddActive(true);
+});
+issueForm.addEventListener('focusout', (event) => {
+    if (event.relatedTarget instanceof Node && issueForm.contains(event.relatedTarget))
+        return;
+    setTimeout(() => {
+        if (issueForm.contains(document.activeElement) || issueQuickAddHasDraft())
+            return;
+        issueDescriptionDetails.open = false;
+        issueQuickAddEscapePending = false;
+        setIssueQuickAddActive(false);
+    }, 0);
+});
+issueDescriptionDetails.addEventListener('toggle', () => {
+    if (issueDescriptionDetails.open)
+        setIssueQuickAddActive(true);
+});
+issueQuickAddCancelButton.addEventListener('click', cancelIssueQuickAdd);
+issueQuickAddShared.addEventListener('change', updateIssueQuickAddApproval);
 projectForm.querySelector('textarea[name="description"]')
     ?.addEventListener('keydown', (event) => submitFormOnEnter(event, projectForm));
 issueDescriptionInput?.addEventListener('keydown', (event) => submitFormOnEnter(event, issueForm));
@@ -1970,21 +2016,32 @@ issueForm.addEventListener('submit', async (event) => {
     const projectId = activeProject.id;
     const values = new FormData(issueForm);
     const assigneeValue = values.get('assignee_id');
+    const milestoneValue = values.get('milestone_id');
+    const issueInput = {
+        title: values.get('title'),
+        description: values.get('description'),
+        type: values.get('type'),
+        assignee_id: typeof assigneeValue === 'string' && assigneeValue !== '' ? Number(assigneeValue) : null,
+    };
+    if (typeof milestoneValue === 'string' && milestoneValue !== '')
+        issueInput.milestone_id = Number(milestoneValue);
+    if (issueQuickAddShared.checked)
+        issueInput.is_shared = true;
+    if (issueQuickAddApproval.checked)
+        issueInput.approval_requested = true;
     try {
         await api(`/projects/${projectId}/issues`, {
             method: 'POST',
-            body: JSON.stringify({
-                title: values.get('title'),
-                description: values.get('description'),
-                type: values.get('type'),
-                assignee_id: typeof assigneeValue === 'string' && assigneeValue !== '' ? Number(assigneeValue) : null,
-            }),
+            body: JSON.stringify(issueInput),
         });
         issueForm.reset();
         issueDescriptionDetails.open = false;
         issueQuickAddEscapePending = false;
+        updateIssueQuickAddApproval();
         report('Issue created.');
         await loadProjectIssues(projectId);
+        if (activeProject?.id === projectId && !projectView.hidden)
+            issueQuickAddTitle.focus();
     }
     catch (error) {
         if (activeProject?.id === projectId)
@@ -2397,6 +2454,7 @@ async function loadProjectDetail(projectId, tab = 'issues', recordHistory = true
         activeProjectMembers = result.members;
         projectMilestones = milestoneResult.milestones;
         populateIssueAssigneeSelect(issueQuickAddAssignee, null);
+        populateIssueMilestoneSelect(issueQuickAddMilestone, null);
         populateIssueAssigneeSelect(issueDetailAssigneeInput, null);
         projectSidebarList.querySelectorAll('.project-sidebar-link').forEach((button) => {
             button.classList.toggle('is-active', button.dataset.projectId === String(result.project.id));

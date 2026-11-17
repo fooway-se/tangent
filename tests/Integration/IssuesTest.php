@@ -56,6 +56,52 @@ final class IssuesTest extends ApiTestCase
         self::assertSame('doing', $updated->body['issue']['status']);
     }
 
+    public function testIssueCanBeCreatedWithMilestoneAndGuestVisibilityFields(): void
+    {
+        $admin = $this->login($this->adminEmail);
+        $projectId = $this->createProject($admin, 'Complete quick add');
+        $milestone = $this->apiCookieRequest(
+            'POST',
+            "/api/v1/projects/{$projectId}/milestones",
+            $admin['cookie'],
+            ['name' => 'First delivery'],
+            $admin['csrf'],
+        );
+        self::assertSame(201, $milestone->status, json_encode($milestone->body));
+        $milestoneId = (int) $milestone->body['milestone']['id'];
+
+        $created = $this->apiCookieRequest(
+            'POST',
+            "/api/v1/projects/{$projectId}/issues",
+            $admin['cookie'],
+            [
+                'title' => 'Share the first delivery',
+                'description' => 'Give the client a clear status.',
+                'type' => 'feature',
+                'assignee_id' => $admin['user']['id'],
+                'milestone_id' => $milestoneId,
+                'is_shared' => true,
+                'approval_requested' => true,
+            ],
+            $admin['csrf'],
+        );
+        self::assertSame(201, $created->status, json_encode($created->body));
+        self::assertSame($milestoneId, $created->body['issue']['milestone_id']);
+        self::assertTrue($created->body['issue']['is_shared']);
+        self::assertNotNull($created->body['issue']['approval_requested_at']);
+        self::assertSame('feature', $created->body['issue']['type']);
+        self::assertSame($admin['user']['id'], $created->body['issue']['assignee_id']);
+
+        $approvalWithoutSharing = $this->apiCookieRequest(
+            'POST',
+            "/api/v1/projects/{$projectId}/issues",
+            $admin['cookie'],
+            ['title' => 'Approval must be shared', 'approval_requested' => true],
+            $admin['csrf'],
+        );
+        self::assertSame(422, $approvalWithoutSharing->status);
+    }
+
     public function testNonMemberCannotReadOrCreateProjectIssues(): void
     {
         $admin = $this->login($this->adminEmail);

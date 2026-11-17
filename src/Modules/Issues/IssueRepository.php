@@ -82,16 +82,20 @@ final class IssueRepository
         ?int $sourceMessageId = null,
         string $type = 'task',
         ?int $assigneeId = null,
+        ?int $milestoneId = null,
+        bool $isShared = false,
+        bool $approvalRequested = false,
     ): array {
         $statement = $this->pdo->prepare(
             "INSERT INTO issues (
                 workspace_id, project_id, title, description, issue_type, status, created_by, assignee_id,
-                source_channel_id, source_message_id
+                source_channel_id, source_message_id, is_shared, milestone_id, approval_requested_at
              ) VALUES (
                 :workspace_id, :project_id, :title, :description, :type, 'backlog', :created_by, :assignee_id,
-                :source_channel_id, :source_message_id
+                :source_channel_id, :source_message_id, :is_shared, :milestone_id, :approval_requested_at
              )"
         );
+        $approvalRequestedAt = $approvalRequested ? gmdate('Y-m-d H:i:s') : null;
         $statement->execute([
             'workspace_id' => $workspaceId,
             'project_id' => $projectId,
@@ -102,10 +106,13 @@ final class IssueRepository
             'assignee_id' => $assigneeId,
             'source_channel_id' => $sourceChannelId,
             'source_message_id' => $sourceMessageId,
+            'is_shared' => $isShared ? 1 : 0,
+            'milestone_id' => $milestoneId,
+            'approval_requested_at' => $approvalRequestedAt,
         ]);
 
         $issueId = (int) $this->pdo->lastInsertId();
-        $sortOrder = $this->maxSortOrder($workspaceId, $projectId, null) + 1;
+        $sortOrder = $this->maxSortOrder($workspaceId, $projectId, $milestoneId) + 1;
         $rank = $this->pdo->prepare(
             'UPDATE issues SET sort_order = :sort_order WHERE workspace_id = :workspace_id AND id = :id'
         );
