@@ -451,6 +451,14 @@ function isEditableTarget(target: EventTarget | null): boolean {
     || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName);
 }
 
+function isTextInputTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  if (target.isContentEditable || target.closest('[contenteditable="true"]') !== null) return true;
+  if (target instanceof HTMLTextAreaElement) return true;
+  if (!(target instanceof HTMLInputElement)) return false;
+  return ['email', 'number', 'password', 'search', 'tel', 'text', 'url'].includes(target.type);
+}
+
 function shortcutContext(target: EventTarget | null) {
   return {
     targetIsEditable: isEditableTarget(target),
@@ -468,6 +476,8 @@ function shortcutContext(target: EventTarget | null) {
       && document.activeElement.matches('.chat-message'),
     hasSelectedChatMessage: selectedChatMessageId !== null && selectedChatMessageId > 0
       && chatMessagesById.has(selectedChatMessageId),
+    textInputFocused: isTextInputTarget(target),
+    modalOpen: commandPalette.open || shortcutHelp.open,
     canDismiss: commandPalette.open || shortcutHelp.open || !issueDetailView.hidden
       || !issueDetailEditForm.hidden || !projectFormPanel.hidden
       || chatReplyParent !== null,
@@ -776,6 +786,7 @@ function executeShortcut(action: ShortcutAction): void {
     case 'focus-chat-composer': chatInput?.focus(); break;
     case 'reply-to-chat-message': replyToSelectedChatMessage(); break;
     case 'issue-from-selected-chat-message': createIssueFromSelectedChatMessage(); break;
+    case 'blur-text-input': if (document.activeElement instanceof HTMLElement) document.activeElement.blur(); break;
     case 'dismiss': dismissCurrentView(); break;
   }
 }

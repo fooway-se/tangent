@@ -5,8 +5,14 @@ export function resolveShortcut(event, context) {
     const key = event.key.toLowerCase();
     if ((event.ctrlKey || event.metaKey) && !event.altKey && key === 'k')
         return 'command-palette';
-    if (event.key === 'Escape' && context.canDismiss)
-        return 'dismiss';
+    if (event.key === 'Escape') {
+        if (context.modalOpen)
+            return 'dismiss';
+        if (context.textInputFocused)
+            return 'blur-text-input';
+        if (context.canDismiss)
+            return 'dismiss';
+    }
     if (event.altKey || event.ctrlKey || event.metaKey || context.targetIsEditable)
         return null;
     if (context.goPrefixPending) {

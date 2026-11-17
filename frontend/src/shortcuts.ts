@@ -23,6 +23,7 @@ export type ShortcutAction =
   | 'edit-selected'
   | 'focus-status'
   | 'issue-from-latest-message'
+  | 'blur-text-input'
   | 'dismiss';
 
 export interface ShortcutEvent {
@@ -47,6 +48,8 @@ export interface ShortcutContext {
   hasLatestChatMessage: boolean;
   chatMessagesFocused: boolean;
   hasSelectedChatMessage: boolean;
+  textInputFocused: boolean;
+  modalOpen: boolean;
   canDismiss: boolean;
 }
 
@@ -57,7 +60,11 @@ export function shouldSendChatOnEnter(key: string, shiftKey: boolean, isComposin
 export function resolveShortcut(event: ShortcutEvent, context: ShortcutContext): ShortcutAction | null {
   const key = event.key.toLowerCase();
   if ((event.ctrlKey || event.metaKey) && !event.altKey && key === 'k') return 'command-palette';
-  if (event.key === 'Escape' && context.canDismiss) return 'dismiss';
+  if (event.key === 'Escape') {
+    if (context.modalOpen) return 'dismiss';
+    if (context.textInputFocused) return 'blur-text-input';
+    if (context.canDismiss) return 'dismiss';
+  }
   if (event.altKey || event.ctrlKey || event.metaKey || context.targetIsEditable) return null;
 
   if (context.goPrefixPending) {
