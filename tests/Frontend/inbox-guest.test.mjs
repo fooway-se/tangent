@@ -102,6 +102,14 @@ test('project chat identifies client authors and client-visible messages with co
   assert.match(css, /\.chat-message-marker\s*\{[^}]*width:\s*12px/);
 });
 
+test('sending a chat message brings it into view without auto-scrolling for other messages', () => {
+  assert.match(app, /function appendChatMessage\(message: ChatMessage, scrollToBottom = false\)/);
+  assert.match(app, /const followingMessage = scrollToBottom \? null/);
+  assert.match(app, /appendChatMessage\(optimisticMessage, true\)/);
+  assert.match(app, /appendChatMessage\(result\.message\);\s*scrollChatToBottom\(\)/);
+  assert.match(app, /function scrollChatToBottom\(\)[\s\S]*?chatMessageList\.scrollTop = chatMessageList\.scrollHeight/);
+});
+
 test('guest with no projects gets the same framed customer screen', () => {
   assert.match(app, /renderClientEmptyState\(guestMain/);
   assert.match(guestSource, /export function renderClientEmptyState\(/);

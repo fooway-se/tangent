@@ -1646,9 +1646,12 @@ async function loadProjectChatHistory(projectId: number): Promise<void> {
   }
 }
 
-function appendChatMessage(message: ChatMessage): void {
+function appendChatMessage(message: ChatMessage, scrollToBottom = false): void {
   if (chatMessageList === null) return;
-  if (chatMessageList.querySelector(`[data-message-id="${message.id}"]`)) return;
+  if (chatMessageList.querySelector(`[data-message-id="${message.id}"]`)) {
+    if (scrollToBottom) scrollChatToBottom();
+    return;
+  }
   chatMessagesById.set(message.id, message);
 
   const item = document.createElement('article');
@@ -1723,13 +1726,18 @@ function appendChatMessage(message: ChatMessage): void {
   body.className = 'chat-message-body';
   body.textContent = message.body;
   item.append(heading, body);
-  const followingMessage = Array.from(chatMessageList.children).find((child) => {
+  const followingMessage = scrollToBottom ? null : Array.from(chatMessageList.children).find((child) => {
     const existingId = Number((child as HTMLElement).dataset.messageId);
     return Number.isFinite(existingId) && existingId > message.id;
   });
   chatMessageList.insertBefore(item, followingMessage ?? null);
   chatEmptyState!.hidden = true;
   chatCursor = Math.max(chatCursor, message.id);
+  if (scrollToBottom) scrollChatToBottom();
+}
+
+function scrollChatToBottom(): void {
+  if (chatMessageList !== null) chatMessageList.scrollTop = chatMessageList.scrollHeight;
 }
 
 function avatarInitials(name: string): string {
@@ -1866,7 +1874,7 @@ function createProjectChat(projectId: number): HTMLElement {
       body,
       created_at: new Date().toISOString(),
     };
-    if (activeChatProjectId === projectId) appendChatMessage(optimisticMessage);
+    if (activeChatProjectId === projectId) appendChatMessage(optimisticMessage, true);
     send.disabled = true;
     try {
       const result = await api<{ message: ChatMessage }>(`/projects/${projectId}/messages`, {
@@ -1876,6 +1884,7 @@ function createProjectChat(projectId: number): HTMLElement {
       if (activeChatProjectId === projectId) {
         chatMessageList?.querySelector(`[data-message-id="${optimisticId}"]`)?.remove();
         appendChatMessage(result.message);
+        scrollChatToBottom();
         selectChatMessage(result.message.id, false);
         chatInput!.value = '';
         clearChatReplyParent();

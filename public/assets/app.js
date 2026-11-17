@@ -1619,11 +1619,14 @@ async function loadProjectChatHistory(projectId) {
         scheduleChatPoll();
     }
 }
-function appendChatMessage(message) {
+function appendChatMessage(message, scrollToBottom = false) {
     if (chatMessageList === null)
         return;
-    if (chatMessageList.querySelector(`[data-message-id="${message.id}"]`))
+    if (chatMessageList.querySelector(`[data-message-id="${message.id}"]`)) {
+        if (scrollToBottom)
+            scrollChatToBottom();
         return;
+    }
     chatMessagesById.set(message.id, message);
     const item = document.createElement('article');
     item.className = message.parent_id === null ? 'chat-message' : 'chat-message chat-reply';
@@ -1700,13 +1703,19 @@ function appendChatMessage(message) {
     body.className = 'chat-message-body';
     body.textContent = message.body;
     item.append(heading, body);
-    const followingMessage = Array.from(chatMessageList.children).find((child) => {
+    const followingMessage = scrollToBottom ? null : Array.from(chatMessageList.children).find((child) => {
         const existingId = Number(child.dataset.messageId);
         return Number.isFinite(existingId) && existingId > message.id;
     });
     chatMessageList.insertBefore(item, followingMessage ?? null);
     chatEmptyState.hidden = true;
     chatCursor = Math.max(chatCursor, message.id);
+    if (scrollToBottom)
+        scrollChatToBottom();
+}
+function scrollChatToBottom() {
+    if (chatMessageList !== null)
+        chatMessageList.scrollTop = chatMessageList.scrollHeight;
 }
 function avatarInitials(name) {
     return name.trim().split(/\s+/).slice(0, 2).map((part) => part[0] ?? '').join('').toUpperCase();
@@ -1838,7 +1847,7 @@ function createProjectChat(projectId) {
             created_at: new Date().toISOString(),
         };
         if (activeChatProjectId === projectId)
-            appendChatMessage(optimisticMessage);
+            appendChatMessage(optimisticMessage, true);
         send.disabled = true;
         try {
             const result = await api(`/projects/${projectId}/messages`, {
@@ -1848,6 +1857,7 @@ function createProjectChat(projectId) {
             if (activeChatProjectId === projectId) {
                 chatMessageList?.querySelector(`[data-message-id="${optimisticId}"]`)?.remove();
                 appendChatMessage(result.message);
+                scrollChatToBottom();
                 selectChatMessage(result.message.id, false);
                 chatInput.value = '';
                 clearChatReplyParent();
