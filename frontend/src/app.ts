@@ -10,6 +10,11 @@ import {
 
 type Role = 'admin' | 'developer';
 
+type WorkspaceLocation =
+  | { view: 'projects'; focusedProjectId?: number }
+  | { view: 'admin' }
+  | { view: 'project'; projectId: number; tab: 'issues' | 'members' };
+
 interface User {
   id: number;
   workspace_id: number;
@@ -158,6 +163,7 @@ let activeUser: User | null = null;
 let activeWorkspaces: Workspace[] = [];
 let activeProject: Project | null = null;
 let projectReturnFocusId: number | null = null;
+const workspaceViewHistory: WorkspaceLocation[] = [];
 let activeProjectMembers: Member[] = [];
 let projectIssues: Issue[] = [];
 let selectedIssue: Issue | null = null;
@@ -246,6 +252,8 @@ function report(message: string, isError = false): void {
 }
 
 function showSignedOut(): void {
+  workspaceViewHistory.length = 0;
+  projectReturnFocusId = null;
   stopChatPolling();
   activeUser = null;
   activeProject = null;
@@ -270,6 +278,7 @@ function showSignedOut(): void {
 }
 
 function showSignedIn(user: User): void {
+  workspaceViewHistory.length = 0;
   projectReturnFocusId = null;
   activeProject = null;
   activeUser = user;
@@ -365,8 +374,61 @@ function showWorkspaceView(view: 'projects' | 'admin' | 'project'): void {
 }
 
 function openWorkspaceAdmin(): void {
+  const currentLocation = currentWorkspaceLocation();
+  if (currentLocation.view !== 'admin') workspaceViewHistory.push(currentLocation);
   showWorkspaceView('admin');
   adminHeading.focus();
+}
+
+function currentWorkspaceLocation(): WorkspaceLocation {
+  if (!projectView.hidden && activeProject !== null) {
+    return {
+      view: 'project',
+      projectId: activeProject.id,
+      tab: membersView.hidden ? 'issues' : 'members',
+    };
+  }
+  if (!adminView.hidden) return { view: 'admin' };
+  const focused = document.activeElement;
+  const projectCard = focused instanceof HTMLElement ? focused.closest<HTMLElement>('.project-card') : null;
+  const focusedProjectId = Number(projectCard?.dataset.projectId);
+  if (Number.isSafeInteger(focusedProjectId) && focusedProjectId > 0) {
+    return { view: 'projects', focusedProjectId };
+  }
+  return { view: 'projects' };
+}
+
+function sameWorkspaceLocation(left: WorkspaceLocation, right: WorkspaceLocation): boolean {
+  if (left.view !== right.view) return false;
+  if (left.view === 'project' && right.view === 'project') {
+    return left.projectId === right.projectId && left.tab === right.tab;
+  }
+  if (left.view === 'projects' && right.view === 'projects') {
+    return left.focusedProjectId === right.focusedProjectId;
+  }
+  return left.view === right.view;
+}
+
+function goToProjects(): void {
+  workspaceViewHistory.length = 0;
+  showWorkspaceView('projects');
+}
+
+function goBackWorkspaceView(): void {
+  const currentLocation = currentWorkspaceLocation();
+  if (currentLocation.view === 'projects') return;
+  const previousLocation = workspaceViewHistory.pop();
+  if (previousLocation?.view === 'project') {
+    void loadProjectDetail(previousLocation.projectId, previousLocation.tab, false);
+  } else if (previousLocation?.view === 'admin') {
+    showWorkspaceView('admin');
+    adminHeading.focus();
+  } else {
+    showWorkspaceView('projects');
+    if (previousLocation?.view === 'projects' && previousLocation.focusedProjectId !== undefined
+      && focusProjectOpenButton(previousLocation.focusedProjectId)) return;
+    projectsNavButton.focus();
+  }
 }
 
 function stopChatPolling(): void {
@@ -537,9 +599,12 @@ function shortcutContext(target: EventTarget | null) {
       && chatMessagesById.has(selectedChatMessageId),
     textInputFocused: isTextInputTarget(target),
     modalOpen: commandPalette.open || shortcutHelp.open,
-    canDismiss: commandPalette.open || shortcutHelp.open || !issueDetailView.hidden
-      || !issueDetailEditForm.hidden || !projectFormPanel.hidden
-      || issueQuickAddEscapePending || chatReplyParent !== null,
+    canDismiss: commandPalette.open || shortcutHelp.open || (!workspacePanel.hidden && (
+      (!projectView.hidden && (!issueDetailView.hidden || !issueDetailEditForm.hidden
+        || issueQuickAddEscapePending || chatReplyParent !== null))
+      || (!projectsView.hidden && !projectFormPanel.hidden)
+      || !projectView.hidden || !adminView.hidden
+    )),
   };
 }
 
@@ -633,7 +698,7 @@ function createIssueFromLatestMessage(): void {
 
 function getPaletteCommands(): PaletteCommand[] {
   const commands: PaletteCommand[] = [
-    { label: 'Go to Projects', detail: 'Open the project list', shortcut: 'g p', run: () => showWorkspaceView('projects') },
+    { label: 'Go to Projects', detail: 'Open the project list', shortcut: 'g p', run: goToProjects },
     { label: 'Switch workspace', detail: 'Focus the workspace selector', shortcut: 'g w', run: () => workspaceSwitcher.focus() },
     { label: 'Show keyboard shortcuts', detail: 'View key bindings', shortcut: '?', run: showShortcutHelp },
   ];
@@ -663,7 +728,7 @@ function getPaletteCommands(): PaletteCommand[] {
       detail: 'Create a separate workspace for another client',
       shortcut: '',
       run: () => {
-        showWorkspaceView('admin');
+        openWorkspaceAdmin();
         createWorkspaceForm.querySelector<HTMLInputElement>('input[name="name"]')?.focus();
       },
     });
@@ -814,19 +879,21 @@ function dismissCurrentView(): void {
     closeCommandPalette();
   } else if (shortcutHelp.open) {
     shortcutHelp.close();
-  } else if (!issueDetailEditForm.hidden) {
+  } else if (!workspacePanel.hidden && !projectView.hidden && !issueDetailEditForm.hidden) {
     issueDetailCancelButton.click();
-  } else if (!issueDetailView.hidden) {
+  } else if (!workspacePanel.hidden && !projectView.hidden && !issueDetailView.hidden) {
     issueBackButton.click();
-  } else if (!projectFormPanel.hidden) {
+  } else if (!workspacePanel.hidden && !projectsView.hidden && !projectFormPanel.hidden) {
     cancelProjectFormButton.click();
-  } else if (issueQuickAddEscapePending) {
+  } else if (!workspacePanel.hidden && !projectView.hidden && issueQuickAddEscapePending) {
     issueForm.reset();
     issueDescriptionDetails.open = false;
     issueQuickAddEscapePending = false;
     focusIssueQuickAddReturnTarget();
-  } else if (chatReplyParent !== null) {
+  } else if (!workspacePanel.hidden && !projectView.hidden && chatReplyParent !== null) {
     clearChatReplyParent();
+  } else if (!workspacePanel.hidden && (!projectView.hidden || !adminView.hidden)) {
+    goBackWorkspaceView();
   }
 }
 
@@ -893,7 +960,7 @@ function executeShortcut(action: ShortcutAction): void {
     case 'command-palette': openCommandPalette(); break;
     case 'shortcut-help': showShortcutHelp(); break;
     case 'await-projects-key': startGoPrefix(); break;
-    case 'projects': clearGoPrefix(); showWorkspaceView('projects'); break;
+    case 'projects': clearGoPrefix(); goToProjects(); break;
     case 'workspace-switcher': workspaceSwitcher.focus(); break;
     case 'issues': goToProjectIssues(); break;
     case 'chat': focusProjectChat(); break;
@@ -1254,9 +1321,9 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
-projectsNavButton.addEventListener('click', () => showWorkspaceView('projects'));
+projectsNavButton.addEventListener('click', goToProjects);
 adminNavButton.addEventListener('click', openWorkspaceAdmin);
-breadcrumbProjectsButton.addEventListener('click', () => showWorkspaceView('projects'));
+breadcrumbProjectsButton.addEventListener('click', goToProjects);
 issuesTabButton.addEventListener('click', () => switchProjectTab('issues'));
 membersTabButton.addEventListener('click', () => switchProjectTab('members'));
 const issueDescriptionInput = issueForm.querySelector<HTMLTextAreaElement>('textarea[name="description"]');
@@ -1368,13 +1435,22 @@ async function loadProjects(): Promise<void> {
   }
 }
 
-async function loadProjectDetail(projectId: number, tab: 'issues' | 'members' = 'issues'): Promise<void> {
+async function loadProjectDetail(
+  projectId: number,
+  tab: 'issues' | 'members' = 'issues',
+  recordHistory = true,
+): Promise<void> {
+  const previousLocation = currentWorkspaceLocation();
   stopChatPolling();
   selectedIssue = null;
   issueDetailEditForm.hidden = true;
   issueDetailDisplay.hidden = false;
   try {
     const result = await api<{ project: Project; members: Member[] }>(`/projects/${projectId}`);
+    const nextLocation: WorkspaceLocation = { view: 'project', projectId, tab };
+    if (recordHistory && !sameWorkspaceLocation(previousLocation, nextLocation)) {
+      workspaceViewHistory.push(previousLocation);
+    }
     activeProject = result.project;
     activeProjectMembers = result.members;
     projectSidebarList.querySelectorAll<HTMLButtonElement>('.project-sidebar-link').forEach((button) => {
@@ -1393,6 +1469,7 @@ async function loadProjectDetail(projectId: number, tab: 'issues' | 'members' = 
     switchProjectTab(tab);
     (tab === 'issues' ? issuesTabButton : membersTabButton).focus();
   } catch (error) {
+    workspaceViewHistory.length = 0;
     report(error instanceof Error ? error.message : 'Could not load the project.', true);
     showWorkspaceView('projects');
   }
