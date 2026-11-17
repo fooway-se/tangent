@@ -174,6 +174,7 @@ let chatCancelReply: HTMLButtonElement | null = null;
 let chatReplyParent: { id: number; name: string } | null = null;
 let goPrefixPending = false;
 let goPrefixTimer: number | null = null;
+let statusMessageTimer: number | null = null;
 let paletteCommands: PaletteCommand[] = [];
 let visiblePaletteCommands: PaletteCommand[] = [];
 let activePaletteCommandIndex = 0;
@@ -210,9 +211,20 @@ function cookie(name: string): string | null {
 }
 
 function report(message: string, isError = false): void {
+  if (statusMessageTimer !== null) window.clearTimeout(statusMessageTimer);
+  statusMessageTimer = null;
   const target = workspacePanel.hidden ? loginStatusMessage : statusMessage;
   target.textContent = message;
   target.classList.toggle('error', isError);
+  if (message !== '' && !isError) {
+    statusMessageTimer = window.setTimeout(() => {
+      if (target.textContent === message) {
+        target.textContent = '';
+        target.classList.remove('error');
+      }
+      statusMessageTimer = null;
+    }, 4_000);
+  }
 }
 
 function showSignedOut(): void {

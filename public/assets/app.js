@@ -100,6 +100,7 @@ let chatCancelReply = null;
 let chatReplyParent = null;
 let goPrefixPending = false;
 let goPrefixTimer = null;
+let statusMessageTimer = null;
 let paletteCommands = [];
 let visiblePaletteCommands = [];
 let activePaletteCommandIndex = 0;
@@ -133,9 +134,21 @@ function cookie(name) {
     return entry === undefined ? null : decodeURIComponent(entry.slice(name.length + 1));
 }
 function report(message, isError = false) {
+    if (statusMessageTimer !== null)
+        window.clearTimeout(statusMessageTimer);
+    statusMessageTimer = null;
     const target = workspacePanel.hidden ? loginStatusMessage : statusMessage;
     target.textContent = message;
     target.classList.toggle('error', isError);
+    if (message !== '' && !isError) {
+        statusMessageTimer = window.setTimeout(() => {
+            if (target.textContent === message) {
+                target.textContent = '';
+                target.classList.remove('error');
+            }
+            statusMessageTimer = null;
+        }, 4_000);
+    }
 }
 function showSignedOut() {
     stopChatPolling();

@@ -19,7 +19,7 @@ body {
   line-height: 1.4;
 }
 button, input, textarea, select { font: inherit; }
-button:focus-visible, a:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button:focus-visible, a:focus-visible, summary:focus-visible { outline: 1.5px solid var(--accent); outline-offset: 2px; }
 h1, h2, h3, p { margin-top: 0; }
 h1 { margin-bottom: 4px; color: var(--screen-ink); font: 800 clamp(1.5rem, 2.6vw, 1.9rem)/1.2 var(--font-display); letter-spacing: 0; }
 h2 { margin-bottom: 12px; color: var(--screen-ink); font: 800 15px/1.3 var(--font-display); }
@@ -97,7 +97,7 @@ kbd {
   cursor: pointer;
 }
 #workspace-switcher:disabled { background-image: none; cursor: default; opacity: 1; }
-#workspace-switcher:focus { box-shadow: none; outline: 2px solid var(--accent); outline-offset: 2px; }
+#workspace-switcher:focus { box-shadow: none; outline: 1.5px solid var(--accent); outline-offset: 2px; }
 .workspace-nav { display: flex; flex-direction: column; gap: 8px; margin: 0; }
 .workspace-nav::before { display: block; height: 8px; margin: 6px 0 10px; border-radius: 2px; background: var(--signal-stripe); box-shadow: 0 1px 0 var(--case-light); content: ""; }
 .workspace-nav-button, .project-sidebar-link {
@@ -183,7 +183,8 @@ select { padding-right: 28px; background: var(--screen-inset) url("data:image/sv
 .project-form-panel { max-width: 680px; margin-bottom: 20px; }
 .project-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .project-card { display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid var(--screen-border); border-radius: var(--radius-panel); padding: 10px 12px; background: var(--screen-panel); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), inset 0 -3px 8px rgba(0, 0, 0, 0.35); }
-.project-card.is-keyboard-selected, .issue-card.is-keyboard-selected { outline: 2px solid var(--accent); outline-offset: -2px; background: var(--screen-hover); }
+.project-card.is-keyboard-selected { background: var(--screen-hover); }
+.issue-card.is-keyboard-selected { background: var(--screen-hover); }
 .project-name { margin: 0 0 4px; font: 800 15px var(--font-display); }
 .project-description, .project-meta { margin: 0; color: var(--screen-muted); font-size: 12px; }
 .project-status { display: inline-flex; align-items: center; gap: 8px; margin-right: 10px; color: var(--screen-ink); font-size: 13px; text-transform: capitalize; }
@@ -290,7 +291,9 @@ select { padding-right: 28px; background: var(--screen-inset) url("data:image/sv
 .chat-message-list { display: flex; flex: 1; flex-direction: column; min-height: 140px; overflow-y: auto; padding: 6px 18px; }
 .chat-empty-state { margin: 0; padding: 10px 0; color: var(--screen-muted); font-size: 12px; }
 .chat-message { display: grid; grid-template-columns: 30px minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 10px; border-bottom: 1px solid var(--screen-line); padding: 12px 0; }
-.chat-message.is-chat-source, .chat-message.is-keyboard-selected { outline: 2px solid var(--accent); outline-offset: -2px; background: var(--screen-hover); }
+.chat-message.is-chat-source { outline: 2px solid var(--accent); outline-offset: -2px; background: var(--screen-hover); }
+.chat-message.is-keyboard-selected { background: var(--screen-hover); }
+.chat-message:focus-visible { outline: 1.5px solid var(--accent); outline-offset: -2px; }
 .chat-reply { border-left: 3px solid var(--accent); margin-left: 14px; padding-left: 10px; grid-template-columns: 28px minmax(0, 1fr); }
 .chat-message-heading { display: contents; }
 .chat-message-avatar { grid-column: 1; grid-row: 1 / span 2; display: grid; width: 30px; height: 30px; place-items: center; border: 1px solid var(--case-edge); border-bottom-width: 3px; border-radius: 6px; color: var(--case-ink); background: linear-gradient(180deg, var(--key-top), var(--key-bottom)); font-size: 10px; font-weight: 700; }
