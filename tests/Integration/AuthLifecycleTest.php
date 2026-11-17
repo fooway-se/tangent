@@ -155,6 +155,81 @@ final class AuthLifecycleTest extends ApiTestCase
             ['is_active' => false],
             $developer['csrf'],
         )->status);
+        self::assertSame(403, $this->cookieRequest(
+            'PATCH',
+            '/api/v1/users/' . $this->adminId . '/role',
+            $developer['cookie'],
+            ['role' => 'guest'],
+            $developer['csrf'],
+        )->status);
+    }
+
+    public function testWorkspaceAdminCanChangeMemberRoleInOnlyTheCurrentWorkspace(): void
+    {
+        $accountId = $this->accountIdForUser($this->workspaceId, $this->developerId);
+        $otherWorkspaceId = $this->insertWorkspace('Role change other workspace');
+        $otherMembershipId = $this->insertWorkspaceMembership(
+            $otherWorkspaceId,
+            $accountId,
+            'Workspace Developer',
+            $this->developerEmail,
+            'developer',
+        );
+        $projectId = $this->insertProject('Role change project', 'role-change-project', $this->adminId);
+        $projectMembership = $this->pdo->prepare(
+            'INSERT INTO project_memberships (workspace_id, project_id, user_id)
+             VALUES (:workspace_id, :project_id, :user_id)'
+        );
+        $projectMembership->execute([
+            'workspace_id' => $this->workspaceId,
+            'project_id' => $projectId,
+            'user_id' => $this->developerId,
+        ]);
+        $admin = $this->login($this->adminEmail);
+
+        foreach (['guest', 'admin', 'developer'] as $role) {
+            $response = $this->cookieRequest(
+                'PATCH',
+                '/api/v1/users/' . $this->developerId . '/role',
+                $admin['cookie'],
+                ['role' => $role],
+                $admin['csrf'],
+            );
+            self::assertSame(200, $response->status, json_encode($response->body));
+            self::assertSame($role, $response->body['user']['role']);
+        }
+
+        $otherRole = $this->pdo->prepare('SELECT role FROM users WHERE workspace_id = :workspace_id AND id = :id');
+        $otherRole->execute(['workspace_id' => $otherWorkspaceId, 'id' => $otherMembershipId]);
+        self::assertSame('developer', $otherRole->fetchColumn());
+        self::assertTrue($this->projectHasMember($projectId, $this->developerId));
+
+        $invalid = $this->cookieRequest(
+            'PATCH',
+            '/api/v1/users/' . $this->developerId . '/role',
+            $admin['cookie'],
+            ['role' => 'owner'],
+            $admin['csrf'],
+        );
+        self::assertSame(422, $invalid->status);
+    }
+
+    public function testWorkspaceAdminCannotChangeTheirOwnRole(): void
+    {
+        $admin = $this->login($this->adminEmail);
+        $response = $this->cookieRequest(
+            'PATCH',
+            '/api/v1/users/' . $this->adminId . '/role',
+            $admin['cookie'],
+            ['role' => 'developer'],
+            $admin['csrf'],
+        );
+
+        self::assertSame(409, $response->status, json_encode($response->body));
+        self::assertSame('self_role_change', $response->body['error']['code']);
+        self::assertSame(200, $this->request('GET', '/api/v1/auth/me', cookies: [
+            'tangent_session' => $admin['cookie'],
+        ])->status);
     }
 
     public function testAdminCanDeactivateAndReactivateWorkspaceMembership(): void

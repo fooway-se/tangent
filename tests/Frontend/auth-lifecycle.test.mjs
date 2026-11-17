@@ -78,10 +78,19 @@ test('workspace administration has keyboard tabs and member activation controls'
   assert.ok(/\/users\/\$\{member\.id\}\/status/.test(app), 'Member activation calls the status endpoint.');
 });
 
+test('workspace administrators can change member roles with confirmation for admin access', () => {
+  assert.match(html, /id="workspace-member-role-confirmation-dialog"/);
+  assert.match(html, /id="workspace-member-role-confirm"/);
+  assert.match(app, /function openWorkspaceMemberRoleConfirmation\(/);
+  assert.match(app, /roleSelect.addEventListener\('change'/);
+  assert.match(app, /\/users\/\$\{member.id\}\/role/);
+  assert.match(app, /role !== member.role && \(role === 'admin' \|\| member.role === 'admin'\)/);
+});
+
 test('OpenAPI exposes public token completion and manual admin credential-link routes', () => {
   for (const path of [
     '/auth/invites/inspect', '/auth/invites/accept', '/auth/password-reset/complete',
-    '/users/invites', '/users/invites/{id}/link', '/users/{id}/password-reset', '/users/{id}/status',
+    '/users/invites', '/users/invites/{id}/link', '/users/{id}/password-reset', '/users/{id}/status', '/users/{id}/role',
   ]) {
     assert.ok(openapi.includes(`  ${path}:`), `Missing ${path}`);
   }

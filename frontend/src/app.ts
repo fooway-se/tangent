@@ -302,6 +302,11 @@ const workspaceMemberDeactivationDialog = document.querySelector<HTMLDialogEleme
 const workspaceMemberDeactivationDescription = document.querySelector<HTMLElement>('#workspace-member-deactivation-description')!;
 const workspaceMemberDeactivationCancel = document.querySelector<HTMLButtonElement>('#workspace-member-deactivation-cancel')!;
 const workspaceMemberDeactivationConfirm = document.querySelector<HTMLButtonElement>('#workspace-member-deactivation-confirm')!;
+const workspaceMemberRoleDialog = document.querySelector<HTMLDialogElement>('#workspace-member-role-confirmation-dialog')!;
+const workspaceMemberRoleHeading = document.querySelector<HTMLHeadingElement>('#workspace-member-role-heading')!;
+const workspaceMemberRoleDescription = document.querySelector<HTMLElement>('#workspace-member-role-description')!;
+const workspaceMemberRoleCancel = document.querySelector<HTMLButtonElement>('#workspace-member-role-cancel')!;
+const workspaceMemberRoleConfirm = document.querySelector<HTMLButtonElement>('#workspace-member-role-confirm')!;
 const loginAdminHelp = document.querySelector<HTMLElement>('#login-admin-help')!;
 const credentialFlow = document.querySelector<HTMLElement>('#credential-flow')!;
 const credentialFlowHeading = document.querySelector<HTMLHeadingElement>('#credential-flow-heading')!;
@@ -426,6 +431,12 @@ let adminProjects: Project[] = [];
 type WorkspaceAdminTab = 'members' | 'invites' | 'workspaces';
 let workspaceAdminTab: WorkspaceAdminTab = 'members';
 let workspaceMemberDeactivationTarget: { member: WorkspaceMember; button: HTMLButtonElement } | null = null;
+let workspaceMemberRoleChangeTarget: {
+  member: WorkspaceMember;
+  role: Role;
+  select: HTMLSelectElement;
+  button: HTMLButtonElement;
+} | null = null;
 let activeWorkspaces: Workspace[] = [];
 let activeProject: Project | null = null;
 let projectReturnFocusId: number | null = null;
@@ -897,7 +908,51 @@ function renderWorkspaceMembers(members: readonly WorkspaceMember[]): void {
   for (const member of members) {
     const item = document.createElement('li');
     const label = document.createElement('span');
-    label.textContent = `${member.name} · ${member.email} · ${member.role}${member.is_active ? '' : ' · inactive'}`;
+    label.textContent = `${member.name} · ${member.email}${member.is_active ? '' : ' · inactive'}`;
+    const details = document.createElement('div');
+    details.className = 'workspace-admin-member-details';
+    details.append(label);
+    const roleControl = document.createElement('div');
+    roleControl.className = 'workspace-admin-role-control';
+    const roleSelect = document.createElement('select');
+    roleSelect.setAttribute('aria-label', `Workspace role for ${member.name}`);
+    roleSelect.dataset.memberId = String(member.id);
+    roleSelect.dataset.memberAction = 'role';
+    for (const role of ['admin', 'developer', 'guest'] as const) {
+      const option = document.createElement('option');
+      option.value = role;
+      option.textContent = role[0]!.toUpperCase() + role.slice(1);
+      roleSelect.append(option);
+    }
+    roleSelect.value = member.role;
+    const roleSaveButton = document.createElement('button');
+    roleSaveButton.type = 'button';
+    roleSaveButton.className = 'button button-quiet';
+    roleSaveButton.textContent = 'Save role';
+    roleSaveButton.dataset.memberId = String(member.id);
+    roleSaveButton.dataset.memberAction = 'save-role';
+    const isSelf = member.id === activeUser?.id;
+    const isLastActiveAdmin = member.is_active && member.role === 'admin' && activeAdminCount <= 1;
+    roleSelect.disabled = isSelf || isLastActiveAdmin;
+    if (isSelf) roleSelect.title = 'Ask another workspace admin to change your role.';
+    else if (isLastActiveAdmin) roleSelect.title = 'At least one active workspace admin must remain.';
+    const updateRoleSaveButton = (): void => {
+      roleSaveButton.disabled = roleSelect.disabled || roleSelect.value === member.role;
+    };
+    roleSelect.addEventListener('change', updateRoleSaveButton);
+    updateRoleSaveButton();
+    roleSaveButton.addEventListener('click', () => {
+      if (roleSaveButton.disabled) return;
+      const role = roleSelect.value as Role;
+      if (role !== member.role && (role === 'admin' || member.role === 'admin')) {
+        openWorkspaceMemberRoleConfirmation(member, role, roleSelect, roleSaveButton);
+      } else {
+        void setWorkspaceMemberRole(member, role, roleSelect);
+      }
+    });
+    roleControl.append(roleSelect, roleSaveButton);
+    details.append(roleControl);
+    item.classList.add('workspace-admin-member-row');
     const actions = document.createElement('div');
     actions.className = 'workspace-admin-member-actions';
     const resetLinkButton = document.createElement('button');
@@ -914,7 +969,6 @@ function renderWorkspaceMembers(members: readonly WorkspaceMember[]): void {
     statusButton.dataset.memberId = String(member.id);
     statusButton.dataset.memberAction = 'status';
     statusButton.setAttribute('aria-label', `${member.is_active ? 'Deactivate' : 'Reactivate'} ${member.name} in this workspace`);
-    const isSelf = member.id === activeUser?.id;
     const isLastAdmin = member.is_active && member.role === 'admin' && activeAdminCount <= 1;
     statusButton.disabled = member.is_active && (isSelf || isLastAdmin);
     if (isSelf) statusButton.title = 'Ask another workspace admin to deactivate your membership.';
@@ -924,7 +978,7 @@ function renderWorkspaceMembers(members: readonly WorkspaceMember[]): void {
       else void setWorkspaceMemberActive(member, true);
     });
     actions.append(resetLinkButton, statusButton);
-    item.append(label, actions);
+    item.append(details, actions);
     workspaceMembersList.append(item);
   }
 }
@@ -956,6 +1010,50 @@ async function setWorkspaceMemberActive(member: WorkspaceMember, isActive: boole
   } catch (error) {
     report(error instanceof Error ? error.message : `Could not ${isActive ? 'reactivate' : 'deactivate'} the workspace member.`, true);
     if (!adminView.hidden) workspaceMembersList.querySelector<HTMLButtonElement>(`button[data-member-id="${member.id}"][data-member-action="status"]`)?.focus();
+  }
+}
+
+function openWorkspaceMemberRoleConfirmation(
+  member: WorkspaceMember,
+  role: Role,
+  select: HTMLSelectElement,
+  button: HTMLButtonElement,
+): void {
+  workspaceMemberRoleChangeTarget = { member, role, select, button };
+  const roleLabel = role[0]!.toUpperCase() + role.slice(1);
+  if (role === 'admin') {
+    workspaceMemberRoleHeading.textContent = 'Grant admin access?';
+    workspaceMemberRoleDescription.textContent = `${member.name} will gain workspace-wide administration access.`;
+    workspaceMemberRoleConfirm.textContent = 'Grant admin access';
+  } else {
+    workspaceMemberRoleHeading.textContent = 'Remove admin access?';
+    workspaceMemberRoleDescription.textContent = `${member.name} will lose workspace administration access and become a ${roleLabel}.`;
+    workspaceMemberRoleConfirm.textContent = 'Change role';
+  }
+  workspaceMemberRoleDialog.showModal();
+  workspaceMemberRoleCancel.focus();
+}
+
+function closeWorkspaceMemberRoleConfirmation(restoreFocus = true): void {
+  if (workspaceMemberRoleDialog.open) workspaceMemberRoleDialog.close();
+  const target = workspaceMemberRoleChangeTarget;
+  workspaceMemberRoleChangeTarget = null;
+  workspaceMemberRoleConfirm.disabled = false;
+  if (restoreFocus && !adminView.hidden && target?.button.isConnected) target.button.focus();
+}
+
+async function setWorkspaceMemberRole(member: WorkspaceMember, role: Role, select: HTMLSelectElement): Promise<void> {
+  try {
+    await api<{ user: WorkspaceMember }>(`/users/${member.id}/role`, {
+      method: 'PATCH',
+      body: JSON.stringify({ role }),
+    });
+    report(`${member.name}'s role changed to ${role}. They may need to reload to see their updated controls.`);
+    await loadWorkspaceAdmin();
+    workspaceMembersList.querySelector<HTMLSelectElement>(`select[data-member-id="${member.id}"][data-member-action="role"]`)?.focus();
+  } catch (error) {
+    report(error instanceof Error ? error.message : `Could not change ${member.name}'s role.`, true);
+    if (!adminView.hidden && select.isConnected) select.focus();
   }
 }
 
@@ -1191,7 +1289,8 @@ function issuePollingIsActive(projectId: number): boolean {
 
 function issueUpdatesAreDeferred(): boolean {
   const dialogOpen = issueStatusPicker.open || issueDeleteConfirmation.open
-    || memberRemovalConfirmation.open || workspaceMemberDeactivationDialog.open || milestoneManagerDialog.open;
+    || memberRemovalConfirmation.open || workspaceMemberDeactivationDialog.open
+    || workspaceMemberRoleDialog.open || milestoneManagerDialog.open;
   return shouldDeferIssueUpdates({
     issueEditorOpen: !issueDetailEditForm.hidden,
     quickAddActive: issueForm.classList.contains('is-active') || issueQuickAddHasDraft(),
@@ -1521,7 +1620,9 @@ function shortcutContext(target: EventTarget | null) {
     issueGroupFocused: target instanceof HTMLElement && target.closest('.issue-group > summary') !== null,
     statusHistoryFocused: issueStatusHistory.open && issueStatusHistory.contains(document.activeElement),
     textInputFocused: shouldBlurOnEscape(target),
-    modalOpen: commandPalette.open || shortcutHelp.open || issueStatusPicker.open || issueDeleteConfirmation.open || memberRemovalConfirmation.open || workspacePicker.open,
+    modalOpen: commandPalette.open || shortcutHelp.open || issueStatusPicker.open || issueDeleteConfirmation.open
+      || memberRemovalConfirmation.open || workspaceMemberDeactivationDialog.open || workspaceMemberRoleDialog.open
+      || workspacePicker.open,
     canDismiss: commandPalette.open || shortcutHelp.open || (!workspacePanel.hidden && (
       pendingWorkspaceId !== null
       || (!projectView.hidden && (!issueDetailView.hidden || !issueDetailEditForm.hidden
@@ -1952,6 +2053,7 @@ function openCommandPalette(): void {
   if (issueDeleteConfirmation.open) closeIssueDeleteConfirmation();
   if (memberRemovalConfirmation.open) closeMemberRemovalConfirmation();
   if (workspaceMemberDeactivationDialog.open) closeWorkspaceMemberDeactivationConfirmation();
+  if (workspaceMemberRoleDialog.open) closeWorkspaceMemberRoleConfirmation();
   if (shortcutHelp.open) shortcutHelp.close();
   if (commandPalette.open) {
     closeCommandPalette();
@@ -1972,6 +2074,7 @@ function showShortcutHelp(): void {
   if (issueDeleteConfirmation.open) closeIssueDeleteConfirmation();
   if (memberRemovalConfirmation.open) closeMemberRemovalConfirmation();
   if (workspaceMemberDeactivationDialog.open) closeWorkspaceMemberDeactivationConfirmation();
+  if (workspaceMemberRoleDialog.open) closeWorkspaceMemberRoleConfirmation();
   if (commandPalette.open) closeCommandPalette();
   if (shortcutHelp.open) {
     shortcutHelp.close();
@@ -1992,6 +2095,8 @@ function dismissCurrentView(): void {
     closeMemberRemovalConfirmation();
   } else if (workspaceMemberDeactivationDialog.open) {
     closeWorkspaceMemberDeactivationConfirmation();
+  } else if (workspaceMemberRoleDialog.open) {
+    closeWorkspaceMemberRoleConfirmation();
   } else if (issueStatusPicker.open) {
     closeIssueStatusPicker();
   } else if (commandPalette.open) {
@@ -2155,7 +2260,7 @@ function executeShortcut(action: ShortcutAction): void {
 }
 
 function handleKeyboardShortcut(event: KeyboardEvent): void {
-  if ((commandPalette.open || shortcutHelp.open || issueStatusPicker.open || issueDeleteConfirmation.open || memberRemovalConfirmation.open || workspaceMemberDeactivationDialog.open || milestoneManagerDialog.open || workspacePicker.open)
+  if ((commandPalette.open || shortcutHelp.open || issueStatusPicker.open || issueDeleteConfirmation.open || memberRemovalConfirmation.open || workspaceMemberDeactivationDialog.open || workspaceMemberRoleDialog.open || milestoneManagerDialog.open || workspacePicker.open)
     && event.key !== 'Escape'
     && !((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k')) return;
   const context = shortcutContext(event.target);
@@ -4406,6 +4511,17 @@ workspaceMemberDeactivationConfirm.addEventListener('click', () => {
   if (target === null) return;
   closeWorkspaceMemberDeactivationConfirmation(false);
   void setWorkspaceMemberActive(target.member, false);
+});
+workspaceMemberRoleCancel.addEventListener('click', () => closeWorkspaceMemberRoleConfirmation());
+workspaceMemberRoleDialog.addEventListener('cancel', (event) => {
+  event.preventDefault();
+  closeWorkspaceMemberRoleConfirmation();
+});
+workspaceMemberRoleConfirm.addEventListener('click', () => {
+  const target = workspaceMemberRoleChangeTarget;
+  if (target === null) return;
+  closeWorkspaceMemberRoleConfirmation(false);
+  void setWorkspaceMemberRole(target.member, target.role, target.select);
 });
 
 function updateMembersPanelTabIndex(): void {

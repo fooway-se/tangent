@@ -78,6 +78,18 @@ final class UserRepository
         ]);
     }
 
+    public function setRole(int $workspaceId, int $userId, string $role): void
+    {
+        $statement = $this->pdo->prepare(
+            'UPDATE users SET role = :role WHERE workspace_id = :workspace_id AND id = :id'
+        );
+        $statement->execute([
+            'role' => $role,
+            'workspace_id' => $workspaceId,
+            'id' => $userId,
+        ]);
+    }
+
     public function findAccountByEmail(string $email): ?array
     {
         $statement = $this->pdo->prepare(

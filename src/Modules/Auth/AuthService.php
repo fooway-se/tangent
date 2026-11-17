@@ -157,6 +157,7 @@ final class AuthService
         if ($ownsTransaction) $this->pdo->beginTransaction();
         try {
             $this->workspaces->lockForMemberUpdate($actor->workspaceId);
+            $this->assertCurrentWorkspaceAdmin($actor);
             $member = $this->users->findById($actor->workspaceId, $memberId);
             if ($member === null) {
                 throw new ApiException(404, 'not_found', 'The workspace member was not found.');
@@ -194,6 +195,65 @@ final class AuthService
         } catch (Throwable $exception) {
             if ($ownsTransaction && $this->pdo->inTransaction()) $this->pdo->rollBack();
             throw $exception;
+        }
+    }
+
+    public function setWorkspaceMemberRole(AuthenticatedUser $actor, int $memberId, array $body): array
+    {
+        if (!Permissions::can($actor, 'users.manage_members')) {
+            throw new ApiException(403, 'forbidden', 'You cannot manage workspace members.');
+        }
+        $role = $body['role'] ?? null;
+        if (!is_string($role) || !in_array($role, ['admin', 'developer', 'guest'], true)) {
+            throw new ApiException(422, 'validation_failed', 'Role must be admin, developer, or guest.');
+        }
+
+        $ownsTransaction = !$this->pdo->inTransaction();
+        if ($ownsTransaction) $this->pdo->beginTransaction();
+        try {
+            $this->workspaces->lockForMemberUpdate($actor->workspaceId);
+            $this->assertCurrentWorkspaceAdmin($actor);
+            $member = $this->users->findById($actor->workspaceId, $memberId);
+            if ($member === null) {
+                throw new ApiException(404, 'not_found', 'The workspace member was not found.');
+            }
+
+            if ($member['role'] !== $role) {
+                if ((int) $member['id'] === $actor->id) {
+                    throw new ApiException(409, 'self_role_change', 'Ask another workspace admin to change your role.');
+                }
+                if ((bool) $member['is_active'] && $member['role'] === 'admin' && $role !== 'admin'
+                    && $this->users->countActiveAdmins($actor->workspaceId) <= 1) {
+                    throw new ApiException(409, 'last_active_admin', 'At least one active workspace admin must remain.');
+                }
+                $this->users->setRole($actor->workspaceId, $memberId, $role);
+            }
+
+            $updatedMember = $this->users->findById($actor->workspaceId, $memberId);
+            if ($updatedMember === null) {
+                throw new ApiException(404, 'not_found', 'The workspace member was not found.');
+            }
+            if ($ownsTransaction) $this->pdo->commit();
+            return [
+                'id' => (int) $updatedMember['id'],
+                'workspace_id' => (int) $updatedMember['workspace_id'],
+                'name' => (string) $updatedMember['name'],
+                'email' => (string) $updatedMember['email'],
+                'role' => (string) $updatedMember['role'],
+                'is_active' => (bool) $updatedMember['is_active'],
+                'created_at' => (string) $updatedMember['created_at'],
+            ];
+        } catch (Throwable $exception) {
+            if ($ownsTransaction && $this->pdo->inTransaction()) $this->pdo->rollBack();
+            throw $exception;
+        }
+    }
+
+    private function assertCurrentWorkspaceAdmin(AuthenticatedUser $actor): void
+    {
+        $currentActor = $this->users->findById($actor->workspaceId, $actor->id);
+        if ($currentActor === null || !(bool) $currentActor['is_active'] || $currentActor['role'] !== 'admin') {
+            throw new ApiException(403, 'forbidden', 'You cannot manage workspace members.');
         }
     }
 
