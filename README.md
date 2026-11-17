@@ -39,7 +39,7 @@ Architecture and conventions: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ## Mockups
 
-Dark "charcoal" theme, in [`docs/mockups/`](docs/mockups/): project view, command palette, issue detail, client view, inbox.
+The current UI direction pairs warm sand-colored navigation and page surfaces with dark ink work panels and orange accents. The references cover sign-in, project list and work views, issue detail, members, keyboard overlays, administration, and a narrow mobile project view. See the [mockup guide in the spec](docs/SPEC.md#ui-referenser) for the screen index. Guest and inbox mockups are not in this set yet; their planned scope is still described in the spec.
 
 ## Installation
 
