@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { filterIssues, groupIssues, sortIssues } from '../../public/assets/issue-board.js';
+import { filterIssues, groupIssues, milestoneProgress, sortIssues } from '../../public/assets/issue-board.js';
 
 const issues = [
   { id: 12, title: 'Fix login redirect', description: 'After reset', status: 'doing', created_at: '2026-11-01', updated_at: '2026-11-14' },
@@ -37,4 +37,18 @@ test('next-up order uses milestone due dates, then the saved issue sequence', ()
     { ...issues[0], id: 25, milestone_id: null, milestone_due_date: null, sort_order: 1 },
   ];
   assert.deepEqual(sortIssues(planned, 'next_up').map((issue) => issue.id), [23, 22, 21, 24, 25]);
+});
+
+test('milestone progress ignores cancelled issues and completes only when active work exists and is done', () => {
+  assert.deepEqual(milestoneProgress([
+    { status: 'done' },
+    { status: 'done' },
+    { status: 'cancelled' },
+  ]), { done: 2, active: 2, cancelled: 1, complete: true });
+  assert.deepEqual(milestoneProgress([
+    { status: 'done' },
+    { status: 'doing' },
+    { status: 'cancelled' },
+  ]), { done: 1, active: 2, cancelled: 1, complete: false });
+  assert.deepEqual(milestoneProgress([]), { done: 0, active: 0, cancelled: 0, complete: false });
 });

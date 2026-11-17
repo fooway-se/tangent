@@ -6,6 +6,7 @@ import { resolveShortcut, shouldSubmitOnEnter, type ShortcutAction } from './sho
 import {
   filterIssues,
   groupIssues,
+  milestoneProgress,
   sortIssues,
   type BoardIssue,
   type IssueSortOrder,
@@ -2246,7 +2247,20 @@ function renderMilestoneList(): void {
     name.textContent = milestone.name;
     const dueDate = document.createElement('span');
     dueDate.textContent = milestone.due_date === null ? 'No due date' : `Due ${milestone.due_date}`;
-    info.append(name, dueDate);
+    const milestoneIssues = projectIssues.filter((issue) => issue.milestone_id === milestone.id);
+    const progress = milestoneProgress(milestoneIssues);
+    const progressLabel = document.createElement('span');
+    progressLabel.className = `milestone-row-progress${progress.complete ? ' is-complete' : ''}`;
+    if (progress.active === 0) {
+      progressLabel.textContent = progress.cancelled > 0
+        ? `No active issues · ${progress.cancelled} cancelled`
+        : 'No issues yet';
+    } else {
+      const completion = progress.complete ? '✓ Complete · ' : '';
+      const cancelled = progress.cancelled > 0 ? ` · ${progress.cancelled} cancelled` : '';
+      progressLabel.textContent = `${completion}${progress.done}/${progress.active} issues done${cancelled}`;
+    }
+    info.append(name, dueDate, progressLabel);
 
     const edit = document.createElement('button');
     edit.type = 'button';

@@ -4,6 +4,7 @@ import test from 'node:test';
 
 const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
+const css = await readFile(new URL('../../public/assets/app.css', import.meta.url), 'utf8');
 
 test('milestone management stays behind a button beside project progress', () => {
   const progressStart = html.indexOf('<section class="issue-progress-strip"');
@@ -25,4 +26,11 @@ test('milestone manager loads and saves project milestones through the existing 
   assert.match(app, /function renderMilestoneList\(/);
   assert.match(app, /method: editingId === null \? 'POST' : 'PATCH'/);
   assert.match(app, /`\/projects\/\$\{projectId\}\/milestones\/\$\{editingId\}`/);
+});
+
+test('milestone list shows issue progress and a green completion indicator', () => {
+  assert.match(app, /milestoneProgress\(milestoneIssues\)/);
+  assert.match(app, /milestone-row-progress/);
+  assert.match(app, /✓ Complete/);
+  assert.match(css, /\.milestone-row-progress\.is-complete[^\{]*\{[^}]*var\(--success\)/);
 });

@@ -16,7 +16,21 @@ export interface BoardIssue {
   updated_at: string;
 }
 
+export interface MilestoneProgress {
+  done: number;
+  active: number;
+  cancelled: number;
+  complete: boolean;
+}
+
 const statusOrder: IssueStatus[] = ['doing', 'todo', 'backlog', 'done', 'cancelled'];
+
+export function milestoneProgress(issues: readonly Pick<BoardIssue, 'status'>[]): MilestoneProgress {
+  const cancelled = issues.filter((issue) => issue.status === 'cancelled').length;
+  const active = issues.length - cancelled;
+  const done = issues.filter((issue) => issue.status === 'done').length;
+  return { done, active, cancelled, complete: active > 0 && done === active };
+}
 
 export function filterIssues<T extends BoardIssue>(issues: readonly T[], query: string): T[] {
   const normalized = query.trim().toLocaleLowerCase();

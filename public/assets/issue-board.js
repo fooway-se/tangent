@@ -1,4 +1,10 @@
 const statusOrder = ['doing', 'todo', 'backlog', 'done', 'cancelled'];
+export function milestoneProgress(issues) {
+    const cancelled = issues.filter((issue) => issue.status === 'cancelled').length;
+    const active = issues.length - cancelled;
+    const done = issues.filter((issue) => issue.status === 'done').length;
+    return { done, active, cancelled, complete: active > 0 && done === active };
+}
 export function filterIssues(issues, query) {
     const normalized = query.trim().toLocaleLowerCase();
     if (normalized === '')
