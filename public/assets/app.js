@@ -673,6 +673,29 @@ function dismissCurrentView() {
         clearChatReplyParent();
     }
 }
+function blurTextInput() {
+    const focused = document.activeElement;
+    if (!(focused instanceof HTMLElement))
+        return;
+    focused.blur();
+    if (focused !== chatInput)
+        return;
+    const selected = selectedChatMessageId === null
+        ? null
+        : chatMessageList?.querySelector(`.chat-message[data-message-id="${selectedChatMessageId}"]`) ?? null;
+    const latest = chatMessageElements().at(-1) ?? null;
+    const target = selected ?? latest;
+    if (target !== null) {
+        const messageId = Number(target.dataset.messageId);
+        if (messageId > 0)
+            selectChatMessage(messageId);
+        else
+            target.focus();
+    }
+    else {
+        projectChatColumn.querySelector('.chat-heading')?.focus();
+    }
+}
 function executeShortcut(action) {
     switch (action) {
         case 'command-palette':
@@ -750,8 +773,7 @@ function executeShortcut(action) {
             createIssueFromSelectedChatMessage();
             break;
         case 'blur-text-input':
-            if (document.activeElement instanceof HTMLElement)
-                document.activeElement.blur();
+            blurTextInput();
             break;
         case 'dismiss':
             dismissCurrentView();
@@ -993,6 +1015,7 @@ function createProjectChat(projectId) {
     section.className = 'project-chat';
     const heading = document.createElement('h3');
     heading.className = 'chat-heading';
+    heading.tabIndex = -1;
     const channelName = document.createElement('span');
     channelName.className = 'chat-channel-name';
     const channelHash = document.createElement('span');
@@ -1075,6 +1098,7 @@ function createProjectChat(projectId) {
             if (activeChatProjectId === projectId) {
                 chatMessageList?.querySelector(`[data-message-id="${optimisticId}"]`)?.remove();
                 appendChatMessage(result.message);
+                selectChatMessage(result.message.id, false);
                 chatInput.value = '';
                 clearChatReplyParent();
                 chatEtag = null;
