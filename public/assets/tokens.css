@@ -55,6 +55,7 @@
   --screen-panel: #16242b;
   --screen-control-top: #1d303a;
   --screen-inset: #0a1114;
+  --screen-field: #0b0c0d;
   --screen-border: #2b414b;
   --screen-line: #223540;
   --screen-hover: #1c2f38;
@@ -69,6 +70,7 @@
   --accent-ink: #26231e;
   --accent-shine: rgba(255, 255, 255, 0.45);
   --danger: #ff8a73;
+  --power-light: #d6402b;
   --focus-ring: rgba(240, 160, 44, 0.4);
   --signal-stripe: linear-gradient(to bottom, #d6402b 0 25%, #f08a24 25% 50%, #f3c231 50% 75%, #5fae4e 75% 100%);
 

@@ -45,15 +45,29 @@ kbd {
 /* Sign-in */
 .topbar { position: relative; display: flex; align-items: center; min-height: 64px; padding: 0 5vw; border-bottom: 2px solid var(--case-shade); }
 .topbar::after { position: absolute; right: 0; bottom: -2px; left: 0; height: 8px; background: var(--signal-stripe); content: ""; }
-.login-topbar { padding-inline: max(4vw, calc((100vw - 960px) / 2)); }
-.login-topbar .brand { padding: 8px 14px; border-radius: 4px; background: var(--plate); color: var(--plate-ink); box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6), 0 1px 0 var(--case-light); }
-.page-shell { width: min(960px, 92vw); margin: 24px auto 48px; }
-.login-panel.panel { width: min(440px, 100%); margin: 7vh auto; overflow: hidden; padding: 20px; border: 0; border-radius: var(--radius-screen); box-shadow: 0 0 0 3px var(--screen-rim), 0 0 0 5px var(--vent-dark), 0 2px 0 5px var(--case-light), inset 0 0 70px var(--screen-vignette); background: radial-gradient(ellipse at 15% 0%, var(--screen-glow), rgba(0, 0, 0, 0) 55%), var(--screen); }
-
-.login-panel.panel::before { display: block; height: 8px; margin: -20px -20px 18px; background: var(--signal-stripe); content: ""; }
+.login-shell { display: flex; min-height: 100vh; flex-direction: column; }
+.login-topbar { padding-inline: 5vw; }
+.login-topbar .brand { transform: translateY(-3px); padding: 8px 14px; border-radius: 4px; background: var(--plate); color: var(--plate-ink); box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6), 0 1px 0 var(--case-light); }
+.login-main { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; padding: 28px 20px; }
+.login-vent { width: min(440px, calc(100vw - 50px)); height: 27px; margin: 0 auto 16px; border: 1px solid var(--case-edge); border-radius: var(--radius-panel); background: repeating-linear-gradient(90deg, var(--vent-dark) 0 4px, var(--vent-light) 4px 9px); box-shadow: inset 0 1px 3px rgba(60, 50, 30, 0.4), 0 1px 0 var(--case-light); }
+.login-panel.panel { width: min(450px, 100%); margin: 0; overflow: hidden; padding: 26px 26px 22px; border: 0; border-radius: var(--radius-screen); box-shadow: 0 0 0 3px var(--screen-rim), 0 0 0 5px var(--vent-dark), 0 2px 0 5px var(--case-light), inset 0 0 70px var(--screen-vignette); background: radial-gradient(ellipse at 15% 0%, var(--screen-glow), rgba(0, 0, 0, 0) 55%), var(--screen); }
+.login-panel.panel::before { display: block; height: 8px; margin: -26px -26px 22px; background: var(--signal-stripe); content: ""; }
 .login-panel h1 { margin-bottom: 16px; }
-#login-status-message { color: var(--case-ink); }
-#login-status-message.error { color: var(--case-error); }
+.login-panel .form-stack { gap: 12px; }
+.login-panel input { background: var(--screen-field); }
+.login-panel .button-primary { width: 100%; min-height: 40px; margin-top: 4px; }
+#login-status-message.login-terminal { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 8px; min-height: 58px; margin: 20px 0 0; border: 1px solid var(--screen-border); border-radius: var(--radius-panel); padding: 10px 12px; color: var(--screen-muted); background: var(--screen-inset); box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.7); text-align: left; }
+#login-status-message.login-terminal:not(:empty) { min-height: 58px; padding: 10px 12px; }
+.login-terminal-label { grid-column: 1; color: var(--screen-muted); font-size: 12px; }
+.login-terminal-line { grid-column: 1 / -1; display: flex; min-width: 0; align-items: flex-start; gap: 8px; color: var(--screen-ink); }
+.login-terminal-line .status-message-text { flex: 1; }
+.login-terminal-cursor { display: inline-block; width: 8px; height: 14px; background: var(--accent); }
+#login-status-message.error .login-terminal-label { color: var(--danger); }
+#login-status-message .status-message-dismiss { grid-column: 2; grid-row: 1; align-self: start; margin: 0; color: var(--screen-muted); }
+.login-keyboard-hints { display: flex; width: min(450px, 100%); align-items: center; justify-content: space-between; gap: 12px; margin-top: 18px; padding: 0 4px; color: var(--case-muted); font-size: 11px; }
+.login-power-indicator, .login-keyboard-actions { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+.login-power-light { width: 9px; height: 9px; border-radius: 50%; background: var(--power-light); box-shadow: 0 0 8px var(--power-light); }
+.login-keyboard-hints kbd { border-color: var(--cap-edge); border-bottom-width: 3px; color: var(--plate-ink); background: linear-gradient(180deg, var(--cap-top), var(--cap-bottom)); }
 
 /* Layout: sidebar | screens, keyboard strip underneath */
 .workspace-layout {
@@ -144,9 +158,6 @@ kbd {
 .status-message-text { min-width: 0; overflow-wrap: anywhere; }
 .status-message-dismiss { flex: 0 0 auto; margin-left: auto; border: 0; padding: 0 4px; color: inherit; background: transparent; font: 700 16px/1 var(--font-display); cursor: pointer; }
 .status-message-dismiss:hover { color: var(--screen-ink); }
-.login-panel + .status-message, #login-status-message { text-align: center; }
-#login-status-message { justify-content: center; }
-#login-status-message .status-message-dismiss { margin-left: 8px; }
 .workspace-view { flex: 1; min-height: 0; }
 .projects-view, .admin-view { overflow: auto; padding: 14px 22px 22px; }
 .eyebrow { margin-bottom: 4px; color: var(--screen-muted); font: 700 11px/1.4 var(--font-display); letter-spacing: 2px; text-transform: uppercase; }
@@ -388,6 +399,12 @@ dialog::backdrop { background: rgba(38, 35, 30, 0.6); }
 }
 
 @media (max-width: 520px) {
+  .login-topbar { padding-inline: 20px; }
+  .login-main { padding: 24px 16px; }
+  .login-panel.panel { padding: 24px 20px 20px; }
+  .login-panel.panel::before { margin: -24px -20px 20px; }
+  .login-keyboard-hints { flex-wrap: wrap; gap: 10px; font-size: 10px; }
+  .login-keyboard-actions { gap: 5px; }
   .workspace-sidebar { grid-template-columns: minmax(0, 1fr) auto; }
   .workspace-brand { grid-column: 1; grid-row: 1; }
   .workspace-nav { grid-column: 1 / -1; grid-row: 2; }
@@ -408,6 +425,5 @@ dialog::backdrop { background: rgba(38, 35, 30, 0.6); }
   .issue-card > .issue-status-button { justify-self: end; }
   .issue-key { width: 2.2rem; }
   .issue-description, .issue-source { margin-left: 4.25rem; }
-  .page-shell { margin-top: 20px; }
   .shortcut-list > div { grid-template-columns: 1fr; gap: 2px; }
 }

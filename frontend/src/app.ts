@@ -247,18 +247,49 @@ function cookie(name: string): string | null {
   return entry === undefined ? null : decodeURIComponent(entry.slice(name.length + 1));
 }
 
+function renderLoginTerminal(message: string, isError = false): HTMLSpanElement | null {
+  loginStatusMessage.replaceChildren();
+  const label = document.createElement('span');
+  label.className = 'login-terminal-label';
+  label.textContent = message === '' ? 'READY.' : isError ? 'SIGN-IN FAILED.' : 'NOTICE.';
+  const line = document.createElement('span');
+  line.className = 'login-terminal-line';
+  const prompt = document.createElement('span');
+  prompt.setAttribute('aria-hidden', 'true');
+  prompt.textContent = '>';
+  line.append(prompt);
+  let text: HTMLSpanElement | null = null;
+  if (message === '') {
+    const cursor = document.createElement('span');
+    cursor.className = 'login-terminal-cursor';
+    cursor.setAttribute('aria-hidden', 'true');
+    line.append(cursor);
+  } else {
+    text = document.createElement('span');
+    text.className = 'status-message-text';
+    text.textContent = message;
+    line.append(text);
+  }
+  loginStatusMessage.append(label, line);
+  return text;
+}
+
 function report(message: string, isError = false): void {
   if (statusMessageTimer !== null) window.clearTimeout(statusMessageTimer);
   statusMessageTimer = null;
   const target = workspacePanel.hidden ? loginStatusMessage : statusMessage;
   target.replaceChildren();
   target.classList.toggle('error', isError);
+  const text = target === loginStatusMessage
+    ? renderLoginTerminal(message, isError)
+    : message === '' ? null : document.createElement('span');
+  if (target !== loginStatusMessage && text !== null) {
+    text.className = 'status-message-text';
+    text.textContent = message;
+    target.append(text);
+  }
   if (message === '') return;
 
-  const text = document.createElement('span');
-  text.className = 'status-message-text';
-  text.textContent = message;
-  target.append(text);
   if (isError) {
     const dismiss = document.createElement('button');
     dismiss.className = 'status-message-dismiss';
@@ -269,8 +300,9 @@ function report(message: string, isError = false): void {
     target.append(dismiss);
   } else {
     statusMessageTimer = window.setTimeout(() => {
-      if (target.contains(text)) {
-        target.replaceChildren();
+      if (text !== null && target.contains(text)) {
+        if (target === loginStatusMessage) renderLoginTerminal('');
+        else target.replaceChildren();
         target.classList.remove('error');
       }
       statusMessageTimer = null;
