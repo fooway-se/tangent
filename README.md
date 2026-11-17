@@ -2,7 +2,7 @@
 
 Chat, projects and issues in one place for developers working remotely. Keep client work in separate workspaces, switch between them from the sidebar, and self-host on ordinary PHP + MySQL hosting.
 
-> **Status: pre-alpha.** Auth, multiple client workspaces with switching, projects, project chat, issue creation and editing, status changes, issue types, project-member assignment, chat conversion, and keyboard navigation are implemented; broader chat and issue workflows remain planned.
+> **Status: pre-alpha.** Auth, multiple client workspaces with switching, projects, project chat, issue creation and editing, status changes, issue types, project-member assignment, a cross-project Inbox for open issues assigned to you, chat conversion, and keyboard navigation are implemented; broader chat and issue workflows remain planned.
 
 ## Why
 
@@ -20,13 +20,13 @@ Most teams spread work across a chat app, an issue tracker and a project board. 
 |---|---|
 | Chat | Standalone channels, DMs and broader chat workflows |
 | Issues | Planned: quick-add syntax (`Fix login bug @niklas !high due:fri`), priorities, milestones and linked PRs; issue types and project-member assignment are implemented |
-| Inbox | Mentions, assignments, thread replies, status changes and PR events in one list |
+| Inbox | Implemented: cross-project list of open issues assigned to you. Planned: mentions, thread replies, status changes and PR events in one list |
 | Guests | Restricted client view with progress, milestones, shared issues and updates; comments on shared content and approvals for designated deliveries |
 | Integrations | GitHub via webhooks (GitLab later through the same interface) |
 | API | REST under `/api/v1/`, opaque Bearer tokens, OpenAPI description |
 
 See [`docs/SPEC.md`](docs/SPEC.md) for the full spec (Swedish) and phases.
-The current API contract is in [`docs/openapi.yaml`](docs/openapi.yaml). Project issues support create, list, status and type updates, project-member assignment, cancellation, recoverable deletion/restoration and creation from chat; project chat supports threaded text messages and adaptive polling.
+The current API contract is in [`docs/openapi.yaml`](docs/openapi.yaml). Project issues support create, list, status and type updates, project-member assignment, cancellation, recoverable deletion/restoration and creation from chat; `/api/v1/inbox` lists open issues assigned to the authenticated user across visible projects. Project chat supports threaded text messages and adaptive polling.
 
 ## Tech
 

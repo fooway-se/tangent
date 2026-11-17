@@ -11,6 +11,8 @@ const baseContext = {
   canAdmin: false,
   hasProject: false,
   projectListVisible: false,
+  inboxListVisible: false,
+  hasSelectedInboxIssue: false,
   hasSelectedProject: false,
   issueListVisible: false,
   issueDetailVisible: false,
@@ -63,6 +65,19 @@ test('project list uses the same j, k, Enter navigation pattern', () => {
   assert.equal(resolve('Enter', { projectListVisible: true }), null);
 });
 
+test('Inbox navigation uses g then n and the shared issue-list keys', () => {
+  const inbox = { inboxListVisible: true, hasSelectedInboxIssue: true };
+  assert.equal(resolve('n', { goPrefixPending: true }), 'inbox');
+  assert.equal(resolve('j', inbox), 'next');
+  assert.equal(resolve('k', inbox), 'previous');
+  assert.equal(resolve('Home', inbox), 'first-issue');
+  assert.equal(resolve('End', inbox), 'last-issue');
+  assert.equal(resolve('PageUp', inbox), 'page-up');
+  assert.equal(resolve('PageDown', inbox), 'page-down');
+  assert.equal(resolve('Enter', inbox), 'open-selected');
+  assert.equal(resolve('Enter', { inboxListVisible: true }), null);
+});
+
 test('issue detail and chat shortcuts run only when their targets exist', () => {
   assert.equal(resolve('e', { issueDetailVisible: true, hasSelectedIssue: true }), 'edit-selected');
   assert.equal(resolve('s', { issueDetailVisible: true, hasSelectedIssue: true }), 'focus-status');
@@ -109,7 +124,7 @@ test('Enter sends chat unless Shift is held or an IME composition is active', ()
 });
 
 test('command palette, shortcut help, and contextual hints are present in the workspace UI', () => {
-  for (const id of ['command-palette', 'command-search', 'command-results', 'shortcut-help', 'keyboard-hints', 'project-keyboard-hints']) {
+  for (const id of ['command-palette', 'command-search', 'command-results', 'shortcut-help', 'keyboard-hints', 'project-keyboard-hints', 'inbox-view']) {
     assert.ok(html.includes(`id="${id}"`), `${id} is present`);
   }
 });

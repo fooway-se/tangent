@@ -63,8 +63,14 @@ const breadcrumbProjectsButton = document.querySelector('#breadcrumb-projects');
 const breadcrumbDivider = document.querySelector('#breadcrumb-divider');
 const breadcrumbCurrent = document.querySelector('#breadcrumb-current');
 const projectsNavButton = document.querySelector('#projects-nav');
+const inboxNavButton = document.querySelector('#inbox-nav');
 const adminNavButton = document.querySelector('#admin-nav');
 const projectsView = document.querySelector('#projects-view');
+const inboxView = document.querySelector('#inbox-view');
+const inboxHeading = document.querySelector('#inbox-heading');
+const inboxSummary = document.querySelector('#inbox-summary');
+const inboxIssueList = document.querySelector('#inbox-issue-list');
+const inboxEmptyState = document.querySelector('#inbox-empty-state');
 const projectView = document.querySelector('#project-view');
 const adminView = document.querySelector('#admin-view');
 const adminHeading = document.querySelector('#admin-heading');
@@ -158,6 +164,7 @@ let workspacePickerOptionIndex = 0;
 const workspaceViewHistory = [];
 let activeProjectMembers = [];
 let projectIssues = [];
+let inboxIssues = [];
 let deletedProjectIssues = [];
 let selectedIssue = null;
 let activeChatProjectId = null;
@@ -450,6 +457,7 @@ function showWorkspaceView(view) {
         issueDetailDisplay.hidden = false;
     }
     projectsView.hidden = view !== 'projects';
+    inboxView.hidden = view !== 'inbox';
     adminView.hidden = view !== 'admin';
     projectView.hidden = view !== 'project';
     projectChatColumn.hidden = view !== 'project';
@@ -460,23 +468,32 @@ function showWorkspaceView(view) {
     breadcrumbDivider.hidden = view === 'projects';
     breadcrumbCurrent.textContent = view === 'project'
         ? activeProject?.name ?? 'Project'
-        : view === 'admin' ? 'Administration' : 'Projects';
+        : view === 'admin' ? 'Administration' : view === 'inbox' ? 'Inbox' : 'Projects';
     document.body.classList.toggle('is-project-view', view === 'project');
     projectsNavButton.classList.toggle('is-active', view === 'projects');
+    inboxNavButton.classList.toggle('is-active', view === 'inbox');
     adminNavButton.classList.toggle('is-active', view === 'admin');
     projectSidebarList.querySelectorAll('.project-sidebar-link').forEach((button) => {
         button.classList.toggle('is-active', view === 'project' && button.dataset.projectId === String(activeProject?.id));
     });
     if (view === 'projects') {
         projectsNavButton.setAttribute('aria-current', 'page');
+        inboxNavButton.removeAttribute('aria-current');
+        adminNavButton.removeAttribute('aria-current');
+    }
+    else if (view === 'inbox') {
+        inboxNavButton.setAttribute('aria-current', 'page');
+        projectsNavButton.removeAttribute('aria-current');
         adminNavButton.removeAttribute('aria-current');
     }
     else if (view === 'admin') {
         adminNavButton.setAttribute('aria-current', 'page');
         projectsNavButton.removeAttribute('aria-current');
+        inboxNavButton.removeAttribute('aria-current');
     }
     else {
         projectsNavButton.removeAttribute('aria-current');
+        inboxNavButton.removeAttribute('aria-current');
         adminNavButton.removeAttribute('aria-current');
     }
     if (view === 'projects' && projectReturnFocusId !== null) {
@@ -501,6 +518,8 @@ function currentWorkspaceLocation() {
             tab: membersView.hidden ? 'issues' : 'members',
         };
     }
+    if (!inboxView.hidden)
+        return { view: 'inbox' };
     if (!adminView.hidden)
         return { view: 'admin' };
     const focused = document.activeElement;
@@ -526,6 +545,14 @@ function goToProjects() {
     workspaceViewHistory.length = 0;
     showWorkspaceView('projects');
 }
+function goToInbox() {
+    const currentLocation = currentWorkspaceLocation();
+    if (currentLocation.view !== 'inbox')
+        workspaceViewHistory.push(currentLocation);
+    showWorkspaceView('inbox');
+    inboxHeading.focus();
+    void loadInboxIssues();
+}
 function goBackWorkspaceView() {
     const currentLocation = currentWorkspaceLocation();
     if (currentLocation.view === 'projects')
@@ -533,6 +560,11 @@ function goBackWorkspaceView() {
     const previousLocation = workspaceViewHistory.pop();
     if (previousLocation?.view === 'project') {
         void loadProjectDetail(previousLocation.projectId, previousLocation.tab, false);
+    }
+    else if (previousLocation?.view === 'inbox') {
+        showWorkspaceView('inbox');
+        inboxHeading.focus();
+        void loadInboxIssues();
     }
     else if (previousLocation?.view === 'admin') {
         showWorkspaceView('admin');
@@ -597,6 +629,21 @@ function issueSelectedInVisibleView() {
 function visibleIssueTitleButtons() {
     return Array.from(issueList.querySelectorAll('.issue-title-button'))
         .filter((button) => button.closest('.issue-group')?.open !== false);
+}
+function visibleInboxIssueTitleButtons() {
+    return Array.from(inboxIssueList.querySelectorAll('.issue-title-button'));
+}
+function selectedInboxIssueButton() {
+    const focused = document.activeElement;
+    if (focused instanceof HTMLElement) {
+        const focusedRow = focused.closest('.inbox-issue-card');
+        if (focusedRow !== null)
+            return focusedRow.querySelector('.issue-title-button');
+    }
+    return inboxIssueList.querySelector('.inbox-issue-card.is-keyboard-selected .issue-title-button');
+}
+function hasSelectedInboxIssue() {
+    return selectedInboxIssueButton() !== null;
 }
 function hasSelectedIssueInVisibleView() {
     return !projectView.hidden && (!issuesView.hidden || !issueDetailView.hidden)
@@ -732,6 +779,8 @@ function shortcutContext(target) {
         canAdmin: activeUser?.role === 'admin',
         hasProject: activeProject !== null && !projectView.hidden,
         projectListVisible: !workspacePanel.hidden && !projectsView.hidden,
+        inboxListVisible: !workspacePanel.hidden && !inboxView.hidden,
+        hasSelectedInboxIssue: hasSelectedInboxIssue(),
         issueFilterFocused: target === issueFilter,
         hasSelectedProject: selectedProjectButton() !== null,
         issueListVisible: !projectView.hidden && !issuesView.hidden,
@@ -748,7 +797,7 @@ function shortcutContext(target) {
             || (!projectView.hidden && (!issueDetailView.hidden || !issueDetailEditForm.hidden
                 || issueQuickAddEscapePending || chatReplyParent !== null))
             || (!projectsView.hidden && !projectFormPanel.hidden)
-            || !projectView.hidden || !adminView.hidden)),
+            || !projectView.hidden || !inboxView.hidden || !adminView.hidden)),
     };
 }
 function clearGoPrefix() {
@@ -825,6 +874,10 @@ function moveFocusToBoundary(buttons, rowSelector, edge) {
     target.focus();
 }
 function moveIssueSelection(direction) {
+    if (!inboxView.hidden) {
+        moveFocusWithin(visibleInboxIssueTitleButtons(), '.inbox-issue-card', direction);
+        return;
+    }
     const buttons = visibleIssueTitleButtons();
     if (!issueDetailView.hidden && selectedIssue !== null) {
         const currentIndex = buttons.findIndex((button) => button.closest('.issue-card')?.dataset.issueId === String(selectedIssue?.id));
@@ -839,6 +892,10 @@ function moveIssueSelection(direction) {
     moveFocusWithin(buttons, '.issue-card', direction);
 }
 function moveIssueSelectionToBoundary(edge) {
+    if (!inboxView.hidden) {
+        moveFocusToBoundary(visibleInboxIssueTitleButtons(), '.inbox-issue-card', edge);
+        return;
+    }
     const buttons = visibleIssueTitleButtons();
     const target = buttons[edge === 'first' ? 0 : buttons.length - 1];
     if (target === undefined)
@@ -862,6 +919,9 @@ function moveSelectionByPage(direction) {
     else if (!projectsView.hidden) {
         moveFocusByPage(Array.from(projectList.querySelectorAll('.project-card button')), '.project-card', projectsView, direction);
     }
+    else if (!inboxView.hidden) {
+        moveFocusByPage(visibleInboxIssueTitleButtons(), '.inbox-issue-card', inboxView, direction);
+    }
     else if (!issuesView.hidden) {
         moveFocusByPage(visibleIssueTitleButtons(), '.issue-card', projectMain, direction);
     }
@@ -869,6 +929,9 @@ function moveSelectionByPage(direction) {
 function moveSelection(direction) {
     if (!projectsView.hidden) {
         moveProjectSelection(direction);
+    }
+    else if (!inboxView.hidden) {
+        moveIssueSelection(direction);
     }
     else if (!issuesView.hidden || !issueDetailView.hidden) {
         moveIssueSelection(direction);
@@ -909,6 +972,7 @@ function createIssueFromLatestMessage() {
 function getPaletteCommands() {
     const commands = [
         { label: 'Go to Projects', detail: 'Open the project list', shortcut: 'g p', run: goToProjects },
+        { label: 'Open Inbox', detail: 'Review open issues assigned to you', shortcut: 'g n', run: goToInbox },
         { label: 'Switch workspace', detail: 'Choose a workspace; Enter switches, Escape cancels', shortcut: 'g w', run: openWorkspacePicker },
         { label: 'Show keyboard shortcuts', detail: 'View key bindings', shortcut: '?', run: showShortcutHelp },
     ];
@@ -1155,7 +1219,7 @@ function dismissCurrentView() {
     else if (!workspacePanel.hidden && !projectView.hidden && chatReplyParent !== null) {
         clearChatReplyParent();
     }
-    else if (!workspacePanel.hidden && (!projectView.hidden || !adminView.hidden)) {
+    else if (!workspacePanel.hidden && (!projectView.hidden || !inboxView.hidden || !adminView.hidden)) {
         goBackWorkspaceView();
     }
 }
@@ -1234,6 +1298,9 @@ function executeShortcut(action) {
             clearGoPrefix();
             goToProjects();
             break;
+        case 'inbox':
+            goToInbox();
+            break;
         case 'workspace-switcher':
             openWorkspacePicker();
             break;
@@ -1292,7 +1359,10 @@ function executeShortcut(action) {
             issueFilter.focus();
             break;
         case 'open-selected':
-            selectedIssueButton()?.click();
+            if (!inboxView.hidden)
+                selectedInboxIssueButton()?.click();
+            else
+                selectedIssueButton()?.click();
             break;
         case 'create-issue':
             beginCreateIssue();
@@ -1699,6 +1769,7 @@ document.addEventListener('visibilitychange', () => {
     }
 });
 projectsNavButton.addEventListener('click', goToProjects);
+inboxNavButton.addEventListener('click', goToInbox);
 adminNavButton.addEventListener('click', openWorkspaceAdmin);
 breadcrumbProjectsButton.addEventListener('click', goToProjects);
 issuesTabButton.addEventListener('click', () => switchProjectTab('issues'));
@@ -1836,6 +1907,78 @@ async function loadProjects() {
         sidebarItem.append(sidebarButton);
         projectSidebarList.append(sidebarItem);
     }
+}
+async function loadInboxIssues() {
+    try {
+        const result = await api('/inbox');
+        if (inboxView.hidden || workspacePanel.hidden)
+            return;
+        inboxIssues = result.issues;
+        renderInboxIssues();
+    }
+    catch (error) {
+        if (error instanceof ApiFailure && error.status === 401) {
+            showSignedOut();
+            return;
+        }
+        if (!inboxView.hidden) {
+            report(error instanceof Error ? error.message : 'Could not load your inbox.', true);
+        }
+    }
+}
+function renderInboxIssues() {
+    const projectCount = new Set(inboxIssues.map((issue) => issue.project_id)).size;
+    inboxSummary.textContent = inboxIssues.length === 0
+        ? 'Open issues assigned to you across your projects.'
+        : `${inboxIssues.length} open ${inboxIssues.length === 1 ? 'issue' : 'issues'} assigned to you in ${projectCount} ${projectCount === 1 ? 'project' : 'projects'}.`;
+    inboxIssueList.replaceChildren(...inboxIssues.map(createInboxIssueRow));
+    inboxEmptyState.hidden = inboxIssues.length > 0;
+}
+function createInboxIssueRow(issue) {
+    const item = document.createElement('li');
+    item.className = 'issue-card inbox-issue-card';
+    item.dataset.issueId = String(issue.id);
+    const content = document.createElement('div');
+    content.className = 'issue-content';
+    const projectName = document.createElement('span');
+    projectName.className = 'inbox-project-name';
+    projectName.textContent = issue.project_name;
+    const mainline = document.createElement('div');
+    mainline.className = 'issue-mainline';
+    const key = document.createElement('span');
+    key.className = 'issue-key';
+    key.textContent = `#${issue.id}`;
+    const title = document.createElement('button');
+    title.className = 'issue-title issue-title-button';
+    title.type = 'button';
+    title.textContent = issue.title;
+    title.setAttribute('aria-label', `Open ${issue.title} in ${issue.project_name}`);
+    title.addEventListener('click', () => void openInboxIssue(issue));
+    mainline.append(key, title);
+    const metadata = document.createElement('div');
+    metadata.className = 'issue-metadata inbox-issue-metadata';
+    const type = document.createElement('span');
+    type.className = 'issue-type-tag';
+    type.textContent = issueTypeLabel(issue.type);
+    const status = document.createElement('span');
+    status.className = `inbox-issue-status is-${issue.status}`;
+    status.textContent = issueStatusLabel(issue.status);
+    metadata.append(type, status);
+    content.append(projectName, mainline, metadata);
+    item.append(content);
+    return item;
+}
+async function openInboxIssue(issue) {
+    await loadProjectDetail(issue.project_id);
+    if (activeProject?.id !== issue.project_id || projectView.hidden)
+        return;
+    await loadProjectIssues(issue.project_id);
+    const currentIssue = projectIssues.find((candidate) => candidate.id === issue.id);
+    if (currentIssue === undefined) {
+        report('This issue is no longer open and assigned to you.', true);
+        return;
+    }
+    openIssue(currentIssue);
 }
 async function loadProjectDetail(projectId, tab = 'issues', recordHistory = true) {
     const previousLocation = currentWorkspaceLocation();

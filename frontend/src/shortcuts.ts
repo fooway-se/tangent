@@ -3,6 +3,7 @@ export type ShortcutAction =
   | 'shortcut-help'
   | 'await-projects-key'
   | 'projects'
+  | 'inbox'
   | 'workspace-switcher'
   | 'issues'
   | 'chat'
@@ -50,6 +51,8 @@ export interface ShortcutContext {
   canAdmin: boolean;
   hasProject: boolean;
   projectListVisible: boolean;
+  inboxListVisible: boolean;
+  hasSelectedInboxIssue: boolean;
   issueFilterFocused: boolean;
   hasSelectedProject: boolean;
   issueListVisible: boolean;
@@ -86,6 +89,7 @@ export function resolveShortcut(event: ShortcutEvent, context: ShortcutContext):
 
   if (context.goPrefixPending) {
     if (key === 'p' && context.hasWorkspace) return 'projects';
+    if (key === 'n' && context.hasWorkspace) return 'inbox';
     if (key === 'w' && context.hasWorkspace) return 'workspace-switcher';
     if (key === 'i' && context.hasProject) return 'issues';
     if (key === 'c' && context.hasProject) return 'chat';
@@ -116,6 +120,15 @@ export function resolveShortcut(event: ShortcutEvent, context: ShortcutContext):
     if (key === 'j' || key === 'arrowdown') return 'next-project';
     if (key === 'k' || key === 'arrowup') return 'previous-project';
     if (event.key === 'Enter' && context.hasSelectedProject) return 'open-selected-project';
+  }
+  if (context.inboxListVisible) {
+    if (key === 'home') return 'first-issue';
+    if (key === 'end') return 'last-issue';
+    if (key === 'pageup') return 'page-up';
+    if (key === 'pagedown') return 'page-down';
+    if (key === 'j' || key === 'arrowdown') return 'next';
+    if (key === 'k' || key === 'arrowup') return 'previous';
+    if (event.key === 'Enter' && context.hasSelectedInboxIssue) return 'open-selected';
   }
   if (context.issueListVisible || context.issueDetailVisible) {
     if (!context.chatMessagesFocused && key === 'home') return 'first-issue';

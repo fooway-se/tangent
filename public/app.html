@@ -51,6 +51,7 @@
         </div>
         <nav id="workspace-nav" class="workspace-nav" aria-label="Workspace">
           <button id="projects-nav" class="workspace-nav-button is-active" type="button" aria-current="page">Projects</button>
+          <button id="inbox-nav" class="workspace-nav-button" type="button">Inbox</button>
           <button id="admin-nav" class="workspace-nav-button" type="button" hidden>Workspace admin</button>
         </nav>
         <section class="sidebar-projects" aria-labelledby="sidebar-projects-heading">
@@ -105,6 +106,18 @@
               <ul id="project-list" class="project-list"></ul>
               <p id="empty-projects" class="empty-state" hidden>No projects yet.</p>
             </section>
+          </section>
+
+          <section id="inbox-view" class="workspace-view inbox-view" hidden aria-labelledby="inbox-heading">
+            <header class="page-heading">
+              <div>
+                <p class="eyebrow">Workspace</p>
+                <h1 id="inbox-heading" tabindex="-1">Inbox</h1>
+              </div>
+            </header>
+            <p id="inbox-summary" class="inbox-summary">Open issues assigned to you across your projects.</p>
+            <ul id="inbox-issue-list" class="issue-list inbox-issue-list" aria-live="polite"></ul>
+            <p id="inbox-empty-state" class="empty-state" hidden>You have no open issues assigned to you.</p>
           </section>
 
           <section id="project-view" class="workspace-view project-view" hidden aria-live="polite">
@@ -285,8 +298,8 @@
       <footer id="keyboard-hints" class="keyboard-hints" hidden>
           <span><kbd>j</kbd>/<kbd>k</kbd> Move</span>
           <span><kbd>Enter</kbd> Open</span>
-          <span><kbd>g</kbd> <kbd>p</kbd> Projects · <kbd>g</kbd> <kbd>w</kbd> Workspace</span>
-          <span id="go-prefix-hint" class="go-prefix-hint" hidden><kbd>p</kbd> Projects · <kbd>w</kbd> Workspace · <kbd>i</kbd> Issues · <kbd>c</kbd> Chat · <kbd>m</kbd> Members</span>
+          <span><kbd>g</kbd> <kbd>p</kbd> Projects · <kbd>g</kbd> <kbd>n</kbd> Inbox · <kbd>g</kbd> <kbd>w</kbd> Workspace</span>
+          <span id="go-prefix-hint" class="go-prefix-hint" hidden><kbd>p</kbd> Projects · <kbd>n</kbd> Inbox · <kbd>w</kbd> Workspace · <kbd>i</kbd> Issues · <kbd>c</kbd> Chat · <kbd>m</kbd> Members</span>
           <span id="project-keyboard-hints" hidden><kbd>g</kbd> <kbd>i</kbd> Issues <kbd>g</kbd> <kbd>c</kbd> Chat <kbd>g</kbd> <kbd>m</kbd> Members · <kbd>c</kbd> Create <kbd>e</kbd> Edit <kbd>s</kbd> Status · Chat: <kbd>j</kbd>/<kbd>k</kbd> Move <kbd>r</kbd> Reply <kbd>i</kbd> Issue · <kbd>Enter</kbd> Send <kbd>Shift</kbd>+<kbd>Enter</kbd> New line</span>
           <span><kbd>Ctrl/Cmd</kbd>+<kbd>K</kbd> Commands</span>
           <span><kbd>?</kbd> Shortcuts</span>
@@ -379,6 +392,7 @@
           <div><dt><kbd>/</kbd></dt><dd>Focus the issue filter</dd></div>
           <div><dt><kbd>Enter</kbd></dt><dd>Open a selected project or issue; submit a form</dd></div>
           <div><dt><kbd>g</kbd>, <kbd>p</kbd></dt><dd>Go to projects</dd></div>
+          <div><dt><kbd>g</kbd>, <kbd>n</kbd></dt><dd>Open your Inbox</dd></div>
           <div><dt><kbd>g</kbd>, <kbd>w</kbd></dt><dd>Open the workspace picker; arrows choose, Enter switches, Escape cancels</dd></div>
           <div><dt><kbd>g</kbd>, <kbd>i</kbd></dt><dd>Focus project issues</dd></div>
           <div><dt><kbd>g</kbd>, <kbd>c</kbd></dt><dd>Focus project chat</dd></div>

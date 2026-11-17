@@ -26,6 +26,34 @@ final class IssueRepository
         return array_map(self::normalize(...), $statement->fetchAll(PDO::FETCH_ASSOC));
     }
 
+    /** @param list<int> $projectIds @return list<array<string, mixed>> */
+    public function listOpenAssignedToUser(int $workspaceId, int $userId, array $projectIds): array
+    {
+        if ($projectIds === []) {
+            return [];
+        }
+
+        $projectPlaceholders = [];
+        $parameters = ['workspace_id' => $workspaceId, 'assignee_id' => $userId];
+        foreach (array_values($projectIds) as $index => $projectId) {
+            $placeholder = 'project_' . $index;
+            $projectPlaceholders[] = ':' . $placeholder;
+            $parameters[$placeholder] = $projectId;
+        }
+
+        $statement = $this->pdo->prepare(
+            "SELECT id, workspace_id, project_id, title, description, issue_type AS type, assignee_id, status, created_by,
+                    source_channel_id, source_message_id, created_at, updated_at, deleted_at
+             FROM issues
+             WHERE workspace_id = :workspace_id AND assignee_id = :assignee_id AND deleted_at IS NULL
+               AND status IN ('backlog', 'todo', 'doing')
+               AND project_id IN (" . implode(', ', $projectPlaceholders) . ")
+             ORDER BY updated_at DESC, id DESC"
+        );
+        $statement->execute($parameters);
+        return array_map(self::normalize(...), $statement->fetchAll(PDO::FETCH_ASSOC));
+    }
+
     /** @return list<array<string, mixed>> */
     public function listDeletedForProject(int $workspaceId, int $projectId): array
     {

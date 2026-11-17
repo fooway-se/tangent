@@ -17,6 +17,8 @@ use Tangent\Modules\Chat\ChatService;
 use Tangent\Modules\Issues\IssueRepository;
 use Tangent\Modules\Issues\IssuesRoutes;
 use Tangent\Modules\Issues\IssuesService;
+use Tangent\Modules\Inbox\InboxRoutes;
+use Tangent\Modules\Inbox\InboxService;
 use Tangent\Modules\Projects\ProjectRepository;
 use Tangent\Modules\Projects\ProjectRoutes;
 use Tangent\Modules\Projects\ProjectService;
@@ -33,8 +35,10 @@ final class Application
         $auth = new AuthService($users, $tokens, new RateLimiter($pdo), $config);
         $projectRepository = new ProjectRepository($pdo);
         $chat = new ChatService(new ChatRepository($pdo), $projectRepository);
-        $issues = new IssuesService(new IssueRepository($pdo), $projectRepository, $chat);
+        $issueRepository = new IssueRepository($pdo);
+        $issues = new IssuesService($issueRepository, $projectRepository, $chat);
         $projects = new ProjectService($projectRepository, $users, $pdo, $chat, $issues);
+        $inbox = new InboxService($issueRepository, $projects);
         $router = new Router();
 
         (new AuthRoutes(
@@ -51,6 +55,7 @@ final class Application
         (new ProjectRoutes($projects))->register($router);
         (new ChatRoutes($chat))->register($router);
         (new IssuesRoutes($issues))->register($router);
+        (new InboxRoutes($inbox))->register($router);
 
         return new Gateway($router, new Authenticator($tokens, $config));
     }
