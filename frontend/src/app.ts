@@ -2627,51 +2627,33 @@ function renderProjectIssueBoard(): void {
     const details = document.createElement('details');
     details.className = 'issue-group';
     details.open = true;
-
-    const summary = document.createElement('summary');
-    summary.className = 'issue-group-summary';
-    const chevron = document.createElement('span');
-    chevron.className = 'issue-group-chevron';
-    chevron.setAttribute('aria-hidden', 'true');
-    chevron.textContent = '›';
-    const name = document.createElement('span');
-    name.className = 'issue-group-name';
-    name.textContent = group.status;
-    const count = document.createElement('span');
-    count.className = 'issue-group-count';
-    count.textContent = String(group.issues.length);
-    summary.append(chevron, name, count);
-
     const rows = document.createElement('ul');
     rows.className = 'issue-group-items';
     for (const issue of group.issues) rows.append(createIssueRow(issue));
-    details.append(summary, rows);
+    details.append(createIssueGroupSummary(group.status, group.issues.length), rows);
     issueList.append(details);
   }
 }
 
 function renderMilestoneIssueBoard(visibleIssues: Issue[]): void {
   for (const group of groupIssuesByMilestone(visibleIssues, projectMilestones)) {
-    const container = document.createElement('li');
-    container.className = 'milestone-issue-group';
-    const heading = document.createElement('h3');
-    heading.className = 'milestone-issue-group-heading';
-    heading.textContent = group.dueDate === null ? group.name : `${group.name} · due ${group.dueDate}`;
+    const details = document.createElement('details');
+    details.className = 'issue-group milestone-issue-group';
+    details.open = true;
     const rows = document.createElement('ul');
     rows.className = 'issue-group-items';
     for (const issue of group.issues) rows.append(createIssueRow(issue, { showMilestoneTag: false }));
-    container.append(heading, rows);
-    issueList.append(container);
+    const headingText = group.dueDate === null ? group.name : `${group.name} · due ${group.dueDate}`;
+    details.append(createIssueGroupSummary(headingText, group.issues.length), rows);
+    issueList.append(details);
   }
 }
 
 function renderNextUpIssueBoard(visibleIssues: Issue[], allOpenIssues: Issue[]): void {
   for (const group of groupIssuesByMilestone(visibleIssues, projectMilestones)) {
-    const container = document.createElement('li');
-    container.className = 'milestone-issue-group';
-    const heading = document.createElement('h3');
-    heading.className = 'milestone-issue-group-heading';
-    heading.textContent = group.dueDate === null ? group.name : `${group.name} · due ${group.dueDate}`;
+    const details = document.createElement('details');
+    details.className = 'issue-group milestone-issue-group';
+    details.open = true;
     const rows = document.createElement('ul');
     rows.className = 'issue-group-items';
 
@@ -2684,9 +2666,27 @@ function renderNextUpIssueBoard(visibleIssues: Issue[], allOpenIssues: Issue[]):
         showMilestoneTag: false,
       }));
     }
-    container.append(heading, rows);
-    issueList.append(container);
+    const headingText = group.dueDate === null ? group.name : `${group.name} · due ${group.dueDate}`;
+    details.append(createIssueGroupSummary(headingText, group.issues.length), rows);
+    issueList.append(details);
   }
+}
+
+function createIssueGroupSummary(name: string, count: number): HTMLElement {
+  const summary = document.createElement('summary');
+  summary.className = 'issue-group-summary';
+  const chevron = document.createElement('span');
+  chevron.className = 'issue-group-chevron';
+  chevron.setAttribute('aria-hidden', 'true');
+  chevron.textContent = '›';
+  const groupName = document.createElement('span');
+  groupName.className = 'issue-group-name';
+  groupName.textContent = name;
+  const groupCount = document.createElement('span');
+  groupCount.className = 'issue-group-count';
+  groupCount.textContent = String(count);
+  summary.append(chevron, groupName, groupCount);
+  return summary;
 }
 
 function createDeletedIssueRow(issue: Issue): HTMLLIElement {

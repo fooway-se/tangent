@@ -18,7 +18,15 @@ test('issue rows show their milestone and Next Up exposes accessible move contro
   assert.match(app, /issue-milestone-tag/);
   assert.match(app, /data-move-direction/);
   assert.match(app, /`\/issues\/\$\{issue\.id\}\/move`/);
-  assert.match(css, /\.milestone-issue-group-heading/);
+  assert.match(app, /details\.className = 'issue-group milestone-issue-group'/);
+});
+
+test('milestone groups are collapsible and their headings show issue counts', () => {
+  assert.match(app, /function createIssueGroupSummary\(name: string, count: number\)/);
+  assert.match(app, /details\.open = true/);
+  assert.match(app, /summary\.className = 'issue-group-summary'/);
+  assert.match(app, /groupCount\.textContent = String\(count\)/);
+  assert.match(app, /createIssueGroupSummary\(headingText, group\.issues\.length\)/);
 });
 
 test('issue rows mark shared issues and leave internal issues without a sharing badge', () => {

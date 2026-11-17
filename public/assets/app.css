@@ -298,9 +298,6 @@ select { padding-right: 28px; background: var(--screen-inset) url("data:image/sv
 .issue-group-count { color: var(--screen-muted); }
 .issue-group-items { display: grid; margin: 0; padding: 0; list-style: none; }
 .issue-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; border-top: 1px solid var(--screen-line); padding: 10px 12px; transition: background-color 100ms ease; }
-.milestone-issue-group { border-top: 1px solid var(--screen-line); padding-top: 10px; list-style: none; }
-.milestone-issue-group + .milestone-issue-group { margin-top: 4px; }
-.milestone-issue-group-heading { margin: 0; border-bottom: 1px solid var(--screen-border); padding: 4px 12px 8px; color: var(--screen-muted); font: 700 11px var(--font-display); letter-spacing: 0.7px; }
 .issue-row-actions { display: flex; align-items: center; justify-self: end; gap: 4px; }
 .issue-order-button { width: 28px; min-width: 28px; padding: 4px; color: var(--screen-muted); font-size: 14px; line-height: 1; }
 .issue-order-button:disabled { opacity: 0.35; cursor: not-allowed; }
