@@ -36,7 +36,14 @@
       <aside class="workspace-sidebar" aria-label="Workspace navigation">
         <div class="workspace-brand">
           <a class="brand" href="/app.html" aria-label="Tangent home"><span class="brand-mark" aria-hidden="true">T</span><span>Tangent</span></a>
-          <select id="workspace-switcher" aria-label="Switch workspace" disabled></select>
+          <select id="workspace-switcher" aria-label="Choose workspace" disabled></select>
+          <div id="workspace-switch-actions" class="workspace-switch-actions" hidden>
+            <p id="workspace-switch-prompt" class="workspace-switch-prompt" role="status" aria-live="polite"></p>
+            <div class="workspace-switch-buttons">
+              <button id="workspace-switch-confirm" class="button button-quiet" type="button">Switch</button>
+              <button id="workspace-switch-cancel" class="button button-quiet" type="button">Cancel</button>
+            </div>
+          </div>
         </div>
         <nav id="workspace-nav" class="workspace-nav" aria-label="Workspace">
           <button id="projects-nav" class="workspace-nav-button is-active" type="button" aria-current="page">Projects</button>
@@ -270,7 +277,7 @@
           <div><dt><kbd>↑</kbd>/<kbd>↓</kbd> or <kbd>j</kbd>/<kbd>k</kbd></dt><dd>Move through projects or issues</dd></div>
           <div><dt><kbd>Enter</kbd></dt><dd>Open a selected project or issue; submit a form</dd></div>
           <div><dt><kbd>g</kbd>, <kbd>p</kbd></dt><dd>Go to projects</dd></div>
-          <div><dt><kbd>g</kbd>, <kbd>w</kbd></dt><dd>Focus the workspace switcher</dd></div>
+          <div><dt><kbd>g</kbd>, <kbd>w</kbd></dt><dd>Choose a workspace; Enter switches, Escape cancels</dd></div>
           <div><dt><kbd>g</kbd>, <kbd>i</kbd></dt><dd>Focus project issues</dd></div>
           <div><dt><kbd>g</kbd>, <kbd>c</kbd></dt><dd>Focus project chat</dd></div>
           <div><dt><kbd>g</kbd>, <kbd>m</kbd></dt><dd>Focus project members</dd></div>
