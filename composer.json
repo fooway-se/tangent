@@ -2,7 +2,7 @@
   "name": "tangent/app",
   "description": "Self-hosted collaboration tool for developers",
   "type": "project",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "require": {
     "php": ">=8.5.12",
     "ext-iconv": "*",
