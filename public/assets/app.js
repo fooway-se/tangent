@@ -1,5 +1,14 @@
 import { resolveShortcut, shouldSubmitOnEnter } from './shortcuts.js';
 import { filterIssues, groupIssues, sortIssues, } from './issue-board.js';
+const ISSUE_STATUS_OPTIONS = [
+    { value: 'backlog', label: 'Backlog' },
+    { value: 'todo', label: 'Todo' },
+    { value: 'doing', label: 'Doing' },
+    { value: 'done', label: 'Done' },
+];
+function issueStatusLabel(status) {
+    return ISSUE_STATUS_OPTIONS.find((option) => option.value === status)?.label ?? status;
+}
 class ApiFailure extends Error {
     status;
     constructor(message, status) {
@@ -77,6 +86,10 @@ const issueFilter = document.querySelector('#issue-filter');
 const issueOrder = document.querySelector('#issue-order');
 const issueCountSummary = document.querySelector('#issue-count-summary');
 const issueList = document.querySelector('#issue-list');
+const issueStatusPicker = document.querySelector('#issue-status-picker');
+const issueStatusPickerClose = document.querySelector('#issue-status-picker-close');
+const issueStatusPickerDescription = document.querySelector('#issue-status-picker-description');
+const issueStatusPickerOptions = document.querySelector('#issue-status-picker-options');
 const emptyIssues = document.querySelector('#empty-issues');
 const memberList = document.querySelector('#member-list');
 const memberForm = document.querySelector('#member-form');
@@ -112,6 +125,9 @@ let issueQuickAddReturnFocus = null;
 let goPrefixPending = false;
 let goPrefixTimer = null;
 let statusMessageTimer = null;
+let issueStatusPickerIssue = null;
+let issueStatusPickerReturnFocus = null;
+let issueStatusPickerOptionIndex = 0;
 let paletteCommands = [];
 let visiblePaletteCommands = [];
 let activePaletteCommandIndex = 0;
@@ -585,7 +601,7 @@ function shortcutContext(target) {
         hasSelectedChatMessage: selectedChatMessageId !== null && selectedChatMessageId > 0
             && chatMessagesById.has(selectedChatMessageId),
         textInputFocused: shouldBlurOnEscape(target),
-        modalOpen: commandPalette.open || shortcutHelp.open,
+        modalOpen: commandPalette.open || shortcutHelp.open || issueStatusPicker.open,
         canDismiss: commandPalette.open || shortcutHelp.open || (!workspacePanel.hidden && (pendingWorkspaceId !== null
             || (!projectView.hidden && (!issueDetailView.hidden || !issueDetailEditForm.hidden
                 || issueQuickAddEscapePending || chatReplyParent !== null))
@@ -734,10 +750,16 @@ function editSelectedIssue() {
 }
 function focusSelectedIssueStatus() {
     if (selectedIssue !== null) {
-        issueDetailStatus.focus();
+        openIssueStatusPicker(selectedIssue, issueDetailStatus);
         return;
     }
-    selectedIssueButton()?.closest('.issue-card')?.querySelector('.issue-status')?.focus();
+    const titleButton = selectedIssueButton();
+    const row = titleButton?.closest('.issue-card');
+    const issueId = Number(row?.dataset.issueId);
+    const issue = projectIssues.find((candidate) => candidate.id === issueId);
+    if (issue !== undefined && titleButton !== null && titleButton !== undefined) {
+        openIssueStatusPicker(issue, titleButton);
+    }
 }
 function createIssueFromLatestMessage() {
     latestChatIssueButton()?.click();
@@ -821,7 +843,7 @@ function getPaletteCommands() {
                 run: editSelectedIssue,
             }, {
                 label: 'Change issue status',
-                detail: 'Focus the status selector',
+                detail: 'Choose a status, then save or cancel',
                 shortcut: 's',
                 run: focusSelectedIssueStatus,
             });
@@ -891,6 +913,8 @@ function runPaletteCommand(index) {
     command.run();
 }
 function openCommandPalette() {
+    if (issueStatusPicker.open)
+        closeIssueStatusPicker();
     if (shortcutHelp.open)
         shortcutHelp.close();
     if (commandPalette.open) {
@@ -905,6 +929,8 @@ function openCommandPalette() {
     commandSearch.focus();
 }
 function showShortcutHelp() {
+    if (issueStatusPicker.open)
+        closeIssueStatusPicker();
     if (commandPalette.open)
         closeCommandPalette();
     if (shortcutHelp.open) {
@@ -915,7 +941,10 @@ function showShortcutHelp() {
     shortcutHelpClose.focus();
 }
 function dismissCurrentView() {
-    if (commandPalette.open) {
+    if (issueStatusPicker.open) {
+        closeIssueStatusPicker();
+    }
+    else if (commandPalette.open) {
         closeCommandPalette();
     }
     else if (shortcutHelp.open) {
@@ -1121,7 +1150,7 @@ function executeShortcut(action) {
     }
 }
 function handleKeyboardShortcut(event) {
-    if ((commandPalette.open || shortcutHelp.open)
+    if ((commandPalette.open || shortcutHelp.open || issueStatusPicker.open)
         && event.key !== 'Escape'
         && !((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k'))
         return;
@@ -1162,6 +1191,29 @@ commandPalette.addEventListener('keydown', (event) => {
 });
 commandPaletteClose.addEventListener('click', closeCommandPalette);
 shortcutHelpClose.addEventListener('click', () => shortcutHelp.close());
+issueStatusPickerClose.addEventListener('click', closeIssueStatusPicker);
+issueStatusPicker.addEventListener('close', () => {
+    const returnFocus = issueStatusPickerReturnFocus;
+    issueStatusPickerIssue = null;
+    issueStatusPickerReturnFocus = null;
+    if (returnFocus !== null && returnFocus.isConnected && returnFocus.closest('[hidden]') === null) {
+        returnFocus.focus();
+    }
+});
+issueStatusPicker.addEventListener('keydown', (event) => {
+    if (!(event.target instanceof HTMLElement) || !event.target.matches('.issue-status-option'))
+        return;
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        event.stopPropagation();
+        focusIssueStatusPickerOption(issueStatusPickerOptionIndex + (event.key === 'ArrowDown' ? 1 : -1));
+    }
+    else if (event.key === 'Enter') {
+        event.preventDefault();
+        event.stopPropagation();
+        void applyIssueStatusPickerSelection();
+    }
+});
 document.addEventListener('keydown', handleKeyboardShortcut);
 function scheduleChatPoll(delay = chatPollDelay) {
     if (activeChatProjectId === null)
@@ -1737,32 +1789,95 @@ function openIssue(issue) {
     switchProjectTab('issues');
     issueBackButton.focus();
 }
-function createIssueStatusSelect(issue) {
-    const status = document.createElement('select');
-    status.className = 'issue-status';
-    status.setAttribute('aria-label', `Status for ${issue.title}`);
-    const statuses = [
-        { value: 'backlog', label: 'Backlog' },
-        { value: 'todo', label: 'Todo' },
-        { value: 'doing', label: 'Doing' },
-        { value: 'done', label: 'Done' },
-    ];
-    for (const entry of statuses) {
-        const option = document.createElement('option');
-        option.value = entry.value;
-        option.textContent = entry.label;
-        status.append(option);
-    }
-    status.value = issue.status;
-    status.addEventListener('change', () => void updateIssueStatus(issue, status));
-    return status;
+function openIssueStatusPicker(issue, returnFocus) {
+    if (issueStatusPicker.open)
+        issueStatusPicker.close();
+    issueStatusPickerIssue = issue;
+    issueStatusPickerReturnFocus = returnFocus;
+    issueStatusPickerDescription.textContent = `Choose a status for “${issue.title}”. Current status: ${issueStatusLabel(issue.status)}.`;
+    issueStatusPickerOptions.replaceChildren();
+    issueStatusPickerOptionIndex = ISSUE_STATUS_OPTIONS.findIndex((option) => option.value === issue.status);
+    ISSUE_STATUS_OPTIONS.forEach((option, index) => {
+        const button = document.createElement('button');
+        button.className = 'button issue-status-option';
+        button.type = 'button';
+        button.setAttribute('role', 'option');
+        button.dataset.status = option.value;
+        button.textContent = option.label;
+        if (option.value === issue.status) {
+            const current = document.createElement('span');
+            current.className = 'issue-status-current';
+            current.textContent = 'Current';
+            button.append(current);
+        }
+        button.addEventListener('click', () => {
+            focusIssueStatusPickerOption(index);
+            void applyIssueStatusPickerSelection();
+        });
+        issueStatusPickerOptions.append(button);
+    });
+    issueStatusPicker.showModal();
+    focusIssueStatusPickerOption(Math.max(0, issueStatusPickerOptionIndex));
 }
-async function updateIssueStatus(issue, status) {
+function focusIssueStatusPickerOption(index) {
+    const options = Array.from(issueStatusPickerOptions.querySelectorAll('.issue-status-option'));
+    if (options.length === 0)
+        return;
+    issueStatusPickerOptionIndex = Math.max(0, Math.min(options.length - 1, index));
+    options.forEach((option, optionIndex) => {
+        const active = optionIndex === issueStatusPickerOptionIndex;
+        option.classList.toggle('is-active', active);
+        option.setAttribute('aria-selected', String(active));
+        option.tabIndex = active ? 0 : -1;
+    });
+    options[issueStatusPickerOptionIndex]?.focus();
+}
+function closeIssueStatusPicker() {
+    if (issueStatusPicker.open)
+        issueStatusPicker.close();
+}
+async function applyIssueStatusPickerSelection() {
+    const issue = issueStatusPickerIssue;
+    const status = ISSUE_STATUS_OPTIONS[issueStatusPickerOptionIndex]?.value;
+    if (issue === null || status === undefined)
+        return;
+    closeIssueStatusPicker();
+    if (status !== issue.status)
+        await updateIssueStatus(issue, status);
+    if (activeProject?.id !== issue.project_id)
+        return;
+    if (issueDetailView.hidden) {
+        if (!focusIssueTitleButton(issue.id))
+            issuesTabButton.focus();
+    }
+    else {
+        issueDetailStatus.focus();
+    }
+}
+function createIssueStatusButton(issue) {
+    const button = document.createElement('button');
+    button.className = 'button issue-status-button';
+    button.type = 'button';
+    button.setAttribute('aria-haspopup', 'dialog');
+    button.setAttribute('aria-label', `Change status for ${issue.title}. Current status: ${issueStatusLabel(issue.status)}.`);
+    const label = document.createElement('span');
+    label.textContent = issueStatusLabel(issue.status);
+    const caret = document.createElement('span');
+    caret.className = 'issue-status-caret';
+    caret.setAttribute('aria-hidden', 'true');
+    caret.textContent = '▾';
+    button.append(label, caret);
+    button.addEventListener('click', () => openIssueStatusPicker(issue, button));
+    return button;
+}
+async function updateIssueStatus(issue, nextStatus, statusSelect) {
     const previousStatus = selectedIssue?.id === issue.id ? selectedIssue.status : issue.status;
+    if (nextStatus === previousStatus)
+        return;
     try {
         const result = await api(`/issues/${issue.id}`, {
             method: 'PATCH',
-            body: JSON.stringify({ status: status.value }),
+            body: JSON.stringify({ status: nextStatus }),
         });
         if (selectedIssue?.id === issue.id) {
             selectedIssue = result.issue;
@@ -1773,7 +1888,8 @@ async function updateIssueStatus(issue, status) {
             await loadProjectIssues(issue.project_id);
     }
     catch (error) {
-        status.value = previousStatus;
+        if (statusSelect !== undefined)
+            statusSelect.value = previousStatus;
         report(error instanceof Error ? error.message : 'Could not update the issue status.', true);
     }
 }
@@ -1810,7 +1926,7 @@ function createIssueRow(issue) {
         source.textContent = 'From chat thread';
         content.append(source);
     }
-    item.append(content, createIssueStatusSelect(issue));
+    item.append(content, createIssueStatusButton(issue));
     return item;
 }
 issueDetailEditButton.addEventListener('click', () => {
@@ -1865,8 +1981,9 @@ issueDetailEditForm.addEventListener('submit', async (event) => {
     }
 });
 issueDetailStatus.addEventListener('change', () => {
-    if (selectedIssue !== null)
-        void updateIssueStatus(selectedIssue, issueDetailStatus);
+    if (selectedIssue !== null) {
+        void updateIssueStatus(selectedIssue, issueDetailStatus.value, issueDetailStatus);
+    }
 });
 issueSourceLink.addEventListener('click', async (event) => {
     event.preventDefault();

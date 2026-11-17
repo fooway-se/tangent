@@ -265,6 +265,18 @@
       </section>
     </dialog>
 
+    <dialog id="issue-status-picker" class="issue-status-picker" aria-labelledby="issue-status-picker-heading">
+      <section class="issue-status-picker-content">
+        <header class="dialog-heading">
+          <h2 id="issue-status-picker-heading">Change issue status</h2>
+          <button id="issue-status-picker-close" class="button button-quiet" type="button">Cancel</button>
+        </header>
+        <p id="issue-status-picker-description" class="issue-status-picker-description"></p>
+        <div id="issue-status-picker-options" class="issue-status-picker-options" role="listbox" aria-label="Choose a status"></div>
+        <p class="issue-status-picker-help"><kbd>↑</kbd>/<kbd>↓</kbd> Choose · <kbd>Enter</kbd> Save · <kbd>Esc</kbd> Cancel</p>
+      </section>
+    </dialog>
+
     <dialog id="shortcut-help" class="shortcut-help" aria-labelledby="shortcut-help-heading">
       <section class="shortcut-help-content">
         <header class="dialog-heading">
@@ -287,7 +299,7 @@
           <div><dt><kbd>g</kbd>, <kbd>a</kbd></dt><dd>Open workspace administration (admins)</dd></div>
           <div><dt><kbd>c</kbd></dt><dd>Create issue in the open project</dd></div>
           <div><dt><kbd>e</kbd></dt><dd>Edit selected issue</dd></div>
-          <div><dt><kbd>s</kbd></dt><dd>Focus issue status</dd></div>
+          <div><dt><kbd>s</kbd></dt><dd>Open the status picker; arrows choose, Enter saves, Escape cancels</dd></div>
           <div><dt><kbd>↑</kbd>/<kbd>↓</kbd> or <kbd>j</kbd>/<kbd>k</kbd></dt><dd>Move through selected chat messages</dd></div>
           <div><dt><kbd>r</kbd></dt><dd>Reply to the selected chat message</dd></div>
           <div><dt><kbd>i</kbd></dt><dd>Create an issue from the selected or latest chat message</dd></div>
