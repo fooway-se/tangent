@@ -666,6 +666,12 @@ function getPaletteCommands(): PaletteCommand[] {
       });
     }
   }
+  commands.push({
+    label: 'Sign out',
+    detail: 'Sign out of Tangent',
+    shortcut: '',
+    run: () => { void signOut(); },
+  });
   return commands;
 }
 
@@ -1638,13 +1644,15 @@ developerForm.addEventListener('submit', async (event) => {
   }
 });
 
-logoutButton.addEventListener('click', async () => {
+async function signOut(): Promise<void> {
   try {
     await api('/auth/logout', { method: 'POST' });
   } finally {
     showSignedOut();
   }
-});
+}
+
+logoutButton.addEventListener('click', () => { void signOut(); });
 
 async function start(): Promise<void> {
   try {

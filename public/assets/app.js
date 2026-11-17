@@ -580,6 +580,12 @@ function getPaletteCommands() {
             });
         }
     }
+    commands.push({
+        label: 'Sign out',
+        detail: 'Sign out of Tangent',
+        shortcut: '',
+        run: () => { void signOut(); },
+    });
     return commands;
 }
 function renderCommandResults() {
@@ -1608,14 +1614,15 @@ developerForm.addEventListener('submit', async (event) => {
         report(error instanceof Error ? error.message : 'Could not add developer.', true);
     }
 });
-logoutButton.addEventListener('click', async () => {
+async function signOut() {
     try {
         await api('/auth/logout', { method: 'POST' });
     }
     finally {
         showSignedOut();
     }
-});
+}
+logoutButton.addEventListener('click', () => { void signOut(); });
 async function start() {
     try {
         const result = await api('/auth/me');
