@@ -23,6 +23,7 @@ const adminNavButton = document.querySelector('#admin-nav');
 const projectsView = document.querySelector('#projects-view');
 const projectView = document.querySelector('#project-view');
 const adminView = document.querySelector('#admin-view');
+const adminHeading = document.querySelector('#admin-heading');
 const projectForm = document.querySelector('#project-form');
 const toggleProjectFormButton = document.querySelector('#toggle-project-form');
 const cancelProjectFormButton = document.querySelector('#cancel-project-form');
@@ -288,6 +289,10 @@ function showWorkspaceView(view) {
         if (!focusProjectOpenButton(projectId))
             projectsNavButton.focus();
     }
+}
+function openWorkspaceAdmin() {
+    showWorkspaceView('admin');
+    adminHeading.focus();
 }
 function stopChatPolling() {
     activeChatProjectId = null;
@@ -604,7 +609,7 @@ function getPaletteCommands() {
                 label: 'Workspace admin',
                 detail: 'Open workspace administration',
                 shortcut: 'g a',
-                run: () => showWorkspaceView('admin'),
+                run: openWorkspaceAdmin,
             });
         }
         commands.splice(1, 0, {
@@ -828,7 +833,7 @@ function executeShortcut(action) {
             goToProjectMembers();
             break;
         case 'workspace-admin':
-            showWorkspaceView('admin');
+            openWorkspaceAdmin();
             break;
         case 'next-project':
             moveProjectSelection(1);
@@ -1229,7 +1234,7 @@ document.addEventListener('visibilitychange', () => {
     }
 });
 projectsNavButton.addEventListener('click', () => showWorkspaceView('projects'));
-adminNavButton.addEventListener('click', () => showWorkspaceView('admin'));
+adminNavButton.addEventListener('click', openWorkspaceAdmin);
 breadcrumbProjectsButton.addEventListener('click', () => showWorkspaceView('projects'));
 issuesTabButton.addEventListener('click', () => switchProjectTab('issues'));
 membersTabButton.addEventListener('click', () => switchProjectTab('members'));

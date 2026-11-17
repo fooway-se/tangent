@@ -96,6 +96,7 @@ const adminNavButton = document.querySelector<HTMLButtonElement>('#admin-nav')!;
 const projectsView = document.querySelector<HTMLElement>('#projects-view')!;
 const projectView = document.querySelector<HTMLElement>('#project-view')!;
 const adminView = document.querySelector<HTMLElement>('#admin-view')!;
+const adminHeading = document.querySelector<HTMLHeadingElement>('#admin-heading')!;
 const projectForm = document.querySelector<HTMLFormElement>('#project-form')!;
 const toggleProjectFormButton = document.querySelector<HTMLButtonElement>('#toggle-project-form')!;
 const cancelProjectFormButton = document.querySelector<HTMLButtonElement>('#cancel-project-form')!;
@@ -361,6 +362,11 @@ function showWorkspaceView(view: 'projects' | 'admin' | 'project'): void {
     projectReturnFocusId = null;
     if (!focusProjectOpenButton(projectId)) projectsNavButton.focus();
   }
+}
+
+function openWorkspaceAdmin(): void {
+  showWorkspaceView('admin');
+  adminHeading.focus();
 }
 
 function stopChatPolling(): void {
@@ -688,7 +694,7 @@ function getPaletteCommands(): PaletteCommand[] {
         label: 'Workspace admin',
         detail: 'Open workspace administration',
         shortcut: 'g a',
-        run: () => showWorkspaceView('admin'),
+        run: openWorkspaceAdmin,
       });
     }
     commands.splice(1, 0, {
@@ -892,7 +898,7 @@ function executeShortcut(action: ShortcutAction): void {
     case 'issues': goToProjectIssues(); break;
     case 'chat': focusProjectChat(); break;
     case 'members': goToProjectMembers(); break;
-    case 'workspace-admin': showWorkspaceView('admin'); break;
+    case 'workspace-admin': openWorkspaceAdmin(); break;
     case 'next-project': moveProjectSelection(1); break;
     case 'previous-project': moveProjectSelection(-1); break;
     case 'open-selected-project': selectedProjectButton()?.click(); break;
@@ -1249,7 +1255,7 @@ document.addEventListener('visibilitychange', () => {
 });
 
 projectsNavButton.addEventListener('click', () => showWorkspaceView('projects'));
-adminNavButton.addEventListener('click', () => showWorkspaceView('admin'));
+adminNavButton.addEventListener('click', openWorkspaceAdmin);
 breadcrumbProjectsButton.addEventListener('click', () => showWorkspaceView('projects'));
 issuesTabButton.addEventListener('click', () => switchProjectTab('issues'));
 membersTabButton.addEventListener('click', () => switchProjectTab('members'));
