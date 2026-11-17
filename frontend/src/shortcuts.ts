@@ -53,9 +53,11 @@ export interface ShortcutContext {
   canDismiss: boolean;
 }
 
-export function shouldSendChatOnEnter(key: string, shiftKey: boolean, isComposing: boolean): boolean {
+export function shouldSubmitOnEnter(key: string, shiftKey: boolean, isComposing: boolean): boolean {
   return key === 'Enter' && !shiftKey && !isComposing;
 }
+
+export const shouldSendChatOnEnter = shouldSubmitOnEnter;
 
 export function resolveShortcut(event: ShortcutEvent, context: ShortcutContext): ShortcutAction | null {
   const key = event.key.toLowerCase();

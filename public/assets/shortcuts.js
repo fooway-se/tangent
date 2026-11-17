@@ -1,6 +1,7 @@
-export function shouldSendChatOnEnter(key, shiftKey, isComposing) {
+export function shouldSubmitOnEnter(key, shiftKey, isComposing) {
     return key === 'Enter' && !shiftKey && !isComposing;
 }
+export const shouldSendChatOnEnter = shouldSubmitOnEnter;
 export function resolveShortcut(event, context) {
     const key = event.key.toLowerCase();
     if ((event.ctrlKey || event.metaKey) && !event.altKey && key === 'k')

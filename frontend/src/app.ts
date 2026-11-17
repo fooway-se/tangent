@@ -1,4 +1,4 @@
-import { resolveShortcut, shouldSendChatOnEnter, type ShortcutAction } from './shortcuts.js';
+import { resolveShortcut, shouldSubmitOnEnter, type ShortcutAction } from './shortcuts.js';
 import {
   filterIssues,
   groupIssues,
@@ -172,6 +172,8 @@ const chatMessagesById = new Map<number, ChatMessage>();
 let chatReplyHint: HTMLElement | null = null;
 let chatCancelReply: HTMLButtonElement | null = null;
 let chatReplyParent: { id: number; name: string } | null = null;
+let issueQuickAddEscapePending = false;
+let issueQuickAddReturnFocus: HTMLElement | null = null;
 let goPrefixPending = false;
 let goPrefixTimer: number | null = null;
 let statusMessageTimer: number | null = null;
@@ -513,7 +515,7 @@ function shortcutContext(target: EventTarget | null) {
     modalOpen: commandPalette.open || shortcutHelp.open,
     canDismiss: commandPalette.open || shortcutHelp.open || !issueDetailView.hidden
       || !issueDetailEditForm.hidden || !projectFormPanel.hidden
-      || chatReplyParent !== null,
+      || issueQuickAddEscapePending || chatReplyParent !== null,
   };
 }
 
@@ -794,15 +796,58 @@ function dismissCurrentView(): void {
     issueBackButton.click();
   } else if (!projectFormPanel.hidden) {
     cancelProjectFormButton.click();
+  } else if (issueQuickAddEscapePending) {
+    issueForm.reset();
+    issueDescriptionDetails.open = false;
+    issueQuickAddEscapePending = false;
+    focusIssueQuickAddReturnTarget();
   } else if (chatReplyParent !== null) {
     clearChatReplyParent();
   }
+}
+
+function focusIssueQuickAddReturnTarget(): void {
+  const target = issueQuickAddReturnFocus;
+  const dialog = target?.closest('dialog') ?? null;
+  if (target !== null && target.isConnected && target.closest('[hidden]') === null
+    && (dialog === null || dialog.open)) {
+    target.focus();
+  } else {
+    issuesTabButton.focus();
+  }
+}
+
+function issueQuickAddHasDraft(): boolean {
+  const description = issueForm.querySelector<HTMLTextAreaElement>('textarea[name="description"]');
+  return issueQuickAddTitle.value.trim() !== '' || (description?.value.trim() ?? '') !== '';
+}
+
+function closeProjectForm(): void {
+  projectForm.reset();
+  projectFormPanel.hidden = true;
+  toggleProjectFormButton.focus();
+}
+
+function submitFormOnEnter(event: KeyboardEvent, form: HTMLFormElement): void {
+  if (!shouldSubmitOnEnter(event.key, event.shiftKey, event.isComposing)) return;
+  event.preventDefault();
+  form.requestSubmit();
 }
 
 function blurTextInput(): void {
   const focused = document.activeElement;
   if (!(focused instanceof HTMLElement)) return;
   focused.blur();
+  if (issueForm.contains(focused)) {
+    if (issueQuickAddHasDraft()) {
+      issueQuickAddEscapePending = true;
+    } else {
+      issueQuickAddEscapePending = false;
+      issueDescriptionDetails.open = false;
+      focusIssueQuickAddReturnTarget();
+    }
+    return;
+  }
   if (focused !== chatInput) return;
 
   const selected = selectedChatMessageId === null
@@ -1104,11 +1149,7 @@ function createProjectChat(projectId: number): HTMLElement {
   chatInput.required = true;
   chatInput.placeholder = `Message #${activeProject?.slug ?? 'project'}…`;
   chatInput.setAttribute('aria-label', 'Message');
-  chatInput.addEventListener('keydown', (event) => {
-    if (!shouldSendChatOnEnter(event.key, event.shiftKey, event.isComposing)) return;
-    event.preventDefault();
-    form.requestSubmit();
-  });
+  chatInput.addEventListener('keydown', (event) => submitFormOnEnter(event, form));
   label.append(chatInput);
 
   chatReplyHint = document.createElement('p');
@@ -1194,17 +1235,34 @@ adminNavButton.addEventListener('click', () => showWorkspaceView('admin'));
 breadcrumbProjectsButton.addEventListener('click', () => showWorkspaceView('projects'));
 issuesTabButton.addEventListener('click', () => switchProjectTab('issues'));
 membersTabButton.addEventListener('click', () => switchProjectTab('members'));
+const issueDescriptionInput = issueForm.querySelector<HTMLTextAreaElement>('textarea[name="description"]');
+const rememberIssueQuickAddOpener = (event: FocusEvent): void => {
+  const previous = event.relatedTarget;
+  if (previous instanceof HTMLElement && !issueForm.contains(previous)) {
+    issueQuickAddReturnFocus = previous;
+  } else if (issueQuickAddReturnFocus === null) {
+    issueQuickAddReturnFocus = issuesTabButton;
+  }
+  issueQuickAddEscapePending = false;
+};
+issueQuickAddTitle.addEventListener('focus', rememberIssueQuickAddOpener);
+issueDescriptionInput?.addEventListener('focus', rememberIssueQuickAddOpener);
+projectForm.querySelector<HTMLTextAreaElement>('textarea[name="description"]')
+  ?.addEventListener('keydown', (event) => submitFormOnEnter(event, projectForm));
+issueDescriptionInput?.addEventListener('keydown', (event) => submitFormOnEnter(event, issueForm));
+issueDetailDescriptionInput.addEventListener('keydown', (event) => submitFormOnEnter(event, issueDetailEditForm));
 issueFilter.addEventListener('input', renderProjectIssueBoard);
 issueOrder.addEventListener('change', renderProjectIssueBoard);
 
 toggleProjectFormButton.addEventListener('click', () => {
-  projectFormPanel.hidden = !projectFormPanel.hidden;
-  if (!projectFormPanel.hidden) projectForm.querySelector<HTMLInputElement>('input[name="name"]')?.focus();
+  if (!projectFormPanel.hidden) {
+    closeProjectForm();
+    return;
+  }
+  projectFormPanel.hidden = false;
+  projectForm.querySelector<HTMLInputElement>('input[name="name"]')?.focus();
 });
-cancelProjectFormButton.addEventListener('click', () => {
-  projectForm.reset();
-  projectFormPanel.hidden = true;
-});
+cancelProjectFormButton.addEventListener('click', closeProjectForm);
 
 issueForm.addEventListener('submit', async (event) => {
   event.preventDefault();
@@ -1218,9 +1276,11 @@ issueForm.addEventListener('submit', async (event) => {
     });
     issueForm.reset();
     issueDescriptionDetails.open = false;
+    issueQuickAddEscapePending = false;
     report('Issue created.');
     await loadProjectIssues(projectId);
   } catch (error) {
+    if (activeProject?.id === projectId) issueQuickAddTitle.focus();
     report(error instanceof Error ? error.message : 'Could not create the issue.', true);
   }
 });
@@ -1649,11 +1709,11 @@ projectForm.addEventListener('submit', async (event) => {
       method: 'POST',
       body: JSON.stringify({ name: values.get('name'), description: values.get('description') }),
     });
-    projectForm.reset();
-    projectFormPanel.hidden = true;
+    closeProjectForm();
     report('Project created.');
     await loadProjects();
   } catch (error) {
+    if (!projectFormPanel.hidden) projectForm.querySelector<HTMLInputElement>('input[name="name"]')?.focus();
     report(error instanceof Error ? error.message : 'Could not create project.', true);
   }
 });
