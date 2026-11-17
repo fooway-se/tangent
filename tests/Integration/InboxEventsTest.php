@@ -106,6 +106,49 @@ final class InboxEventsTest extends ApiTestCase
         )));
     }
 
+    public function testInboxIssuesAndEventsSupportConditionalPolling(): void
+    {
+        $admin = $this->login($this->adminEmail);
+        $projectId = $this->createProject($admin, 'Conditional inbox');
+        $this->addMember($admin, $projectId, $this->developerId);
+        $issueId = $this->createIssue($admin, $projectId, 'Poll assigned work', $this->developerId);
+        $developer = $this->login($this->developerEmail);
+
+        $issuesPath = '/api/v1/inbox';
+        $eventsPath = '/api/v1/inbox/events';
+        $issues = $this->request('GET', $issuesPath, [], [], ['tangent_session' => $developer['cookie']]);
+        $events = $this->request('GET', $eventsPath, [], [], ['tangent_session' => $developer['cookie']]);
+        self::assertSame(200, $issues->status);
+        self::assertSame(200, $events->status);
+        self::assertSame($issueId, $issues->body['issues'][0]['id']);
+        self::assertSame($issueId, $events->body['events'][0]['issue_id']);
+        $issuesEtag = $issues->headers['etag'] ?? null;
+        $eventsEtag = $events->headers['etag'] ?? null;
+        self::assertIsString($issuesEtag);
+        self::assertIsString($eventsEtag);
+
+        self::assertSame(304, $this->request(
+            'GET', $issuesPath, [], ['If-None-Match' => $issuesEtag], ['tangent_session' => $developer['cookie']],
+        )->status);
+        self::assertSame(304, $this->request(
+            'GET', $eventsPath, [], ['If-None-Match' => $eventsEtag], ['tangent_session' => $developer['cookie']],
+        )->status);
+
+        $this->patchIssue($admin, $issueId, ['status' => 'doing']);
+        $changedIssues = $this->request(
+            'GET', $issuesPath, [], ['If-None-Match' => $issuesEtag], ['tangent_session' => $developer['cookie']],
+        );
+        $changedEvents = $this->request(
+            'GET', $eventsPath, [], ['If-None-Match' => $eventsEtag], ['tangent_session' => $developer['cookie']],
+        );
+        self::assertSame(200, $changedIssues->status);
+        self::assertSame('doing', $changedIssues->body['issues'][0]['status']);
+        self::assertNotSame($issuesEtag, $changedIssues->headers['etag'] ?? null);
+        self::assertSame(200, $changedEvents->status);
+        self::assertCount(2, $changedEvents->body['events']);
+        self::assertNotSame($eventsEtag, $changedEvents->headers['etag'] ?? null);
+    }
+
     public function testEventUpdatesAreOwnerScopedAndReadAllOnlyChangesThatUsersEvents(): void
     {
         $admin = $this->login($this->adminEmail);

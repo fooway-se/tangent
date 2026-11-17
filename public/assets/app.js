@@ -1,4 +1,5 @@
 import { INBOX_TABS, createEventRow, eventsForTab, tabCount, } from './inbox-events.js';
+import { diffInboxCollections, nextInboxPollDelay, shouldDeferInboxUpdates, } from './inbox-polling.js';
 import { renderClientEmptyState, renderClientView } from './guest-view.js';
 import { resolveShortcut, shouldSubmitOnEnter } from './shortcuts.js';
 import { parseQuickIssueInput } from './quick-issue.js';
@@ -215,6 +216,16 @@ let issueGroupingForcedByNextUp = false;
 let inboxIssues = [];
 let inboxEvents = [];
 let inboxTab = 'assigned';
+let inboxIssuesEtag = null;
+let inboxEventsEtag = null;
+let inboxPollTimer = null;
+let inboxPollDelay = 1000;
+let inboxPollInFlight = false;
+let inboxPollRequestVersion = 0;
+let inboxPollHasDeferredChanges = false;
+let inboxMutationPending = 0;
+const inboxIssueRowRenderSignatures = new WeakMap();
+const inboxEventRowRenderSignatures = new WeakMap();
 const inboxTabsElement = document.querySelector('#inbox-tabs');
 const inboxMarkAllReadButton = document.querySelector('#inbox-mark-all-read');
 const guestShell = document.querySelector('#guest-shell');
@@ -372,6 +383,7 @@ function showSignedOut() {
     issueQuickAddSourceProjectId = null;
     issueQuickAddReturnFocus = null;
     stopIssuePolling();
+    stopInboxPolling();
     resetPendingWorkspaceSwitch();
     stopChatPolling();
     activeUser = null;
@@ -392,7 +404,11 @@ function showSignedOut() {
     document.body.classList.remove('is-project-view', 'is-guest');
     guestShell.hidden = true;
     inboxTab = 'assigned';
+    inboxIssues = [];
     inboxEvents = [];
+    inboxIssueList.replaceChildren();
+    inboxEmptyState.hidden = false;
+    inboxEmptyState.textContent = 'You have no open issues assigned to you.';
     projectList.replaceChildren();
     projectSidebarList.replaceChildren();
     issueList.replaceChildren();
@@ -537,6 +553,11 @@ function commitPendingWorkspaceSwitch() {
     void switchWorkspace(workspaceId, true);
 }
 function showWorkspaceView(view) {
+    if (view !== 'inbox') {
+        stopInboxPolling();
+        inboxIssues = [];
+        inboxEvents = [];
+    }
     if (view !== 'project') {
         if (activeProject !== null)
             projectReturnFocusId = activeProject.id;
@@ -2242,9 +2263,14 @@ document.addEventListener('visibilitychange', () => {
         issuePollDelay = 1000;
         scheduleIssuePoll(0);
     }
+    if (!document.hidden && inboxPollingIsActive()) {
+        inboxPollDelay = 1000;
+        scheduleInboxPoll(0);
+    }
 });
 document.addEventListener('focusout', () => {
     window.setTimeout(resumeDeferredIssuePolling, 0);
+    window.setTimeout(resumeDeferredInboxPolling, 0);
 });
 projectsNavButton.addEventListener('click', goToProjects);
 inboxNavButton.addEventListener('click', goToInbox);
@@ -2451,42 +2477,166 @@ async function loadProjects() {
         projectSidebarList.append(sidebarItem);
     }
 }
-async function loadInboxIssues() {
+function loadInboxIssues() {
     renderInboxTabs();
-    if (inboxTab !== 'assigned') {
-        await loadInboxEvents();
+    if (!inboxPollingIsActive())
+        return;
+    if (inboxTab === 'assigned')
+        renderInboxIssues();
+    else
+        renderInboxEvents();
+    inboxPollDelay = 1000;
+    scheduleInboxPoll(0);
+}
+async function fetchConditionalInboxCollection(path, key, etag) {
+    const headers = new Headers();
+    if (etag !== null)
+        headers.set('If-None-Match', etag);
+    const response = await fetch(`/api/v1${path}`, {
+        headers,
+        credentials: 'same-origin',
+    });
+    const responseEtag = response.headers.get('ETag') ?? etag;
+    if (response.status === 304)
+        return { items: null, etag: responseEtag };
+    const payload = await response.json();
+    if (!response.ok) {
+        throw new ApiFailure(payload.error?.message ?? 'Could not refresh your inbox.', response.status);
+    }
+    return { items: payload[key] ?? [], etag: responseEtag };
+}
+function inboxPollingIsActive() {
+    return !workspacePanel.hidden && !inboxView.hidden;
+}
+function stopInboxPolling() {
+    if (inboxPollTimer !== null)
+        window.clearTimeout(inboxPollTimer);
+    inboxPollTimer = null;
+    inboxPollRequestVersion += 1;
+    inboxPollInFlight = false;
+    inboxPollDelay = 1000;
+    inboxIssuesEtag = null;
+    inboxEventsEtag = null;
+    inboxPollHasDeferredChanges = false;
+}
+function scheduleInboxPoll(delay = inboxPollDelay) {
+    if (!inboxPollingIsActive()) {
+        stopInboxPolling();
         return;
     }
+    if (inboxPollTimer !== null)
+        window.clearTimeout(inboxPollTimer);
+    inboxPollTimer = window.setTimeout(() => {
+        inboxPollTimer = null;
+        void pollInbox();
+    }, delay);
+}
+function inboxUpdatesAreDeferred() {
+    return shouldDeferInboxUpdates({
+        listFocused: inboxIssueList.contains(document.activeElement),
+        mutationPending: inboxMutationPending > 0,
+    });
+}
+function resumeDeferredInboxPolling() {
+    if (inboxPollHasDeferredChanges && inboxPollingIsActive() && !inboxUpdatesAreDeferred()) {
+        inboxPollDelay = 1000;
+        scheduleInboxPoll(0);
+    }
+}
+async function pollInbox() {
+    if (!inboxPollingIsActive() || inboxPollInFlight)
+        return;
+    if (document.hidden) {
+        inboxPollDelay = nextInboxPollDelay(inboxPollDelay, false, true);
+        scheduleInboxPoll(inboxPollDelay);
+        return;
+    }
+    const deferUpdatesAtStart = inboxUpdatesAreDeferred();
+    const forceDeferredRefresh = inboxPollHasDeferredChanges && !deferUpdatesAtStart;
+    const requestVersion = ++inboxPollRequestVersion;
+    inboxPollInFlight = true;
+    let changed = false;
     try {
-        const result = await api('/inbox');
-        if (inboxView.hidden || workspacePanel.hidden)
+        const [issuesResult, eventsResult] = await Promise.all([
+            fetchConditionalInboxCollection('/inbox', 'issues', forceDeferredRefresh ? null : inboxIssuesEtag),
+            fetchConditionalInboxCollection('/inbox/events', 'events', forceDeferredRefresh ? null : inboxEventsEtag),
+        ]);
+        if (requestVersion !== inboxPollRequestVersion || !inboxPollingIsActive())
             return;
-        inboxIssues = result.issues;
-        renderInboxIssues();
+        const incomingIssues = issuesResult.items ?? inboxIssues;
+        const incomingEvents = eventsResult.items ?? inboxEvents;
+        const issuesDiff = diffInboxCollections(inboxIssues, incomingIssues);
+        const eventsDiff = diffInboxCollections(inboxEvents, incomingEvents);
+        const issuesChanged = issuesDiff.added.length > 0 || issuesDiff.changed.length > 0
+            || issuesDiff.removed.length > 0 || issuesDiff.orderChanged;
+        const eventsChanged = eventsDiff.added.length > 0 || eventsDiff.changed.length > 0
+            || eventsDiff.removed.length > 0 || eventsDiff.orderChanged;
+        changed = issuesChanged || eventsChanged;
+        inboxIssuesEtag = issuesResult.etag;
+        inboxEventsEtag = eventsResult.etag;
+        const deferUpdates = deferUpdatesAtStart || inboxUpdatesAreDeferred();
+        if (deferUpdates && changed) {
+            inboxPollHasDeferredChanges = true;
+        }
+        else if (!deferUpdates) {
+            if (issuesChanged)
+                inboxIssues = incomingIssues;
+            if (eventsChanged)
+                inboxEvents = incomingEvents;
+            inboxPollHasDeferredChanges = false;
+            if (issuesChanged && inboxTab === 'assigned')
+                renderInboxIssues();
+            if (eventsChanged) {
+                renderInboxTabs();
+                if (inboxTab !== 'assigned')
+                    renderInboxEvents();
+            }
+        }
+        inboxPollDelay = nextInboxPollDelay(inboxPollDelay, changed && !deferUpdates, false);
     }
     catch (error) {
         if (error instanceof ApiFailure && error.status === 401) {
             showSignedOut();
             return;
         }
-        if (!inboxView.hidden) {
-            report(error instanceof Error ? error.message : 'Could not load your inbox.', true);
+        if (inboxPollingIsActive())
+            report(error instanceof Error ? error.message : 'Could not refresh your inbox.', true);
+        inboxPollDelay = nextInboxPollDelay(inboxPollDelay, false, false);
+    }
+    finally {
+        if (requestVersion === inboxPollRequestVersion) {
+            inboxPollInFlight = false;
+            const readyToApplyDeferredChanges = inboxPollHasDeferredChanges && !inboxUpdatesAreDeferred();
+            if (readyToApplyDeferredChanges)
+                inboxPollDelay = 1000;
+            if (inboxPollingIsActive())
+                scheduleInboxPoll(readyToApplyDeferredChanges ? 0 : inboxPollDelay);
         }
     }
 }
 function renderInboxTabs() {
-    inboxTabsElement.replaceChildren(...INBOX_TABS.map((tab) => {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.id = `inbox-tab-${tab.id}`;
-        button.className = `inbox-tab${tab.id === inboxTab ? ' is-active' : ''}`;
-        button.setAttribute('role', 'tab');
+    const existing = new Map(Array.from(inboxTabsElement.querySelectorAll(':scope > .inbox-tab'))
+        .map((button) => [button.dataset.inboxTab ?? '', button]));
+    for (const [index, tab] of INBOX_TABS.entries()) {
+        let button = existing.get(tab.id);
+        if (button === undefined) {
+            button = document.createElement('button');
+            button.type = 'button';
+            button.id = `inbox-tab-${tab.id}`;
+            button.className = 'inbox-tab';
+            button.dataset.inboxTab = tab.id;
+            button.setAttribute('role', 'tab');
+            button.addEventListener('click', () => selectInboxTab(tab.id));
+        }
+        button.classList.toggle('is-active', tab.id === inboxTab);
         button.setAttribute('aria-selected', String(tab.id === inboxTab));
         const count = tabCount(inboxEvents, tab.id);
         button.textContent = count === null || count === 0 ? tab.label : `${tab.label} ${count}`;
-        button.addEventListener('click', () => selectInboxTab(tab.id));
-        return button;
-    }));
+        placeNodeAtPosition(inboxTabsElement, button, index);
+        existing.delete(tab.id);
+    }
+    for (const button of existing.values())
+        button.remove();
     inboxMarkAllReadButton.hidden = inboxTab === 'assigned' || inboxTab === 'done';
 }
 function selectInboxTab(tab) {
@@ -2496,64 +2646,114 @@ function selectInboxTab(tab) {
         renderInboxIssues();
     }
     else {
-        void loadInboxEvents();
-    }
-}
-async function loadInboxEvents() {
-    try {
-        const result = await api('/inbox/events');
-        if (inboxView.hidden || inboxTab === 'assigned')
-            return;
-        inboxEvents = result.events;
-        renderInboxTabs();
         renderInboxEvents();
     }
-    catch (error) {
-        if (inboxView.hidden)
-            return;
-        inboxEvents = [];
-        renderInboxTabs();
-        inboxIssueList.replaceChildren();
-        inboxEmptyState.hidden = false;
-        inboxEmptyState.textContent = 'Could not load your events.';
-        report(error instanceof Error ? error.message : 'Could not load your events.', true);
+    scheduleInboxPoll(0);
+}
+function reconcileInboxRows(list, items, dataKey, signatures, create) {
+    const existingRows = new Map(Array.from(list.querySelectorAll(':scope > .inbox-issue-card'))
+        .map((row) => [Number(row.dataset[dataKey]), row]));
+    const focused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const focusedRow = focused?.closest('.inbox-issue-card') ?? null;
+    const focusedRowId = focusedRow === null ? null : Number(focusedRow.dataset[dataKey]);
+    const focusedIndex = focusedRow === null ? -1 : Array.from(list.children).indexOf(focusedRow);
+    const focusSelector = focused?.matches('.issue-title-button') ? '.issue-title-button'
+        : focused?.matches('.inbox-event-read') ? '.inbox-event-read'
+            : focused?.matches('.inbox-event-done') ? '.inbox-event-done'
+                : null;
+    const expectedIds = new Set();
+    for (const [index, item] of items.entries()) {
+        expectedIds.add(item.id);
+        const existingRow = existingRows.get(item.id);
+        const signature = inboxItemSignature(item);
+        let row = existingRow;
+        if (row === undefined || signatures.get(row) !== signature) {
+            row = create(item);
+            signatures.set(row, signature);
+            if (existingRow !== undefined) {
+                row.classList.toggle('is-keyboard-selected', existingRow.classList.contains('is-keyboard-selected'));
+                existingRow.replaceWith(row);
+            }
+        }
+        placeNodeAtPosition(list, row, index);
     }
+    for (const [id, row] of existingRows) {
+        if (!expectedIds.has(id))
+            row.remove();
+    }
+    if (focusedRowId === null || focusSelector === null)
+        return;
+    const focusedReplacement = Array.from(list.querySelectorAll(':scope > .inbox-issue-card'))
+        .find((row) => Number(row.dataset[dataKey]) === focusedRowId);
+    const focusTarget = focusedReplacement?.querySelector(focusSelector);
+    if (focusTarget !== null && focusTarget !== undefined && focusedRow !== focusedReplacement) {
+        focusTarget.focus();
+    }
+    else if (focusedRow !== null && !focusedRow.isConnected) {
+        const nextRow = list.children.item(Math.min(Math.max(focusedIndex, 0), list.children.length - 1));
+        const nextFocusTarget = nextRow?.querySelector('.issue-title-button')
+            ?? inboxTabsElement.querySelector('.inbox-tab.is-active');
+        nextFocusTarget?.focus();
+    }
+}
+function inboxItemSignature(item) {
+    return JSON.stringify(Object.entries(item).sort(([left], [right]) => left.localeCompare(right)));
 }
 function renderInboxEvents() {
     const events = eventsForTab(inboxEvents, inboxTab);
     const unread = inboxEvents.filter((event) => !event.done && !event.read).length;
     inboxSummary.textContent = `${unread} unread ${unread === 1 ? 'event' : 'events'}.`;
-    inboxIssueList.replaceChildren(...events.map((event) => createEventRow(event, {
+    reconcileInboxRows(inboxIssueList, events, 'eventId', inboxEventRowRenderSignatures, (event) => createEventRow(event, {
         open: (target) => void openInboxEvent(target),
         toggleRead: (target) => void updateInboxEvent(target, { read: !target.read }),
         toggleDone: (target) => void updateInboxEvent(target, { done: !target.done, read: true }),
-    })));
+    }));
     inboxEmptyState.textContent = 'Nothing here.';
     inboxEmptyState.hidden = events.length > 0;
 }
 async function updateInboxEvent(event, change) {
+    inboxMutationPending += 1;
     try {
         const result = await api(`/inbox/events/${event.id}`, {
             method: 'PATCH',
             body: JSON.stringify(change),
         });
         inboxEvents = inboxEvents.map((candidate) => (candidate.id === event.id ? result.event : candidate));
+        inboxEventsEtag = null;
+        inboxPollDelay = 1000;
         renderInboxTabs();
         renderInboxEvents();
+        inboxPollRequestVersion += 1;
+        inboxPollInFlight = false;
+        scheduleInboxPoll(0);
     }
     catch (error) {
         report(error instanceof Error ? error.message : 'Could not update the event.', true);
     }
+    finally {
+        inboxMutationPending -= 1;
+        resumeDeferredInboxPolling();
+    }
 }
 async function markAllInboxEventsRead() {
+    inboxMutationPending += 1;
     try {
         await api('/inbox/events/read-all', { method: 'POST' });
         inboxEvents = inboxEvents.map((event) => ({ ...event, read: true }));
+        inboxEventsEtag = null;
+        inboxPollDelay = 1000;
         renderInboxTabs();
         renderInboxEvents();
+        inboxPollRequestVersion += 1;
+        inboxPollInFlight = false;
+        scheduleInboxPoll(0);
     }
     catch (error) {
         report(error instanceof Error ? error.message : 'Could not mark events as read.', true);
+    }
+    finally {
+        inboxMutationPending -= 1;
+        resumeDeferredInboxPolling();
     }
 }
 async function openInboxEvent(event) {
@@ -2593,7 +2793,7 @@ function renderInboxIssues() {
     inboxSummary.textContent = inboxIssues.length === 0
         ? 'Open issues assigned to you across your projects.'
         : `${inboxIssues.length} open ${inboxIssues.length === 1 ? 'issue' : 'issues'} assigned to you in ${projectCount} ${projectCount === 1 ? 'project' : 'projects'}.`;
-    inboxIssueList.replaceChildren(...inboxIssues.map(createInboxIssueRow));
+    reconcileInboxRows(inboxIssueList, inboxIssues, 'issueId', inboxIssueRowRenderSignatures, createInboxIssueRow);
     inboxEmptyState.textContent = 'You have no open issues assigned to you.';
     inboxEmptyState.hidden = inboxIssues.length > 0;
 }

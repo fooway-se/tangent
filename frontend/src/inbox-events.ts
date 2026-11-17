@@ -111,12 +111,12 @@ export function createEventRow(event: InboxEvent, handlers: EventRowHandlers): H
   actions.className = 'inbox-event-actions';
   const read = document.createElement('button');
   read.type = 'button';
-  read.className = 'button button-quiet';
+  read.className = 'button button-quiet inbox-event-read';
   read.textContent = event.read ? 'Mark unread' : 'Mark read';
   read.addEventListener('click', () => handlers.toggleRead(event));
   const done = document.createElement('button');
   done.type = 'button';
-  done.className = 'button button-quiet';
+  done.className = 'button button-quiet inbox-event-done';
   done.textContent = event.done ? 'Reopen' : 'Done';
   done.addEventListener('click', () => handlers.toggleDone(event));
   actions.append(read, done);

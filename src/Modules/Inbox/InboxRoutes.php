@@ -22,11 +22,11 @@ final class InboxRoutes
             array $params,
             AuthenticatedUser $user,
         ): Response {
-            return Response::json(200, ['issues' => $this->service->list($user)]);
+            return self::conditionalListResponse($request, 'issues', $this->service->list($user));
         });
 
         $router->add('GET', '/api/v1/inbox/events', function (Request $request, array $params, AuthenticatedUser $user): Response {
-            return Response::json(200, ['events' => $this->events->list($user)]);
+            return self::conditionalListResponse($request, 'events', $this->events->list($user));
         });
 
         $router->add('PATCH', '/api/v1/inbox/events/{id}', function (Request $request, array $params, AuthenticatedUser $user): Response {
@@ -37,6 +37,28 @@ final class InboxRoutes
             $this->events->markAllRead($user);
             return Response::json(204);
         });
+    }
+
+    /** @param 'issues'|'events' $key @param list<array<string, mixed>> $items */
+    private static function conditionalListResponse(Request $request, string $key, array $items): Response
+    {
+        $etag = '"' . hash('sha256', json_encode($items, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR)) . '"';
+        $headers = ['ETag' => $etag, 'Cache-Control' => 'no-cache'];
+        $ifNoneMatch = $request->header('If-None-Match');
+        if ($ifNoneMatch !== null && self::matchesEtag($ifNoneMatch, $etag)) {
+            return Response::notModified($headers);
+        }
+
+        return Response::json(200, [$key => $items], $headers);
+    }
+
+    private static function matchesEtag(string $header, string $etag): bool
+    {
+        foreach (explode(',', $header) as $candidate) {
+            $candidate = trim($candidate);
+            if ($candidate === '*' || preg_replace('/^W\//', '', $candidate) === $etag) return true;
+        }
+        return false;
     }
 
     private static function positiveId(string $value): int
