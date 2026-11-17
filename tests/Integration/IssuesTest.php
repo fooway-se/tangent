@@ -56,6 +56,74 @@ final class IssuesTest extends ApiTestCase
         self::assertSame('doing', $updated->body['issue']['status']);
     }
 
+    public function testIssueListsSupportConditionalPollingForActiveAndDeletedIssues(): void
+    {
+        $admin = $this->login($this->adminEmail);
+        $projectId = $this->createProject($admin, 'Issue list polling');
+        $created = $this->apiCookieRequest(
+            'POST',
+            "/api/v1/projects/{$projectId}/issues",
+            $admin['cookie'],
+            ['title' => 'Pollable issue'],
+            $admin['csrf'],
+        );
+        self::assertSame(201, $created->status, json_encode($created->body));
+        $issueId = (int) $created->body['issue']['id'];
+
+        $active = $this->apiCookieRequest('GET', "/api/v1/projects/{$projectId}/issues", $admin['cookie']);
+        $deleted = $this->apiCookieRequest('GET', "/api/v1/projects/{$projectId}/issues/deleted", $admin['cookie']);
+        self::assertSame(200, $active->status);
+        self::assertSame(200, $deleted->status);
+        $activeEtag = $active->headers['etag'] ?? null;
+        $deletedEtag = $deleted->headers['etag'] ?? null;
+        self::assertIsString($activeEtag);
+        self::assertIsString($deletedEtag);
+
+        self::assertSame(304, $this->request(
+            'GET',
+            "/api/v1/projects/{$projectId}/issues",
+            [],
+            ['If-None-Match' => $activeEtag],
+            ['tangent_session' => $admin['cookie']],
+        )->status);
+        self::assertSame(304, $this->request(
+            'GET',
+            "/api/v1/projects/{$projectId}/issues/deleted",
+            [],
+            ['If-None-Match' => $deletedEtag],
+            ['tangent_session' => $admin['cookie']],
+        )->status);
+
+        $removed = $this->apiCookieRequest(
+            'DELETE',
+            "/api/v1/issues/{$issueId}",
+            $admin['cookie'],
+            [],
+            $admin['csrf'],
+        );
+        self::assertSame(204, $removed->status);
+        $activeAfterDelete = $this->request(
+            'GET',
+            "/api/v1/projects/{$projectId}/issues",
+            [],
+            ['If-None-Match' => $activeEtag],
+            ['tangent_session' => $admin['cookie']],
+        );
+        $deletedAfterDelete = $this->request(
+            'GET',
+            "/api/v1/projects/{$projectId}/issues/deleted",
+            [],
+            ['If-None-Match' => $deletedEtag],
+            ['tangent_session' => $admin['cookie']],
+        );
+        self::assertSame(200, $activeAfterDelete->status);
+        self::assertSame([], $activeAfterDelete->body['issues']);
+        self::assertNotSame($activeEtag, $activeAfterDelete->headers['etag'] ?? null);
+        self::assertSame(200, $deletedAfterDelete->status);
+        self::assertCount(1, $deletedAfterDelete->body['issues']);
+        self::assertNotSame($deletedEtag, $deletedAfterDelete->headers['etag'] ?? null);
+    }
+
     public function testIssueCanBeCreatedWithMilestoneAndGuestVisibilityFields(): void
     {
         $admin = $this->login($this->adminEmail);

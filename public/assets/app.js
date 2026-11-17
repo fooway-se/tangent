@@ -3,6 +3,7 @@ import { renderClientEmptyState, renderClientView } from './guest-view.js';
 import { resolveShortcut, shouldSubmitOnEnter } from './shortcuts.js';
 import { parseQuickIssueInput } from './quick-issue.js';
 import { filterIssues, groupIssues, groupIssuesByMilestone, milestoneProgress, sortIssues, } from './issue-board.js';
+import { diffIssueCollections, nextIssuePollDelay, shouldDeferIssueUpdates, } from './issue-polling.js';
 const ISSUE_STATUS_OPTIONS = [
     { value: 'backlog', label: 'Backlog' },
     { value: 'todo', label: 'Todo' },
@@ -223,6 +224,15 @@ const guestLogoutButton = document.querySelector('#guest-logout-button');
 let deletedProjectIssues = [];
 let selectedIssue = null;
 let activeChatProjectId = null;
+let issuePollTimer = null;
+let issuePollDelay = 1000;
+let activeIssuesEtag = null;
+let deletedIssuesEtag = null;
+let issuePollHasDeferredChanges = false;
+let issuePollInFlightProjectId = null;
+let issuePollRequestVersion = 0;
+const issueRowRenderSignatures = new WeakMap();
+const deletedIssueRowRenderSignatures = new WeakMap();
 let chatPollTimer = null;
 let chatCursor = 0;
 let chatEtag = null;
@@ -351,6 +361,7 @@ function report(message, isError = false) {
 function showSignedOut() {
     workspaceViewHistory.length = 0;
     projectReturnFocusId = null;
+    stopIssuePolling();
     resetPendingWorkspaceSwitch();
     stopChatPolling();
     activeUser = null;
@@ -520,6 +531,7 @@ function showWorkspaceView(view) {
         if (activeProject !== null)
             projectReturnFocusId = activeProject.id;
         stopChatPolling();
+        stopIssuePolling();
         activeProject = null;
         activeProjectMembers = [];
         selectedIssue = null;
@@ -661,6 +673,158 @@ function stopChatPolling() {
     chatReplyParent = null;
     selectedChatMessageId = null;
     chatMessagesById.clear();
+}
+function pauseIssuePolling() {
+    if (issuePollTimer !== null)
+        window.clearTimeout(issuePollTimer);
+    issuePollTimer = null;
+    issuePollRequestVersion += 1;
+    issuePollInFlightProjectId = null;
+}
+function stopIssuePolling(resetState = true) {
+    pauseIssuePolling();
+    if (!resetState)
+        return;
+    issuePollDelay = 1000;
+    activeIssuesEtag = null;
+    deletedIssuesEtag = null;
+    issuePollHasDeferredChanges = false;
+}
+function resumeDeferredIssuePolling() {
+    const projectId = activeProject?.id;
+    if (issuePollHasDeferredChanges && projectId !== undefined && issuePollingIsActive(projectId)
+        && !issueUpdatesAreDeferred()) {
+        issuePollDelay = 1000;
+        scheduleIssuePoll(0);
+    }
+}
+function issuePollingIsActive(projectId) {
+    return activeProject?.id === projectId && !projectView.hidden
+        && (!issuesView.hidden || !issueDetailView.hidden);
+}
+function issueUpdatesAreDeferred() {
+    const dialogOpen = issueStatusPicker.open || issueDeleteConfirmation.open
+        || memberRemovalConfirmation.open || milestoneManagerDialog.open;
+    return shouldDeferIssueUpdates({
+        issueEditorOpen: !issueDetailEditForm.hidden,
+        quickAddActive: issueForm.classList.contains('is-active') || issueQuickAddHasDraft(),
+        filterFocused: document.activeElement === issueFilter,
+        dialogOpen,
+    });
+}
+async function fetchConditionalIssueList(projectId, deleted, etag) {
+    const headers = new Headers();
+    if (etag !== null)
+        headers.set('If-None-Match', etag);
+    const suffix = deleted ? '/deleted' : '';
+    const response = await fetch(`/api/v1/projects/${projectId}/issues${suffix}`, {
+        headers,
+        credentials: 'same-origin',
+    });
+    const responseEtag = response.headers.get('ETag') ?? etag;
+    if (response.status === 304)
+        return { issues: null, etag: responseEtag };
+    const payload = await response.json();
+    if (!response.ok) {
+        throw new ApiFailure(payload.error?.message ?? 'Could not load project issues.', response.status);
+    }
+    return { issues: payload.issues ?? [], etag: responseEtag };
+}
+function scheduleIssuePoll(delay = issuePollDelay) {
+    const projectId = activeProject?.id;
+    if (projectId === undefined || !issuePollingIsActive(projectId)) {
+        pauseIssuePolling();
+        return;
+    }
+    if (issuePollTimer !== null)
+        window.clearTimeout(issuePollTimer);
+    issuePollTimer = window.setTimeout(() => {
+        issuePollTimer = null;
+        void pollProjectIssues(projectId);
+    }, delay);
+}
+async function pollProjectIssues(projectId) {
+    if (!issuePollingIsActive(projectId))
+        return;
+    if (issuePollInFlightProjectId === projectId)
+        return;
+    if (document.hidden) {
+        issuePollDelay = nextIssuePollDelay(issuePollDelay, false, true);
+        scheduleIssuePoll(issuePollDelay);
+        return;
+    }
+    const deferUpdatesAtStart = issueUpdatesAreDeferred();
+    const forceDeferredRefresh = issuePollHasDeferredChanges && !deferUpdatesAtStart;
+    const activeEtag = forceDeferredRefresh ? null : activeIssuesEtag;
+    const deletedEtag = forceDeferredRefresh ? null : deletedIssuesEtag;
+    const requestVersion = ++issuePollRequestVersion;
+    issuePollInFlightProjectId = projectId;
+    let changed = false;
+    try {
+        const [activeResult, deletedResult] = await Promise.all([
+            fetchConditionalIssueList(projectId, false, activeEtag),
+            fetchConditionalIssueList(projectId, true, deletedEtag),
+        ]);
+        if (requestVersion !== issuePollRequestVersion || !issuePollingIsActive(projectId))
+            return;
+        const deferUpdates = deferUpdatesAtStart || issueUpdatesAreDeferred();
+        const incomingIssues = activeResult.issues ?? projectIssues;
+        const incomingDeletedIssues = deletedResult.issues ?? deletedProjectIssues;
+        const activeDiff = diffIssueCollections(projectIssues, incomingIssues);
+        const deletedDiff = diffIssueCollections(deletedProjectIssues, incomingDeletedIssues);
+        const changedIssueIds = [...activeDiff.added, ...activeDiff.changed, ...activeDiff.removed];
+        const changedDeletedIssueIds = [...deletedDiff.added, ...deletedDiff.changed, ...deletedDiff.removed];
+        changed = changedIssueIds.length > 0 || changedDeletedIssueIds.length > 0;
+        activeIssuesEtag = activeResult.etag;
+        deletedIssuesEtag = deletedResult.etag;
+        if (deferUpdates && changed) {
+            issuePollHasDeferredChanges = true;
+        }
+        else if (!deferUpdates) {
+            projectIssues = incomingIssues;
+            deletedProjectIssues = incomingDeletedIssues;
+            issuePollHasDeferredChanges = false;
+            if (changed) {
+                if (selectedIssue !== null) {
+                    const selectedIssueId = selectedIssue.id;
+                    const refreshedSelectedIssue = projectIssues.find((issue) => issue.id === selectedIssueId);
+                    if (refreshedSelectedIssue !== undefined) {
+                        selectedIssue = refreshedSelectedIssue;
+                        if (activeDiff.added.includes(selectedIssueId) || activeDiff.changed.includes(selectedIssueId)) {
+                            renderIssueDetail();
+                        }
+                    }
+                    else if (!issueDetailView.hidden) {
+                        selectedIssue = null;
+                        issueDetailView.hidden = true;
+                        issuesView.hidden = false;
+                        issueFilter.focus();
+                    }
+                }
+                renderProjectIssueBoard();
+            }
+        }
+        issuePollDelay = nextIssuePollDelay(issuePollDelay, changed && !deferUpdates, false);
+    }
+    catch (error) {
+        if (error instanceof ApiFailure && error.status === 401) {
+            showSignedOut();
+            return;
+        }
+        report(error instanceof Error ? error.message : 'Could not refresh project issues.', true);
+        issuePollDelay = nextIssuePollDelay(issuePollDelay, false, false);
+    }
+    finally {
+        if (requestVersion === issuePollRequestVersion) {
+            if (issuePollInFlightProjectId === projectId)
+                issuePollInFlightProjectId = null;
+            const readyToApplyDeferredChanges = issuePollHasDeferredChanges && !issueUpdatesAreDeferred();
+            if (readyToApplyDeferredChanges)
+                issuePollDelay = 1000;
+            if (issuePollingIsActive(projectId))
+                scheduleIssuePoll(readyToApplyDeferredChanges ? 0 : issuePollDelay);
+        }
+    }
 }
 function selectedProjectButton() {
     const focused = document.activeElement;
@@ -1326,6 +1490,7 @@ function cancelIssueQuickAdd() {
     setIssueQuickAddActive(false);
     updateIssueQuickAddApproval();
     focusIssueQuickAddReturnTarget();
+    resumeDeferredIssuePolling();
 }
 function issueQuickAddHasDraft() {
     const description = issueForm.querySelector('textarea[name="description"]');
@@ -2016,6 +2181,13 @@ document.addEventListener('visibilitychange', () => {
         chatPollDelay = 1000;
         scheduleChatPoll(0);
     }
+    if (!document.hidden && activeProject !== null && issuePollingIsActive(activeProject.id)) {
+        issuePollDelay = 1000;
+        scheduleIssuePoll(0);
+    }
+});
+document.addEventListener('focusout', () => {
+    window.setTimeout(resumeDeferredIssuePolling, 0);
 });
 projectsNavButton.addEventListener('click', goToProjects);
 inboxNavButton.addEventListener('click', goToInbox);
@@ -2551,6 +2723,7 @@ async function loadProjectDetail(projectId, tab = 'issues', recordHistory = true
     if (milestoneManagerDialog.open)
         closeMilestoneManager();
     stopChatPolling();
+    stopIssuePolling();
     selectedIssue = null;
     issueDetailEditForm.hidden = true;
     issueDetailDisplay.hidden = false;
@@ -2606,6 +2779,8 @@ function switchProjectTab(tab, returnFocusIssueId, loadIssues = true) {
     membersTabButton.setAttribute('aria-selected', String(tab === 'members'));
     issuesTabButton.tabIndex = tab === 'issues' ? 0 : -1;
     membersTabButton.tabIndex = tab === 'members' ? 0 : -1;
+    if (tab !== 'issues')
+        pauseIssuePolling();
     if (tab === 'issues') {
         if (!showingIssueDetail && loadIssues) {
             const projectId = activeProject.id;
@@ -2625,16 +2800,22 @@ function switchProjectTab(tab, returnFocusIssueId, loadIssues = true) {
     void loadProjectMembers(activeProject.id);
 }
 async function loadProjectIssues(projectId) {
+    pauseIssuePolling();
     try {
         const [result, deletedResult] = await Promise.all([
-            api(`/projects/${projectId}/issues`),
-            api(`/projects/${projectId}/issues/deleted`),
+            fetchConditionalIssueList(projectId, false, null),
+            fetchConditionalIssueList(projectId, true, null),
         ]);
         if (activeProject?.id !== projectId || issuesView.hidden)
             return;
-        projectIssues = result.issues;
-        deletedProjectIssues = deletedResult.issues;
+        projectIssues = result.issues ?? [];
+        deletedProjectIssues = deletedResult.issues ?? [];
+        activeIssuesEtag = result.etag;
+        deletedIssuesEtag = deletedResult.etag;
+        issuePollHasDeferredChanges = false;
+        issuePollDelay = 1000;
         renderProjectIssueBoard();
+        scheduleIssuePoll();
     }
     catch (error) {
         if (error instanceof ApiFailure && error.status === 401) {
@@ -2670,12 +2851,12 @@ function renderProjectIssueBoard() {
     issueProgress.max = Math.max(progressTotal, 1);
     issueProgress.value = completed;
     issueProgress.classList.toggle('is-complete', progressTotal > 0 && completed === progressTotal);
-    issueProgressLabel.textContent = cancelled > 0
+    setTextContentIfChanged(issueProgressLabel, cancelled > 0
         ? `${completed} of ${progressTotal} non-cancelled issues done · ${cancelled} cancelled`
-        : `${completed} of ${total} issues done`;
-    issueCountSummary.textContent = cancelled > 0
+        : `${completed} of ${total} issues done`);
+    setTextContentIfChanged(issueCountSummary, cancelled > 0
         ? `${open} open · ${completed} done · ${cancelled} cancelled`
-        : `${open} open · ${completed} done`;
+        : `${open} open · ${completed} done`);
     const searchableIssues = projectIssues.map((issue) => ({
         ...issue,
         assignee_name: issueAssigneeLabel(issue.assignee_id),
@@ -2686,18 +2867,17 @@ function renderProjectIssueBoard() {
     const nextUpMode = issueOrder.value === 'next_up';
     const workQueue = nextUpMode ? ordered.filter((issue) => ['backlog', 'todo', 'doing'].includes(issue.status)) : ordered;
     const visible = filterIssues(workQueue, issueFilter.value);
-    issueList.replaceChildren();
     emptyIssues.hidden = visible.length > 0;
-    emptyIssues.textContent = nextUpMode && workQueue.length === 0
+    setTextContentIfChanged(emptyIssues, nextUpMode && workQueue.length === 0
         ? 'No open issues to work on next.'
         : total === 0
             ? deletedProjectIssues.length > 0
                 ? 'No active issues. Restore one from Deleted issues or create a new issue.'
                 : 'No issues yet. Create the first one.'
-            : 'No issues match that filter.';
-    deletedIssueCount.textContent = String(deletedProjectIssues.length);
+            : 'No issues match that filter.');
+    setTextContentIfChanged(deletedIssueCount, String(deletedProjectIssues.length));
     deletedIssuesDetails.hidden = deletedProjectIssues.length === 0;
-    deletedIssueList.replaceChildren(...deletedProjectIssues.map(createDeletedIssueRow));
+    reconcileDeletedIssueRows();
     if (nextUpMode) {
         renderNextUpIssueBoard(visible, workQueue);
         return;
@@ -2706,52 +2886,167 @@ function renderProjectIssueBoard() {
         renderMilestoneIssueBoard(visible);
         return;
     }
-    for (const group of groupIssues(visible)) {
-        const details = document.createElement('details');
-        details.className = 'issue-group';
-        details.open = true;
-        const rows = document.createElement('ul');
-        rows.className = 'issue-group-items';
-        for (const issue of group.issues)
-            rows.append(createIssueRow(issue));
-        details.append(createIssueGroupSummary(group.status, group.issues.length), rows);
-        issueList.append(details);
-    }
+    reconcileIssueBoardGroups(groupIssues(visible).map((group) => ({
+        key: `status:${group.status}`,
+        name: group.status,
+        className: 'issue-group',
+        issues: group.issues,
+    })));
 }
 function renderMilestoneIssueBoard(visibleIssues) {
-    for (const group of groupIssuesByMilestone(visibleIssues, projectMilestones)) {
-        const details = document.createElement('details');
-        details.className = 'issue-group milestone-issue-group';
-        details.open = true;
-        const rows = document.createElement('ul');
-        rows.className = 'issue-group-items';
-        for (const issue of group.issues)
-            rows.append(createIssueRow(issue, { showMilestoneTag: false }));
-        const headingText = group.dueDate === null ? group.name : `${group.name} · due ${group.dueDate}`;
-        details.append(createIssueGroupSummary(headingText, group.issues.length), rows);
-        issueList.append(details);
-    }
+    reconcileIssueBoardGroups(groupIssuesByMilestone(visibleIssues, projectMilestones).map((group) => ({
+        key: `milestone:${group.milestoneId ?? 'none'}`,
+        name: group.dueDate === null ? group.name : `${group.name} · due ${group.dueDate}`,
+        className: 'issue-group milestone-issue-group',
+        issues: group.issues,
+    })));
 }
 function renderNextUpIssueBoard(visibleIssues, allOpenIssues) {
-    for (const group of groupIssuesByMilestone(visibleIssues, projectMilestones)) {
-        const details = document.createElement('details');
-        details.className = 'issue-group milestone-issue-group';
-        details.open = true;
-        const rows = document.createElement('ul');
-        rows.className = 'issue-group-items';
+    const groups = groupIssuesByMilestone(visibleIssues, projectMilestones).map((group) => {
         const allGroupIssues = allOpenIssues.filter((issue) => issue.milestone_id === group.milestoneId);
+        const reorderByIssueId = new Map();
         for (const issue of group.issues) {
             const index = allGroupIssues.findIndex((candidate) => candidate.id === issue.id);
-            rows.append(createIssueRow(issue, {
+            reorderByIssueId.set(issue.id, {
                 canMoveEarlier: index > 0,
                 canMoveLater: index >= 0 && index < allGroupIssues.length - 1,
                 showMilestoneTag: false,
-            }));
+            });
         }
-        const headingText = group.dueDate === null ? group.name : `${group.name} · due ${group.dueDate}`;
-        details.append(createIssueGroupSummary(headingText, group.issues.length), rows);
-        issueList.append(details);
+        return {
+            key: `milestone:${group.milestoneId ?? 'none'}`,
+            name: group.dueDate === null ? group.name : `${group.name} · due ${group.dueDate}`,
+            className: 'issue-group milestone-issue-group',
+            issues: group.issues,
+            reorderByIssueId,
+        };
+    });
+    reconcileIssueBoardGroups(groups);
+}
+function reconcileIssueBoardGroups(groups) {
+    const existingGroups = new Map(Array.from(issueList.querySelectorAll(':scope > .issue-group'))
+        .map((group) => [group.dataset.groupKey ?? '', group]));
+    const existingRows = new Map(Array.from(issueList.querySelectorAll('.issue-card'))
+        .map((row) => [Number(row.dataset.issueId), row]));
+    const expectedRowsByGroup = new Map();
+    const retainedGroupKeys = new Set();
+    for (const [groupIndex, group] of groups.entries()) {
+        retainedGroupKeys.add(group.key);
+        let details = existingGroups.get(group.key);
+        if (details === undefined) {
+            details = document.createElement('details');
+            details.open = true;
+            details.dataset.groupKey = group.key;
+        }
+        if (details.className !== group.className)
+            details.className = group.className;
+        const summary = details.querySelector(':scope > summary') ?? createIssueGroupSummary(group.name, group.issues.length);
+        const groupName = summary.querySelector('.issue-group-name');
+        const groupCount = summary.querySelector('.issue-group-count');
+        if (groupName !== null)
+            setTextContentIfChanged(groupName, group.name);
+        if (groupCount !== null)
+            setTextContentIfChanged(groupCount, String(group.issues.length));
+        const rows = details.querySelector(':scope > .issue-group-items') ?? document.createElement('ul');
+        rows.className = 'issue-group-items';
+        const expectedIds = new Set();
+        for (const [rowIndex, issue] of group.issues.entries()) {
+            expectedIds.add(issue.id);
+            const reorder = group.reorderByIssueId?.get(issue.id);
+            const signature = issueRowSignature(issue, reorder);
+            const existing = existingRows.get(issue.id);
+            let row;
+            if (existing !== undefined && issueRowRenderSignatures.get(existing) === signature) {
+                row = existing;
+            }
+            else {
+                row = createIssueRow(issue, reorder);
+                row.classList.toggle('is-keyboard-selected', selectedIssue?.id === issue.id);
+                issueRowRenderSignatures.set(row, signature);
+                if (existing !== undefined)
+                    replaceIssueRowPreservingFocus(existing, row);
+            }
+            placeNodeAtPosition(rows, row, rowIndex);
+        }
+        expectedRowsByGroup.set(group.key, expectedIds);
+        placeNodeAtPosition(details, summary, 0);
+        placeNodeAtPosition(details, rows, 1);
+        placeNodeAtPosition(issueList, details, groupIndex);
     }
+    for (const group of Array.from(issueList.querySelectorAll(':scope > .issue-group'))) {
+        const key = group.dataset.groupKey ?? '';
+        if (!retainedGroupKeys.has(key)) {
+            group.remove();
+            continue;
+        }
+        const expected = expectedRowsByGroup.get(key) ?? new Set();
+        group.querySelectorAll(':scope > .issue-group-items > .issue-card').forEach((row) => {
+            if (!expected.has(Number(row.dataset.issueId)))
+                row.remove();
+        });
+    }
+}
+function setTextContentIfChanged(element, value) {
+    if (element.textContent !== value)
+        element.textContent = value;
+}
+function placeNodeAtPosition(parent, node, index) {
+    if (parent.children.item(index) === node)
+        return;
+    parent.insertBefore(node, parent.children.item(index));
+}
+function issueRowSignature(issue, reorder) {
+    return JSON.stringify([
+        issue.title,
+        issue.description,
+        issue.status,
+        issue.type,
+        issueAssigneeLabel(issue.assignee_id),
+        issue.is_shared,
+        reorder?.showMilestoneTag === false ? null : issue.milestone_name ?? null,
+        issue.source_message_id !== null,
+        reorder?.canMoveEarlier,
+        reorder?.canMoveLater,
+    ]);
+}
+function replaceIssueRowPreservingFocus(previous, next) {
+    const focused = document.activeElement;
+    let focusTarget = null;
+    if (focused instanceof HTMLElement && previous.contains(focused)) {
+        if (focused.matches('.issue-title-button'))
+            focusTarget = '.issue-title-button';
+        else if (focused.matches('.issue-status-button'))
+            focusTarget = '.issue-status-button';
+        else if (focused.matches('[data-move-direction]')) {
+            focusTarget = `[data-move-direction="${focused.getAttribute('data-move-direction')}"]`;
+        }
+    }
+    previous.replaceWith(next);
+    if (focusTarget !== null)
+        next.querySelector(focusTarget)?.focus();
+}
+function reconcileDeletedIssueRows() {
+    const existingRows = new Map(Array.from(deletedIssueList.querySelectorAll(':scope > .deleted-issue-item'))
+        .map((row) => [Number(row.dataset.issueId), row]));
+    const expectedIds = new Set();
+    for (const [index, issue] of deletedProjectIssues.entries()) {
+        expectedIds.add(issue.id);
+        const signature = JSON.stringify([issue.title, issue.status]);
+        const existing = existingRows.get(issue.id);
+        const row = existing !== undefined && deletedIssueRowRenderSignatures.get(existing) === signature
+            ? existing
+            : createDeletedIssueRow(issue);
+        if (row !== existing) {
+            deletedIssueRowRenderSignatures.set(row, signature);
+            if (existing !== undefined)
+                replaceIssueRowPreservingFocus(existing, row);
+        }
+        placeNodeAtPosition(deletedIssueList, row, index);
+    }
+    deletedIssueList.querySelectorAll(':scope > .deleted-issue-item').forEach((row) => {
+        if (!expectedIds.has(Number(row.dataset.issueId)))
+            row.remove();
+    });
 }
 function createIssueGroupSummary(name, count) {
     const summary = document.createElement('summary');
@@ -2772,6 +3067,7 @@ function createIssueGroupSummary(name, count) {
 function createDeletedIssueRow(issue) {
     const item = document.createElement('li');
     item.className = 'deleted-issue-item';
+    item.dataset.issueId = String(issue.id);
     const content = document.createElement('div');
     content.className = 'deleted-issue-content';
     const title = document.createElement('strong');
