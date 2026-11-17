@@ -364,6 +364,13 @@ function goToProjectIssues() {
     issueDetailEditForm.hidden = true;
     issueDetailDisplay.hidden = false;
     switchProjectTab('issues');
+    issuesTabButton.focus();
+}
+function goToProjectMembers() {
+    if (activeProject === null)
+        return;
+    switchProjectTab('members');
+    membersTabButton.focus();
 }
 function isEditableTarget(target) {
     if (!(target instanceof HTMLElement))
@@ -530,7 +537,7 @@ function getPaletteCommands() {
     if (activeProject !== null) {
         commands.splice(1, 0, {
             label: 'Project issues',
-            detail: `Open issues in ${activeProject.name}`,
+            detail: `Focus issues in ${activeProject.name}`,
             shortcut: 'g i',
             run: goToProjectIssues,
         }, {
@@ -540,9 +547,9 @@ function getPaletteCommands() {
             run: focusProjectChat,
         }, {
             label: 'Project members',
-            detail: `Open members in ${activeProject.name}`,
+            detail: `Focus members in ${activeProject.name}`,
             shortcut: 'g m',
-            run: () => switchProjectTab('members'),
+            run: goToProjectMembers,
         });
         if (activeUser?.role === 'admin') {
             commands.splice(4, 0, {
@@ -727,8 +734,7 @@ function executeShortcut(action) {
             focusProjectChat();
             break;
         case 'members':
-            if (activeProject !== null)
-                switchProjectTab('members');
+            goToProjectMembers();
             break;
         case 'workspace-admin':
             showWorkspaceView('admin');

@@ -443,6 +443,13 @@ function goToProjectIssues(): void {
   issueDetailEditForm.hidden = true;
   issueDetailDisplay.hidden = false;
   switchProjectTab('issues');
+  issuesTabButton.focus();
+}
+
+function goToProjectMembers(): void {
+  if (activeProject === null) return;
+  switchProjectTab('members');
+  membersTabButton.focus();
 }
 
 function isEditableTarget(target: EventTarget | null): boolean {
@@ -613,7 +620,7 @@ function getPaletteCommands(): PaletteCommand[] {
     commands.splice(1, 0,
       {
         label: 'Project issues',
-        detail: `Open issues in ${activeProject.name}`,
+        detail: `Focus issues in ${activeProject.name}`,
         shortcut: 'g i',
         run: goToProjectIssues,
       },
@@ -625,9 +632,9 @@ function getPaletteCommands(): PaletteCommand[] {
       },
       {
         label: 'Project members',
-        detail: `Open members in ${activeProject.name}`,
+        detail: `Focus members in ${activeProject.name}`,
         shortcut: 'g m',
-        run: () => switchProjectTab('members'),
+        run: goToProjectMembers,
       },
     );
     if (activeUser?.role === 'admin') {
@@ -795,7 +802,7 @@ function executeShortcut(action: ShortcutAction): void {
     case 'workspace-switcher': workspaceSwitcher.focus(); break;
     case 'issues': goToProjectIssues(); break;
     case 'chat': focusProjectChat(); break;
-    case 'members': if (activeProject !== null) switchProjectTab('members'); break;
+    case 'members': goToProjectMembers(); break;
     case 'workspace-admin': showWorkspaceView('admin'); break;
     case 'next-project': moveProjectSelection(1); break;
     case 'previous-project': moveProjectSelection(-1); break;
