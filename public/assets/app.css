@@ -150,10 +150,15 @@ kbd {
 .breadcrumb-link { border: 0; padding: 0; color: var(--screen-muted); background: transparent; font: inherit; cursor: pointer; }
 .breadcrumb-link:hover { color: var(--screen-ink); }
 .workspace-content { display: flex; flex: 1; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; }
-.status-message { min-height: 0; margin: 0; padding: 0; color: var(--accent); }
+.status-message { display: flex; align-items: center; gap: 8px; min-height: 0; margin: 0; padding: 0; color: var(--accent); }
 .status-message:not(:empty) { min-height: 24px; padding: 4px 22px; }
 .status-message.error { color: var(--danger); }
+.status-message-text { min-width: 0; overflow-wrap: anywhere; }
+.status-message-dismiss { flex: 0 0 auto; margin-left: auto; border: 0; padding: 0 4px; color: inherit; background: transparent; font: 700 16px/1 var(--font-display); cursor: pointer; }
+.status-message-dismiss:hover { color: var(--screen-ink); }
 .login-panel + .status-message, #login-status-message { text-align: center; }
+#login-status-message { justify-content: center; }
+#login-status-message .status-message-dismiss { margin-left: 8px; }
 .workspace-view { flex: 1; min-height: 0; }
 .projects-view, .admin-view { overflow: auto; padding: 14px 22px 22px; }
 .eyebrow { margin-bottom: 4px; color: var(--screen-muted); font: 700 11px/1.4 var(--font-display); letter-spacing: 2px; text-transform: uppercase; }

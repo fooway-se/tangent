@@ -214,12 +214,26 @@ function report(message: string, isError = false): void {
   if (statusMessageTimer !== null) window.clearTimeout(statusMessageTimer);
   statusMessageTimer = null;
   const target = workspacePanel.hidden ? loginStatusMessage : statusMessage;
-  target.textContent = message;
+  target.replaceChildren();
   target.classList.toggle('error', isError);
-  if (message !== '' && !isError) {
+  if (message === '') return;
+
+  const text = document.createElement('span');
+  text.className = 'status-message-text';
+  text.textContent = message;
+  target.append(text);
+  if (isError) {
+    const dismiss = document.createElement('button');
+    dismiss.className = 'status-message-dismiss';
+    dismiss.type = 'button';
+    dismiss.setAttribute('aria-label', 'Dismiss notification');
+    dismiss.textContent = '×';
+    dismiss.addEventListener('click', () => report(''));
+    target.append(dismiss);
+  } else {
     statusMessageTimer = window.setTimeout(() => {
-      if (target.textContent === message) {
-        target.textContent = '';
+      if (target.contains(text)) {
+        target.replaceChildren();
         target.classList.remove('error');
       }
       statusMessageTimer = null;
