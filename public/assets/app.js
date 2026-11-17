@@ -53,6 +53,7 @@ const chatView = document.querySelector('#chat-view');
 const projectChatColumn = document.querySelector('#project-chat-column');
 const projectSidebarList = document.querySelector('#project-sidebar-list');
 const projectMain = document.querySelector('.project-main');
+const projectTabs = document.querySelector('.project-tabs');
 const issuesView = document.querySelector('#issues-view');
 const membersView = document.querySelector('#members-view');
 const issueDetailView = document.querySelector('#issue-detail-view');
@@ -1607,6 +1608,28 @@ adminNavButton.addEventListener('click', openWorkspaceAdmin);
 breadcrumbProjectsButton.addEventListener('click', goToProjects);
 issuesTabButton.addEventListener('click', () => switchProjectTab('issues'));
 membersTabButton.addEventListener('click', () => switchProjectTab('members'));
+projectTabs.addEventListener('keydown', (event) => {
+    const tabs = [issuesTabButton, membersTabButton];
+    const currentIndex = tabs.indexOf(event.target);
+    if (currentIndex < 0 || event.altKey || event.ctrlKey || event.metaKey)
+        return;
+    let nextIndex;
+    if (event.key === 'ArrowRight')
+        nextIndex = (currentIndex + 1) % tabs.length;
+    else if (event.key === 'ArrowLeft')
+        nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+    else if (event.key === 'Home')
+        nextIndex = 0;
+    else if (event.key === 'End')
+        nextIndex = tabs.length - 1;
+    else
+        return;
+    event.preventDefault();
+    event.stopPropagation();
+    const nextTab = tabs[nextIndex];
+    nextTab?.focus();
+    nextTab?.click();
+});
 const issueDescriptionInput = issueForm.querySelector('textarea[name="description"]');
 const rememberIssueQuickAddOpener = (event) => {
     const previous = event.relatedTarget;
@@ -1758,9 +1781,11 @@ function switchProjectTab(tab, returnFocusIssueId) {
     membersView.hidden = tab !== 'members';
     issuesTabButton.classList.toggle('is-active', tab === 'issues');
     membersTabButton.classList.toggle('is-active', tab === 'members');
+    issuesTabButton.setAttribute('aria-selected', String(tab === 'issues'));
+    membersTabButton.setAttribute('aria-selected', String(tab === 'members'));
+    issuesTabButton.tabIndex = tab === 'issues' ? 0 : -1;
+    membersTabButton.tabIndex = tab === 'members' ? 0 : -1;
     if (tab === 'issues') {
-        issuesTabButton.setAttribute('aria-current', 'page');
-        membersTabButton.removeAttribute('aria-current');
         if (!showingIssueDetail) {
             const projectId = activeProject.id;
             const loadingIssues = loadProjectIssues(projectId);
@@ -1776,8 +1801,6 @@ function switchProjectTab(tab, returnFocusIssueId) {
         }
         return;
     }
-    membersTabButton.setAttribute('aria-current', 'page');
-    issuesTabButton.removeAttribute('aria-current');
     void loadProjectMembers(activeProject.id);
 }
 async function loadProjectIssues(projectId) {

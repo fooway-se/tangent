@@ -109,9 +109,9 @@
 
           <section id="project-view" class="workspace-view project-view" hidden aria-live="polite">
             <section class="project-main" aria-label="Project issues and members">
-              <nav class="project-tabs" aria-label="Project work">
-                <button id="issues-tab" class="project-tab is-active" type="button" aria-current="page">Issues</button>
-                <button id="members-tab" class="project-tab" type="button">Members</button>
+              <nav class="project-tabs" role="tablist" aria-label="Project work">
+                <button id="issues-tab" class="project-tab is-active" type="button" role="tab" aria-selected="true" aria-controls="issues-view issue-detail-view" tabindex="0">Issues</button>
+                <button id="members-tab" class="project-tab" type="button" role="tab" aria-selected="false" aria-controls="members-view" tabindex="-1">Members</button>
               </nav>
               <p id="project-description" class="project-intro"></p>
               <section class="issue-progress-strip" aria-label="Project issue progress">
@@ -124,7 +124,7 @@
                   <progress id="issue-progress" max="1" value="0" aria-label="Completed project issues"></progress>
                 </div>
               </section>
-              <section id="issues-view" class="project-tab-view" aria-labelledby="issues-tab">
+              <section id="issues-view" class="project-tab-view" role="tabpanel" aria-labelledby="issues-tab">
                 <form id="issue-form" class="issue-quick-add">
                   <span class="issue-quick-add-plus" aria-hidden="true">+</span>
                   <label class="visually-hidden" for="issue-quick-add-title">New issue title</label>
@@ -159,7 +159,7 @@
                 <ul id="issue-list" class="issue-list" aria-live="polite"></ul>
                 <p id="empty-issues" class="empty-state" hidden>No issues yet. Create the first one.</p>
               </section>
-              <section id="members-view" class="project-tab-view" hidden aria-labelledby="members-tab">
+              <section id="members-view" class="project-tab-view" role="tabpanel" hidden aria-labelledby="members-tab">
                 <h2 class="section-title">Project members</h2>
                 <ul id="member-list" class="member-list"></ul>
                 <form id="member-form" class="member-form" hidden>
@@ -169,7 +169,7 @@
                   <button id="add-member-button" class="button button-secondary" type="submit">Add to project</button>
                 </form>
               </section>
-              <section id="issue-detail-view" class="project-tab-view issue-detail-view" hidden aria-labelledby="issue-detail-title">
+              <section id="issue-detail-view" class="project-tab-view issue-detail-view" role="tabpanel" hidden aria-labelledby="issues-tab issue-detail-title">
                 <header class="issue-detail-toolbar">
                   <button id="issue-back-button" class="button button-quiet" type="button">← Issues</button>
                   <button id="issue-detail-edit-button" class="button" type="button">Edit issue <kbd>e</kbd></button>
