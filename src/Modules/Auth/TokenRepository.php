@@ -143,4 +143,18 @@ final class TokenRepository
         );
         $statement->execute(['account_id' => $accountId, 'token_type' => 'session']);
     }
+
+    public function revokeSessionsForMember(int $workspaceId, int $userId): void
+    {
+        $statement = $this->pdo->prepare(
+            'UPDATE api_tokens SET revoked_at = UTC_TIMESTAMP()
+             WHERE workspace_id = :workspace_id AND user_id = :user_id
+               AND token_type = :token_type AND revoked_at IS NULL'
+        );
+        $statement->execute([
+            'workspace_id' => $workspaceId,
+            'user_id' => $userId,
+            'token_type' => 'session',
+        ]);
+    }
 }

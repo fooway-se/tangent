@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tangent\Modules\Auth;
 
+use PDO;
+use Throwable;
 use Tangent\Core\ApiException;
 use Tangent\Core\AppConfig;
 use Tangent\Core\AuthenticatedUser;
@@ -14,6 +16,7 @@ use Tangent\Modules\Workspaces\WorkspaceRepository;
 final class AuthService
 {
     public function __construct(
+        private readonly PDO $pdo,
         private readonly UserRepository $users,
         private readonly TokenRepository $tokens,
         private readonly RateLimiter $rateLimiter,
@@ -142,6 +145,61 @@ final class AuthService
             throw new ApiException(403, 'forbidden', 'You cannot list workspace users.');
         }
         return $this->users->list($actor->workspaceId);
+    }
+
+    /** @param array<string, mixed> $body @return array<string, mixed> */
+    public function setWorkspaceMemberActive(AuthenticatedUser $actor, int $memberId, array $body): array
+    {
+        if (!Permissions::can($actor, 'users.manage_members')) {
+            throw new ApiException(403, 'forbidden', 'You cannot manage workspace members.');
+        }
+        if (!is_bool($body['is_active'] ?? null)) {
+            throw new ApiException(422, 'validation_failed', 'is_active must be a boolean.');
+        }
+
+        $isActive = $body['is_active'];
+        $ownsTransaction = !$this->pdo->inTransaction();
+        if ($ownsTransaction) $this->pdo->beginTransaction();
+        try {
+            $this->workspaces->lockForMemberUpdate($actor->workspaceId);
+            $member = $this->users->findById($actor->workspaceId, $memberId);
+            if ($member === null) {
+                throw new ApiException(404, 'not_found', 'The workspace member was not found.');
+            }
+
+            $currentlyActive = (bool) $member['is_active'];
+            if ($currentlyActive && !$isActive) {
+                if ($member['role'] === 'admin' && $this->users->countActiveAdmins($actor->workspaceId) <= 1) {
+                    throw new ApiException(409, 'last_active_admin', 'At least one active workspace admin must remain.');
+                }
+                if ((int) $member['id'] === $actor->id) {
+                    throw new ApiException(409, 'self_deactivation', 'Ask another workspace admin to deactivate your membership.');
+                }
+
+                $this->users->setActive($actor->workspaceId, $memberId, false);
+                $this->tokens->revokeSessionsForMember($actor->workspaceId, $memberId);
+            } elseif (!$currentlyActive && $isActive) {
+                $this->users->setActive($actor->workspaceId, $memberId, true);
+            }
+
+            $updatedMember = $this->users->findById($actor->workspaceId, $memberId);
+            if ($updatedMember === null) {
+                throw new ApiException(404, 'not_found', 'The workspace member was not found.');
+            }
+            if ($ownsTransaction) $this->pdo->commit();
+            return [
+                'id' => (int) $updatedMember['id'],
+                'workspace_id' => (int) $updatedMember['workspace_id'],
+                'name' => (string) $updatedMember['name'],
+                'email' => (string) $updatedMember['email'],
+                'role' => (string) $updatedMember['role'],
+                'is_active' => (bool) $updatedMember['is_active'],
+                'created_at' => (string) $updatedMember['created_at'],
+            ];
+        } catch (Throwable $exception) {
+            if ($ownsTransaction && $this->pdo->inTransaction()) $this->pdo->rollBack();
+            throw $exception;
+        }
     }
 
     /** @return array<string, mixed> */

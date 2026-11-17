@@ -49,6 +49,13 @@ final class WorkspaceRepository
         return is_string($name) ? $name : '';
     }
 
+    public function lockForMemberUpdate(int $workspaceId): void
+    {
+        $statement = $this->pdo->prepare('SELECT id FROM workspaces WHERE id = :id FOR UPDATE');
+        $statement->execute(['id' => $workspaceId]);
+        $statement->fetchColumn();
+    }
+
     /** @return array{id: int, name: string, slug: string} */
     public function create(string $name, string $slug): array
     {

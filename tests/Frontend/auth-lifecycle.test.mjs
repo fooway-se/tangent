@@ -11,6 +11,10 @@ test('workspace admin invites members without creating their passwords', () => {
   assert.match(html, /id="invite-form"/);
   assert.match(html, /id="workspace-members-list"/);
   assert.match(html, /id="workspace-invites-list"/);
+  assert.ok(/id="workspace-admin-tabs"[^>]*role="tablist"/.test(html), 'Workspace admin tablist exists.');
+  assert.ok(/id="workspace-admin-members-tab"[^>]*role="tab"/.test(html), 'Members tab exists.');
+  assert.ok(/id="workspace-admin-invites-tab"[^>]*role="tab"/.test(html), 'Invites tab exists.');
+  assert.ok(/id="workspace-admin-workspaces-tab"[^>]*role="tab"/.test(html), 'Workspaces tab exists.');
   assert.match(html, /id="generated-credential-link"/);
   assert.match(html, /id="copy-generated-credential-link"/);
   assert.match(app, /checkbox\.name = 'project_ids'/);
@@ -65,10 +69,19 @@ test('workspace administration renders member and invite data as text', () => {
   assert.match(app, /await loadWorkspaceAdmin\(\)/);
 });
 
+test('workspace administration has keyboard tabs and member activation controls', () => {
+  assert.ok(/function switchWorkspaceAdminTab\(/.test(app), 'Workspace admin tab switching is implemented.');
+  assert.ok(/workspaceAdminTabs\.addEventListener\('keydown'/.test(app), 'Workspace admin tabs support keyboard navigation.');
+  assert.ok(/event\.key === 'ArrowRight'/.test(app));
+  assert.ok(/event\.key === 'ArrowLeft'/.test(app));
+  assert.ok(/member\.is_active \? 'Deactivate' : 'Reactivate'/.test(app), 'Members can be deactivated or reactivated.');
+  assert.ok(/\/users\/\$\{member\.id\}\/status/.test(app), 'Member activation calls the status endpoint.');
+});
+
 test('OpenAPI exposes public token completion and manual admin credential-link routes', () => {
   for (const path of [
     '/auth/invites/inspect', '/auth/invites/accept', '/auth/password-reset/complete',
-    '/users/invites', '/users/invites/{id}/link', '/users/{id}/password-reset',
+    '/users/invites', '/users/invites/{id}/link', '/users/{id}/password-reset', '/users/{id}/status',
   ]) {
     assert.ok(openapi.includes(`  ${path}:`), `Missing ${path}`);
   }

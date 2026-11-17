@@ -148,6 +148,105 @@ final class AuthLifecycleTest extends ApiTestCase
             [],
             $developer['csrf'],
         )->status);
+        self::assertSame(403, $this->cookieRequest(
+            'PATCH',
+            '/api/v1/users/' . $this->adminId . '/status',
+            $developer['cookie'],
+            ['is_active' => false],
+            $developer['csrf'],
+        )->status);
+    }
+
+    public function testAdminCanDeactivateAndReactivateWorkspaceMembership(): void
+    {
+        $accountId = $this->accountIdForUser($this->workspaceId, $this->developerId);
+        $otherWorkspaceId = $this->insertWorkspace('Developer other workspace');
+        $otherMembershipId = $this->insertWorkspaceMembership(
+            $otherWorkspaceId,
+            $accountId,
+            'Workspace Developer',
+            $this->developerEmail,
+            'developer',
+        );
+        $projectId = $this->insertProject('Membership access project', 'membership-access-project', $this->adminId);
+        $projectMembership = $this->pdo->prepare(
+            'INSERT INTO project_memberships (workspace_id, project_id, user_id)
+             VALUES (:workspace_id, :project_id, :user_id)'
+        );
+        $projectMembership->execute([
+            'workspace_id' => $this->workspaceId,
+            'project_id' => $projectId,
+            'user_id' => $this->developerId,
+        ]);
+
+        $developer = $this->login($this->developerEmail);
+        $admin = $this->login($this->adminEmail);
+        $deactivated = $this->cookieRequest(
+            'PATCH',
+            '/api/v1/users/' . $this->developerId . '/status',
+            $admin['cookie'],
+            ['is_active' => false],
+            $admin['csrf'],
+        );
+
+        self::assertSame(200, $deactivated->status, json_encode($deactivated->body));
+        self::assertFalse((bool) $deactivated->body['user']['is_active']);
+        self::assertSame(401, $this->request('GET', '/api/v1/auth/me', cookies: [
+            'tangent_session' => $developer['cookie'],
+        ])->status);
+        self::assertSame(401, $this->request('POST', '/api/v1/auth/login', [
+            'email' => $this->developerEmail,
+            'password' => $this->password,
+        ])->status);
+
+        $tokens = $this->pdo->prepare(
+            'SELECT COUNT(*) FROM api_tokens
+             WHERE workspace_id = :workspace_id AND user_id = :user_id
+               AND token_type = :token_type AND revoked_at IS NULL'
+        );
+        $tokens->execute([
+            'workspace_id' => $this->workspaceId,
+            'user_id' => $this->developerId,
+            'token_type' => 'session',
+        ]);
+        self::assertSame(0, (int) $tokens->fetchColumn());
+
+        $membershipState = $this->pdo->prepare('SELECT is_active FROM users WHERE workspace_id = :workspace_id AND id = :id');
+        $membershipState->execute(['workspace_id' => $otherWorkspaceId, 'id' => $otherMembershipId]);
+        self::assertTrue((bool) $membershipState->fetchColumn());
+        self::assertTrue($this->projectHasMember($projectId, $this->developerId));
+
+        $reactivated = $this->cookieRequest(
+            'PATCH',
+            '/api/v1/users/' . $this->developerId . '/status',
+            $admin['cookie'],
+            ['is_active' => true],
+            $admin['csrf'],
+        );
+        self::assertSame(200, $reactivated->status, json_encode($reactivated->body));
+        self::assertTrue((bool) $reactivated->body['user']['is_active']);
+        self::assertSame(401, $this->request('GET', '/api/v1/auth/me', cookies: [
+            'tangent_session' => $developer['cookie'],
+        ])->status, 'Deactivation revokes old sessions permanently.');
+        self::assertSame($this->developerEmail, $this->login($this->developerEmail)['user']['email']);
+    }
+
+    public function testWorkspaceAdminCannotDeactivateTheLastActiveAdmin(): void
+    {
+        $admin = $this->login($this->adminEmail);
+        $response = $this->cookieRequest(
+            'PATCH',
+            '/api/v1/users/' . $this->adminId . '/status',
+            $admin['cookie'],
+            ['is_active' => false],
+            $admin['csrf'],
+        );
+
+        self::assertSame(409, $response->status, json_encode($response->body));
+        self::assertSame('last_active_admin', $response->body['error']['code']);
+        self::assertSame(200, $this->request('GET', '/api/v1/auth/me', cookies: [
+            'tangent_session' => $admin['cookie'],
+        ])->status);
     }
 
     public function testInviteAcceptanceLinksAnExistingAccountFromAnotherWorkspace(): void

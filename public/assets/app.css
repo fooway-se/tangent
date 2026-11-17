@@ -238,6 +238,10 @@ select { padding-right: 28px; background: var(--screen-inset) url("data:image/sv
 .member-form { display: grid; gap: 10px; max-width: 460px; border-top: 1px solid var(--screen-border); padding-top: 12px; }
 .member-form select { min-width: 0; }
 .admin-panel { max-width: 620px; padding: 16px; }
+.workspace-admin-tabs { margin-top: 0; }
+.workspace-admin-tab-panel { padding-top: 14px; }
+.workspace-admin-member-actions { display: flex; flex: 0 0 auto; gap: 6px; }
+.workspace-admin-member-actions .button:disabled { cursor: not-allowed; opacity: 0.45; }
 .workspace-create-panel { margin-top: 12px; }
 
 /* Project view */

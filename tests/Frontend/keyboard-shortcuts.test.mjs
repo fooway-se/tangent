@@ -126,6 +126,17 @@ test('g then w focuses the workspace switcher', () => {
   assert.equal(resolve('w', { goPrefixPending: true, hasWorkspace: true }), 'workspace-switcher');
 });
 
+test('Escape from a Workspace Admin field returns to its tab bar for section switching', () => {
+  const blurHandler = app.slice(app.indexOf('function blurTextInput'), app.indexOf('function executeShortcut'));
+  assert.match(blurHandler, /adminView\.contains\(focused\)/);
+  assert.match(blurHandler, /workspaceAdminTabs\.querySelector[\s\S]{0,120}\.focus\(\)/);
+  assert.match(app, /workspaceAdminTabs\.addEventListener\('keydown'/);
+  assert.match(app, /function updateWorkspaceAdminPanelTabIndex\(/);
+  assert.match(app, /panel\.tabIndex = hasFocusableContent \? -1 : 0/);
+  assert.match(html, /Switch between Issues and Members in a project, or sections in Workspace Administration/);
+  assert.match(html, /<kbd>Tab<\/kbd><\/dt><dd>Enter the selected tab's section/);
+});
+
 test('chat message selection supports navigation, reply, issue creation, and composer focus', () => {
   const chatSelection = { chatMessagesFocused: true, hasSelectedChatMessage: true };
   assert.equal(resolve('j', chatSelection), 'next-chat-message');

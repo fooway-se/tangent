@@ -277,6 +277,13 @@ const inboxEmptyState = document.querySelector<HTMLElement>('#inbox-empty-state'
 const projectView = document.querySelector<HTMLElement>('#project-view')!;
 const adminView = document.querySelector<HTMLElement>('#admin-view')!;
 const adminHeading = document.querySelector<HTMLHeadingElement>('#admin-heading')!;
+const workspaceAdminTabs = document.querySelector<HTMLElement>('#workspace-admin-tabs')!;
+const workspaceAdminMembersTab = document.querySelector<HTMLButtonElement>('#workspace-admin-members-tab')!;
+const workspaceAdminInvitesTab = document.querySelector<HTMLButtonElement>('#workspace-admin-invites-tab')!;
+const workspaceAdminWorkspacesTab = document.querySelector<HTMLButtonElement>('#workspace-admin-workspaces-tab')!;
+const workspaceAdminMembersPanel = document.querySelector<HTMLElement>('#workspace-admin-members-panel')!;
+const workspaceAdminInvitesPanel = document.querySelector<HTMLElement>('#workspace-admin-invites-panel')!;
+const workspaceAdminWorkspacesPanel = document.querySelector<HTMLElement>('#workspace-admin-workspaces-panel')!;
 const workspaceMembersList = document.querySelector<HTMLUListElement>('#workspace-members-list')!;
 const workspaceMembersEmpty = document.querySelector<HTMLElement>('#workspace-members-empty')!;
 const inviteForm = document.querySelector<HTMLFormElement>('#invite-form')!;
@@ -291,6 +298,10 @@ const inviteProjectSelection = document.querySelector<HTMLElement>('#invite-proj
 const inviteProjectOptions = document.querySelector<HTMLElement>('#invite-project-options')!;
 const workspaceInvitesList = document.querySelector<HTMLUListElement>('#workspace-invites-list')!;
 const workspaceInvitesEmpty = document.querySelector<HTMLElement>('#workspace-invites-empty')!;
+const workspaceMemberDeactivationDialog = document.querySelector<HTMLDialogElement>('#workspace-member-deactivation-dialog')!;
+const workspaceMemberDeactivationDescription = document.querySelector<HTMLElement>('#workspace-member-deactivation-description')!;
+const workspaceMemberDeactivationCancel = document.querySelector<HTMLButtonElement>('#workspace-member-deactivation-cancel')!;
+const workspaceMemberDeactivationConfirm = document.querySelector<HTMLButtonElement>('#workspace-member-deactivation-confirm')!;
 const loginAdminHelp = document.querySelector<HTMLElement>('#login-admin-help')!;
 const credentialFlow = document.querySelector<HTMLElement>('#credential-flow')!;
 const credentialFlowHeading = document.querySelector<HTMLHeadingElement>('#credential-flow-heading')!;
@@ -412,6 +423,9 @@ let activeUser: User | null = null;
 let credentialFragment: CredentialFragment | null = null;
 let invitePreview: InvitePreview | null = null;
 let adminProjects: Project[] = [];
+type WorkspaceAdminTab = 'members' | 'invites' | 'workspaces';
+let workspaceAdminTab: WorkspaceAdminTab = 'members';
+let workspaceMemberDeactivationTarget: { member: WorkspaceMember; button: HTMLButtonElement } | null = null;
 let activeWorkspaces: Workspace[] = [];
 let activeProject: Project | null = null;
 let projectReturnFocusId: number | null = null;
@@ -825,8 +839,36 @@ function openWorkspaceAdmin(): void {
   const currentLocation = currentWorkspaceLocation();
   if (currentLocation.view !== 'admin') workspaceViewHistory.push(currentLocation);
   showWorkspaceView('admin');
+  switchWorkspaceAdminTab(workspaceAdminTab);
   adminHeading.focus();
   void loadWorkspaceAdmin();
+}
+
+function switchWorkspaceAdminTab(tab: WorkspaceAdminTab): void {
+  workspaceAdminTab = tab;
+  const states: Array<[WorkspaceAdminTab, HTMLButtonElement, HTMLElement]> = [
+    ['members', workspaceAdminMembersTab, workspaceAdminMembersPanel],
+    ['invites', workspaceAdminInvitesTab, workspaceAdminInvitesPanel],
+    ['workspaces', workspaceAdminWorkspacesTab, workspaceAdminWorkspacesPanel],
+  ];
+  for (const [name, button, panel] of states) {
+    const selected = name === tab;
+    button.setAttribute('aria-selected', String(selected));
+    button.tabIndex = selected ? 0 : -1;
+    button.classList.toggle('is-active', selected);
+    panel.hidden = !selected;
+  }
+  updateWorkspaceAdminPanelTabIndex();
+}
+
+function updateWorkspaceAdminPanelTabIndex(): void {
+  const panel = [workspaceAdminMembersPanel, workspaceAdminInvitesPanel, workspaceAdminWorkspacesPanel]
+    .find((candidate) => !candidate.hidden);
+  if (panel === undefined) return;
+  const hasFocusableContent = Array.from(panel.querySelectorAll<HTMLElement>(
+    'a[href], button, input, select, textarea, [tabindex]',
+  )).some((element) => element.tabIndex >= 0 && !element.matches(':disabled') && element.closest('[hidden]') === null);
+  panel.tabIndex = hasFocusableContent ? -1 : 0;
 }
 
 async function loadWorkspaceAdmin(): Promise<void> {
@@ -842,6 +884,7 @@ async function loadWorkspaceAdmin(): Promise<void> {
     renderWorkspaceMembers(members.users);
     renderWorkspaceInvites(invites.invites);
     renderInviteProjectOptions();
+    updateWorkspaceAdminPanelTabIndex();
   } catch (error) {
     report(error instanceof Error ? error.message : 'Could not load workspace administration.', true);
   }
@@ -850,18 +893,69 @@ async function loadWorkspaceAdmin(): Promise<void> {
 function renderWorkspaceMembers(members: readonly WorkspaceMember[]): void {
   workspaceMembersList.replaceChildren();
   workspaceMembersEmpty.hidden = members.length > 0;
+  const activeAdminCount = members.filter((member) => member.role === 'admin' && member.is_active).length;
   for (const member of members) {
     const item = document.createElement('li');
     const label = document.createElement('span');
     label.textContent = `${member.name} · ${member.email} · ${member.role}${member.is_active ? '' : ' · inactive'}`;
+    const actions = document.createElement('div');
+    actions.className = 'workspace-admin-member-actions';
     const resetLinkButton = document.createElement('button');
     resetLinkButton.type = 'button';
     resetLinkButton.className = 'button button-quiet';
     resetLinkButton.textContent = 'Generate reset link';
     resetLinkButton.setAttribute('aria-label', `Generate password reset link for ${member.name}`);
+    resetLinkButton.disabled = !member.is_active;
     resetLinkButton.addEventListener('click', () => void generateMemberPasswordResetLink(member));
-    item.append(label, resetLinkButton);
+    const statusButton = document.createElement('button');
+    statusButton.type = 'button';
+    statusButton.className = member.is_active ? 'button button-quiet button-danger' : 'button button-quiet';
+    statusButton.textContent = member.is_active ? 'Deactivate' : 'Reactivate';
+    statusButton.dataset.memberId = String(member.id);
+    statusButton.dataset.memberAction = 'status';
+    statusButton.setAttribute('aria-label', `${member.is_active ? 'Deactivate' : 'Reactivate'} ${member.name} in this workspace`);
+    const isSelf = member.id === activeUser?.id;
+    const isLastAdmin = member.is_active && member.role === 'admin' && activeAdminCount <= 1;
+    statusButton.disabled = member.is_active && (isSelf || isLastAdmin);
+    if (isSelf) statusButton.title = 'Ask another workspace admin to deactivate your membership.';
+    else if (isLastAdmin) statusButton.title = 'At least one active workspace admin must remain.';
+    statusButton.addEventListener('click', () => {
+      if (member.is_active) openWorkspaceMemberDeactivationConfirmation(member, statusButton);
+      else void setWorkspaceMemberActive(member, true);
+    });
+    actions.append(resetLinkButton, statusButton);
+    item.append(label, actions);
     workspaceMembersList.append(item);
+  }
+}
+
+function openWorkspaceMemberDeactivationConfirmation(member: WorkspaceMember, button: HTMLButtonElement): void {
+  workspaceMemberDeactivationTarget = { member, button };
+  workspaceMemberDeactivationDescription.textContent = `${member.name} will lose access to this workspace, its projects, and existing sessions.`;
+  workspaceMemberDeactivationDialog.showModal();
+  workspaceMemberDeactivationCancel.focus();
+}
+
+function closeWorkspaceMemberDeactivationConfirmation(restoreFocus = true): void {
+  if (workspaceMemberDeactivationDialog.open) workspaceMemberDeactivationDialog.close();
+  const target = workspaceMemberDeactivationTarget;
+  workspaceMemberDeactivationTarget = null;
+  workspaceMemberDeactivationConfirm.disabled = false;
+  if (restoreFocus && !adminView.hidden && target?.button.isConnected && !target.button.disabled) target.button.focus();
+}
+
+async function setWorkspaceMemberActive(member: WorkspaceMember, isActive: boolean): Promise<void> {
+  try {
+    await api<{ user: WorkspaceMember }>(`/users/${member.id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ is_active: isActive }),
+    });
+    report(isActive ? `${member.name} reactivated in this workspace.` : `${member.name} deactivated from this workspace.`);
+    await loadWorkspaceAdmin();
+    workspaceMembersList.querySelector<HTMLButtonElement>(`button[data-member-id="${member.id}"][data-member-action="status"]`)?.focus();
+  } catch (error) {
+    report(error instanceof Error ? error.message : `Could not ${isActive ? 'reactivate' : 'deactivate'} the workspace member.`, true);
+    if (!adminView.hidden) workspaceMembersList.querySelector<HTMLButtonElement>(`button[data-member-id="${member.id}"][data-member-action="status"]`)?.focus();
   }
 }
 
@@ -1097,7 +1191,7 @@ function issuePollingIsActive(projectId: number): boolean {
 
 function issueUpdatesAreDeferred(): boolean {
   const dialogOpen = issueStatusPicker.open || issueDeleteConfirmation.open
-    || memberRemovalConfirmation.open || milestoneManagerDialog.open;
+    || memberRemovalConfirmation.open || workspaceMemberDeactivationDialog.open || milestoneManagerDialog.open;
   return shouldDeferIssueUpdates({
     issueEditorOpen: !issueDetailEditForm.hidden,
     quickAddActive: issueForm.classList.contains('is-active') || issueQuickAddHasDraft(),
@@ -1705,6 +1799,7 @@ function getPaletteCommands(): PaletteCommand[] {
       shortcut: '',
       run: () => {
         openWorkspaceAdmin();
+        switchWorkspaceAdminTab('workspaces');
         createWorkspaceForm.querySelector<HTMLInputElement>('input[name="name"]')?.focus();
       },
     });
@@ -1856,6 +1951,7 @@ function openCommandPalette(): void {
   if (issueStatusPicker.open) closeIssueStatusPicker();
   if (issueDeleteConfirmation.open) closeIssueDeleteConfirmation();
   if (memberRemovalConfirmation.open) closeMemberRemovalConfirmation();
+  if (workspaceMemberDeactivationDialog.open) closeWorkspaceMemberDeactivationConfirmation();
   if (shortcutHelp.open) shortcutHelp.close();
   if (commandPalette.open) {
     closeCommandPalette();
@@ -1875,6 +1971,7 @@ function showShortcutHelp(): void {
   if (issueStatusPicker.open) closeIssueStatusPicker();
   if (issueDeleteConfirmation.open) closeIssueDeleteConfirmation();
   if (memberRemovalConfirmation.open) closeMemberRemovalConfirmation();
+  if (workspaceMemberDeactivationDialog.open) closeWorkspaceMemberDeactivationConfirmation();
   if (commandPalette.open) closeCommandPalette();
   if (shortcutHelp.open) {
     shortcutHelp.close();
@@ -1893,6 +1990,8 @@ function dismissCurrentView(): void {
     closeIssueDeleteConfirmation();
   } else if (memberRemovalConfirmation.open) {
     closeMemberRemovalConfirmation();
+  } else if (workspaceMemberDeactivationDialog.open) {
+    closeWorkspaceMemberDeactivationConfirmation();
   } else if (issueStatusPicker.open) {
     closeIssueStatusPicker();
   } else if (commandPalette.open) {
@@ -1990,6 +2089,10 @@ function blurTextInput(): void {
     }
     return;
   }
+  if (adminView.contains(focused)) {
+    workspaceAdminTabs.querySelector<HTMLButtonElement>('[role="tab"][aria-selected="true"]')?.focus();
+    return;
+  }
   if (focused !== chatInput) return;
 
   const selected = selectedChatMessageId === null
@@ -2052,7 +2155,7 @@ function executeShortcut(action: ShortcutAction): void {
 }
 
 function handleKeyboardShortcut(event: KeyboardEvent): void {
-  if ((commandPalette.open || shortcutHelp.open || issueStatusPicker.open || issueDeleteConfirmation.open || memberRemovalConfirmation.open || milestoneManagerDialog.open || workspacePicker.open)
+  if ((commandPalette.open || shortcutHelp.open || issueStatusPicker.open || issueDeleteConfirmation.open || memberRemovalConfirmation.open || workspaceMemberDeactivationDialog.open || milestoneManagerDialog.open || workspacePicker.open)
     && event.key !== 'Escape'
     && !((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k')) return;
   const context = shortcutContext(event.target);
@@ -2561,6 +2664,31 @@ document.addEventListener('focusout', () => {
 projectsNavButton.addEventListener('click', goToProjects);
 inboxNavButton.addEventListener('click', goToInbox);
 adminNavButton.addEventListener('click', openWorkspaceAdmin);
+workspaceAdminMembersTab.addEventListener('click', () => switchWorkspaceAdminTab('members'));
+workspaceAdminInvitesTab.addEventListener('click', () => switchWorkspaceAdminTab('invites'));
+workspaceAdminWorkspacesTab.addEventListener('click', () => switchWorkspaceAdminTab('workspaces'));
+workspaceAdminTabs.addEventListener('keydown', (event) => {
+  const tabs = [workspaceAdminMembersTab, workspaceAdminInvitesTab, workspaceAdminWorkspacesTab];
+  const names: WorkspaceAdminTab[] = ['members', 'invites', 'workspaces'];
+  const currentIndex = tabs.indexOf(event.target as HTMLButtonElement);
+  if (currentIndex < 0 || event.altKey || event.ctrlKey || event.metaKey) return;
+
+  let nextIndex: number;
+  if (event.key === 'ArrowRight') nextIndex = (currentIndex + 1) % tabs.length;
+  else if (event.key === 'ArrowLeft') nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+  else if (event.key === 'Home') nextIndex = 0;
+  else if (event.key === 'End') nextIndex = tabs.length - 1;
+  else return;
+
+  event.preventDefault();
+  event.stopPropagation();
+  const nextTab = tabs[nextIndex];
+  const nextName = names[nextIndex];
+  if (nextTab !== undefined && nextName !== undefined) {
+    switchWorkspaceAdminTab(nextName);
+    nextTab.focus();
+  }
+});
 breadcrumbProjectsButton.addEventListener('click', goToProjects);
 manageMilestonesButton.addEventListener('click', openMilestoneManager);
 milestoneManagerClose.addEventListener('click', closeMilestoneManager);
@@ -4268,6 +4396,17 @@ async function removeProjectMember(member: Member, removeButton: HTMLButtonEleme
 
 memberRemovalCancel.addEventListener('click', closeMemberRemovalConfirmation);
 memberRemovalConfirm.addEventListener('click', () => void confirmMemberRemoval());
+workspaceMemberDeactivationCancel.addEventListener('click', () => closeWorkspaceMemberDeactivationConfirmation());
+workspaceMemberDeactivationDialog.addEventListener('cancel', (event) => {
+  event.preventDefault();
+  closeWorkspaceMemberDeactivationConfirmation();
+});
+workspaceMemberDeactivationConfirm.addEventListener('click', () => {
+  const target = workspaceMemberDeactivationTarget;
+  if (target === null) return;
+  closeWorkspaceMemberDeactivationConfirmation(false);
+  void setWorkspaceMemberActive(target.member, false);
+});
 
 function updateMembersPanelTabIndex(): void {
   const hasFocusableContent = Array.from(membersView.querySelectorAll<HTMLElement>(

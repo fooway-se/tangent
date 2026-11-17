@@ -18,7 +18,7 @@ final class Permissions
         }
 
         return match ($action) {
-            'users.list', 'users.create', 'projects.create', 'projects.update', 'projects.manage_members'
+            'users.list', 'users.create', 'users.manage_members', 'projects.create', 'projects.update', 'projects.manage_members'
                 => $user->role === 'admin',
             'workspaces.create'
                 => $user->role === 'admin' && $user->accountId > 0,

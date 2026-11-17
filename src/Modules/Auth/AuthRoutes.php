@@ -97,6 +97,14 @@ final class AuthRoutes
             )]);
         });
 
+        $router->add('PATCH', '/api/v1/users/{id}/status', function (Request $request, array $params, AuthenticatedUser $user): Response {
+            return Response::json(200, ['user' => $this->service->setWorkspaceMemberActive(
+                $user,
+                self::positiveId($params['id']),
+                $request->body,
+            )]);
+        });
+
         $router->add('POST', '/api/v1/users/{id}/password-reset', function (Request $request, array $params, AuthenticatedUser $user): Response {
             return Response::json(200, $this->credentials->generatePasswordResetLink(
                 $user,

@@ -45,7 +45,7 @@ final class Application
         $tokens = new TokenRepository($pdo);
         $rateLimiter = new RateLimiter($pdo);
         $workspaceRepository = new WorkspaceRepository($pdo);
-        $auth = new AuthService($users, $tokens, $rateLimiter, $config, $passwords, $workspaceRepository);
+        $auth = new AuthService($pdo, $users, $tokens, $rateLimiter, $config, $passwords, $workspaceRepository);
         $projectRepository = new ProjectRepository($pdo);
         $credentials = new CredentialService(
             $pdo,

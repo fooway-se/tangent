@@ -60,6 +60,27 @@ final class UserRepository
         return $statement->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    public function countActiveAdmins(int $workspaceId): int
+    {
+        $statement = $this->pdo->prepare(
+            'SELECT COUNT(*) FROM users WHERE workspace_id = :workspace_id AND role = :role AND is_active = 1'
+        );
+        $statement->execute(['workspace_id' => $workspaceId, 'role' => 'admin']);
+        return (int) $statement->fetchColumn();
+    }
+
+    public function setActive(int $workspaceId, int $userId, bool $isActive): void
+    {
+        $statement = $this->pdo->prepare(
+            'UPDATE users SET is_active = :is_active WHERE workspace_id = :workspace_id AND id = :id'
+        );
+        $statement->execute([
+            'is_active' => $isActive ? 1 : 0,
+            'workspace_id' => $workspaceId,
+            'id' => $userId,
+        ]);
+    }
+
     /** @return array<string, mixed>|null */
     public function findAccountByEmail(string $email): ?array
     {
