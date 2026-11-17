@@ -2816,6 +2816,13 @@ function createIssueRow(issue, reorder) {
     assignee.className = 'issue-assignee-label';
     assignee.textContent = `Assignee: ${issueAssigneeLabel(issue.assignee_id)}`;
     metadata.append(type);
+    if (issue.is_shared) {
+        const shared = document.createElement('span');
+        shared.className = 'issue-shared-tag';
+        shared.textContent = 'Shared';
+        shared.title = 'Shared with guest';
+        metadata.append(shared);
+    }
     if (issue.milestone_name !== null && issue.milestone_name !== undefined && reorder?.showMilestoneTag !== false) {
         const milestone = document.createElement('span');
         milestone.className = 'issue-milestone-tag';
