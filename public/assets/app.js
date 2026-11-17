@@ -60,6 +60,7 @@ const issueDetailDisplay = document.querySelector('#issue-detail-display');
 const issueDetailTitle = document.querySelector('#issue-detail-title');
 const issueDetailDescription = document.querySelector('#issue-detail-description');
 const issueDetailStatus = document.querySelector('#issue-detail-status');
+const issueDetailStatusLabel = document.querySelector('#issue-detail-status-label');
 const issueSourceLink = document.querySelector('#issue-source-link');
 const issueDetailEditForm = document.querySelector('#issue-detail-edit-form');
 const issueDetailTitleInput = document.querySelector('#issue-detail-title-input');
@@ -1839,7 +1840,8 @@ function renderIssueDetail() {
     issueDetailTitle.textContent = selectedIssue.title;
     issueDetailDescription.textContent = selectedIssue.description || 'No description yet.';
     issueDetailDescription.classList.toggle('is-empty', selectedIssue.description === '');
-    issueDetailStatus.value = selectedIssue.status;
+    issueDetailStatusLabel.textContent = issueStatusLabel(selectedIssue.status);
+    issueDetailStatus.setAttribute('aria-label', `Change status for ${selectedIssue.title}. Current status: ${issueStatusLabel(selectedIssue.status)}.`);
     issueSourceLink.hidden = selectedIssue.source_message_id === null;
     if (selectedIssue.source_message_id !== null) {
         issueSourceLink.dataset.messageId = String(selectedIssue.source_message_id);
@@ -1954,7 +1956,7 @@ function createIssueStatusButton(issue) {
     button.addEventListener('click', () => openIssueStatusPicker(issue, button));
     return button;
 }
-async function updateIssueStatus(issue, nextStatus, statusSelect) {
+async function updateIssueStatus(issue, nextStatus) {
     const previousStatus = selectedIssue?.id === issue.id ? selectedIssue.status : issue.status;
     if (nextStatus === previousStatus)
         return;
@@ -1972,8 +1974,6 @@ async function updateIssueStatus(issue, nextStatus, statusSelect) {
             await loadProjectIssues(issue.project_id);
     }
     catch (error) {
-        if (statusSelect !== undefined)
-            statusSelect.value = previousStatus;
         report(error instanceof Error ? error.message : 'Could not update the issue status.', true);
     }
 }
@@ -2064,10 +2064,9 @@ issueDetailEditForm.addEventListener('submit', async (event) => {
         issueDetailSaveButton.disabled = false;
     }
 });
-issueDetailStatus.addEventListener('change', () => {
-    if (selectedIssue !== null) {
-        void updateIssueStatus(selectedIssue, issueDetailStatus.value, issueDetailStatus);
-    }
+issueDetailStatus.addEventListener('click', () => {
+    if (selectedIssue !== null)
+        openIssueStatusPicker(selectedIssue, issueDetailStatus);
 });
 issueSourceLink.addEventListener('click', async (event) => {
     event.preventDefault();

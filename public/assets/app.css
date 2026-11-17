@@ -278,9 +278,9 @@ select { padding-right: 28px; background: var(--screen-inset) url("data:image/sv
 /* Issue detail */
 .issue-detail-toolbar { display: flex; justify-content: space-between; gap: 12px; margin-top: 12px; border-bottom: 1px solid var(--screen-border); margin-bottom: 16px; padding-bottom: 10px; }
 .issue-detail-status-row { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
-.issue-detail-status-row label { display: block; }
+.issue-detail-status-row > span { display: block; }
 .issue-detail-status-row kbd { margin-left: 4px; }
-.issue-detail-status-row .issue-status { min-width: 130px; }
+.issue-detail-status-row .issue-status-button { width: 130px; min-width: 130px; }
 .issue-detail-title { margin-bottom: 12px; font-size: clamp(1.25rem, 2vw, 1.7rem); overflow-wrap: anywhere; }
 .issue-detail-description { min-height: 56px; margin: 0 0 16px; color: var(--screen-ink); font-size: 14px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
 .issue-detail-description.is-empty { color: var(--screen-muted); font-style: italic; }

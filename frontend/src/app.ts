@@ -139,7 +139,8 @@ const issueDetailView = document.querySelector<HTMLElement>('#issue-detail-view'
 const issueDetailDisplay = document.querySelector<HTMLElement>('#issue-detail-display')!;
 const issueDetailTitle = document.querySelector<HTMLElement>('#issue-detail-title')!;
 const issueDetailDescription = document.querySelector<HTMLElement>('#issue-detail-description')!;
-const issueDetailStatus = document.querySelector<HTMLSelectElement>('#issue-detail-status')!;
+const issueDetailStatus = document.querySelector<HTMLButtonElement>('#issue-detail-status')!;
+const issueDetailStatusLabel = document.querySelector<HTMLElement>('#issue-detail-status-label')!;
 const issueSourceLink = document.querySelector<HTMLAnchorElement>('#issue-source-link')!;
 const issueDetailEditForm = document.querySelector<HTMLFormElement>('#issue-detail-edit-form')!;
 const issueDetailTitleInput = document.querySelector<HTMLInputElement>('#issue-detail-title-input')!;
@@ -1853,7 +1854,8 @@ function renderIssueDetail(): void {
   issueDetailTitle.textContent = selectedIssue.title;
   issueDetailDescription.textContent = selectedIssue.description || 'No description yet.';
   issueDetailDescription.classList.toggle('is-empty', selectedIssue.description === '');
-  issueDetailStatus.value = selectedIssue.status;
+  issueDetailStatusLabel.textContent = issueStatusLabel(selectedIssue.status);
+  issueDetailStatus.setAttribute('aria-label', `Change status for ${selectedIssue.title}. Current status: ${issueStatusLabel(selectedIssue.status)}.`);
   issueSourceLink.hidden = selectedIssue.source_message_id === null;
   if (selectedIssue.source_message_id !== null) {
     issueSourceLink.dataset.messageId = String(selectedIssue.source_message_id);
@@ -1968,7 +1970,7 @@ function createIssueStatusButton(issue: Issue): HTMLButtonElement {
   return button;
 }
 
-async function updateIssueStatus(issue: Issue, nextStatus: IssueStatus, statusSelect?: HTMLSelectElement): Promise<void> {
+async function updateIssueStatus(issue: Issue, nextStatus: IssueStatus): Promise<void> {
   const previousStatus = selectedIssue?.id === issue.id ? selectedIssue.status : issue.status;
   if (nextStatus === previousStatus) return;
   try {
@@ -1983,7 +1985,6 @@ async function updateIssueStatus(issue: Issue, nextStatus: IssueStatus, statusSe
     report('Issue status updated.');
     if (issueDetailView.hidden) await loadProjectIssues(issue.project_id);
   } catch (error) {
-    if (statusSelect !== undefined) statusSelect.value = previousStatus;
     report(error instanceof Error ? error.message : 'Could not update the issue status.', true);
   }
 }
@@ -2077,10 +2078,8 @@ issueDetailEditForm.addEventListener('submit', async (event) => {
   }
 });
 
-issueDetailStatus.addEventListener('change', () => {
-  if (selectedIssue !== null) {
-    void updateIssueStatus(selectedIssue, issueDetailStatus.value as IssueStatus, issueDetailStatus);
-  }
+issueDetailStatus.addEventListener('click', () => {
+  if (selectedIssue !== null) openIssueStatusPicker(selectedIssue, issueDetailStatus);
 });
 
 issueSourceLink.addEventListener('click', async (event) => {
