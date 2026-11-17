@@ -93,6 +93,15 @@ test('guest view renders its shared conversation alongside the composer', () => 
   assert.match(css, /\.guest-conversation-message\.is-reply\s*\{[^}]*margin-left:\s*auto/);
 });
 
+test('project chat identifies client authors and client-visible messages with compact icons', () => {
+  assert.match(app, /message\.author_role === 'guest'/);
+  assert.match(app, /message\.is_client_visible/);
+  assert.match(app, /chat-message-marker/);
+  assert.match(app, /Client message/);
+  assert.match(app, /Visible to client/);
+  assert.match(css, /\.chat-message-marker\s*\{[^}]*width:\s*12px/);
+});
+
 test('guest with no projects gets the same framed customer screen', () => {
   assert.match(app, /renderClientEmptyState\(guestMain/);
   assert.match(guestSource, /export function renderClientEmptyState\(/);

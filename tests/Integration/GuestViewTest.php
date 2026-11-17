@@ -87,6 +87,7 @@ final class GuestViewTest extends ApiTestCase
         );
         self::assertSame(201, $comment->status, json_encode($comment->body));
         self::assertSame('Please include the due date.', $comment->body['message']['body']);
+        self::assertSame('guest', $comment->body['message']['author_role']);
 
         $reply = $this->cookieRequest(
             'POST',
@@ -96,6 +97,7 @@ final class GuestViewTest extends ApiTestCase
             $admin['csrf'],
         );
         self::assertSame(201, $reply->status, json_encode($reply->body));
+        self::assertSame('admin', $reply->body['message']['author_role']);
         self::assertTrue($reply->body['message']['is_client_visible']);
         $legacyReply = $this->pdo->prepare(
             'UPDATE messages SET is_client_visible = 0 WHERE workspace_id = :workspace_id AND id = :id'
@@ -130,6 +132,21 @@ final class GuestViewTest extends ApiTestCase
         $memberMessages = $this->cookieRequest('GET', "/api/v1/projects/{$projectId}/messages", $admin['cookie']);
         self::assertSame(200, $memberMessages->status);
         self::assertContains('Please include the due date.', array_column($memberMessages->body['messages'], 'body'));
+        $replyInHistory = array_values(array_filter(
+            $memberMessages->body['messages'],
+            static fn (array $message): bool => $message['id'] === $reply->body['message']['id'],
+        ))[0];
+        self::assertTrue($replyInHistory['is_client_visible']);
+        self::assertSame('admin', $replyInHistory['author_role']);
+
+        $events = $this->cookieRequest('GET', '/api/v1/events', $admin['cookie']);
+        self::assertSame(200, $events->status);
+        $replyEvent = array_values(array_filter(
+            $events->body['events'],
+            static fn (array $event): bool => $event['id'] === $reply->body['message']['id'],
+        ))[0];
+        self::assertTrue($replyEvent['is_client_visible']);
+        self::assertSame('admin', $replyEvent['author_role']);
     }
 
     public function testApprovalCanOnlyBeRecordedOnceForARequestedSharedIssue(): void

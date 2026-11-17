@@ -1652,7 +1652,12 @@ function appendChatMessage(message) {
     time.textContent = Number.isNaN(parsedDate.getTime())
         ? ''
         : new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' }).format(parsedDate);
-    authorDetails.append(author, time);
+    authorDetails.append(author);
+    if (message.author_role === 'guest')
+        authorDetails.append(chatMessageMarker('client'));
+    if (message.is_client_visible)
+        authorDetails.append(chatMessageMarker('visible'));
+    authorDetails.append(time);
     const reply = document.createElement('button');
     reply.className = 'button button-quiet chat-reply-button';
     reply.type = 'button';
@@ -1705,6 +1710,37 @@ function appendChatMessage(message) {
 }
 function avatarInitials(name) {
     return name.trim().split(/\s+/).slice(0, 2).map((part) => part[0] ?? '').join('').toUpperCase();
+}
+function chatMessageMarker(kind) {
+    const namespace = 'http://www.w3.org/2000/svg';
+    const label = kind === 'client' ? 'Client message' : 'Visible to client';
+    const marker = document.createElementNS(namespace, 'svg');
+    marker.classList.add('chat-message-marker', `is-${kind}`);
+    marker.setAttribute('viewBox', '0 0 16 16');
+    marker.setAttribute('role', 'img');
+    marker.setAttribute('aria-label', label);
+    marker.setAttribute('title', label);
+    const shapes = kind === 'client'
+        ? [
+            { tag: 'circle', attrs: { cx: '8', cy: '5', r: '2.25' } },
+            { tag: 'path', attrs: { d: 'M3 14c.45-2.5 2.15-3.8 5-3.8s4.55 1.3 5 3.8' } },
+        ]
+        : [
+            { tag: 'path', attrs: { d: 'M1.5 8s2.2-4 6.5-4 6.5 4 6.5 4-2.2 4-6.5 4-6.5-4-6.5-4Z' } },
+            { tag: 'circle', attrs: { cx: '8', cy: '8', r: '1.7' } },
+        ];
+    for (const shape of shapes) {
+        const element = document.createElementNS(namespace, shape.tag);
+        for (const [name, value] of Object.entries(shape.attrs))
+            element.setAttribute(name, value);
+        element.setAttribute('fill', 'none');
+        element.setAttribute('stroke', 'currentColor');
+        element.setAttribute('stroke-width', '1.35');
+        element.setAttribute('stroke-linecap', 'round');
+        element.setAttribute('stroke-linejoin', 'round');
+        marker.append(element);
+    }
+    return marker;
 }
 function setChatReplyParent(message) {
     const clientVisible = message.is_client_visible === true;

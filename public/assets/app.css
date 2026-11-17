@@ -385,6 +385,8 @@ select { padding-right: 28px; background: var(--screen-inset) url("data:image/sv
 .chat-reply .chat-message-avatar { width: 28px; height: 28px; }
 .chat-message-author { grid-column: 2; grid-row: 1; display: flex; min-width: 0; align-items: baseline; gap: 6px; }
 .chat-message-author strong { color: var(--screen-ink); font: 700 13px var(--font-display); }
+.chat-message-marker { width: 12px; height: 12px; flex: 0 0 auto; transform: translateY(1px); color: var(--screen-muted); opacity: 0.72; }
+.chat-message-marker.is-client { color: var(--accent); opacity: 0.88; }
 .chat-message-time { color: var(--screen-muted); font-size: 10px; }
 .chat-message-actions { grid-column: 2; grid-row: 1; display: flex; align-items: center; justify-self: end; gap: 2px; opacity: 0; }
 .chat-message:hover .chat-message-actions, .chat-message:focus-within .chat-message-actions { opacity: 1; }

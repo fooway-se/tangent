@@ -84,19 +84,36 @@ final class ChatRepository
         }
         [$projectFilter, $projectParameters] = self::projectFilter($projectIds);
         $statement = $this->pdo->prepare(
-            'SELECT m.id, c.project_id, m.channel_id, m.parent_id, m.author_id,
-                    u.name AS author_name, m.body, m.is_client_visible, m.created_at
-             FROM messages m
-             INNER JOIN channels c ON c.workspace_id = m.workspace_id AND c.id = m.channel_id
-             INNER JOIN users u ON u.workspace_id = m.workspace_id AND u.id = m.author_id
-             WHERE m.workspace_id = :workspace_id AND c.channel_type = :channel_type
-               AND c.project_id IN (' . $projectFilter . ') AND m.id > :since_id
-             ORDER BY m.id ASC
-             LIMIT 100'
+            'WITH RECURSIVE project_messages AS (
+                SELECT m.id, c.project_id, m.channel_id, m.parent_id, m.author_id, m.body,
+                       m.is_client_visible AS message_client_visible,
+                       m.is_client_visible AS root_client_visible, m.created_at
+                FROM messages m
+                INNER JOIN channels c ON c.workspace_id = m.workspace_id AND c.id = m.channel_id
+                WHERE m.workspace_id = :workspace_id AND c.channel_type = :channel_type
+                  AND c.project_id IN (' . $projectFilter . ') AND m.parent_id IS NULL
+                UNION ALL
+                SELECT child.id, parent.project_id, child.channel_id, child.parent_id, child.author_id, child.body,
+                       child.is_client_visible, parent.root_client_visible, child.created_at
+                FROM messages child
+                INNER JOIN project_messages parent ON child.parent_id = parent.id
+                WHERE child.workspace_id = :child_workspace_id AND child.channel_id = parent.channel_id
+            )
+            SELECT messages.id, messages.project_id, messages.channel_id, messages.parent_id, messages.author_id,
+                   users.name AS author_name, users.role AS author_role, messages.body,
+                   (messages.message_client_visible OR messages.root_client_visible) AS is_client_visible,
+                   messages.created_at
+            FROM project_messages messages
+            INNER JOIN users ON users.workspace_id = :author_workspace_id AND users.id = messages.author_id
+            WHERE messages.id > :since_id
+            ORDER BY messages.id ASC
+            LIMIT 100'
         );
         $statement->execute([
             'workspace_id' => $workspaceId,
             'channel_type' => 'project',
+            'child_workspace_id' => $workspaceId,
+            'author_workspace_id' => $workspaceId,
             'since_id' => $sinceId,
             ...$projectParameters,
         ]);
@@ -111,32 +128,40 @@ final class ChatRepository
     /** @return list<array<string, mixed>> */
     public function listMessages(int $workspaceId, int $channelId, ?int $sinceId): array
     {
-        if ($sinceId === null) {
-            $statement = $this->pdo->prepare(
-                'SELECT m.id, m.channel_id, m.parent_id, m.author_id, u.name AS author_name, m.body, m.is_client_visible, m.created_at
-                 FROM messages m
-                 INNER JOIN users u ON u.workspace_id = m.workspace_id AND u.id = m.author_id
-                 WHERE m.workspace_id = :workspace_id AND m.channel_id = :channel_id
-                 ORDER BY m.id DESC
-                 LIMIT 100'
-            );
-            $statement->execute(['workspace_id' => $workspaceId, 'channel_id' => $channelId]);
-            return array_map(self::normalize(...), array_reverse($statement->fetchAll(PDO::FETCH_ASSOC)));
-        }
-
+        $selectedMessages = $sinceId === null
+            ? 'SELECT * FROM thread_messages ORDER BY id DESC LIMIT 100'
+            : 'SELECT * FROM thread_messages WHERE id > :since_id ORDER BY id ASC LIMIT 100';
         $statement = $this->pdo->prepare(
-            'SELECT m.id, m.channel_id, m.parent_id, m.author_id, u.name AS author_name, m.body, m.is_client_visible, m.created_at
-             FROM messages m
-             INNER JOIN users u ON u.workspace_id = m.workspace_id AND u.id = m.author_id
-             WHERE m.workspace_id = :workspace_id AND m.channel_id = :channel_id AND m.id > :since_id
-             ORDER BY m.id ASC
-             LIMIT 100'
+            'WITH RECURSIVE thread_messages AS (
+                SELECT m.id, m.channel_id, m.parent_id, m.author_id, m.body,
+                       m.is_client_visible AS message_client_visible,
+                       m.is_client_visible AS root_client_visible, m.created_at
+                FROM messages m
+                WHERE m.workspace_id = :workspace_id AND m.channel_id = :channel_id AND m.parent_id IS NULL
+                UNION ALL
+                SELECT child.id, child.channel_id, child.parent_id, child.author_id, child.body,
+                       child.is_client_visible, parent.root_client_visible, child.created_at
+                FROM messages child
+                INNER JOIN thread_messages parent ON child.parent_id = parent.id
+                WHERE child.workspace_id = :child_workspace_id AND child.channel_id = :child_channel_id
+            ), selected_messages AS (' . $selectedMessages . ')
+            SELECT messages.id, messages.channel_id, messages.parent_id, messages.author_id,
+                   users.name AS author_name, users.role AS author_role, messages.body,
+                   (messages.message_client_visible OR messages.root_client_visible) AS is_client_visible,
+                   messages.created_at
+            FROM selected_messages messages
+            INNER JOIN users ON users.workspace_id = :author_workspace_id AND users.id = messages.author_id
+            ORDER BY messages.id ASC'
         );
-        $statement->execute([
+        $parameters = [
             'workspace_id' => $workspaceId,
             'channel_id' => $channelId,
-            'since_id' => $sinceId,
-        ]);
+            'child_workspace_id' => $workspaceId,
+            'child_channel_id' => $channelId,
+            'author_workspace_id' => $workspaceId,
+        ];
+        if ($sinceId !== null) $parameters['since_id'] = $sinceId;
+        $statement->execute($parameters);
         return array_map(self::normalize(...), $statement->fetchAll(PDO::FETCH_ASSOC));
     }
 
@@ -303,7 +328,8 @@ final class ChatRepository
     private function findMessage(int $workspaceId, int $channelId, int $messageId): ?array
     {
         $statement = $this->pdo->prepare(
-            'SELECT m.id, m.channel_id, m.parent_id, m.author_id, u.name AS author_name, m.body, m.is_client_visible, m.created_at
+            'SELECT m.id, m.channel_id, m.parent_id, m.author_id, u.name AS author_name, u.role AS author_role,
+                    m.body, m.is_client_visible, m.created_at
              FROM messages m
              INNER JOIN users u ON u.workspace_id = m.workspace_id AND u.id = m.author_id
              WHERE m.workspace_id = :workspace_id AND m.channel_id = :channel_id AND m.id = :id
