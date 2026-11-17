@@ -26,6 +26,7 @@ export type ShortcutAction =
   | 'previous'
   | 'first-issue'
   | 'last-issue'
+  | 'focus-issue-filter'
   | 'open-selected'
   | 'create-issue'
   | 'edit-selected'
@@ -113,6 +114,7 @@ export function resolveShortcut(event: ShortcutEvent, context: ShortcutContext):
   if (context.issueListVisible || context.issueDetailVisible) {
     if (!context.chatMessagesFocused && key === 'home') return 'first-issue';
     if (!context.chatMessagesFocused && key === 'end') return 'last-issue';
+    if (context.issueListVisible && key === '/') return 'focus-issue-filter';
     if (context.issueListVisible && key === 'pageup') return 'page-up';
     if (context.issueListVisible && key === 'pagedown') return 'page-down';
     if (key === 'j' || key === 'arrowdown') return 'next';

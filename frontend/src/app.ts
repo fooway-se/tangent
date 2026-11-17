@@ -1128,6 +1128,7 @@ function executeShortcut(action: ShortcutAction): void {
     case 'previous': moveIssueSelection(-1); break;
     case 'first-issue': moveIssueSelectionToBoundary('first'); break;
     case 'last-issue': moveIssueSelectionToBoundary('last'); break;
+    case 'focus-issue-filter': issueFilter.focus(); break;
     case 'open-selected': selectedIssueButton()?.click(); break;
     case 'create-issue': beginCreateIssue(); break;
     case 'edit-selected': editSelectedIssue(); break;

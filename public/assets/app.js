@@ -1078,6 +1078,9 @@ function executeShortcut(action) {
         case 'last-issue':
             moveIssueSelectionToBoundary('last');
             break;
+        case 'focus-issue-filter':
+            issueFilter.focus();
+            break;
         case 'open-selected':
             selectedIssueButton()?.click();
             break;
