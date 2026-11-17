@@ -1349,7 +1349,7 @@ async function loadProjectDetail(projectId, tab = 'issues') {
         showWorkspaceView('projects');
     }
 }
-function switchProjectTab(tab) {
+function switchProjectTab(tab, returnFocusIssueId) {
     if (activeProject === null)
         return;
     const showingIssueDetail = tab === 'issues' && selectedIssue !== null;
@@ -1361,8 +1361,19 @@ function switchProjectTab(tab) {
     if (tab === 'issues') {
         issuesTabButton.setAttribute('aria-current', 'page');
         membersTabButton.removeAttribute('aria-current');
-        if (!showingIssueDetail)
-            void loadProjectIssues(activeProject.id);
+        if (!showingIssueDetail) {
+            const projectId = activeProject.id;
+            const loadingIssues = loadProjectIssues(projectId);
+            if (returnFocusIssueId !== undefined) {
+                issuesTabButton.focus();
+                void loadingIssues.then(() => {
+                    if (activeProject?.id !== projectId || issuesView.hidden)
+                        return;
+                    if (!focusIssueTitleButton(returnFocusIssueId))
+                        issuesTabButton.focus();
+                });
+            }
+        }
         return;
     }
     membersTabButton.setAttribute('aria-current', 'page');
@@ -1438,6 +1449,13 @@ function renderIssueDetail() {
         delete issueSourceLink.dataset.messageId;
     }
 }
+function focusIssueTitleButton(issueId) {
+    const button = issueList.querySelector(`.issue-card[data-issue-id="${issueId}"] .issue-title-button`);
+    if (button === null)
+        return false;
+    button.focus();
+    return true;
+}
 function closeIssueDetailEditForm() {
     issueDetailEditForm.reset();
     issueDetailEditForm.hidden = true;
@@ -1454,6 +1472,7 @@ function openIssue(issue) {
     issueDetailEditForm.hidden = true;
     renderIssueDetail();
     switchProjectTab('issues');
+    issueBackButton.focus();
 }
 function createIssueStatusSelect(issue) {
     const status = document.createElement('select');
@@ -1544,11 +1563,12 @@ issueDetailCancelButton.addEventListener('click', () => {
     closeIssueDetailEditForm();
 });
 issueBackButton.addEventListener('click', () => {
+    const issueId = selectedIssue?.id;
     selectedIssue = null;
     issueDetailEditForm.reset();
     issueDetailEditForm.hidden = true;
     issueDetailDisplay.hidden = false;
-    switchProjectTab('issues');
+    switchProjectTab('issues', issueId);
 });
 issueDetailEditForm.addEventListener('submit', async (event) => {
     event.preventDefault();

@@ -1372,7 +1372,7 @@ async function loadProjectDetail(projectId: number, tab: 'issues' | 'members' = 
   }
 }
 
-function switchProjectTab(tab: 'issues' | 'members'): void {
+function switchProjectTab(tab: 'issues' | 'members', returnFocusIssueId?: number): void {
   if (activeProject === null) return;
   const showingIssueDetail = tab === 'issues' && selectedIssue !== null;
   issuesView.hidden = tab !== 'issues' || showingIssueDetail;
@@ -1383,7 +1383,17 @@ function switchProjectTab(tab: 'issues' | 'members'): void {
   if (tab === 'issues') {
     issuesTabButton.setAttribute('aria-current', 'page');
     membersTabButton.removeAttribute('aria-current');
-    if (!showingIssueDetail) void loadProjectIssues(activeProject.id);
+    if (!showingIssueDetail) {
+      const projectId = activeProject.id;
+      const loadingIssues = loadProjectIssues(projectId);
+      if (returnFocusIssueId !== undefined) {
+        issuesTabButton.focus();
+        void loadingIssues.then(() => {
+          if (activeProject?.id !== projectId || issuesView.hidden) return;
+          if (!focusIssueTitleButton(returnFocusIssueId)) issuesTabButton.focus();
+        });
+      }
+    }
     return;
   }
 
@@ -1463,6 +1473,15 @@ function renderIssueDetail(): void {
   }
 }
 
+function focusIssueTitleButton(issueId: number): boolean {
+  const button = issueList.querySelector<HTMLButtonElement>(
+    `.issue-card[data-issue-id="${issueId}"] .issue-title-button`,
+  );
+  if (button === null) return false;
+  button.focus();
+  return true;
+}
+
 function closeIssueDetailEditForm(): void {
   issueDetailEditForm.reset();
   issueDetailEditForm.hidden = true;
@@ -1479,6 +1498,7 @@ function openIssue(issue: Issue): void {
   issueDetailEditForm.hidden = true;
   renderIssueDetail();
   switchProjectTab('issues');
+  issueBackButton.focus();
 }
 
 function createIssueStatusSelect(issue: Issue): HTMLSelectElement {
@@ -1574,11 +1594,12 @@ issueDetailCancelButton.addEventListener('click', () => {
 });
 
 issueBackButton.addEventListener('click', () => {
+  const issueId = selectedIssue?.id;
   selectedIssue = null;
   issueDetailEditForm.reset();
   issueDetailEditForm.hidden = true;
   issueDetailDisplay.hidden = false;
-  switchProjectTab('issues');
+  switchProjectTab('issues', issueId);
 });
 
 issueDetailEditForm.addEventListener('submit', async (event) => {
