@@ -182,6 +182,54 @@ final class AuthAndProjectsTest extends ApiTestCase
         self::assertSame('rate_limited', $limited->body['error']['code']);
     }
 
+    public function testLoginRateLimitBoundsEmailBucketGrowthPerAddress(): void
+    {
+        for ($attempt = 0; $attempt < 100; $attempt++) {
+            $response = $this->request(
+                'POST',
+                '/api/v1/auth/login',
+                ['email' => 'spray-' . $attempt . '@example.test', 'password' => 'wrong'],
+                remoteAddress: '192.0.2.11',
+            );
+            self::assertSame(401, $response->status);
+        }
+
+        $limited = $this->request(
+            'POST',
+            '/api/v1/auth/login',
+            ['email' => 'spray-over-limit@example.test', 'password' => 'wrong'],
+            remoteAddress: '192.0.2.11',
+        );
+
+        self::assertSame(429, $limited->status);
+        $count = $this->pdo->prepare('SELECT COUNT(*) FROM rate_limits WHERE workspace_id = :workspace_id');
+        $count->execute(['workspace_id' => $this->workspaceId]);
+        self::assertSame(101, (int) $count->fetchColumn(), 'The blocked attempt must not allocate another email bucket.');
+    }
+
+    public function testExpiredRateLimitBucketsAreDeleted(): void
+    {
+        $bucket = hash('sha256', 'expired-test-bucket');
+        $insert = $this->pdo->prepare(
+            'INSERT INTO rate_limits (workspace_id, bucket_key, window_started_at, attempt_count)
+             VALUES (:workspace_id, :bucket_key, DATE_SUB(UTC_TIMESTAMP(), INTERVAL 2 HOUR), 1)'
+        );
+        $insert->execute(['workspace_id' => $this->workspaceId, 'bucket_key' => $bucket]);
+
+        $this->request(
+            'POST',
+            '/api/v1/auth/login',
+            ['email' => 'cleanup@example.test', 'password' => 'wrong'],
+            remoteAddress: '192.0.2.12',
+        );
+
+        $exists = $this->pdo->prepare(
+            'SELECT 1 FROM rate_limits WHERE workspace_id = :workspace_id AND bucket_key = :bucket_key'
+        );
+        $exists->execute(['workspace_id' => $this->workspaceId, 'bucket_key' => $bucket]);
+        self::assertFalse($exists->fetchColumn() !== false);
+    }
+
     public function testAdminCanCreateDeveloperAndDeveloperCannotManageUsers(): void
     {
         $admin = $this->login($this->adminEmail);

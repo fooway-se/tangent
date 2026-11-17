@@ -15,6 +15,9 @@ use Tangent\Modules\Workspaces\WorkspaceRepository;
 
 final class AuthService
 {
+    private const LOGIN_IP_LIMIT = 100;
+    private const LOGIN_WINDOW_SECONDS = 900;
+
     public function __construct(
         private readonly PDO $pdo,
         private readonly UserRepository $users,
@@ -30,14 +33,28 @@ final class AuthService
     {
         $email = UserRepository::normalizeEmail((string) ($request->body['email'] ?? ''));
         $password = (string) ($request->body['password'] ?? '');
-        $bucket = 'login:' . $request->remoteAddress . ':' . $email;
 
-        if (!$this->rateLimiter->allow($this->config->workspaceId, $bucket, 5, 900)) {
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL) || mb_strlen($email, 'UTF-8') > 254 || $password === '') {
+            throw new ApiException(401, 'invalid_credentials', 'Email or password is incorrect.');
+        }
+
+        if (!$this->rateLimiter->allow(
+            $this->config->workspaceId,
+            'login-ip:' . $request->remoteAddress,
+            self::LOGIN_IP_LIMIT,
+            self::LOGIN_WINDOW_SECONDS,
+        )) {
             throw new ApiException(429, 'rate_limited', 'Too many login attempts. Try again later.');
         }
 
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL) || $password === '') {
-            throw new ApiException(401, 'invalid_credentials', 'Email or password is incorrect.');
+        $identityBucket = 'login:' . $request->remoteAddress . ':' . $email;
+        if (!$this->rateLimiter->allow(
+            $this->config->workspaceId,
+            $identityBucket,
+            5,
+            self::LOGIN_WINDOW_SECONDS,
+        )) {
+            throw new ApiException(429, 'rate_limited', 'Too many login attempts. Try again later.');
         }
 
         $user = $this->users->findByEmail($this->config->workspaceId, $email);

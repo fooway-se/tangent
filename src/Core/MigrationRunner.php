@@ -36,6 +36,8 @@ final class MigrationRunner
                 continue;
             }
 
+            $this->assertMigrationPreconditions($version);
+
             $sql = file_get_contents($file);
             if ($sql === false) {
                 throw new RuntimeException('Unable to read migration: ' . $version);
@@ -47,6 +49,27 @@ final class MigrationRunner
 
             $record = $this->pdo->prepare('INSERT INTO schema_migrations (version) VALUES (:version)');
             $record->execute(['version' => $version]);
+        }
+    }
+
+    private function assertMigrationPreconditions(string $version): void
+    {
+        if ($version !== '011_auth_lifecycle.sql') {
+            return;
+        }
+
+        $statement = $this->pdo->query(
+            'SELECT LOWER(TRIM(email)) AS normalized_email
+             FROM users
+             GROUP BY LOWER(TRIM(email))
+             HAVING COUNT(DISTINCT account_id) > 1
+             LIMIT 1'
+        );
+        if ($statement->fetchColumn() !== false) {
+            throw new RuntimeException(
+                'Migration 011 stopped: multiple workspace accounts share an email address. '
+                . 'Reconcile the legacy accounts before retrying so credentials are not merged implicitly.'
+            );
         }
     }
 
