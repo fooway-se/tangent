@@ -316,7 +316,7 @@ async function loadWorkspaces(): Promise<void> {
   workspaceSwitcher.disabled = activeWorkspaces.length === 0;
 }
 
-async function switchWorkspace(workspaceId: number): Promise<void> {
+async function switchWorkspace(workspaceId: number, restoreSwitcherFocus = false): Promise<void> {
   resetPendingWorkspaceSwitch();
   if (activeUser === null || workspaceId === activeUser.workspace_id) return;
   workspaceSwitcher.disabled = true;
@@ -334,6 +334,7 @@ async function switchWorkspace(workspaceId: number): Promise<void> {
     report(error instanceof Error ? error.message : 'Could not switch workspace.', true);
   } finally {
     workspaceSwitcher.disabled = activeWorkspaces.length === 0;
+    if (restoreSwitcherFocus && !workspaceSwitcher.disabled) workspaceSwitcher.focus();
   }
 }
 
@@ -363,7 +364,7 @@ function commitPendingWorkspaceSwitch(): void {
   if (workspaceId === null) return;
   resetPendingWorkspaceSwitch();
   workspaceSwitcher.focus();
-  void switchWorkspace(workspaceId);
+  void switchWorkspace(workspaceId, true);
 }
 
 function showWorkspaceView(view: 'projects' | 'admin' | 'project'): void {
@@ -751,7 +752,7 @@ function getPaletteCommands(): PaletteCommand[] {
       label: `Switch to ${workspace.name}`,
       detail: `Open the ${workspace.name} client workspace`,
       shortcut: '',
-      run: () => void switchWorkspace(workspace.id),
+      run: () => void switchWorkspace(workspace.id, true),
     });
   }
   if (activeUser?.role === 'admin' && !projectsView.hidden) {
@@ -1891,7 +1892,7 @@ createWorkspaceForm.addEventListener('submit', async (event) => {
     });
     createWorkspaceForm.reset();
     await loadWorkspaces();
-    await switchWorkspace(result.workspace.id);
+    await switchWorkspace(result.workspace.id, true);
   } catch (error) {
     report(error instanceof Error ? error.message : 'Could not create the workspace.', true);
   }
