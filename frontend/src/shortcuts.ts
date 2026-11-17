@@ -62,6 +62,7 @@ export interface ShortcutContext {
   hasLatestChatMessage: boolean;
   chatMessagesFocused: boolean;
   hasSelectedChatMessage: boolean;
+  issueGroupFocused: boolean;
   statusHistoryFocused: boolean;
   textInputFocused: boolean;
   modalOpen: boolean;
@@ -87,6 +88,10 @@ export function resolveShortcut(event: ShortcutEvent, context: ShortcutContext):
   if (context.issueFilterFocused && context.issueListVisible) {
     if (key === 'arrowdown') return 'first-issue';
     if (key === 'arrowup') return 'last-issue';
+  }
+  if (context.issueGroupFocused && context.issueListVisible) {
+    if (key === 'j' || key === 'arrowdown') return 'next';
+    if (key === 'k' || key === 'arrowup') return 'previous';
   }
   if (context.targetIsEditable) return null;
 

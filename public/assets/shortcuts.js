@@ -24,6 +24,12 @@ export function resolveShortcut(event, context) {
         if (key === 'arrowup')
             return 'last-issue';
     }
+    if (context.issueGroupFocused && context.issueListVisible) {
+        if (key === 'j' || key === 'arrowdown')
+            return 'next';
+        if (key === 'k' || key === 'arrowup')
+            return 'previous';
+    }
     if (context.targetIsEditable)
         return null;
     if (context.goPrefixPending) {

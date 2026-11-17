@@ -21,6 +21,7 @@ const baseContext = {
   hasLatestChatMessage: false,
   chatMessagesFocused: false,
   hasSelectedChatMessage: false,
+  issueGroupFocused: false,
   canDismiss: false,
 };
 
@@ -56,6 +57,17 @@ test('issue navigation and actions depend on the current issue selection', () =>
   assert.equal(resolve('c', { hasProject: true, issueListVisible: true }), 'create-issue');
   assert.equal(resolve('j'), null);
   assert.equal(resolve('Enter', { issueListVisible: true }), null);
+});
+
+test('issue navigation continues from a focused group heading', () => {
+  const group = { issueGroupFocused: true, issueListVisible: true, targetIsEditable: true };
+  assert.equal(resolve('ArrowDown', group), 'next');
+  assert.equal(resolve('j', group), 'next');
+  assert.equal(resolve('ArrowUp', group), 'previous');
+  assert.equal(resolve('k', group), 'previous');
+  assert.match(app, /issueGroupFocused:\s*target instanceof HTMLElement && target\.closest\('\.issue-group > summary'\) !== null/);
+  assert.match(app, /moveIssueSelectionFromGroup\(direction\)/);
+  assert.match(app, /function moveIssueSelectionFromGroup\(direction: -1 \| 1\)/);
 });
 
 test('project list uses the same j, k, Enter navigation pattern', () => {

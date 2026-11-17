@@ -1183,6 +1183,7 @@ function shortcutContext(target: EventTarget | null) {
       && document.activeElement.matches('.chat-message'),
     hasSelectedChatMessage: selectedChatMessageId !== null && selectedChatMessageId > 0
       && chatMessagesById.has(selectedChatMessageId),
+    issueGroupFocused: target instanceof HTMLElement && target.closest('.issue-group > summary') !== null,
     statusHistoryFocused: issueStatusHistory.open && issueStatusHistory.contains(document.activeElement),
     textInputFocused: shouldBlurOnEscape(target),
     modalOpen: commandPalette.open || shortcutHelp.open || issueStatusPicker.open || issueDeleteConfirmation.open || memberRemovalConfirmation.open || workspacePicker.open,
@@ -1276,6 +1277,11 @@ function moveIssueSelection(direction: -1 | 1): void {
     moveFocusWithin(visibleInboxIssueTitleButtons(), '.inbox-issue-card', direction);
     return;
   }
+  if (document.activeElement instanceof HTMLElement
+    && document.activeElement.matches('.issue-group > summary')) {
+    moveIssueSelectionFromGroup(direction);
+    return;
+  }
   const buttons = visibleIssueTitleButtons();
   if (!issueDetailView.hidden && selectedIssue !== null) {
     const currentIndex = buttons.findIndex((button) => button.closest<HTMLElement>('.issue-card')?.dataset.issueId === String(selectedIssue?.id));
@@ -1287,6 +1293,19 @@ function moveIssueSelection(direction: -1 | 1): void {
     return;
   }
   moveFocusWithin(buttons, '.issue-card', direction);
+}
+
+function moveIssueSelectionFromGroup(direction: -1 | 1): void {
+  const summary = document.activeElement;
+  if (!(summary instanceof HTMLElement)) return;
+  const buttons = visibleIssueTitleButtons();
+  const target = direction > 0
+    ? buttons.find((button) => (summary.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0)
+    : buttons.filter((button) => (summary.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_PRECEDING) !== 0).at(-1);
+  if (target === undefined) return;
+  for (const button of buttons) button.closest<HTMLElement>('.issue-card')?.classList.remove('is-keyboard-selected');
+  target.closest<HTMLElement>('.issue-card')?.classList.add('is-keyboard-selected');
+  target.focus();
 }
 
 function moveIssueSelectionToBoundary(edge: 'first' | 'last'): void {
