@@ -1,7 +1,7 @@
 import {
   INBOX_TABS, createEventRow, eventsForTab, tabCount, type InboxEvent, type InboxTab,
 } from './inbox-events.js';
-import { renderClientView, type ClientView } from './guest-view.js';
+import { renderClientEmptyState, renderClientView, type ClientView } from './guest-view.js';
 import { resolveShortcut, shouldSubmitOnEnter, type ShortcutAction } from './shortcuts.js';
 import {
   filterIssues,
@@ -3260,11 +3260,7 @@ async function loadGuestProjects(): Promise<void> {
     }));
     guestProjectLabel.hidden = result.projects.length < 2;
     if (result.projects.length === 0) {
-      guestMain.replaceChildren();
-      const empty = document.createElement('p');
-      empty.className = 'guest-muted';
-      empty.textContent = 'No projects have been shared with you yet.';
-      guestMain.append(empty);
+      renderClientEmptyState(guestMain, 'No projects have been shared with you yet.');
       return;
     }
     await loadClientView(result.projects[0].id);
@@ -3277,7 +3273,7 @@ async function loadGuestProjects(): Promise<void> {
 async function loadClientView(projectId: number): Promise<void> {
   try {
     const view = await api<ClientView>(`/projects/${projectId}/client-view`);
-    guestTitle.textContent = `${view.project.name} / Client portal`;
+    guestTitle.textContent = 'Client portal';
     renderClientView(guestMain, view, {
       approve: async (approvalId) => {
         await api(`/approvals/${approvalId}/approve`, { method: 'POST' });

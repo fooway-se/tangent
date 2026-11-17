@@ -33,7 +33,7 @@ final class GuestViewTest extends ApiTestCase
             'approval_requested' => true,
         ]);
         $internal = $this->createIssue($admin, $projectId, 'SECRET INTERNAL ISSUE TITLE');
-        $this->updateIssue($admin, $internal, ['status' => 'done']);
+        $this->updateIssue($admin, $internal, ['status' => 'done', 'milestone_id' => $internalMilestone]);
 
         $response = $this->cookieRequest('GET', "/api/v1/projects/{$projectId}/client-view", $guest['cookie']);
         self::assertSame(200, $response->status, json_encode($response->body));
@@ -51,6 +51,8 @@ final class GuestViewTest extends ApiTestCase
         self::assertStringNotContainsString('SECRET INTERNAL ISSUE TITLE', json_encode($response->body));
         self::assertSame('done', $this->itemById($response->body['items'], $done)['status']);
         self::assertSame('doing', $this->itemById($response->body['items'], $approval)['status']);
+        self::assertSame($milestone, $this->itemById($response->body['items'], $done)['milestone_id']);
+        self::assertNotContains($internalMilestone, array_column($response->body['items'], 'milestone_id'));
         self::assertSame('Beta launch', $this->itemById($response->body['items'], $approval)['milestone_name']);
         self::assertNotContains('SECRET INTERNAL ISSUE TITLE', array_column($response->body['updates'], 'text'));
 

@@ -1,5 +1,5 @@
 import { INBOX_TABS, createEventRow, eventsForTab, tabCount, } from './inbox-events.js';
-import { renderClientView } from './guest-view.js';
+import { renderClientEmptyState, renderClientView } from './guest-view.js';
 import { resolveShortcut, shouldSubmitOnEnter } from './shortcuts.js';
 import { filterIssues, groupIssues, milestoneProgress, sortIssues, } from './issue-board.js';
 const ISSUE_STATUS_OPTIONS = [
@@ -3229,11 +3229,7 @@ async function loadGuestProjects() {
         }));
         guestProjectLabel.hidden = result.projects.length < 2;
         if (result.projects.length === 0) {
-            guestMain.replaceChildren();
-            const empty = document.createElement('p');
-            empty.className = 'guest-muted';
-            empty.textContent = 'No projects have been shared with you yet.';
-            guestMain.append(empty);
+            renderClientEmptyState(guestMain, 'No projects have been shared with you yet.');
             return;
         }
         await loadClientView(result.projects[0].id);
@@ -3249,7 +3245,7 @@ async function loadGuestProjects() {
 async function loadClientView(projectId) {
     try {
         const view = await api(`/projects/${projectId}/client-view`);
-        guestTitle.textContent = `${view.project.name} / Client portal`;
+        guestTitle.textContent = 'Client portal';
         renderClientView(guestMain, view, {
             approve: async (approvalId) => {
                 await api(`/approvals/${approvalId}/approve`, { method: 'POST' });

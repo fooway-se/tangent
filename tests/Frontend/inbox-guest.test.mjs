@@ -8,6 +8,7 @@ const guest = await import('../../public/assets/guest-view.js');
 const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
 const css = await readFile(new URL('../../public/assets/app.css', import.meta.url), 'utf8');
+const guestSource = await readFile(new URL('../../frontend/src/guest-view.ts', import.meta.url), 'utf8');
 
 const event = (id, type, read, done) => ({ id, type, read, done, actor_name: 'a', summary: 's', detail: null, project_id: 1, project_name: 'P', issue_id: null, message_id: null, created_at: '2026-11-17T10:00:00Z' });
 
@@ -29,10 +30,61 @@ test('relative time is compact', () => {
   assert.equal(events.relativeTime('2026-11-15T12:00:00Z', now), '2 d');
 });
 
-test('guest progress segments are clamped', () => {
-  assert.equal(guest.litSegments(0, 0), 0);
-  assert.equal(guest.litSegments(6, 15), 4);
-  assert.equal(guest.litSegments(20, 10), 10);
+test('guest progress ranges stay valid for native progress elements', () => {
+  assert.deepEqual(guest.progressRange(0, 0), { max: 1, value: 0 });
+  assert.deepEqual(guest.progressRange(14, 21), { max: 21, value: 14 });
+  assert.deepEqual(guest.progressRange(20, 10), { max: 10, value: 10 });
+});
+
+test('guest dashboard selects the earliest unfinished milestone and filters its shared issues by id', () => {
+  const milestones = [
+    { id: 4, name: 'Foundation', due_date: '2026-10-30', done: 3, total: 3 },
+    { id: 8, name: 'Beta launch', due_date: '2026-11-27', done: 1, total: 2 },
+  ];
+  assert.equal(guest.featuredMilestone(milestones).id, 8);
+  assert.equal(guest.featuredMilestone(milestones.map((item) => ({ ...item, done: item.total }))).id, 4);
+  assert.equal(guest.featuredMilestone([]), null);
+  const items = [
+    { id: 1, title: 'Done', status: 'done', milestone_id: 8, milestone_name: 'Beta launch' },
+    { id: 2, title: 'Other', status: 'planned', milestone_id: 9, milestone_name: 'Later' },
+    { id: 3, title: 'Unassigned', status: 'doing', milestone_id: null, milestone_name: null },
+  ];
+  assert.deepEqual(guest.itemsForMilestone(items, 8).map((item) => item.id), [1]);
+});
+
+test('guest milestone countdown uses calendar days', () => {
+  const today = new Date('2026-11-13T12:00:00Z');
+  assert.equal(guest.daysUntil('2026-11-27', today), 14);
+  assert.equal(guest.daysUntil('2026-11-13', today), 0);
+  assert.equal(guest.daysUntil(null, today), null);
+  assert.equal(guest.formatGuestDate('2026-11-27', true), 'Fri 27 Nov');
+  assert.equal(guest.updateDateLabel('2026-11-16T10:00:00Z', new Date('2026-11-17T12:00:00Z')), 'Yesterday');
+  assert.equal(guest.updateDateLabel('2026-11-10T10:00:00Z', new Date('2026-11-17T12:00:00Z')), 'Tue 10 Nov');
+});
+
+test('guest dashboard follows the customer mockup layout and remains responsive', () => {
+  for (const className of [
+    'guest-screen-heading', 'guest-project-overview', 'guest-stats', 'guest-approval-banner',
+    'guest-planning-grid', 'guest-milestone-select', 'guest-deliverables', 'guest-updates', 'guest-composer-footer',
+  ]) {
+    assert.match(guestSource, new RegExp(className));
+  }
+  assert.match(css, /\.guest-planning-grid\s*\{[^}]*grid-template-columns/);
+  assert.match(css, /@media \(max-width: 640px\)[\s\S]*\.guest-planning-grid\s*\{[^}]*grid-template-columns/);
+  assert.match(css, /\.guest-milestone-title strong\s*\{[^}]*font:[^;]*var\(--font-display\)/);
+  assert.match(css, /\.guest-item-title\s*\{[^}]*font:[^;]*var\(--font-display\)/);
+});
+
+test('guest progress bars reuse the shared segmented progress treatment', () => {
+  assert.match(guestSource, /el\('progress', `guest-progress/);
+  assert.match(css, /#issue-progress, \.guest-progress\s*\{/);
+  assert.match(css, /#issue-progress::-webkit-progress-bar, \.guest-progress::-webkit-progress-bar\s*\{[^}]*repeating-linear-gradient/);
+  assert.match(css, /#issue-progress\.is-complete::-webkit-progress-value, \.guest-progress\.is-complete::-webkit-progress-value\s*\{[^}]*var\(--success\)/);
+});
+
+test('guest with no projects gets the same framed customer screen', () => {
+  assert.match(app, /renderClientEmptyState\(guestMain/);
+  assert.match(guestSource, /export function renderClientEmptyState\(/);
 });
 
 test('guest shell and inbox tabs exist in the page', () => {
