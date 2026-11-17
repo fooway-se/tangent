@@ -2140,6 +2140,7 @@ async function loadProjectMembers(projectId: number): Promise<void> {
   }
 
   memberForm.hidden = activeUser?.role !== 'admin';
+  updateMembersPanelTabIndex();
   if (memberForm.hidden) return;
 
   try {
@@ -2155,9 +2156,17 @@ async function loadProjectMembers(projectId: number): Promise<void> {
       memberSelect.append(option);
     }
     addMemberButton.disabled = memberSelect.options.length === 0;
+    updateMembersPanelTabIndex();
   } catch (error) {
     report(error instanceof Error ? error.message : 'Could not load workspace users.', true);
   }
+}
+
+function updateMembersPanelTabIndex(): void {
+  const hasFocusableContent = Array.from(membersView.querySelectorAll<HTMLElement>(
+    'a[href], button, input, select, textarea, [tabindex]',
+  )).some((element) => element.tabIndex >= 0 && !element.matches(':disabled') && element.closest('[hidden]') === null);
+  membersView.tabIndex = hasFocusableContent ? -1 : 0;
 }
 
 loginForm.addEventListener('submit', async (event) => {
