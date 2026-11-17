@@ -195,7 +195,8 @@ select { padding-right: 28px; background: var(--screen-inset) url("data:image/sv
 .project-status::before { width: 9px; height: 9px; border-radius: 2px; background: var(--accent); content: ""; }
 .detail-description { margin-bottom: 0; color: var(--screen-muted); white-space: pre-wrap; }
 .member-list { display: grid; gap: 6px; max-width: 680px; margin: 4px 0 20px; padding: 0; list-style: none; color: var(--screen-ink); }
-.member-list li { border: 1px solid var(--screen-border); border-radius: var(--radius-panel); padding: 9px 12px; background: var(--screen-panel); }
+.member-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid var(--screen-border); border-radius: var(--radius-panel); padding: 9px 12px; background: var(--screen-panel); }
+.member-list li > span { min-width: 0; overflow-wrap: anywhere; }
 .member-form { display: grid; gap: 10px; max-width: 460px; border-top: 1px solid var(--screen-border); padding-top: 12px; }
 .member-form select { min-width: 0; }
 .admin-panel { max-width: 620px; padding: 16px; }

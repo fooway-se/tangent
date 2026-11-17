@@ -2325,7 +2325,19 @@ async function loadProjectMembers(projectId: number): Promise<void> {
   memberList.replaceChildren();
   for (const member of activeProjectMembers) {
     const item = document.createElement('li');
-    item.textContent = `${member.name} · ${member.role}`;
+    const label = document.createElement('span');
+    label.textContent = `${member.name} · ${member.role}`;
+    item.append(label);
+    if (activeUser?.role === 'admin') {
+      const removeButton = document.createElement('button');
+      removeButton.type = 'button';
+      removeButton.className = 'button button-quiet button-danger';
+      removeButton.textContent = 'Remove';
+      removeButton.dataset.userId = String(member.id);
+      removeButton.setAttribute('aria-label', `Remove ${member.name} from this project`);
+      removeButton.addEventListener('click', () => void removeProjectMember(member, removeButton));
+      item.append(removeButton);
+    }
     memberList.append(item);
   }
 
@@ -2349,6 +2361,34 @@ async function loadProjectMembers(projectId: number): Promise<void> {
     updateMembersPanelTabIndex();
   } catch (error) {
     report(error instanceof Error ? error.message : 'Could not load workspace users.', true);
+  }
+}
+
+async function removeProjectMember(member: Member, removeButton: HTMLButtonElement): Promise<void> {
+  const projectId = activeProject?.id;
+  if (projectId === undefined) return;
+
+  const memberIndex = activeProjectMembers.findIndex((candidate) => candidate.id === member.id);
+  removeButton.disabled = true;
+  try {
+    await api<void>(`/projects/${projectId}/members/${member.id}`, { method: 'DELETE' });
+    if (activeProject?.id === projectId) {
+      activeProjectMembers = activeProjectMembers.filter((candidate) => candidate.id !== member.id);
+      await loadProjectMembers(projectId);
+      if (activeProject?.id === projectId && !membersView.hidden) {
+        const nextIndex = Math.min(memberIndex, activeProjectMembers.length - 1);
+        const nextMember = activeProjectMembers[nextIndex];
+        const nextRemoveButton = nextMember === undefined
+          ? null
+          : memberList.querySelector<HTMLButtonElement>(`button[data-user-id="${nextMember.id}"]`);
+        (nextRemoveButton ?? memberSelect).focus();
+      }
+    }
+    report(`${member.name} removed from the project.`);
+  } catch (error) {
+    report(error instanceof Error ? error.message : 'Could not remove the project member.', true);
+  } finally {
+    removeButton.disabled = false;
   }
 }
 
