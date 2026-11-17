@@ -45,17 +45,30 @@ final class ProjectChatTest extends ApiTestCase
         ]);
         self::assertSame(201, $reply->status, json_encode($reply->body));
         self::assertSame($parent->body['message']['id'], $reply->body['message']['parent_id']);
+        self::assertSame('Admin', $reply->body['message']['parent_author_name']);
+        self::assertSame('<script>alert("hello")</script>', $reply->body['message']['parent_body']);
 
         $messages = $this->getMessages($projectId, $admin['cookie']);
         self::assertSame(200, $messages->status);
         self::assertCount(2, $messages->body['messages']);
         self::assertSame('Admin', $messages->body['messages'][0]['author_name']);
+        self::assertSame('Admin', $messages->body['messages'][1]['parent_author_name']);
+        self::assertSame('<script>alert("hello")</script>', $messages->body['messages'][1]['parent_body']);
 
         $replies = $this->getMessages($projectId, $admin['cookie'], [
             'since' => (string) $parent->body['message']['id'],
         ]);
         self::assertCount(1, $replies->body['messages']);
         self::assertSame('I will check this.', $replies->body['messages'][0]['body']);
+        self::assertSame('<script>alert("hello")</script>', $replies->body['messages'][0]['parent_body']);
+
+        $events = $this->getEvents($admin['cookie']);
+        $replyEvent = array_values(array_filter(
+            $events->body['events'],
+            static fn (array $event): bool => $event['id'] === $reply->body['message']['id'],
+        ))[0];
+        self::assertSame('Admin', $replyEvent['parent_author_name']);
+        self::assertSame('<script>alert("hello")</script>', $replyEvent['parent_body']);
     }
 
     public function testNonMembersCannotReadOrPostProjectMessages(): void

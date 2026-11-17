@@ -152,6 +152,8 @@ interface ChatMessage {
   author_id: number;
   author_role?: Role;
   author_name: string;
+  parent_author_name?: string | null;
+  parent_body?: string | null;
   body: string;
   created_at: string;
   is_client_visible?: boolean;
@@ -355,7 +357,7 @@ let selectedChatMessageId: number | null = null;
 const chatMessagesById = new Map<number, ChatMessage>();
 let chatReplyHint: HTMLElement | null = null;
 let chatCancelReply: HTMLButtonElement | null = null;
-let chatReplyParent: { id: number; name: string } | null = null;
+let chatReplyParent: { id: number; name: string; body: string } | null = null;
 let issueQuickAddEscapePending = false;
 let issueQuickAddReturnFocus: HTMLElement | null = null;
 let goPrefixPending = false;
@@ -1758,7 +1760,25 @@ function appendChatMessage(message: ChatMessage, scrollToBottom = false): void {
   const body = document.createElement('p');
   body.className = 'chat-message-body';
   body.textContent = message.body;
-  item.append(heading, body);
+  item.append(heading);
+  if (message.parent_id !== null) {
+    const parentMessage = chatMessagesById.get(message.parent_id);
+    const parentAuthor = message.parent_author_name ?? parentMessage?.author_name ?? null;
+    const parentBody = message.parent_body ?? parentMessage?.body ?? null;
+    const parentExcerpt = parentBody === null ? '' : compactChatMessage(parentBody);
+    const parentLabel = parentAuthor === null
+      ? parentExcerpt || `Message #${message.parent_id}`
+      : parentExcerpt === '' ? parentAuthor : `${parentAuthor}: ${parentExcerpt}`;
+    const context = document.createElement('button');
+    context.className = 'chat-reply-context';
+    context.type = 'button';
+    context.textContent = `↳ ${parentLabel}`;
+    context.title = `Reply to ${parentLabel}`;
+    context.setAttribute('aria-label', `Jump to message #${message.parent_id}: ${parentLabel}`);
+    context.addEventListener('click', () => void focusChatMessageById(message.parent_id!));
+    item.append(context);
+  }
+  item.append(body);
   const followingMessage = scrollToBottom ? null : Array.from(chatMessageList.children).find((child) => {
     const existingId = Number((child as HTMLElement).dataset.messageId);
     return Number.isFinite(existingId) && existingId > message.id;
@@ -1771,6 +1791,39 @@ function appendChatMessage(message: ChatMessage, scrollToBottom = false): void {
 
 function scrollChatToBottom(): void {
   if (chatMessageList !== null) chatMessageList.scrollTop = chatMessageList.scrollHeight;
+}
+
+function compactChatMessage(body: string): string {
+  const normalized = body.replace(/\s+/g, ' ').trim();
+  const characters = Array.from(normalized);
+  return characters.length > 110 ? `${characters.slice(0, 109).join('').trimEnd()}…` : normalized;
+}
+
+async function focusChatMessageById(messageId: number): Promise<void> {
+  const projectId = activeProject?.id;
+  if (projectId === undefined || activeChatProjectId !== projectId || !Number.isSafeInteger(messageId) || messageId < 1) return;
+
+  let sourceMessage = chatMessageList?.querySelector<HTMLElement>(`.chat-message[data-message-id="${messageId}"]`) ?? null;
+  if (sourceMessage === null) {
+    try {
+      const result = await api<{ messages: ChatMessage[] }>(`/projects/${projectId}/messages?since=${messageId - 1}`);
+      if (activeProject?.id !== projectId || activeChatProjectId !== projectId) return;
+      for (const message of result.messages) appendChatMessage(message);
+      sourceMessage = chatMessageList?.querySelector<HTMLElement>(`.chat-message[data-message-id="${messageId}"]`) ?? null;
+    } catch (error) {
+      report(error instanceof Error ? error.message : 'Could not open the replied-to message.', true);
+      return;
+    }
+  }
+
+  if (sourceMessage === null) {
+    report('The replied-to message is unavailable in this project chat.', true);
+    return;
+  }
+  chatMessageList?.querySelector('.is-chat-source')?.classList.remove('is-chat-source');
+  sourceMessage.classList.add('is-chat-source');
+  sourceMessage.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  selectChatMessage(messageId);
 }
 
 function avatarInitials(name: string): string {
@@ -1811,11 +1864,12 @@ function chatMessageMarker(kind: 'client' | 'visible'): SVGSVGElement {
 
 function setChatReplyParent(message: ChatMessage): void {
   const clientVisible = message.is_client_visible === true;
-  chatReplyParent = { id: message.id, name: message.author_name };
+  chatReplyParent = { id: message.id, name: message.author_name, body: message.body };
   if (chatReplyHint !== null) {
+    const replyContext = `Replying to ${message.author_name}: ${compactChatMessage(message.body)}`;
     chatReplyHint.textContent = clientVisible
-      ? `Replying to ${message.author_name}. Your reply will be visible to the guest.`
-      : `Replying to ${message.author_name}`;
+      ? `${replyContext}. Your reply will be visible to the guest.`
+      : replyContext;
     chatReplyHint.classList.toggle('is-client-visible', clientVisible);
     chatReplyHint.hidden = false;
   }
@@ -1904,6 +1958,8 @@ function createProjectChat(projectId: number): HTMLElement {
       parent_id: messageBody.parent_id ?? null,
       author_id: activeUser?.id ?? 0,
       author_name: activeUser?.name ?? 'You',
+      parent_author_name: chatReplyParent?.name ?? null,
+      parent_body: chatReplyParent?.body ?? null,
       body,
       created_at: new Date().toISOString(),
     };

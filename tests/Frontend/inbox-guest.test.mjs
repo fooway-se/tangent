@@ -102,6 +102,17 @@ test('project chat identifies client authors and client-visible messages with co
   assert.match(css, /\.chat-message-marker\s*\{[^}]*width:\s*12px/);
 });
 
+test('project chat replies quote their parent and can jump back to it', () => {
+  assert.match(app, /parent_author_name/);
+  assert.match(app, /parent_body/);
+  assert.match(app, /chat-reply-context/);
+  assert.match(app, /context\.textContent = `↳ \$\{parentLabel\}`/);
+  assert.match(app, /context\.addEventListener\('click', \(\) => void focusChatMessageById/);
+  assert.match(app, /function focusChatMessageById\(/);
+  assert.match(app, /sourceMessage\.scrollIntoView\(\{ behavior: 'smooth', block: 'center' \}\)/);
+  assert.match(css, /\.chat-reply-context\s*\{[^}]*white-space:\s*nowrap/);
+});
+
 test('sending a chat message brings it into view without auto-scrolling for other messages', () => {
   assert.match(app, /function appendChatMessage\(message: ChatMessage, scrollToBottom = false\)/);
   assert.match(app, /const followingMessage = scrollToBottom \? null/);

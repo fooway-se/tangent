@@ -101,10 +101,16 @@ final class ChatRepository
             )
             SELECT messages.id, messages.project_id, messages.channel_id, messages.parent_id, messages.author_id,
                    users.name AS author_name, users.role AS author_role, messages.body,
+                   parent_users.name AS parent_author_name, parent_message.body AS parent_body,
                    (messages.message_client_visible OR messages.root_client_visible) AS is_client_visible,
                    messages.created_at
             FROM project_messages messages
             INNER JOIN users ON users.workspace_id = :author_workspace_id AND users.id = messages.author_id
+            LEFT JOIN messages parent_message
+              ON parent_message.workspace_id = :parent_workspace_id
+             AND parent_message.channel_id = messages.channel_id AND parent_message.id = messages.parent_id
+            LEFT JOIN users parent_users
+              ON parent_users.workspace_id = :parent_author_workspace_id AND parent_users.id = parent_message.author_id
             WHERE messages.id > :since_id
             ORDER BY messages.id ASC
             LIMIT 100'
@@ -114,6 +120,8 @@ final class ChatRepository
             'channel_type' => 'project',
             'child_workspace_id' => $workspaceId,
             'author_workspace_id' => $workspaceId,
+            'parent_workspace_id' => $workspaceId,
+            'parent_author_workspace_id' => $workspaceId,
             'since_id' => $sinceId,
             ...$projectParameters,
         ]);
@@ -147,10 +155,16 @@ final class ChatRepository
             ), selected_messages AS (' . $selectedMessages . ')
             SELECT messages.id, messages.channel_id, messages.parent_id, messages.author_id,
                    users.name AS author_name, users.role AS author_role, messages.body,
+                   parent_users.name AS parent_author_name, parent_message.body AS parent_body,
                    (messages.message_client_visible OR messages.root_client_visible) AS is_client_visible,
                    messages.created_at
             FROM selected_messages messages
             INNER JOIN users ON users.workspace_id = :author_workspace_id AND users.id = messages.author_id
+            LEFT JOIN messages parent_message
+              ON parent_message.workspace_id = :parent_workspace_id
+             AND parent_message.channel_id = messages.channel_id AND parent_message.id = messages.parent_id
+            LEFT JOIN users parent_users
+              ON parent_users.workspace_id = :parent_author_workspace_id AND parent_users.id = parent_message.author_id
             ORDER BY messages.id ASC'
         );
         $parameters = [
@@ -159,6 +173,8 @@ final class ChatRepository
             'child_workspace_id' => $workspaceId,
             'child_channel_id' => $channelId,
             'author_workspace_id' => $workspaceId,
+            'parent_workspace_id' => $workspaceId,
+            'parent_author_workspace_id' => $workspaceId,
         ];
         if ($sinceId !== null) $parameters['since_id'] = $sinceId;
         $statement->execute($parameters);
@@ -329,9 +345,15 @@ final class ChatRepository
     {
         $statement = $this->pdo->prepare(
             'SELECT m.id, m.channel_id, m.parent_id, m.author_id, u.name AS author_name, u.role AS author_role,
-                    m.body, m.is_client_visible, m.created_at
+                    m.body, m.is_client_visible, m.created_at,
+                    parent_user.name AS parent_author_name, parent.body AS parent_body
              FROM messages m
              INNER JOIN users u ON u.workspace_id = m.workspace_id AND u.id = m.author_id
+             LEFT JOIN messages parent
+               ON parent.workspace_id = :parent_workspace_id
+              AND parent.channel_id = m.channel_id AND parent.id = m.parent_id
+             LEFT JOIN users parent_user
+               ON parent_user.workspace_id = :parent_author_workspace_id AND parent_user.id = parent.author_id
              WHERE m.workspace_id = :workspace_id AND m.channel_id = :channel_id AND m.id = :id
              LIMIT 1'
         );
@@ -339,6 +361,8 @@ final class ChatRepository
             'workspace_id' => $workspaceId,
             'channel_id' => $channelId,
             'id' => $messageId,
+            'parent_workspace_id' => $workspaceId,
+            'parent_author_workspace_id' => $workspaceId,
         ]);
         $message = $statement->fetch(PDO::FETCH_ASSOC);
         return $message === false ? null : self::normalize($message);
@@ -352,6 +376,8 @@ final class ChatRepository
         $message['author_id'] = (int) $message['author_id'];
         $message['is_client_visible'] = (bool) ($message['is_client_visible'] ?? false);
         $message['parent_id'] = $message['parent_id'] === null ? null : (int) $message['parent_id'];
+        $message['parent_author_name'] = $message['parent_author_name'] ?? null;
+        $message['parent_body'] = $message['parent_body'] ?? null;
         return $message;
     }
 
