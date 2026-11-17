@@ -561,6 +561,12 @@ function moveChatMessageSelection(direction: -1 | 1): void {
   if (next !== undefined) selectChatMessage(Number(next.dataset.messageId));
 }
 
+function moveChatMessageSelectionToBoundary(edge: 'first' | 'last'): void {
+  const messages = chatMessageElements();
+  const target = messages[edge === 'first' ? 0 : messages.length - 1];
+  if (target !== undefined) selectChatMessage(Number(target.dataset.messageId));
+}
+
 function focusProjectChat(): void {
   const messages = chatMessageElements();
   const latest = messages.at(-1);
@@ -682,6 +688,14 @@ function moveFocusWithin<T extends HTMLElement>(buttons: T[], rowSelector: strin
   next.focus();
 }
 
+function moveFocusToBoundary<T extends HTMLElement>(buttons: T[], rowSelector: string, edge: 'first' | 'last'): void {
+  if (buttons.length === 0) return;
+  for (const button of buttons) button.closest<HTMLElement>(rowSelector)?.classList.remove('is-keyboard-selected');
+  const target = buttons[edge === 'first' ? 0 : buttons.length - 1];
+  target.closest<HTMLElement>(rowSelector)?.classList.add('is-keyboard-selected');
+  target.focus();
+}
+
 function moveIssueSelection(direction: -1 | 1): void {
   const buttons = visibleIssueTitleButtons();
   if (!issueDetailView.hidden && selectedIssue !== null) {
@@ -696,11 +710,30 @@ function moveIssueSelection(direction: -1 | 1): void {
   moveFocusWithin(buttons, '.issue-card', direction);
 }
 
+function moveIssueSelectionToBoundary(edge: 'first' | 'last'): void {
+  const buttons = visibleIssueTitleButtons();
+  const target = buttons[edge === 'first' ? 0 : buttons.length - 1];
+  if (target === undefined) return;
+  if (!issueDetailView.hidden && selectedIssue !== null) {
+    target.click();
+    return;
+  }
+  moveFocusToBoundary(buttons, '.issue-card', edge);
+}
+
 function moveProjectSelection(direction: -1 | 1): void {
   moveFocusWithin(
     Array.from(projectList.querySelectorAll<HTMLButtonElement>('.project-card button')),
     '.project-card',
     direction,
+  );
+}
+
+function moveProjectSelectionToBoundary(edge: 'first' | 'last'): void {
+  moveFocusToBoundary(
+    Array.from(projectList.querySelectorAll<HTMLButtonElement>('.project-card button')),
+    '.project-card',
+    edge,
   );
 }
 
@@ -1018,9 +1051,15 @@ function executeShortcut(action: ShortcutAction): void {
     case 'workspace-admin': openWorkspaceAdmin(); break;
     case 'next-project': moveProjectSelection(1); break;
     case 'previous-project': moveProjectSelection(-1); break;
+    case 'first-project': moveProjectSelectionToBoundary('first'); break;
+    case 'last-project': moveProjectSelectionToBoundary('last'); break;
     case 'open-selected-project': selectedProjectButton()?.click(); break;
+    case 'first-chat-message': moveChatMessageSelectionToBoundary('first'); break;
+    case 'last-chat-message': moveChatMessageSelectionToBoundary('last'); break;
     case 'next': moveIssueSelection(1); break;
     case 'previous': moveIssueSelection(-1); break;
+    case 'first-issue': moveIssueSelectionToBoundary('first'); break;
+    case 'last-issue': moveIssueSelectionToBoundary('last'); break;
     case 'open-selected': selectedIssueButton()?.click(); break;
     case 'create-issue': beginCreateIssue(); break;
     case 'edit-selected': editSelectedIssue(); break;

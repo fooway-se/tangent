@@ -481,6 +481,12 @@ function moveChatMessageSelection(direction) {
     if (next !== undefined)
         selectChatMessage(Number(next.dataset.messageId));
 }
+function moveChatMessageSelectionToBoundary(edge) {
+    const messages = chatMessageElements();
+    const target = messages[edge === 'first' ? 0 : messages.length - 1];
+    if (target !== undefined)
+        selectChatMessage(Number(target.dataset.messageId));
+}
 function focusProjectChat() {
     const messages = chatMessageElements();
     const latest = messages.at(-1);
@@ -601,6 +607,15 @@ function moveFocusWithin(buttons, rowSelector, direction) {
     next.closest(rowSelector)?.classList.add('is-keyboard-selected');
     next.focus();
 }
+function moveFocusToBoundary(buttons, rowSelector, edge) {
+    if (buttons.length === 0)
+        return;
+    for (const button of buttons)
+        button.closest(rowSelector)?.classList.remove('is-keyboard-selected');
+    const target = buttons[edge === 'first' ? 0 : buttons.length - 1];
+    target.closest(rowSelector)?.classList.add('is-keyboard-selected');
+    target.focus();
+}
 function moveIssueSelection(direction) {
     const buttons = visibleIssueTitleButtons();
     if (!issueDetailView.hidden && selectedIssue !== null) {
@@ -615,8 +630,22 @@ function moveIssueSelection(direction) {
     }
     moveFocusWithin(buttons, '.issue-card', direction);
 }
+function moveIssueSelectionToBoundary(edge) {
+    const buttons = visibleIssueTitleButtons();
+    const target = buttons[edge === 'first' ? 0 : buttons.length - 1];
+    if (target === undefined)
+        return;
+    if (!issueDetailView.hidden && selectedIssue !== null) {
+        target.click();
+        return;
+    }
+    moveFocusToBoundary(buttons, '.issue-card', edge);
+}
 function moveProjectSelection(direction) {
     moveFocusWithin(Array.from(projectList.querySelectorAll('.project-card button')), '.project-card', direction);
+}
+function moveProjectSelectionToBoundary(edge) {
+    moveFocusToBoundary(Array.from(projectList.querySelectorAll('.project-card button')), '.project-card', edge);
 }
 function moveSelection(direction) {
     if (!projectsView.hidden) {
@@ -956,14 +985,32 @@ function executeShortcut(action) {
         case 'previous-project':
             moveProjectSelection(-1);
             break;
+        case 'first-project':
+            moveProjectSelectionToBoundary('first');
+            break;
+        case 'last-project':
+            moveProjectSelectionToBoundary('last');
+            break;
         case 'open-selected-project':
             selectedProjectButton()?.click();
+            break;
+        case 'first-chat-message':
+            moveChatMessageSelectionToBoundary('first');
+            break;
+        case 'last-chat-message':
+            moveChatMessageSelectionToBoundary('last');
             break;
         case 'next':
             moveIssueSelection(1);
             break;
         case 'previous':
             moveIssueSelection(-1);
+            break;
+        case 'first-issue':
+            moveIssueSelectionToBoundary('first');
+            break;
+        case 'last-issue':
+            moveIssueSelectionToBoundary('last');
             break;
         case 'open-selected':
             selectedIssueButton()?.click();

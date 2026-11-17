@@ -10,7 +10,11 @@ export type ShortcutAction =
   | 'workspace-admin'
   | 'next-project'
   | 'previous-project'
+  | 'first-project'
+  | 'last-project'
   | 'open-selected-project'
+  | 'first-chat-message'
+  | 'last-chat-message'
   | 'next-chat-message'
   | 'previous-chat-message'
   | 'focus-chat-composer'
@@ -18,6 +22,8 @@ export type ShortcutAction =
   | 'issue-from-selected-chat-message'
   | 'next'
   | 'previous'
+  | 'first-issue'
+  | 'last-issue'
   | 'open-selected'
   | 'create-issue'
   | 'edit-selected'
@@ -82,6 +88,8 @@ export function resolveShortcut(event: ShortcutEvent, context: ShortcutContext):
   if (key === 'g' && context.hasWorkspace) return 'await-projects-key';
 
   if (context.chatMessagesFocused && context.hasSelectedChatMessage) {
+    if (key === 'home') return 'first-chat-message';
+    if (key === 'end') return 'last-chat-message';
     if (key === 'j' || key === 'arrowdown') return 'next-chat-message';
     if (key === 'k' || key === 'arrowup') return 'previous-chat-message';
     if (event.key === 'Enter') return 'focus-chat-composer';
@@ -90,11 +98,15 @@ export function resolveShortcut(event: ShortcutEvent, context: ShortcutContext):
   }
 
   if (context.projectListVisible) {
+    if (key === 'home') return 'first-project';
+    if (key === 'end') return 'last-project';
     if (key === 'j' || key === 'arrowdown') return 'next-project';
     if (key === 'k' || key === 'arrowup') return 'previous-project';
     if (event.key === 'Enter' && context.hasSelectedProject) return 'open-selected-project';
   }
   if (context.issueListVisible || context.issueDetailVisible) {
+    if (!context.chatMessagesFocused && key === 'home') return 'first-issue';
+    if (!context.chatMessagesFocused && key === 'end') return 'last-issue';
     if (key === 'j' || key === 'arrowdown') return 'next';
     if (key === 'k' || key === 'arrowup') return 'previous';
     if (event.key === 'Enter' && context.issueListVisible && context.hasSelectedIssue) return 'open-selected';
