@@ -35,6 +35,12 @@ final class GuestViewTest extends ApiTestCase
         $internal = $this->createIssue($admin, $projectId, 'SECRET INTERNAL ISSUE TITLE');
         $this->updateIssue($admin, $internal, ['status' => 'done', 'milestone_id' => $internalMilestone]);
 
+        self::assertSame(404, $this->cookieRequest(
+            'GET',
+            "/api/v1/issues/{$internal}/history",
+            $guest['cookie'],
+        )->status);
+
         $response = $this->cookieRequest('GET', "/api/v1/projects/{$projectId}/client-view", $guest['cookie']);
         self::assertSame(200, $response->status, json_encode($response->body));
         self::assertSame('Client project', $response->body['project']['name']);

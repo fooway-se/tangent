@@ -4,6 +4,7 @@ import test from 'node:test';
 import { resolveShortcut, shouldSendChatOnEnter } from '../../public/assets/shortcuts.js';
 
 const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
+const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
 const baseContext = {
   targetIsEditable: false,
   goPrefixPending: false,
@@ -91,6 +92,13 @@ test('the g then p sequence returns to the project list and Escape dismisses tra
   assert.equal(resolve('g', { hasWorkspace: false }), null);
   assert.equal(resolve('Escape', { canDismiss: true }), 'dismiss');
   assert.equal(resolve('Escape'), null);
+});
+
+test('Escape collapses focused issue status history before leaving issue detail', () => {
+  assert.equal(resolve('Escape', { statusHistoryFocused: true, canDismiss: true }), 'collapse-status-history');
+  assert.equal(resolve('Escape', { statusHistoryFocused: false, canDismiss: true }), 'dismiss');
+  assert.match(app, /statusHistoryFocused:\s*issueStatusHistory\.open\s*&&\s*issueStatusHistory\.contains\(document\.activeElement\)/);
+  assert.match(app, /case 'collapse-status-history':\s*issueStatusHistory\.open = false;/);
 });
 
 test('g sequences switch between available project features', () => {

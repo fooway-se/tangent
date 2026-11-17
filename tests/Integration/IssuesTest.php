@@ -56,6 +56,47 @@ final class IssuesTest extends ApiTestCase
         self::assertSame('doing', $updated->body['issue']['status']);
     }
 
+    public function testIssueStatusHistoryShowsRecentTransitionsAndActor(): void
+    {
+        $admin = $this->login($this->adminEmail);
+        $projectId = $this->createProject($admin, 'Issue status history');
+        $created = $this->apiCookieRequest(
+            'POST',
+            "/api/v1/projects/{$projectId}/issues",
+            $admin['cookie'],
+            ['title' => 'Track status changes'],
+            $admin['csrf'],
+        );
+        self::assertSame(201, $created->status, json_encode($created->body));
+        $issueId = (int) $created->body['issue']['id'];
+
+        foreach (['todo', 'doing', 'done'] as $status) {
+            $updated = $this->apiCookieRequest(
+                'PATCH',
+                "/api/v1/issues/{$issueId}",
+                $admin['cookie'],
+                ['status' => $status],
+                $admin['csrf'],
+            );
+            self::assertSame(200, $updated->status, json_encode($updated->body));
+        }
+        $this->apiCookieRequest(
+            'PATCH',
+            "/api/v1/issues/{$issueId}",
+            $admin['cookie'],
+            ['title' => 'A title edit is not a status transition'],
+            $admin['csrf'],
+        );
+
+        $history = $this->apiCookieRequest('GET', "/api/v1/issues/{$issueId}/history", $admin['cookie']);
+        self::assertSame(200, $history->status, json_encode($history->body));
+        self::assertCount(3, $history->body['transitions']);
+        self::assertSame(['done', 'doing', 'todo'], array_column($history->body['transitions'], 'to_status'));
+        self::assertSame(['doing', 'todo', 'backlog'], array_column($history->body['transitions'], 'from_status'));
+        self::assertSame(['Admin', 'Admin', 'Admin'], array_column($history->body['transitions'], 'actor_name'));
+        self::assertNotEmpty($history->body['transitions'][0]['created_at']);
+    }
+
     public function testIssueListsSupportConditionalPollingForActiveAndDeletedIssues(): void
     {
         $admin = $this->login($this->adminEmail);
@@ -208,6 +249,11 @@ final class IssuesTest extends ApiTestCase
             $developer['csrf'],
         );
         self::assertSame(404, $updated->status);
+        self::assertSame(404, $this->apiCookieRequest(
+            'GET',
+            "/api/v1/issues/{$existingIssue->body['issue']['id']}/history",
+            $developer['cookie'],
+        )->status);
     }
 
     public function testInvalidIssueFieldsAndStatusesAreRejected(): void

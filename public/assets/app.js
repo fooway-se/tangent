@@ -151,6 +151,10 @@ const issueDetailAssigneeInput = document.querySelector('#issue-detail-assignee-
 const issueDetailMilestoneInput = document.querySelector('#issue-detail-milestone-input');
 const issueDetailSharedInput = document.querySelector('#issue-detail-shared-input');
 const issueDetailApprovalInput = document.querySelector('#issue-detail-approval-input');
+const issueStatusHistory = document.querySelector('#issue-status-history');
+const issueStatusHistoryCount = document.querySelector('#issue-status-history-count');
+const issueStatusHistoryEmpty = document.querySelector('#issue-status-history-empty');
+const issueStatusHistoryList = document.querySelector('#issue-status-history-list');
 const issueDescriptionDetails = document.querySelector('#issue-description-details');
 const issueProgress = document.querySelector('#issue-progress');
 const issueProgressLabel = document.querySelector('#issue-progress-label');
@@ -231,6 +235,7 @@ let deletedIssuesEtag = null;
 let issuePollHasDeferredChanges = false;
 let issuePollInFlightProjectId = null;
 let issuePollRequestVersion = 0;
+let issueStatusHistoryRequestVersion = 0;
 const issueRowRenderSignatures = new WeakMap();
 const deletedIssueRowRenderSignatures = new WeakMap();
 let chatPollTimer = null;
@@ -792,11 +797,15 @@ async function pollProjectIssues(projectId) {
             if (changed) {
                 if (selectedIssue !== null) {
                     const selectedIssueId = selectedIssue.id;
+                    const previousSelectedStatus = selectedIssue.status;
                     const refreshedSelectedIssue = projectIssues.find((issue) => issue.id === selectedIssueId);
                     if (refreshedSelectedIssue !== undefined) {
                         selectedIssue = refreshedSelectedIssue;
                         if (activeDiff.added.includes(selectedIssueId) || activeDiff.changed.includes(selectedIssueId)) {
                             renderIssueDetail();
+                            if (previousSelectedStatus !== refreshedSelectedIssue.status) {
+                                void loadIssueStatusHistory(selectedIssueId);
+                            }
                         }
                     }
                     else if (!issueDetailView.hidden) {
@@ -1030,6 +1039,7 @@ function shortcutContext(target) {
             && document.activeElement.matches('.chat-message'),
         hasSelectedChatMessage: selectedChatMessageId !== null && selectedChatMessageId > 0
             && chatMessagesById.has(selectedChatMessageId),
+        statusHistoryFocused: issueStatusHistory.open && issueStatusHistory.contains(document.activeElement),
         textInputFocused: shouldBlurOnEscape(target),
         modalOpen: commandPalette.open || shortcutHelp.open || issueStatusPicker.open || issueDeleteConfirmation.open || memberRemovalConfirmation.open || workspacePicker.open,
         canDismiss: commandPalette.open || shortcutHelp.open || (!workspacePanel.hidden && (pendingWorkspaceId !== null
@@ -1697,6 +1707,9 @@ function executeShortcut(action) {
             break;
         case 'blur-text-input':
             blurTextInput();
+            break;
+        case 'collapse-status-history':
+            issueStatusHistory.open = false;
             break;
         case 'dismiss':
             dismissCurrentView();
@@ -3149,6 +3162,55 @@ function renderIssueDetail() {
         delete issueSourceLink.dataset.messageId;
     }
 }
+async function loadIssueStatusHistory(issueId) {
+    const requestVersion = ++issueStatusHistoryRequestVersion;
+    issueStatusHistory.hidden = false;
+    issueStatusHistoryCount.textContent = '…';
+    issueStatusHistoryList.replaceChildren();
+    issueStatusHistoryEmpty.hidden = false;
+    issueStatusHistoryEmpty.textContent = 'Loading status history…';
+    try {
+        const result = await api(`/issues/${issueId}/history`);
+        if (requestVersion !== issueStatusHistoryRequestVersion || selectedIssue?.id !== issueId)
+            return;
+        issueStatusHistoryCount.textContent = String(result.transitions.length);
+        issueStatusHistoryEmpty.hidden = result.transitions.length > 0;
+        issueStatusHistoryEmpty.textContent = 'No status changes yet.';
+        issueStatusHistoryList.replaceChildren(...result.transitions.map(createIssueStatusHistoryRow));
+    }
+    catch (error) {
+        if (requestVersion !== issueStatusHistoryRequestVersion || selectedIssue?.id !== issueId)
+            return;
+        if (error instanceof ApiFailure && error.status === 401) {
+            showSignedOut();
+            return;
+        }
+        issueStatusHistoryCount.textContent = '—';
+        issueStatusHistoryEmpty.hidden = false;
+        issueStatusHistoryEmpty.textContent = 'Could not load status history.';
+        report(error instanceof Error ? error.message : 'Could not load status history.', true);
+    }
+}
+function createIssueStatusHistoryRow(transition) {
+    const item = document.createElement('li');
+    item.className = 'issue-status-history-item';
+    const change = document.createElement('span');
+    change.className = 'issue-status-history-change';
+    change.textContent = transition.from_status === null
+        ? `Set to ${issueStatusLabel(transition.to_status)}`
+        : `${issueStatusLabel(transition.from_status)} → ${issueStatusLabel(transition.to_status)}`;
+    const actor = document.createElement('span');
+    actor.className = 'issue-status-history-actor';
+    actor.textContent = transition.actor_name;
+    const time = document.createElement('time');
+    time.dateTime = transition.created_at.replace(' ', 'T');
+    const parsedDate = new Date(transition.created_at.replace(' ', 'T'));
+    time.textContent = Number.isNaN(parsedDate.getTime())
+        ? transition.created_at
+        : new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(parsedDate);
+    item.append(change, actor, time);
+    return item;
+}
 function focusIssueTitleButton(issueId) {
     const button = issueList.querySelector(`.issue-card[data-issue-id="${issueId}"] .issue-title-button`);
     if (button === null)
@@ -3171,6 +3233,7 @@ function openIssue(issue) {
     issueDetailDisplay.hidden = false;
     issueDetailEditForm.hidden = true;
     renderIssueDetail();
+    void loadIssueStatusHistory(issue.id);
     switchProjectTab('issues');
     issueBackButton.focus();
 }
@@ -3369,6 +3432,8 @@ async function updateIssueStatus(issue, nextStatus) {
             projectIssues = projectIssues.map((candidate) => candidate.id === issue.id ? result.issue : candidate);
             renderIssueDetail();
             renderProjectIssueBoard();
+            if (previousStatus !== result.issue.status)
+                void loadIssueStatusHistory(issue.id);
         }
         report('Issue status updated.');
         if (issueDetailView.hidden)

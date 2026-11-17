@@ -42,6 +42,17 @@ final class IssuesService
         return $this->issues->listDeletedForProject($user->workspaceId, $projectId);
     }
 
+    /** @return list<array{id: int, from_status: ?string, to_status: string, actor_name: string, created_at: string}> */
+    public function statusHistory(AuthenticatedUser $user, int $issueId): array
+    {
+        $issue = $this->issues->find($user->workspaceId, $issueId);
+        if ($issue === null) {
+            throw new ApiException(404, 'not_found', 'The issue was not found.');
+        }
+        $this->requireProjectAccess($user, $issue['project_id'], 'issues.read');
+        return $this->issues->statusHistory($user->workspaceId, $issueId);
+    }
+
     /** @param array<string, mixed> $input @return array<string, mixed> */
     public function create(AuthenticatedUser $user, int $projectId, array $input): array
     {

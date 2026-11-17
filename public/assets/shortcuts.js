@@ -9,6 +9,8 @@ export function resolveShortcut(event, context) {
     if (event.key === 'Escape') {
         if (context.modalOpen)
             return 'dismiss';
+        if (context.statusHistoryFocused)
+            return 'collapse-status-history';
         if (context.textInputFocused)
             return 'blur-text-input';
         if (context.canDismiss)

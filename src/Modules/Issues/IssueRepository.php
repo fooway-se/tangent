@@ -245,6 +245,26 @@ final class IssueRepository
         ]);
     }
 
+    /** @return list<array{id: int, from_status: ?string, to_status: string, actor_name: string, created_at: string}> */
+    public function statusHistory(int $workspaceId, int $issueId): array
+    {
+        $statement = $this->pdo->prepare(
+            "SELECT h.id, h.from_status, h.to_status, COALESCE(u.name, 'System') AS actor_name, h.created_at
+             FROM issue_status_history h
+             LEFT JOIN users u ON u.workspace_id = h.workspace_id AND u.id = h.actor_id
+             WHERE h.workspace_id = :workspace_id AND h.issue_id = :issue_id
+             ORDER BY h.id DESC LIMIT 20"
+        );
+        $statement->execute(['workspace_id' => $workspaceId, 'issue_id' => $issueId]);
+        return array_map(static fn (array $row): array => [
+            'id' => (int) $row['id'],
+            'from_status' => $row['from_status'] === null ? null : (string) $row['from_status'],
+            'to_status' => (string) $row['to_status'],
+            'actor_name' => (string) $row['actor_name'],
+            'created_at' => (string) $row['created_at'],
+        ], $statement->fetchAll(PDO::FETCH_ASSOC));
+    }
+
     public function unlinkMilestone(int $workspaceId, int $projectId, int $milestoneId): void
     {
         $select = $this->pdo->prepare(

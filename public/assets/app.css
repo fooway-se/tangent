@@ -368,6 +368,19 @@ select { padding-right: 28px; background: var(--screen-inset) url("data:image/sv
 .issue-detail-description.is-empty { color: var(--screen-muted); font-style: italic; }
 .issue-source-link { display: inline-block; border: 1px solid var(--screen-border); border-bottom-width: 2px; border-radius: 5px; padding: 7px 10px; color: var(--accent); background: linear-gradient(180deg, var(--screen-control-top), var(--screen-panel)); text-decoration: none; }
 .issue-source-link:hover { color: var(--screen-ink); }
+.issue-status-history { margin-top: 16px; border-top: 1px solid var(--screen-border); padding-top: 10px; }
+.issue-status-history > summary { display: flex; align-items: center; justify-content: space-between; gap: 10px; border: 1px solid transparent; border-radius: 5px; padding: 6px 8px; color: var(--screen-muted); cursor: pointer; font: 700 11px var(--font-mono); }
+.issue-status-history > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; color: var(--screen-ink); background: var(--screen-control-top); box-shadow: 0 0 0 4px var(--focus-ring); }
+.issue-status-history > summary::marker { color: var(--accent); content: '›'; }
+.issue-status-history[open] > summary::marker { content: '⌄'; }
+.issue-status-history-count { border: 1px solid var(--screen-border); border-radius: 4px; padding: 2px 6px; color: var(--screen-ink); font: 400 10px var(--font-mono); }
+.issue-status-history-empty { margin: 10px 0 0; color: var(--screen-muted); font-size: 11px; }
+.issue-status-history-list { display: grid; gap: 9px; margin: 12px 0 0; padding: 0; list-style: none; }
+.issue-status-history-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 2px 12px; border-left: 2px solid var(--screen-border); padding-left: 9px; }
+.issue-status-history-change { color: var(--screen-ink); font: 600 11px var(--font-mono); }
+.issue-status-history-actor, .issue-status-history-item time { color: var(--screen-muted); font-size: 10px; }
+.issue-status-history-actor { grid-column: 1; }
+.issue-status-history-item time { grid-column: 2; grid-row: 1 / span 2; text-align: right; }
 .issue-detail-edit-form { max-width: 780px; margin-top: 8px; }
 
 /* Chat screen */

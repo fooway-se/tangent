@@ -59,6 +59,16 @@ final class IssuesRoutes
             );
         });
 
+        $router->add('GET', '/api/v1/issues/{id}/history', function (
+            Request $request,
+            array $params,
+            AuthenticatedUser $user,
+        ): Response {
+            return Response::json(200, [
+                'transitions' => $this->service->statusHistory($user, self::positiveId($params['id'])),
+            ]);
+        });
+
         $router->add('POST', '/api/v1/projects/{id}/issues', function (
             Request $request,
             array $params,
