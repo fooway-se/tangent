@@ -77,6 +77,7 @@ interface WorkspaceInvite {
 interface InvitePreview {
   name: string;
   email: string;
+  workspace_name: string;
   role: 'developer' | 'guest';
   project_ids: number[];
   password_required: boolean;
@@ -4337,7 +4338,7 @@ async function openCredentialFlow(credential: CredentialFragment): Promise<void>
       body: JSON.stringify({ token: credential.token }),
     });
     invitePreview = result.invite;
-    credentialFlowDescription.textContent = `You’re invited as ${result.invite.role}. ${result.invite.email} will be connected to this workspace.`;
+    credentialFlowDescription.textContent = `You’re invited to join “${result.invite.workspace_name}” as a ${result.invite.role}.`;
     credentialPasswordFields.hidden = !result.invite.password_required;
     const password = credentialForm.elements.namedItem('password');
     const confirmation = credentialForm.elements.namedItem('confirmation');

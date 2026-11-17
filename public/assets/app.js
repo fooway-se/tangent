@@ -4217,7 +4217,7 @@ async function openCredentialFlow(credential) {
             body: JSON.stringify({ token: credential.token }),
         });
         invitePreview = result.invite;
-        credentialFlowDescription.textContent = `You’re invited as ${result.invite.role}. ${result.invite.email} will be connected to this workspace.`;
+        credentialFlowDescription.textContent = `You’re invited to join “${result.invite.workspace_name}” as a ${result.invite.role}.`;
         credentialPasswordFields.hidden = !result.invite.password_required;
         const password = credentialForm.elements.namedItem('password');
         const confirmation = credentialForm.elements.namedItem('confirmation');

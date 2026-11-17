@@ -159,6 +159,7 @@ final class CredentialService
             'invite' => [
                 'name' => (string) $invite['name'],
                 'email' => (string) $invite['email'],
+                'workspace_name' => $this->workspaces->nameById($workspaceId),
                 'role' => (string) $invite['role'],
                 'project_ids' => $this->credentialTokens->projectIds($workspaceId, (int) $invite['id']),
                 'password_required' => $this->users->findAccountByEmail((string) $invite['email']) === null,

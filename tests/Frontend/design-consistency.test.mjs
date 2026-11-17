@@ -45,6 +45,10 @@ test('saved login autofill fields keep the dark screen colours', () => {
   assert.match(css, /-webkit-box-shadow:[^;]*var\(--screen-field\) inset/);
 });
 
+test('invite description is separated from the password form', () => {
+  assert.match(css, /\.auth-flow > \.panel-description \{[^}]*margin-bottom:\s*14px;/);
+});
+
 test('the palette is a beige case holding dark screens with an amber accent', () => {
   const root = rule(tokens, ':root');
   for (const token of ['--case-top', '--case-mid', '--case-bottom', '--key-top', '--cap-top', '--screen', '--screen-panel', '--accent']) {

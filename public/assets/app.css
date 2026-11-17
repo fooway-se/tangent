@@ -65,6 +65,7 @@ kbd {
 .auth-flow { margin-top: 16px; border-top: 1px solid var(--screen-border); padding-top: 14px; }
 .auth-flow h2 { margin: 0; }
 .auth-flow .panel-description { margin: 0; }
+.auth-flow > .panel-description { margin-bottom: 14px; }
 .auth-flow .form-error { margin: 0; color: var(--danger); font-size: 12px; }
 .auth-flow .button-primary { margin-top: 2px; }
 .admin-project-selection { display: grid; gap: 8px; border-top: 1px solid var(--screen-border); padding-top: 10px; color: var(--screen-muted); font-size: 12px; }

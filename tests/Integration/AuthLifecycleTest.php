@@ -28,6 +28,7 @@ final class AuthLifecycleTest extends ApiTestCase
         self::assertSame(200, $inspection->status, json_encode($inspection->body));
         self::assertTrue($inspection->body['invite']['password_required']);
         self::assertSame('client@example.test', $inspection->body['invite']['email']);
+        self::assertSame('Test workspace', $inspection->body['invite']['workspace_name']);
 
         $stored = $this->pdo->prepare('SELECT token_hash, token_type FROM credential_tokens WHERE id = :id');
         $stored->execute(['id' => $created->body['invite']['id']]);
