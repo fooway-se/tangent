@@ -194,13 +194,14 @@
                       <span>Filter</span>
                       <input id="issue-filter" type="search" placeholder="Title, ID, description, type, assignee" aria-label="Filter issues by title, type, or assignee">
                     </label>
-                    <span class="issue-grouping-label">Group: Status</span>
+                    <span id="issue-grouping-label" class="issue-grouping-label">Group: Status</span>
                     <label class="visually-hidden" for="issue-order">Issue order</label>
                     <select id="issue-order" class="issue-order-select" aria-label="Order issues">
                       <option value="updated">Order: Updated</option>
                       <option value="newest">Order: Newest</option>
                       <option value="oldest">Order: Oldest</option>
                       <option value="title">Order: Title</option>
+                      <option value="next_up">Order: Next up</option>
                     </select>
                   </div>
                   <span id="issue-count-summary" class="issue-count-summary"></span>

@@ -129,6 +129,62 @@ final class IssuesTest extends ApiTestCase
         self::assertSame(422, $invalidStatus->status);
     }
 
+    public function testIssueOrderCanBeMovedWithinItsMilestoneAndIsReturnedByTheApi(): void
+    {
+        $admin = $this->login($this->adminEmail);
+        $projectId = $this->createProject($admin, 'Ordered issues');
+        $milestone = $this->apiCookieRequest(
+            'POST',
+            "/api/v1/projects/{$projectId}/milestones",
+            $admin['cookie'],
+            ['name' => 'First delivery', 'due_date' => '2027-01-15'],
+            $admin['csrf'],
+        );
+        self::assertSame(201, $milestone->status, json_encode($milestone->body));
+        $milestoneId = (int) $milestone->body['milestone']['id'];
+
+        $issueIds = [];
+        foreach (['Prepare release notes', 'Finish sign-in', 'Update screenshots'] as $title) {
+            $created = $this->apiCookieRequest(
+                'POST',
+                "/api/v1/projects/{$projectId}/issues",
+                $admin['cookie'],
+                ['title' => $title],
+                $admin['csrf'],
+            );
+            self::assertSame(201, $created->status, json_encode($created->body));
+            $issueIds[] = (int) $created->body['issue']['id'];
+            $updated = $this->apiCookieRequest(
+                'PATCH',
+                "/api/v1/issues/{$created->body['issue']['id']}",
+                $admin['cookie'],
+                ['milestone_id' => $milestoneId],
+                $admin['csrf'],
+            );
+            self::assertSame(200, $updated->status, json_encode($updated->body));
+        }
+
+        $listed = $this->apiCookieRequest('GET', "/api/v1/projects/{$projectId}/issues", $admin['cookie']);
+        self::assertSame(200, $listed->status);
+        $initialOrder = array_column($listed->body['issues'], 'sort_order', 'id');
+        self::assertLessThan($initialOrder[$issueIds[1]], $initialOrder[$issueIds[0]]);
+        self::assertLessThan($initialOrder[$issueIds[2]], $initialOrder[$issueIds[1]]);
+
+        $moveUp = $this->apiCookieRequest(
+            'POST', "/api/v1/issues/{$issueIds[1]}/move", $admin['cookie'], ['direction' => 'up'], $admin['csrf'],
+        );
+        self::assertSame(200, $moveUp->status, json_encode($moveUp->body));
+        $afterMove = $this->apiCookieRequest('GET', "/api/v1/projects/{$projectId}/issues", $admin['cookie']);
+        $movedOrder = array_column($afterMove->body['issues'], 'sort_order', 'id');
+        self::assertLessThan($movedOrder[$issueIds[0]], $movedOrder[$issueIds[1]]);
+        self::assertLessThan($movedOrder[$issueIds[2]], $movedOrder[$issueIds[0]]);
+
+        $invalidDirection = $this->apiCookieRequest(
+            'POST', "/api/v1/issues/{$issueIds[1]}/move", $admin['cookie'], ['direction' => 'sideways'], $admin['csrf'],
+        );
+        self::assertSame(422, $invalidDirection->status);
+    }
+
     /** @param array{cookie: string, csrf: string} $admin */
     private function createProject(array $admin, string $name): int
     {

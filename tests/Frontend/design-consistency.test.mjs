@@ -38,6 +38,13 @@ test('app.css takes colours from tokens instead of hard-coding them', () => {
   assert.deepEqual(css.match(/#[0-9a-f]{3,6}\b/gi) ?? [], [], 'no hex colours in app.css');
 });
 
+test('saved login autofill fields keep the dark screen colours', () => {
+  assert.match(css, /\.login-panel input:autofill/);
+  assert.match(css, /\.login-panel input:-webkit-autofill/);
+  assert.match(css, /-webkit-text-fill-color:\s*var\(--screen-ink\)/);
+  assert.match(css, /-webkit-box-shadow:[^;]*var\(--screen-field\) inset/);
+});
+
 test('the palette is a beige case holding dark screens with an amber accent', () => {
   const root = rule(tokens, ':root');
   for (const token of ['--case-top', '--case-mid', '--case-bottom', '--key-top', '--cap-top', '--screen', '--screen-panel', '--accent']) {

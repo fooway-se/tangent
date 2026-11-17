@@ -17,7 +17,7 @@ final class IssueRepository
     {
         $statement = $this->pdo->prepare(
             "SELECT id, workspace_id, project_id, title, description, issue_type AS type, assignee_id, status, created_by,
-                    source_channel_id, source_message_id, is_shared, milestone_id, approval_requested_at, approved_by, approved_at,
+                    source_channel_id, source_message_id, is_shared, milestone_id, sort_order, approval_requested_at, approved_by, approved_at,
                     created_at, updated_at, deleted_at
              FROM issues
              WHERE workspace_id = :workspace_id AND project_id = :project_id AND deleted_at IS NULL
@@ -44,7 +44,7 @@ final class IssueRepository
 
         $statement = $this->pdo->prepare(
             "SELECT id, workspace_id, project_id, title, description, issue_type AS type, assignee_id, status, created_by,
-                    source_channel_id, source_message_id, is_shared, milestone_id, approval_requested_at, approved_by, approved_at,
+                    source_channel_id, source_message_id, is_shared, milestone_id, sort_order, approval_requested_at, approved_by, approved_at,
                     created_at, updated_at, deleted_at
              FROM issues
              WHERE workspace_id = :workspace_id AND assignee_id = :assignee_id AND deleted_at IS NULL
@@ -61,7 +61,7 @@ final class IssueRepository
     {
         $statement = $this->pdo->prepare(
             'SELECT id, workspace_id, project_id, title, description, issue_type AS type, assignee_id, status, created_by,
-                    source_channel_id, source_message_id, is_shared, milestone_id, approval_requested_at, approved_by, approved_at,
+                    source_channel_id, source_message_id, is_shared, milestone_id, sort_order, approval_requested_at, approved_by, approved_at,
                     created_at, updated_at, deleted_at
              FROM issues
              WHERE workspace_id = :workspace_id AND project_id = :project_id AND deleted_at IS NOT NULL
@@ -104,7 +104,13 @@ final class IssueRepository
             'source_message_id' => $sourceMessageId,
         ]);
 
-        return $this->find($workspaceId, (int) $this->pdo->lastInsertId()) ?? [];
+        $issueId = (int) $this->pdo->lastInsertId();
+        $sortOrder = $this->maxSortOrder($workspaceId, $projectId, null) + 1;
+        $rank = $this->pdo->prepare(
+            'UPDATE issues SET sort_order = :sort_order WHERE workspace_id = :workspace_id AND id = :id'
+        );
+        $rank->execute(['workspace_id' => $workspaceId, 'id' => $issueId, 'sort_order' => $sortOrder]);
+        return $this->find($workspaceId, $issueId) ?? [];
     }
 
     /** @return array<string, mixed>|null */
@@ -112,7 +118,7 @@ final class IssueRepository
     {
         $statement = $this->pdo->prepare(
             'SELECT id, workspace_id, project_id, title, description, issue_type AS type, assignee_id, status, created_by,
-                    source_channel_id, source_message_id, is_shared, milestone_id, approval_requested_at, approved_by, approved_at,
+                    source_channel_id, source_message_id, is_shared, milestone_id, sort_order, approval_requested_at, approved_by, approved_at,
                     created_at, updated_at, deleted_at
              FROM issues WHERE workspace_id = :workspace_id AND id = :id AND deleted_at IS NULL LIMIT 1'
         );
@@ -126,7 +132,7 @@ final class IssueRepository
     {
         $statement = $this->pdo->prepare(
             'SELECT id, workspace_id, project_id, title, description, issue_type AS type, assignee_id, status, created_by,
-                    source_channel_id, source_message_id, created_at, updated_at, deleted_at
+                    source_channel_id, source_message_id, milestone_id, sort_order, created_at, updated_at, deleted_at
              FROM issues WHERE workspace_id = :workspace_id AND id = :id AND deleted_at IS NOT NULL LIMIT 1'
         );
         $statement->execute(['workspace_id' => $workspaceId, 'id' => $issueId]);
@@ -140,7 +146,7 @@ final class IssueRepository
         $statement = $this->pdo->prepare(
             'UPDATE issues
              SET title = :title, description = :description, issue_type = :type, assignee_id = :assignee_id,
-                 status = :status, is_shared = :is_shared, milestone_id = :milestone_id,
+                 status = :status, is_shared = :is_shared, milestone_id = :milestone_id, sort_order = :sort_order,
                  approval_requested_at = :approval_requested_at, approved_by = :approved_by, approved_at = :approved_at
              WHERE workspace_id = :workspace_id AND id = :id AND deleted_at IS NULL'
         );
@@ -154,9 +160,66 @@ final class IssueRepository
             'status' => $issue['status'],
             'is_shared' => $issue['is_shared'] ? 1 : 0,
             'milestone_id' => $issue['milestone_id'],
+            'sort_order' => $issue['sort_order'],
             'approval_requested_at' => $issue['approval_requested_at'],
             'approved_by' => $issue['approved_by'],
             'approved_at' => $issue['approved_at'],
+        ]);
+    }
+
+    public function maxSortOrder(int $workspaceId, int $projectId, ?int $milestoneId): int
+    {
+        $statement = $this->pdo->prepare(
+            'SELECT COALESCE(MAX(sort_order), 0) FROM issues
+             WHERE workspace_id = :workspace_id AND project_id = :project_id AND milestone_id <=> :milestone_id'
+        );
+        $statement->execute([
+            'workspace_id' => $workspaceId,
+            'project_id' => $projectId,
+            'milestone_id' => $milestoneId,
+        ]);
+        return (int) $statement->fetchColumn();
+    }
+
+    public function moveWithinMilestone(
+        int $workspaceId,
+        int $projectId,
+        ?int $milestoneId,
+        int $issueId,
+        string $direction,
+    ): void
+    {
+        $statement = $this->pdo->prepare(
+            "SELECT id, sort_order FROM issues
+             WHERE workspace_id = :workspace_id AND project_id = :project_id AND milestone_id <=> :milestone_id
+               AND status IN ('backlog', 'todo', 'doing') AND deleted_at IS NULL
+             ORDER BY sort_order, id FOR UPDATE"
+        );
+        $statement->execute([
+            'workspace_id' => $workspaceId,
+            'project_id' => $projectId,
+            'milestone_id' => $milestoneId,
+        ]);
+        $rows = $statement->fetchAll(PDO::FETCH_ASSOC);
+        $index = array_search($issueId, array_map(static fn (array $row): int => (int) $row['id'], $rows), true);
+        if (!is_int($index)) return;
+        $neighborIndex = $index + ($direction === 'up' ? -1 : 1);
+        if (!isset($rows[$neighborIndex])) return;
+
+        $current = $rows[$index];
+        $neighbor = $rows[$neighborIndex];
+        $update = $this->pdo->prepare(
+            'UPDATE issues SET sort_order = :sort_order WHERE workspace_id = :workspace_id AND id = :id'
+        );
+        $update->execute([
+            'workspace_id' => $workspaceId,
+            'id' => (int) $current['id'],
+            'sort_order' => (int) $neighbor['sort_order'],
+        ]);
+        $update->execute([
+            'workspace_id' => $workspaceId,
+            'id' => (int) $neighbor['id'],
+            'sort_order' => (int) $current['sort_order'],
         ]);
     }
 
@@ -177,11 +240,27 @@ final class IssueRepository
 
     public function unlinkMilestone(int $workspaceId, int $projectId, int $milestoneId): void
     {
-        $statement = $this->pdo->prepare(
-            'UPDATE issues SET milestone_id = NULL
-             WHERE workspace_id = :workspace_id AND project_id = :project_id AND milestone_id = :milestone_id'
+        $select = $this->pdo->prepare(
+            'SELECT id FROM issues WHERE workspace_id = :workspace_id AND project_id = :project_id AND milestone_id = :milestone_id
+             ORDER BY sort_order, id'
         );
-        $statement->execute(['workspace_id' => $workspaceId, 'project_id' => $projectId, 'milestone_id' => $milestoneId]);
+        $select->execute(['workspace_id' => $workspaceId, 'project_id' => $projectId, 'milestone_id' => $milestoneId]);
+        $issueIds = array_map('intval', $select->fetchAll(PDO::FETCH_COLUMN));
+        if ($issueIds === []) return;
+
+        $sortOrder = $this->maxSortOrder($workspaceId, $projectId, null);
+        $update = $this->pdo->prepare(
+            'UPDATE issues SET milestone_id = NULL, sort_order = :sort_order
+             WHERE workspace_id = :workspace_id AND project_id = :project_id AND id = :id'
+        );
+        foreach ($issueIds as $issueId) {
+            $update->execute([
+                'workspace_id' => $workspaceId,
+                'project_id' => $projectId,
+                'id' => $issueId,
+                'sort_order' => ++$sortOrder,
+            ]);
+        }
     }
 
     /** @return list<array<string, mixed>> */
@@ -356,7 +435,7 @@ final class IssueRepository
     /** @param array<string, mixed> $issue @return array<string, mixed> */
     private static function normalize(array $issue): array
     {
-        foreach (['id', 'workspace_id', 'project_id', 'created_by'] as $field) {
+        foreach (['id', 'workspace_id', 'project_id', 'created_by', 'sort_order'] as $field) {
             $issue[$field] = (int) $issue[$field];
         }
         $issue['assignee_id'] = $issue['assignee_id'] === null ? null : (int) $issue['assignee_id'];

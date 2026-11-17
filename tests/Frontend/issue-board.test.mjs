@@ -27,3 +27,14 @@ test('issue order choices sort copies without mutating the input', () => {
   assert.deepEqual(sortIssues(issues, 'title').map((issue) => issue.id), [13, 14, 12, 15]);
   assert.equal(issues[0].id, 12);
 });
+
+test('next-up order uses milestone due dates, then the saved issue sequence', () => {
+  const planned = [
+    { ...issues[0], id: 21, milestone_id: 3, milestone_due_date: '2027-02-01', sort_order: 2048 },
+    { ...issues[0], id: 22, milestone_id: 3, milestone_due_date: '2027-02-01', sort_order: 1024 },
+    { ...issues[0], id: 23, milestone_id: 4, milestone_due_date: '2027-01-10', sort_order: 9000 },
+    { ...issues[0], id: 24, milestone_id: 5, milestone_due_date: null, sort_order: 100 },
+    { ...issues[0], id: 25, milestone_id: null, milestone_due_date: null, sort_order: 1 },
+  ];
+  assert.deepEqual(sortIssues(planned, 'next_up').map((issue) => issue.id), [23, 22, 21, 24, 25]);
+});

@@ -55,6 +55,8 @@ kbd {
 .login-panel h1 { margin-bottom: 16px; }
 .login-panel .form-stack { gap: 12px; }
 .login-panel input { background: var(--screen-field); }
+.login-panel input:autofill, .login-panel input:-webkit-autofill, .login-panel input:-webkit-autofill:hover, .login-panel input:-webkit-autofill:active { -webkit-text-fill-color: var(--screen-ink); caret-color: var(--screen-ink); -webkit-box-shadow: 0 0 0 1000px var(--screen-field) inset, inset 0 3px 8px rgba(0, 0, 0, 0.7); box-shadow: 0 0 0 1000px var(--screen-field) inset, inset 0 3px 8px rgba(0, 0, 0, 0.7); transition: background-color 999999s ease-out; }
+.login-panel input:autofill:focus, .login-panel input:-webkit-autofill:focus { -webkit-box-shadow: 0 0 0 1000px var(--screen-field) inset, inset 0 3px 8px rgba(0, 0, 0, 0.7), 0 0 0 2px var(--focus-ring); box-shadow: 0 0 0 1000px var(--screen-field) inset, inset 0 3px 8px rgba(0, 0, 0, 0.7), 0 0 0 2px var(--focus-ring); }
 .login-panel .button-primary { width: 100%; min-height: 40px; margin-top: 4px; }
 #login-status-message.login-terminal { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 8px; min-height: 58px; margin: 20px 0 0; border: 1px solid var(--screen-border); border-radius: var(--radius-panel); padding: 10px 12px; color: var(--screen-muted); background: var(--screen-inset); box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.7); text-align: left; }
 #login-status-message.login-terminal:not(:empty) { min-height: 58px; padding: 10px 12px; }
@@ -288,9 +290,16 @@ select { padding-right: 28px; background: var(--screen-inset) url("data:image/sv
 .issue-group-count { color: var(--screen-muted); }
 .issue-group-items { display: grid; margin: 0; padding: 0; list-style: none; }
 .issue-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; border-top: 1px solid var(--screen-line); padding: 10px 12px; transition: background-color 100ms ease; }
+.next-up-group { border-top: 1px solid var(--screen-line); padding-top: 10px; list-style: none; }
+.next-up-group + .next-up-group { margin-top: 4px; }
+.next-up-group-heading { margin: 0; border-bottom: 1px solid var(--screen-border); padding: 4px 12px 8px; color: var(--screen-muted); font: 700 11px var(--font-display); letter-spacing: 0.7px; }
+.issue-row-actions { display: flex; align-items: center; justify-self: end; gap: 4px; }
+.issue-order-button { width: 28px; min-width: 28px; padding: 4px; color: var(--screen-muted); font-size: 14px; line-height: 1; }
+.issue-order-button:disabled { opacity: 0.35; cursor: not-allowed; }
 .issue-card:hover, .issue-card:focus-within { background: var(--screen-hover); }
 .issue-content { min-width: 0; }
 .issue-mainline { display: flex; min-width: 0; align-items: center; gap: 12px; }
+.inbox-issue-primary { flex: 1; display: grid; min-width: 0; gap: 4px; }
 .issue-status-indicator { width: 14px; height: 14px; flex: 0 0 auto; border: 1.5px solid var(--screen-muted); border-radius: 50%; }
 .issue-status-indicator.is-backlog { border-style: dashed; }
 .issue-status-indicator.is-doing { background: linear-gradient(90deg, var(--screen-muted) 50%, transparent 50%); }
@@ -306,6 +315,8 @@ select { padding-right: 28px; background: var(--screen-inset) url("data:image/sv
 .issue-description { margin: 2px 0 0 4.75rem; color: var(--screen-muted); font-size: 11px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .issue-source { display: inline-block; margin: 4px 0 0 4.75rem; color: var(--accent); font-size: 11px; }
 .issue-metadata { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin: 4px 0 0 4.75rem; color: var(--screen-muted); font-size: 10px; }
+.issue-milestone-tag { max-width: 220px; overflow: hidden; border: 1px solid var(--screen-border); border-radius: 4px; padding: 2px 5px; color: var(--screen-muted); text-overflow: ellipsis; white-space: nowrap; }
+.inbox-issue-card .inbox-issue-metadata { margin: 4px 0 0; }
 .issue-type-tag { border: 1px solid var(--screen-border); border-radius: 4px; padding: 2px 5px; color: var(--screen-ink); }
 .issue-assignee-label { overflow-wrap: anywhere; }
 .issue-status-button { display: flex; width: 108px; min-width: 108px; align-items: center; justify-content: space-between; border-color: var(--accent-edge); border-bottom-width: 3px; color: var(--accent-ink); background: var(--accent); box-shadow: inset 0 1px 0 var(--accent-shine); font: 700 12px var(--font-display); text-align: left; text-transform: capitalize; }

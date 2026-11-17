@@ -19,7 +19,7 @@ Most teams spread work across a chat app, an issue tracker and a project board. 
 | Area | What |
 |---|---|
 | Chat | Standalone channels, DMs and broader chat workflows |
-| Issues | Implemented: issue types, project-member assignment, sharing, guest approval requests, milestone assignment and a milestone create/edit dialog. Planned: quick-add syntax (`Fix login bug @niklas !high due:fri`), priorities, milestone deletion UI and linked PRs |
+| Issues | Implemented: issue types, project-member assignment, sharing, guest approval requests, milestones, and a due-date ordered Next Up queue with manual issue sequencing. Planned: quick-add syntax (`Fix login bug @niklas !high due:fri`), priorities, milestone deletion UI and linked PRs |
 | Inbox | Implemented: cross-project assigned issues plus mention, thread reply, assignment and status events. Planned: PR events |
 | Guests | Restricted client view with progress, milestones, shared issues and updates; comments on shared content and approvals for designated deliveries |
 | Integrations | GitHub via webhooks (GitLab later through the same interface) |

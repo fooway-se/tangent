@@ -61,6 +61,9 @@ interface Issue extends BoardIssue {
   source_message_id: number | null;
   is_shared: boolean;
   milestone_id: number | null;
+  milestone_name?: string | null;
+  milestone_due_date?: string | null;
+  sort_order: number;
   approval_requested_at: string | null;
   approved_by: number | null;
   approved_at: string | null;
@@ -275,6 +278,7 @@ const milestoneFormCancel = document.querySelector<HTMLButtonElement>('#mileston
 const milestoneFormSubmit = document.querySelector<HTMLButtonElement>('#milestone-form-submit')!;
 const issueFilter = document.querySelector<HTMLInputElement>('#issue-filter')!;
 const issueOrder = document.querySelector<HTMLSelectElement>('#issue-order')!;
+const issueGroupingLabel = document.querySelector<HTMLElement>('#issue-grouping-label')!;
 const issueCountSummary = document.querySelector<HTMLElement>('#issue-count-summary')!;
 const issueList = document.querySelector<HTMLUListElement>('#issue-list')!;
 const deletedIssuesDetails = document.querySelector<HTMLDetailsElement>('#deleted-issues-details')!;
@@ -2183,7 +2187,8 @@ function createInboxIssueRow(issue: InboxIssue): HTMLLIElement {
   title.textContent = issue.title;
   title.setAttribute('aria-label', `Open ${issue.title} in ${issue.project_name}`);
   title.addEventListener('click', () => void openInboxIssue(issue));
-  mainline.append(key, title);
+  const primary = document.createElement('div');
+  primary.className = 'inbox-issue-primary';
 
   const metadata = document.createElement('div');
   metadata.className = 'issue-metadata inbox-issue-metadata';
@@ -2194,7 +2199,9 @@ function createInboxIssueRow(issue: InboxIssue): HTMLLIElement {
   status.className = `inbox-issue-status is-${issue.status}`;
   status.textContent = issueStatusLabel(issue.status);
   metadata.append(type, status);
-  content.append(projectName, mainline, metadata);
+  primary.append(title, metadata);
+  mainline.append(key, primary);
+  content.append(projectName, mainline);
   const updated = document.createElement('time');
   updated.className = 'inbox-updated';
   updated.dateTime = issue.updated_at;
@@ -2441,12 +2448,19 @@ function renderProjectIssueBoard(): void {
   const searchableIssues = projectIssues.map((issue) => ({
     ...issue,
     assignee_name: issueAssigneeLabel(issue.assignee_id),
+    milestone_name: projectMilestones.find((milestone) => milestone.id === issue.milestone_id)?.name ?? null,
+    milestone_due_date: projectMilestones.find((milestone) => milestone.id === issue.milestone_id)?.due_date ?? null,
   }));
   const ordered = sortIssues(searchableIssues, issueOrder.value as IssueSortOrder);
-  const visible = filterIssues(ordered, issueFilter.value);
+  const nextUpMode = issueOrder.value === 'next_up';
+  issueGroupingLabel.textContent = nextUpMode ? 'Group: Milestone' : 'Group: Status';
+  const workQueue = nextUpMode ? ordered.filter((issue) => ['backlog', 'todo', 'doing'].includes(issue.status)) : ordered;
+  const visible = filterIssues(workQueue, issueFilter.value);
   issueList.replaceChildren();
   emptyIssues.hidden = visible.length > 0;
-  emptyIssues.textContent = total === 0
+  emptyIssues.textContent = nextUpMode && workQueue.length === 0
+    ? 'No open issues to work on next.'
+    : total === 0
     ? deletedProjectIssues.length > 0
       ? 'No active issues. Restore one from Deleted issues or create a new issue.'
       : 'No issues yet. Create the first one.'
@@ -2455,6 +2469,11 @@ function renderProjectIssueBoard(): void {
   deletedIssueCount.textContent = String(deletedProjectIssues.length);
   deletedIssuesDetails.hidden = deletedProjectIssues.length === 0;
   deletedIssueList.replaceChildren(...deletedProjectIssues.map(createDeletedIssueRow));
+
+  if (nextUpMode) {
+    renderNextUpIssueBoard(visible, workQueue);
+    return;
+  }
 
   for (const group of groupIssues(visible)) {
     const details = document.createElement('details');
@@ -2480,6 +2499,48 @@ function renderProjectIssueBoard(): void {
     for (const issue of group.issues) rows.append(createIssueRow(issue));
     details.append(summary, rows);
     issueList.append(details);
+  }
+}
+
+function renderNextUpIssueBoard(visibleIssues: Issue[], allOpenIssues: Issue[]): void {
+  const groups = new Map<string, { milestoneId: number | null; name: string; dueDate: string | null; issues: Issue[] }>();
+  for (const issue of visibleIssues) {
+    const milestoneId = issue.milestone_id;
+    const key = milestoneId === null ? 'none' : String(milestoneId);
+    let group = groups.get(key);
+    if (group === undefined) {
+      const milestone = milestoneId === null ? undefined : projectMilestones.find((candidate) => candidate.id === milestoneId);
+      group = {
+        milestoneId,
+        name: milestone?.name ?? 'No milestone',
+        dueDate: milestone?.due_date ?? null,
+        issues: [],
+      };
+      groups.set(key, group);
+    }
+    group.issues.push(issue);
+  }
+
+  for (const group of groups.values()) {
+    const container = document.createElement('li');
+    container.className = 'next-up-group';
+    const heading = document.createElement('h3');
+    heading.className = 'next-up-group-heading';
+    heading.textContent = group.dueDate === null ? group.name : `${group.name} · due ${group.dueDate}`;
+    const rows = document.createElement('ul');
+    rows.className = 'issue-group-items';
+
+    const allGroupIssues = allOpenIssues.filter((issue) => issue.milestone_id === group.milestoneId);
+    for (const issue of group.issues) {
+      const index = allGroupIssues.findIndex((candidate) => candidate.id === issue.id);
+      rows.append(createIssueRow(issue, {
+        canMoveEarlier: index > 0,
+        canMoveLater: index >= 0 && index < allGroupIssues.length - 1,
+        showMilestoneTag: false,
+      }));
+    }
+    container.append(heading, rows);
+    issueList.append(container);
   }
 }
 
@@ -2751,7 +2812,10 @@ async function updateIssueStatus(issue: Issue, nextStatus: IssueStatus): Promise
   }
 }
 
-function createIssueRow(issue: Issue): HTMLElement {
+function createIssueRow(
+  issue: Issue,
+  reorder?: { canMoveEarlier: boolean; canMoveLater: boolean; showMilestoneTag?: boolean },
+): HTMLElement {
   const item = document.createElement('li');
   item.className = 'issue-card';
   item.dataset.issueId = String(issue.id);
@@ -2780,7 +2844,15 @@ function createIssueRow(issue: Issue): HTMLElement {
   const assignee = document.createElement('span');
   assignee.className = 'issue-assignee-label';
   assignee.textContent = `Assignee: ${issueAssigneeLabel(issue.assignee_id)}`;
-  metadata.append(type, assignee);
+  metadata.append(type);
+  if (issue.milestone_name !== null && issue.milestone_name !== undefined && reorder?.showMilestoneTag !== false) {
+    const milestone = document.createElement('span');
+    milestone.className = 'issue-milestone-tag';
+    milestone.textContent = issue.milestone_name;
+    milestone.title = issue.milestone_name;
+    metadata.append(milestone);
+  }
+  metadata.append(assignee);
   content.append(mainline, metadata);
   if (issue.description !== '') {
     const description = document.createElement('p');
@@ -2795,8 +2867,52 @@ function createIssueRow(issue: Issue): HTMLElement {
     content.append(source);
   }
 
-  item.append(content, createIssueStatusButton(issue));
+  if (reorder === undefined) {
+    item.append(content, createIssueStatusButton(issue));
+  } else {
+    const actions = document.createElement('div');
+    actions.className = 'issue-row-actions';
+    for (const direction of ['up', 'down'] as const) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'button button-quiet issue-order-button';
+      button.dataset.moveDirection = direction;
+      button.disabled = direction === 'up' ? !reorder.canMoveEarlier : !reorder.canMoveLater;
+      button.textContent = direction === 'up' ? '↑' : '↓';
+      button.setAttribute('aria-label', `Move ${issue.title} ${direction === 'up' ? 'earlier' : 'later'}`);
+      button.addEventListener('click', () => void moveIssue(issue, direction, button));
+      actions.append(button);
+    }
+    actions.append(createIssueStatusButton(issue));
+    item.append(content, actions);
+  }
   return item;
+}
+
+async function moveIssue(issue: Issue, direction: 'up' | 'down', button: HTMLButtonElement): Promise<void> {
+  const projectId = activeProject?.id;
+  if (projectId === undefined || projectId !== issue.project_id) return;
+  button.disabled = true;
+  try {
+    const result = await api<{ issue: Issue }>(`/issues/${issue.id}/move`, {
+      method: 'POST',
+      body: JSON.stringify({ direction }),
+    });
+    if (activeProject?.id !== projectId || issuesView.hidden) return;
+    projectIssues = projectIssues.map((candidate) => candidate.id === issue.id ? result.issue : candidate);
+    renderProjectIssueBoard();
+    issueList.querySelector<HTMLButtonElement>(
+      `.issue-card[data-issue-id="${issue.id}"] [data-move-direction="${direction}"]`,
+    )?.focus();
+  } catch (error) {
+    if (error instanceof ApiFailure && error.status === 401) {
+      showSignedOut();
+      return;
+    }
+    report(error instanceof Error ? error.message : 'Could not reorder the issue.', true);
+  } finally {
+    button.disabled = false;
+  }
 }
 
 issueDetailEditButton.addEventListener('click', () => {
@@ -3013,6 +3129,7 @@ loginForm.addEventListener('submit', async (event) => {
       body: JSON.stringify({ email: values.get('email'), password: values.get('password') }),
     });
     showSignedIn(result.user);
+    if (result.user.role === 'guest') return;
     await loadWorkspaces();
     await loadProjects();
   } catch (error) {

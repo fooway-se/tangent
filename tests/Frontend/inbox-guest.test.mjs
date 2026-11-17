@@ -7,6 +7,7 @@ const events = await import('../../public/assets/inbox-events.js');
 const guest = await import('../../public/assets/guest-view.js');
 const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
+const css = await readFile(new URL('../../public/assets/app.css', import.meta.url), 'utf8');
 
 const event = (id, type, read, done) => ({ id, type, read, done, actor_name: 'a', summary: 's', detail: null, project_id: 1, project_name: 'P', issue_id: null, message_id: null, created_at: '2026-11-17T10:00:00Z' });
 
@@ -46,6 +47,13 @@ test('admin can create a guest account from the existing user form', () => {
   assert.match(html, /<option value="guest">Guest<\/option>/);
 });
 
+test('assigned issue type and status align with the title column', () => {
+  assert.match(app, /primary\.className = 'inbox-issue-primary'/);
+  assert.match(app, /primary\.append\(title, metadata\)/);
+  assert.match(app, /mainline\.append\(key, primary\)/);
+  assert.match(css, /\.inbox-issue-card \.inbox-issue-metadata\s*\{\s*margin:\s*4px 0 0;\s*\}/);
+});
+
 test('issue editor can share work and request guest approval', () => {
   assert.match(html, /name="is_shared"/);
   assert.match(html, /name="approval_requested"/);
@@ -63,6 +71,11 @@ test('new views never use innerHTML', async () => {
 test('guest startup does not request workspace or internal project data', () => {
   const startup = app.slice(app.indexOf('async function start()'), app.indexOf('void start();'));
   assert.match(startup, /showSignedIn\(result\.user\);\s*if \(result\.user\.role === 'guest'\) return;/);
+});
+
+test('guest sign-in skips workspace and developer project loading', () => {
+  const signIn = app.slice(app.indexOf("loginForm.addEventListener('submit'"), app.indexOf("workspaceSwitcher.addEventListener('click'"));
+  assert.match(signIn, /showSignedIn\(result\.user\);\s*if \(result\.user\.role === 'guest'\) return;\s*await loadWorkspaces\(\);\s*await loadProjects\(\);/);
 });
 
 test('inbox message events select their source chat message', () => {

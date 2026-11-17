@@ -77,6 +77,16 @@ final class IssuesRoutes
             ]);
         });
 
+        $router->add('POST', '/api/v1/issues/{id}/move', function (
+            Request $request,
+            array $params,
+            AuthenticatedUser $user,
+        ): Response {
+            return Response::json(200, [
+                'issue' => $this->service->move($user, self::positiveId($params['id']), $request->body),
+            ]);
+        });
+
         $router->add('DELETE', '/api/v1/issues/{id}', function (
             Request $request,
             array $params,

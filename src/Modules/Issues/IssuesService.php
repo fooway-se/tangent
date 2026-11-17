@@ -127,6 +127,7 @@ final class IssuesService
             'status' => $issue['status'],
             'is_shared' => $issue['is_shared'],
             'milestone_id' => $issue['milestone_id'],
+            'sort_order' => $issue['sort_order'],
             'approval_requested_at' => $issue['approval_requested_at'],
             'approved_by' => $issue['approved_by'],
             'approved_at' => $issue['approved_at'],
@@ -174,6 +175,13 @@ final class IssuesService
             if ($updated['milestone_id'] !== null
                 && $this->milestones->find($user->workspaceId, $issue['project_id'], $updated['milestone_id']) === null) {
                 throw new ApiException(422, 'validation_failed', 'Milestones must belong to the issue project.');
+            }
+            if ($updated['milestone_id'] !== $issue['milestone_id']) {
+                $updated['sort_order'] = $this->issues->maxSortOrder(
+                    $user->workspaceId,
+                    $issue['project_id'],
+                    $updated['milestone_id'],
+                ) + 1;
             }
         }
         if (array_key_exists('approval_requested', $input)) {
@@ -252,6 +260,40 @@ final class IssuesService
                 $issue['title'],
             );
             if ($ownsTransaction) $this->pdo->commit();
+        } catch (Throwable $exception) {
+            if ($ownsTransaction && $this->pdo->inTransaction()) $this->pdo->rollBack();
+            throw $exception;
+        }
+    }
+
+    /** @param array<string, mixed> $input @return array<string, mixed> */
+    public function move(AuthenticatedUser $user, int $issueId, array $input): array
+    {
+        $issue = $this->issues->find($user->workspaceId, $issueId);
+        if ($issue === null) throw new ApiException(404, 'not_found', 'The issue was not found.');
+        $this->requireProjectAccess($user, $issue['project_id'], 'issues.update');
+
+        $direction = $input['direction'] ?? null;
+        if (array_diff(array_keys($input), ['direction']) !== [] || !is_string($direction)
+            || !in_array($direction, ['up', 'down'], true)) {
+            throw new ApiException(422, 'validation_failed', 'direction must be up or down.');
+        }
+        if (!in_array($issue['status'], ['backlog', 'todo', 'doing'], true)) {
+            throw new ApiException(422, 'validation_failed', 'Only open issues can be reordered.');
+        }
+
+        $ownsTransaction = !$this->pdo->inTransaction();
+        if ($ownsTransaction) $this->pdo->beginTransaction();
+        try {
+            $this->issues->moveWithinMilestone(
+                $user->workspaceId,
+                $issue['project_id'],
+                $issue['milestone_id'],
+                $issueId,
+                $direction,
+            );
+            if ($ownsTransaction) $this->pdo->commit();
+            return $this->issues->find($user->workspaceId, $issueId) ?? [];
         } catch (Throwable $exception) {
             if ($ownsTransaction && $this->pdo->inTransaction()) $this->pdo->rollBack();
             throw $exception;
