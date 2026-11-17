@@ -1,6 +1,7 @@
 import { INBOX_TABS, createEventRow, eventsForTab, tabCount, } from './inbox-events.js';
 import { renderClientEmptyState, renderClientView } from './guest-view.js';
 import { resolveShortcut, shouldSubmitOnEnter } from './shortcuts.js';
+import { parseQuickIssueInput } from './quick-issue.js';
 import { filterIssues, groupIssues, groupIssuesByMilestone, milestoneProgress, sortIssues, } from './issue-board.js';
 const ISSUE_STATUS_OPTIONS = [
     { value: 'backlog', label: 'Backlog' },
@@ -1319,6 +1320,7 @@ function updateIssueQuickAddApproval() {
 }
 function cancelIssueQuickAdd() {
     issueForm.reset();
+    issueQuickAddTitle.setCustomValidity('');
     issueDescriptionDetails.open = false;
     issueQuickAddEscapePending = false;
     setIssueQuickAddActive(false);
@@ -2092,6 +2094,7 @@ issueDescriptionDetails.addEventListener('toggle', () => {
 });
 issueQuickAddCancelButton.addEventListener('click', cancelIssueQuickAdd);
 issueQuickAddShared.addEventListener('change', updateIssueQuickAddApproval);
+issueQuickAddTitle.addEventListener('input', () => issueQuickAddTitle.setCustomValidity(''));
 projectForm.querySelector('textarea[name="description"]')
     ?.addEventListener('keydown', (event) => submitFormOnEnter(event, projectForm));
 issueDescriptionInput?.addEventListener('keydown', (event) => submitFormOnEnter(event, issueForm));
@@ -2114,15 +2117,25 @@ issueForm.addEventListener('submit', async (event) => {
         return;
     const projectId = activeProject.id;
     const values = new FormData(issueForm);
+    const parsedIssue = parseQuickIssueInput(String(values.get('title') ?? ''), activeProjectMembers, projectMilestones);
+    if (parsedIssue.title === '') {
+        issueQuickAddTitle.setCustomValidity('Enter an issue title before the optional fields.');
+        issueQuickAddTitle.reportValidity();
+        return;
+    }
+    issueQuickAddTitle.setCustomValidity('');
     const assigneeValue = values.get('assignee_id');
     const milestoneValue = values.get('milestone_id');
     const issueInput = {
-        title: values.get('title'),
+        title: parsedIssue.title,
         description: values.get('description'),
-        type: values.get('type'),
-        assignee_id: typeof assigneeValue === 'string' && assigneeValue !== '' ? Number(assigneeValue) : null,
+        type: parsedIssue.type ?? values.get('type'),
+        assignee_id: parsedIssue.assigneeId
+            ?? (typeof assigneeValue === 'string' && assigneeValue !== '' ? Number(assigneeValue) : null),
     };
-    if (typeof milestoneValue === 'string' && milestoneValue !== '')
+    if (parsedIssue.milestoneId !== undefined)
+        issueInput.milestone_id = parsedIssue.milestoneId;
+    else if (typeof milestoneValue === 'string' && milestoneValue !== '')
         issueInput.milestone_id = Number(milestoneValue);
     if (issueQuickAddShared.checked)
         issueInput.is_shared = true;
@@ -2134,6 +2147,7 @@ issueForm.addEventListener('submit', async (event) => {
             body: JSON.stringify(issueInput),
         });
         issueForm.reset();
+        issueQuickAddTitle.setCustomValidity('');
         issueDescriptionDetails.open = false;
         issueQuickAddEscapePending = false;
         updateIssueQuickAddApproval();

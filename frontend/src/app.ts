@@ -3,6 +3,7 @@ import {
 } from './inbox-events.js';
 import { renderClientEmptyState, renderClientView, type ClientView } from './guest-view.js';
 import { resolveShortcut, shouldSubmitOnEnter, type ShortcutAction } from './shortcuts.js';
+import { parseQuickIssueInput } from './quick-issue.js';
 import {
   filterIssues,
   groupIssues,
@@ -1442,6 +1443,7 @@ function updateIssueQuickAddApproval(): void {
 
 function cancelIssueQuickAdd(): void {
   issueForm.reset();
+  issueQuickAddTitle.setCustomValidity('');
   issueDescriptionDetails.open = false;
   issueQuickAddEscapePending = false;
   setIssueQuickAddActive(false);
@@ -2125,6 +2127,7 @@ issueDescriptionDetails.addEventListener('toggle', () => {
 });
 issueQuickAddCancelButton.addEventListener('click', cancelIssueQuickAdd);
 issueQuickAddShared.addEventListener('change', updateIssueQuickAddApproval);
+issueQuickAddTitle.addEventListener('input', () => issueQuickAddTitle.setCustomValidity(''));
 projectForm.querySelector<HTMLTextAreaElement>('textarea[name="description"]')
   ?.addEventListener('keydown', (event) => submitFormOnEnter(event, projectForm));
 issueDescriptionInput?.addEventListener('keydown', (event) => submitFormOnEnter(event, issueForm));
@@ -2148,15 +2151,24 @@ issueForm.addEventListener('submit', async (event) => {
   if (activeProject === null) return;
   const projectId = activeProject.id;
   const values = new FormData(issueForm);
+  const parsedIssue = parseQuickIssueInput(String(values.get('title') ?? ''), activeProjectMembers, projectMilestones);
+  if (parsedIssue.title === '') {
+    issueQuickAddTitle.setCustomValidity('Enter an issue title before the optional fields.');
+    issueQuickAddTitle.reportValidity();
+    return;
+  }
+  issueQuickAddTitle.setCustomValidity('');
   const assigneeValue = values.get('assignee_id');
   const milestoneValue = values.get('milestone_id');
   const issueInput: Record<string, unknown> = {
-    title: values.get('title'),
+    title: parsedIssue.title,
     description: values.get('description'),
-    type: values.get('type'),
-    assignee_id: typeof assigneeValue === 'string' && assigneeValue !== '' ? Number(assigneeValue) : null,
+    type: parsedIssue.type ?? values.get('type'),
+    assignee_id: parsedIssue.assigneeId
+      ?? (typeof assigneeValue === 'string' && assigneeValue !== '' ? Number(assigneeValue) : null),
   };
-  if (typeof milestoneValue === 'string' && milestoneValue !== '') issueInput.milestone_id = Number(milestoneValue);
+  if (parsedIssue.milestoneId !== undefined) issueInput.milestone_id = parsedIssue.milestoneId;
+  else if (typeof milestoneValue === 'string' && milestoneValue !== '') issueInput.milestone_id = Number(milestoneValue);
   if (issueQuickAddShared.checked) issueInput.is_shared = true;
   if (issueQuickAddApproval.checked) issueInput.approval_requested = true;
   try {
@@ -2165,6 +2177,7 @@ issueForm.addEventListener('submit', async (event) => {
       body: JSON.stringify(issueInput),
     });
     issueForm.reset();
+    issueQuickAddTitle.setCustomValidity('');
     issueDescriptionDetails.open = false;
     issueQuickAddEscapePending = false;
     updateIssueQuickAddApproval();

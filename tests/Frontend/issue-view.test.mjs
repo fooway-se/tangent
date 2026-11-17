@@ -27,6 +27,22 @@ test('the issue grouping control switches between status and milestone groups', 
   assert.match(app, /function renderMilestoneIssueBoard\(/);
 });
 
+test('quick add parses optional metadata tokens only when creating an issue', () => {
+  const start = app.indexOf("issueForm.addEventListener('submit'");
+  const end = app.indexOf("memberForm.addEventListener('submit'", start);
+  const submitHandler = app.slice(start, end);
+  assert.match(submitHandler, /parseQuickIssueInput\(/);
+  assert.match(submitHandler, /parsedIssue\.title === ''/);
+  assert.match(submitHandler, /issueQuickAddTitle\.setCustomValidity/);
+  assert.match(submitHandler, /title: parsedIssue\.title/);
+  assert.match(submitHandler, /type: parsedIssue\.type \?\? values\.get\('type'\)/);
+  assert.match(submitHandler, /parsedIssue\.assigneeId/);
+  assert.match(submitHandler, /parsedIssue\.milestoneId/);
+  const chatStart = app.indexOf('function createProjectChat(');
+  const chatEnd = app.indexOf('\n  section.append(heading, chatMessageList, form);', chatStart);
+  assert.doesNotMatch(app.slice(chatStart, chatEnd), /parseQuickIssueInput/);
+});
+
 test('quick add has a mouse cancel action and supports complete issue planning', () => {
   for (const id of [
     'issue-quick-add-cancel', 'issue-quick-add-milestone',
