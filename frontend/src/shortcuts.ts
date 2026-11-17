@@ -15,6 +15,8 @@ export type ShortcutAction =
   | 'open-selected-project'
   | 'first-chat-message'
   | 'last-chat-message'
+  | 'page-up'
+  | 'page-down'
   | 'next-chat-message'
   | 'previous-chat-message'
   | 'focus-chat-composer'
@@ -90,6 +92,8 @@ export function resolveShortcut(event: ShortcutEvent, context: ShortcutContext):
   if (context.chatMessagesFocused && context.hasSelectedChatMessage) {
     if (key === 'home') return 'first-chat-message';
     if (key === 'end') return 'last-chat-message';
+    if (key === 'pageup') return 'page-up';
+    if (key === 'pagedown') return 'page-down';
     if (key === 'j' || key === 'arrowdown') return 'next-chat-message';
     if (key === 'k' || key === 'arrowup') return 'previous-chat-message';
     if (event.key === 'Enter') return 'focus-chat-composer';
@@ -100,6 +104,8 @@ export function resolveShortcut(event: ShortcutEvent, context: ShortcutContext):
   if (context.projectListVisible) {
     if (key === 'home') return 'first-project';
     if (key === 'end') return 'last-project';
+    if (key === 'pageup') return 'page-up';
+    if (key === 'pagedown') return 'page-down';
     if (key === 'j' || key === 'arrowdown') return 'next-project';
     if (key === 'k' || key === 'arrowup') return 'previous-project';
     if (event.key === 'Enter' && context.hasSelectedProject) return 'open-selected-project';
@@ -107,6 +113,8 @@ export function resolveShortcut(event: ShortcutEvent, context: ShortcutContext):
   if (context.issueListVisible || context.issueDetailVisible) {
     if (!context.chatMessagesFocused && key === 'home') return 'first-issue';
     if (!context.chatMessagesFocused && key === 'end') return 'last-issue';
+    if (context.issueListVisible && key === 'pageup') return 'page-up';
+    if (context.issueListVisible && key === 'pagedown') return 'page-down';
     if (key === 'j' || key === 'arrowdown') return 'next';
     if (key === 'k' || key === 'arrowup') return 'previous';
     if (event.key === 'Enter' && context.issueListVisible && context.hasSelectedIssue) return 'open-selected';

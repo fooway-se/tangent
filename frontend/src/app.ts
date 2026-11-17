@@ -119,6 +119,7 @@ const projectState = document.querySelector<HTMLElement>('#project-state')!;
 const chatView = document.querySelector<HTMLElement>('#chat-view')!;
 const projectChatColumn = document.querySelector<HTMLElement>('#project-chat-column')!;
 const projectSidebarList = document.querySelector<HTMLUListElement>('#project-sidebar-list')!;
+const projectMain = document.querySelector<HTMLElement>('.project-main')!;
 const issuesView = document.querySelector<HTMLElement>('#issues-view')!;
 const membersView = document.querySelector<HTMLElement>('#members-view')!;
 const issueDetailView = document.querySelector<HTMLElement>('#issue-detail-view')!;
@@ -567,6 +568,19 @@ function moveChatMessageSelectionToBoundary(edge: 'first' | 'last'): void {
   if (target !== undefined) selectChatMessage(Number(target.dataset.messageId));
 }
 
+function moveChatMessageSelectionByPage(direction: -1 | 1): void {
+  const messages = chatMessageElements();
+  if (messages.length === 0 || chatMessageList === null) return;
+  const currentIndex = messages.findIndex((message) => Number(message.dataset.messageId) === selectedChatMessageId);
+  const pageSize = Math.max(1, visibleRowsInViewport(messages, chatMessageList, '.chat-message') - 1);
+  const baseIndex = currentIndex < 0
+    ? direction > 0 ? 0 : Math.min(pageSize, messages.length - 1)
+    : currentIndex;
+  const targetIndex = Math.max(0, Math.min(messages.length - 1, baseIndex + direction * pageSize));
+  const target = messages[targetIndex];
+  if (target !== undefined) selectChatMessage(Number(target.dataset.messageId));
+}
+
 function focusProjectChat(): void {
   const messages = chatMessageElements();
   const latest = messages.at(-1);
@@ -688,6 +702,43 @@ function moveFocusWithin<T extends HTMLElement>(buttons: T[], rowSelector: strin
   next.focus();
 }
 
+function visibleRowsInViewport<T extends HTMLElement>(items: T[], viewport: HTMLElement, rowSelector: string): number {
+  const viewportRect = viewport.getBoundingClientRect();
+  const viewportTop = viewportRect.top + viewport.clientTop;
+  const viewportBottom = viewportTop + viewport.clientHeight;
+  return items.filter((item) => {
+    const row = item.closest<HTMLElement>(rowSelector);
+    if (row === null) return false;
+    const rowRect = row.getBoundingClientRect();
+    return rowRect.bottom > viewportTop && rowRect.top < viewportBottom;
+  }).length;
+}
+
+function moveFocusByPage<T extends HTMLElement>(
+  buttons: T[],
+  rowSelector: string,
+  viewport: HTMLElement,
+  direction: -1 | 1,
+): void {
+  if (buttons.length === 0) return;
+  const focused = document.activeElement;
+  const currentIndex = buttons.findIndex((button) => {
+    const row = button.closest<HTMLElement>(rowSelector);
+    return row?.classList.contains('is-keyboard-selected') === true
+      || (focused instanceof HTMLElement && row?.contains(focused) === true);
+  });
+  const pageSize = Math.max(1, visibleRowsInViewport(buttons, viewport, rowSelector) - 1);
+  const baseIndex = currentIndex < 0
+    ? direction > 0 ? 0 : Math.min(pageSize, buttons.length - 1)
+    : currentIndex;
+  const targetIndex = Math.max(0, Math.min(buttons.length - 1, baseIndex + direction * pageSize));
+  for (const button of buttons) button.closest<HTMLElement>(rowSelector)?.classList.remove('is-keyboard-selected');
+  const target = buttons[targetIndex];
+  if (target === undefined) return;
+  target.closest<HTMLElement>(rowSelector)?.classList.add('is-keyboard-selected');
+  target.focus();
+}
+
 function moveFocusToBoundary<T extends HTMLElement>(buttons: T[], rowSelector: string, edge: 'first' | 'last'): void {
   if (buttons.length === 0) return;
   for (const button of buttons) button.closest<HTMLElement>(rowSelector)?.classList.remove('is-keyboard-selected');
@@ -735,6 +786,21 @@ function moveProjectSelectionToBoundary(edge: 'first' | 'last'): void {
     '.project-card',
     edge,
   );
+}
+
+function moveSelectionByPage(direction: -1 | 1): void {
+  if (document.activeElement instanceof HTMLElement && document.activeElement.matches('.chat-message')) {
+    moveChatMessageSelectionByPage(direction);
+  } else if (!projectsView.hidden) {
+    moveFocusByPage(
+      Array.from(projectList.querySelectorAll<HTMLButtonElement>('.project-card button')),
+      '.project-card',
+      projectsView,
+      direction,
+    );
+  } else if (!issuesView.hidden) {
+    moveFocusByPage(visibleIssueTitleButtons(), '.issue-card', projectMain, direction);
+  }
 }
 
 function moveSelection(direction: -1 | 1): void {
@@ -1056,6 +1122,8 @@ function executeShortcut(action: ShortcutAction): void {
     case 'open-selected-project': selectedProjectButton()?.click(); break;
     case 'first-chat-message': moveChatMessageSelectionToBoundary('first'); break;
     case 'last-chat-message': moveChatMessageSelectionToBoundary('last'); break;
+    case 'page-up': moveSelectionByPage(-1); break;
+    case 'page-down': moveSelectionByPage(1); break;
     case 'next': moveIssueSelection(1); break;
     case 'previous': moveIssueSelection(-1); break;
     case 'first-issue': moveIssueSelectionToBoundary('first'); break;

@@ -40,6 +40,10 @@ export function resolveShortcut(event, context) {
             return 'first-chat-message';
         if (key === 'end')
             return 'last-chat-message';
+        if (key === 'pageup')
+            return 'page-up';
+        if (key === 'pagedown')
+            return 'page-down';
         if (key === 'j' || key === 'arrowdown')
             return 'next-chat-message';
         if (key === 'k' || key === 'arrowup')
@@ -56,6 +60,10 @@ export function resolveShortcut(event, context) {
             return 'first-project';
         if (key === 'end')
             return 'last-project';
+        if (key === 'pageup')
+            return 'page-up';
+        if (key === 'pagedown')
+            return 'page-down';
         if (key === 'j' || key === 'arrowdown')
             return 'next-project';
         if (key === 'k' || key === 'arrowup')
@@ -68,6 +76,10 @@ export function resolveShortcut(event, context) {
             return 'first-issue';
         if (!context.chatMessagesFocused && key === 'end')
             return 'last-issue';
+        if (context.issueListVisible && key === 'pageup')
+            return 'page-up';
+        if (context.issueListVisible && key === 'pagedown')
+            return 'page-down';
         if (key === 'j' || key === 'arrowdown')
             return 'next';
         if (key === 'k' || key === 'arrowup')
