@@ -156,6 +156,7 @@ const logoutButton = document.querySelector<HTMLButtonElement>('#logout-button')
 let activeUser: User | null = null;
 let activeWorkspaces: Workspace[] = [];
 let activeProject: Project | null = null;
+let projectReturnFocusId: number | null = null;
 let activeProjectMembers: Member[] = [];
 let projectIssues: Issue[] = [];
 let selectedIssue: Issue | null = null;
@@ -268,6 +269,8 @@ function showSignedOut(): void {
 }
 
 function showSignedIn(user: User): void {
+  projectReturnFocusId = null;
+  activeProject = null;
   activeUser = user;
   loginShell.hidden = true;
   loginPanel.hidden = true;
@@ -317,6 +320,7 @@ async function switchWorkspace(workspaceId: number): Promise<void> {
 
 function showWorkspaceView(view: 'projects' | 'admin' | 'project'): void {
   if (view !== 'project') {
+    if (activeProject !== null) projectReturnFocusId = activeProject.id;
     stopChatPolling();
     activeProject = null;
     activeProjectMembers = [];
@@ -352,6 +356,11 @@ function showWorkspaceView(view: 'projects' | 'admin' | 'project'): void {
     projectsNavButton.removeAttribute('aria-current');
     adminNavButton.removeAttribute('aria-current');
   }
+  if (view === 'projects' && projectReturnFocusId !== null) {
+    const projectId = projectReturnFocusId;
+    projectReturnFocusId = null;
+    if (!focusProjectOpenButton(projectId)) projectsNavButton.focus();
+  }
 }
 
 function stopChatPolling(): void {
@@ -375,6 +384,15 @@ function selectedProjectButton(): HTMLButtonElement | null {
     if (focusedCard !== null) return focusedCard.querySelector<HTMLButtonElement>('button');
   }
   return projectList.querySelector<HTMLButtonElement>('.project-card.is-keyboard-selected button');
+}
+
+function focusProjectOpenButton(projectId: number): boolean {
+  const button = projectList.querySelector<HTMLButtonElement>(
+    `.project-card[data-project-id="${projectId}"] button`,
+  );
+  if (button === null) return false;
+  button.focus();
+  return true;
 }
 
 function selectedIssueButton(): HTMLButtonElement | null {
@@ -1307,6 +1325,7 @@ async function loadProjects(): Promise<void> {
   for (const project of result.projects) {
     const item = document.createElement('li');
     item.className = 'project-card';
+    item.dataset.projectId = String(project.id);
 
     const details = document.createElement('div');
     const name = document.createElement('p');
@@ -1366,6 +1385,7 @@ async function loadProjectDetail(projectId: number, tab: 'issues' | 'members' = 
     showWorkspaceView('project');
     chatView.replaceChildren(createProjectChat(projectId));
     switchProjectTab(tab);
+    (tab === 'issues' ? issuesTabButton : membersTabButton).focus();
   } catch (error) {
     report(error instanceof Error ? error.message : 'Could not load the project.', true);
     showWorkspaceView('projects');

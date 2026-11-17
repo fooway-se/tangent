@@ -82,6 +82,7 @@ const logoutButton = document.querySelector('#logout-button');
 let activeUser = null;
 let activeWorkspaces = [];
 let activeProject = null;
+let projectReturnFocusId = null;
 let activeProjectMembers = [];
 let projectIssues = [];
 let selectedIssue = null;
@@ -191,6 +192,8 @@ function showSignedOut() {
     report('');
 }
 function showSignedIn(user) {
+    projectReturnFocusId = null;
+    activeProject = null;
     activeUser = user;
     loginShell.hidden = true;
     loginPanel.hidden = true;
@@ -240,6 +243,8 @@ async function switchWorkspace(workspaceId) {
 }
 function showWorkspaceView(view) {
     if (view !== 'project') {
+        if (activeProject !== null)
+            projectReturnFocusId = activeProject.id;
         stopChatPolling();
         activeProject = null;
         activeProjectMembers = [];
@@ -277,6 +282,12 @@ function showWorkspaceView(view) {
         projectsNavButton.removeAttribute('aria-current');
         adminNavButton.removeAttribute('aria-current');
     }
+    if (view === 'projects' && projectReturnFocusId !== null) {
+        const projectId = projectReturnFocusId;
+        projectReturnFocusId = null;
+        if (!focusProjectOpenButton(projectId))
+            projectsNavButton.focus();
+    }
 }
 function stopChatPolling() {
     activeChatProjectId = null;
@@ -300,6 +311,13 @@ function selectedProjectButton() {
             return focusedCard.querySelector('button');
     }
     return projectList.querySelector('.project-card.is-keyboard-selected button');
+}
+function focusProjectOpenButton(projectId) {
+    const button = projectList.querySelector(`.project-card[data-project-id="${projectId}"] button`);
+    if (button === null)
+        return false;
+    button.focus();
+    return true;
 }
 function selectedIssueButton() {
     const focused = document.activeElement;
@@ -1288,6 +1306,7 @@ async function loadProjects() {
     for (const project of result.projects) {
         const item = document.createElement('li');
         item.className = 'project-card';
+        item.dataset.projectId = String(project.id);
         const details = document.createElement('div');
         const name = document.createElement('p');
         name.className = 'project-name';
@@ -1343,6 +1362,7 @@ async function loadProjectDetail(projectId, tab = 'issues') {
         showWorkspaceView('project');
         chatView.replaceChildren(createProjectChat(projectId));
         switchProjectTab(tab);
+        (tab === 'issues' ? issuesTabButton : membersTabButton).focus();
     }
     catch (error) {
         report(error instanceof Error ? error.message : 'Could not load the project.', true);
