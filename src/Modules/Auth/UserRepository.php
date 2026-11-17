@@ -56,9 +56,12 @@ final class UserRepository
     }
 
     /** @return array<string, mixed> */
-    public function createDeveloper(int $workspaceId, string $name, string $email, string $password): array
+    public function createWorkspaceUser(int $workspaceId, string $name, string $email, string $password, string $role): array
     {
-        return $this->create($workspaceId, $name, $email, $password, 'developer');
+        if (!in_array($role, ['developer', 'guest'], true)) {
+            throw new ApiException(422, 'validation_failed', 'Workspace users can only be developers or guests.');
+        }
+        return $this->create($workspaceId, $name, $email, $password, $role);
     }
 
     /** @return array<string, mixed> */

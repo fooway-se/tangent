@@ -65,6 +65,13 @@ test('screens, panels and controls use the shared corner scale and borders', () 
   assert.match(rule(tokens, ':root'), /--font-mono:[^;]*ui-monospace/, 'monospace falls back to the platform font');
 });
 
+test('issue sharing checkboxes sit beside their labels and keep a compact control size', () => {
+  assert.match(rule(css, '.form-check-label'), /display:\s*flex/);
+  assert.match(rule(css, '.form-check-label'), /align-items:\s*center/);
+  assert.match(rule(css, '.form-check-label input[type="checkbox"]'), /width:\s*16px/);
+  assert.match(rule(css, '.form-check-label input[type="checkbox"]'), /box-shadow:\s*none/);
+});
+
 test('every screen and dialog header carries the signal stripe', () => {
   for (const selector of ['.workspace-nav::before', '.workspace-topbar::after, .chat-heading::after', '.dialog-heading::after', '.topbar::after']) {
     assert.match(rule(css, selector), /background:\s*var\(--signal-stripe\)/, `${selector} draws the stripe`);

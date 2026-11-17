@@ -27,6 +27,16 @@ final class ProjectService
     /** @return list<array<string, mixed>> */
     public function list(AuthenticatedUser $user): array
     {
+        if ($user->role === 'guest') {
+            $projects = [];
+            foreach ($this->projects->listForWorkspace($user->workspaceId) as $project) {
+                $isMember = $this->projects->isMember($user->workspaceId, $project['id'], $user->id);
+                if (Permissions::can($user, 'client_view.read', ['is_member' => $isMember])) {
+                    $projects[] = ['id' => $project['id'], 'name' => $project['name'], 'slug' => $project['slug']];
+                }
+            }
+            return $projects;
+        }
         return array_values(array_filter(
             $this->projects->listForWorkspace($user->workspaceId),
             fn (array $project): bool => Permissions::can($user, 'projects.view', [

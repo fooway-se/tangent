@@ -98,6 +98,9 @@ final class AuthService
     /** @return list<array<string, mixed>> */
     public function listApiTokens(AuthenticatedUser $user): array
     {
+        if (!Permissions::can($user, 'tokens.list')) {
+            throw new ApiException(403, 'forbidden', 'You cannot list API tokens.');
+        }
         return $this->tokens->listForUser($user->workspaceId, $user->id);
     }
 
@@ -137,6 +140,7 @@ final class AuthService
         $name = is_string($body['name'] ?? null) ? trim($body['name']) : '';
         $email = is_string($body['email'] ?? null) ? trim($body['email']) : '';
         $password = is_string($body['password'] ?? null) ? $body['password'] : '';
+        $role = is_string($body['role'] ?? null) ? $body['role'] : 'developer';
         if (mb_strlen($name, 'UTF-8') < 2 || mb_strlen($name, 'UTF-8') > 120) {
             throw new ApiException(422, 'validation_failed', 'Name must be between 2 and 120 characters.');
         }
@@ -146,8 +150,11 @@ final class AuthService
         if (strlen($password) < 12) {
             throw new ApiException(422, 'validation_failed', 'Password must be at least 12 characters.');
         }
+        if (!in_array($role, ['developer', 'guest'], true)) {
+            throw new ApiException(422, 'validation_failed', 'Role must be developer or guest.');
+        }
 
-        return $this->users->createDeveloper($actor->workspaceId, $name, $email, $password);
+        return $this->users->createWorkspaceUser($actor->workspaceId, $name, $email, $password, $role);
     }
 
     /** @param array<string, mixed> $user @return array<string, mixed> */

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Tangent\Modules\Inbox;
 
 use Tangent\Core\AuthenticatedUser;
+use Tangent\Core\ApiException;
+use Tangent\Core\Permissions;
 use Tangent\Modules\Issues\IssueRepository;
 use Tangent\Modules\Projects\ProjectService;
 
@@ -19,6 +21,9 @@ final class InboxService
     /** @return list<array<string, mixed>> */
     public function list(AuthenticatedUser $user): array
     {
+        if (!Permissions::can($user, 'inbox.read')) {
+            throw new ApiException(403, 'forbidden', 'You cannot read your issue inbox.');
+        }
         $visibleProjects = $this->projects->list($user);
         $projectById = [];
         foreach ($visibleProjects as $project) {

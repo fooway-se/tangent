@@ -7,13 +7,18 @@ namespace Tangent\Modules\Chat;
 use Tangent\Core\ApiException;
 use Tangent\Core\AuthenticatedUser;
 use Tangent\Core\Permissions;
+use Tangent\Modules\Inbox\InboxEvents;
 use Tangent\Modules\Projects\ProjectRepository;
+use PDO;
+use Throwable;
 
 final class ChatService
 {
     public function __construct(
         private readonly ChatRepository $chat,
         private readonly ProjectRepository $projects,
+        private readonly InboxEvents $inboxEvents,
+        private readonly PDO $pdo,
     ) {
     }
 
@@ -42,6 +47,15 @@ final class ChatService
             'etag' => $etag,
             'not_modified' => $notModified,
         ];
+    }
+
+    /** @return array<string, mixed> */
+    public function message(AuthenticatedUser $user, int $projectId, int $messageId): array
+    {
+        $channelId = $this->visibleProjectChannel($user, $projectId);
+        $message = $this->chat->getMessage($user->workspaceId, $channelId, $messageId);
+        if ($message === null) throw new ApiException(404, 'not_found', 'The message was not found.');
+        return $message;
     }
 
     /** @return array{events: list<array<string, mixed>>, etag: string, not_modified: bool} */
@@ -85,13 +99,43 @@ final class ChatService
             }
         }
 
-        return $this->chat->createMessage(
-            $user->workspaceId,
-            $channelId,
-            $user->id,
-            $parentId,
-            $body,
-        );
+        $threadParticipants = [];
+        if ($parentId !== null) {
+            $rootId = $this->chat->threadRootId($user->workspaceId, $channelId, $parentId);
+            $threadParticipants = $this->chat->threadParticipantIds($user->workspaceId, $channelId, $rootId);
+        }
+        $ownsTransaction = !$this->pdo->inTransaction();
+        if ($ownsTransaction) $this->pdo->beginTransaction();
+        try {
+            $message = $this->chat->createMessage($user->workspaceId, $channelId, $user->id, $parentId, $body);
+            $this->inboxEvents->recordMessage($user->workspaceId, $projectId, $user->id, $message, $threadParticipants);
+            if ($ownsTransaction) $this->pdo->commit();
+            return $message;
+        } catch (Throwable $exception) {
+            if ($ownsTransaction && $this->pdo->inTransaction()) $this->pdo->rollBack();
+            throw $exception;
+        }
+    }
+
+    /** @param array<string, mixed> $input @return array<string, mixed> */
+    public function sendClientComment(AuthenticatedUser $user, int $projectId, array $input): array
+    {
+        $channelId = $this->visibleProjectChannel($user, $projectId, 'client_comments.create');
+        $body = is_string($input['body'] ?? null) ? trim($input['body']) : '';
+        if ($body === '' || mb_strlen($body, 'UTF-8') > 2000) {
+            throw new ApiException(422, 'validation_failed', 'Comment must be between 1 and 2000 characters.');
+        }
+        $ownsTransaction = !$this->pdo->inTransaction();
+        if ($ownsTransaction) $this->pdo->beginTransaction();
+        try {
+            $message = $this->chat->createMessage($user->workspaceId, $channelId, $user->id, null, $body, true);
+            $this->inboxEvents->recordClientComment($user->workspaceId, $projectId, $user->id, (int) $message['id'], $body);
+            if ($ownsTransaction) $this->pdo->commit();
+            return $message;
+        } catch (Throwable $exception) {
+            if ($ownsTransaction && $this->pdo->inTransaction()) $this->pdo->rollBack();
+            throw $exception;
+        }
     }
 
     /** @return array{project_id: int, channel_id: int, root_message_id: int, title: string} */

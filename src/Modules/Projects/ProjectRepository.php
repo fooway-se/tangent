@@ -139,7 +139,7 @@ final class ProjectRepository
     public function members(int $workspaceId, int $projectId): array
     {
         $statement = $this->pdo->prepare(
-            'SELECT u.id, u.workspace_id, u.name, u.email, u.role, pm.created_at AS joined_at
+            'SELECT u.id, u.workspace_id, u.name, u.email, u.role, u.is_active, pm.created_at AS joined_at
              FROM project_memberships pm
              INNER JOIN users u ON u.workspace_id = pm.workspace_id AND u.id = pm.user_id
              WHERE pm.workspace_id = :workspace_id AND pm.project_id = :project_id

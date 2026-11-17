@@ -18,6 +18,18 @@ final class ChatRoutes
 
     public function register(Router $router): void
     {
+        $router->add('GET', '/api/v1/projects/{id}/messages/{messageId}', function (
+            Request $request,
+            array $params,
+            AuthenticatedUser $user,
+        ): Response {
+            return Response::json(200, ['message' => $this->service->message(
+                $user,
+                self::positiveId($params['id']),
+                self::positiveId($params['messageId']),
+            )]);
+        });
+
         $router->add('GET', '/api/v1/events', function (
             Request $request,
             array $params,

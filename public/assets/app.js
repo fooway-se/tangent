@@ -1,3 +1,5 @@
+import { INBOX_TABS, createEventRow, eventsForTab, tabCount, } from './inbox-events.js';
+import { renderClientView } from './guest-view.js';
 import { resolveShortcut, shouldSubmitOnEnter } from './shortcuts.js';
 import { filterIssues, groupIssues, sortIssues, } from './issue-board.js';
 const ISSUE_STATUS_OPTIONS = [
@@ -37,6 +39,19 @@ function populateIssueAssigneeSelect(select, selectedAssigneeId) {
         select.append(option);
     }
     select.value = selectedAssigneeId === null ? '' : String(selectedAssigneeId);
+}
+function populateIssueMilestoneSelect(select, selectedMilestoneId) {
+    const none = document.createElement('option');
+    none.value = '';
+    none.textContent = 'No milestone';
+    select.replaceChildren(none);
+    for (const milestone of projectMilestones) {
+        const option = document.createElement('option');
+        option.value = String(milestone.id);
+        option.textContent = milestone.name;
+        select.append(option);
+    }
+    select.value = selectedMilestoneId === null ? '' : String(selectedMilestoneId);
 }
 class ApiFailure extends Error {
     status;
@@ -122,11 +137,29 @@ const issueQuickAddTitle = document.querySelector('#issue-quick-add-title');
 const issueQuickAddAssignee = document.querySelector('#issue-quick-add-assignee');
 const issueDetailType = document.querySelector('#issue-detail-type');
 const issueDetailAssignee = document.querySelector('#issue-detail-assignee');
+const issueDetailMilestone = document.querySelector('#issue-detail-milestone');
+const issueDetailSharing = document.querySelector('#issue-detail-sharing');
+const issueDetailApproval = document.querySelector('#issue-detail-approval');
 const issueDetailTypeInput = document.querySelector('#issue-detail-type-input');
 const issueDetailAssigneeInput = document.querySelector('#issue-detail-assignee-input');
+const issueDetailMilestoneInput = document.querySelector('#issue-detail-milestone-input');
+const issueDetailSharedInput = document.querySelector('#issue-detail-shared-input');
+const issueDetailApprovalInput = document.querySelector('#issue-detail-approval-input');
 const issueDescriptionDetails = document.querySelector('#issue-description-details');
 const issueProgress = document.querySelector('#issue-progress');
 const issueProgressLabel = document.querySelector('#issue-progress-label');
+const manageMilestonesButton = document.querySelector('#manage-milestones-button');
+const milestoneManagerDialog = document.querySelector('#milestone-manager-dialog');
+const milestoneManagerClose = document.querySelector('#milestone-manager-close');
+const milestoneList = document.querySelector('#milestone-list');
+const milestoneListEmpty = document.querySelector('#milestone-list-empty');
+const milestoneForm = document.querySelector('#milestone-form');
+const milestoneFormHeading = document.querySelector('#milestone-form-heading');
+const milestoneNameInput = document.querySelector('#milestone-name-input');
+const milestoneDueDateInput = document.querySelector('#milestone-due-date-input');
+const milestoneFormError = document.querySelector('#milestone-form-error');
+const milestoneFormCancel = document.querySelector('#milestone-form-cancel');
+const milestoneFormSubmit = document.querySelector('#milestone-form-submit');
 const issueFilter = document.querySelector('#issue-filter');
 const issueOrder = document.querySelector('#issue-order');
 const issueCountSummary = document.querySelector('#issue-count-summary');
@@ -163,8 +196,22 @@ let pendingWorkspaceId = null;
 let workspacePickerOptionIndex = 0;
 const workspaceViewHistory = [];
 let activeProjectMembers = [];
+let projectMilestones = [];
+let editingMilestoneId = null;
 let projectIssues = [];
 let inboxIssues = [];
+let inboxEvents = [];
+let inboxTab = 'assigned';
+const inboxTabsElement = document.querySelector('#inbox-tabs');
+const inboxMarkAllReadButton = document.querySelector('#inbox-mark-all-read');
+const guestShell = document.querySelector('#guest-shell');
+const guestStatus = document.querySelector('#guest-status');
+const guestMain = document.querySelector('#guest-main');
+const guestTitle = document.querySelector('#guest-title');
+const guestUser = document.querySelector('#guest-user');
+const guestProjectLabel = document.querySelector('#guest-project-label');
+const guestProjectSelect = document.querySelector('#guest-project-select');
+const guestLogoutButton = document.querySelector('#guest-logout-button');
 let deletedProjectIssues = [];
 let selectedIssue = null;
 let activeChatProjectId = null;
@@ -250,6 +297,11 @@ function renderLoginTerminal(message, isError = false) {
     return text;
 }
 function report(message, isError = false) {
+    if (!guestShell.hidden) {
+        guestStatus.textContent = message;
+        guestStatus.classList.toggle('error', isError);
+        return;
+    }
     if (statusMessageTimer !== null)
         window.clearTimeout(statusMessageTimer);
     statusMessageTimer = null;
@@ -308,7 +360,10 @@ function showSignedOut() {
     keyboardHints.hidden = true;
     projectKeyboardHints.hidden = true;
     clearGoPrefix();
-    document.body.classList.remove('is-project-view');
+    document.body.classList.remove('is-project-view', 'is-guest');
+    guestShell.hidden = true;
+    inboxTab = 'assigned';
+    inboxEvents = [];
     projectList.replaceChildren();
     projectSidebarList.replaceChildren();
     issueList.replaceChildren();
@@ -321,6 +376,11 @@ function showSignedIn(user) {
     activeProject = null;
     activeUser = user;
     resetPendingWorkspaceSwitch();
+    if (user.role === 'guest') {
+        showGuestShell(user);
+        return;
+    }
+    guestShell.hidden = true;
     loginShell.hidden = true;
     loginPanel.hidden = true;
     workspacePanel.hidden = false;
@@ -349,6 +409,8 @@ async function switchWorkspace(workspaceId, restoreSwitcherFocus = false) {
             body: JSON.stringify({}),
         });
         showSignedIn(result.user);
+        if (result.user.role === 'guest')
+            return;
         await loadWorkspaces();
         await loadProjects();
         report(`Switched to ${result.workspace.name}.`);
@@ -1145,6 +1207,8 @@ function runPaletteCommand(index) {
 function openCommandPalette() {
     if (workspacePicker.open)
         resetPendingWorkspaceSwitch();
+    if (milestoneManagerDialog.open)
+        closeMilestoneManager();
     if (issueStatusPicker.open)
         closeIssueStatusPicker();
     if (issueDeleteConfirmation.open)
@@ -1167,6 +1231,8 @@ function openCommandPalette() {
 function showShortcutHelp() {
     if (workspacePicker.open)
         resetPendingWorkspaceSwitch();
+    if (milestoneManagerDialog.open)
+        closeMilestoneManager();
     if (issueStatusPicker.open)
         closeIssueStatusPicker();
     if (issueDeleteConfirmation.open)
@@ -1185,6 +1251,9 @@ function showShortcutHelp() {
 function dismissCurrentView() {
     if (workspacePicker.open) {
         resetPendingWorkspaceSwitch();
+    }
+    else if (milestoneManagerDialog.open) {
+        closeMilestoneManager();
     }
     else if (issueDeleteConfirmation.open) {
         closeIssueDeleteConfirmation();
@@ -1400,7 +1469,7 @@ function executeShortcut(action) {
     }
 }
 function handleKeyboardShortcut(event) {
-    if ((commandPalette.open || shortcutHelp.open || issueStatusPicker.open || issueDeleteConfirmation.open || memberRemovalConfirmation.open || workspacePicker.open)
+    if ((commandPalette.open || shortcutHelp.open || issueStatusPicker.open || issueDeleteConfirmation.open || memberRemovalConfirmation.open || milestoneManagerDialog.open || workspacePicker.open)
         && event.key !== 'Escape'
         && !((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k'))
         return;
@@ -1772,6 +1841,23 @@ projectsNavButton.addEventListener('click', goToProjects);
 inboxNavButton.addEventListener('click', goToInbox);
 adminNavButton.addEventListener('click', openWorkspaceAdmin);
 breadcrumbProjectsButton.addEventListener('click', goToProjects);
+manageMilestonesButton.addEventListener('click', openMilestoneManager);
+milestoneManagerClose.addEventListener('click', closeMilestoneManager);
+milestoneForm.addEventListener('submit', (event) => void saveMilestone(event));
+milestoneFormCancel.addEventListener('click', () => {
+    resetMilestoneForm();
+    milestoneNameInput.focus();
+});
+milestoneManagerDialog.addEventListener('cancel', (event) => {
+    event.preventDefault();
+    closeMilestoneManager();
+});
+milestoneManagerDialog.addEventListener('close', () => {
+    resetMilestoneForm();
+    if (!projectView.hidden && activeProject !== null && !commandPalette.open && !shortcutHelp.open && !workspacePicker.open) {
+        manageMilestonesButton.focus();
+    }
+});
 issuesTabButton.addEventListener('click', () => switchProjectTab('issues'));
 membersTabButton.addEventListener('click', () => switchProjectTab('members'));
 projectTabs.addEventListener('keydown', (event) => {
@@ -1909,6 +1995,11 @@ async function loadProjects() {
     }
 }
 async function loadInboxIssues() {
+    renderInboxTabs();
+    if (inboxTab !== 'assigned') {
+        await loadInboxEvents();
+        return;
+    }
     try {
         const result = await api('/inbox');
         if (inboxView.hidden || workspacePanel.hidden)
@@ -1926,18 +2017,136 @@ async function loadInboxIssues() {
         }
     }
 }
+function renderInboxTabs() {
+    inboxTabsElement.replaceChildren(...INBOX_TABS.map((tab) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.id = `inbox-tab-${tab.id}`;
+        button.className = `inbox-tab${tab.id === inboxTab ? ' is-active' : ''}`;
+        button.setAttribute('role', 'tab');
+        button.setAttribute('aria-selected', String(tab.id === inboxTab));
+        const count = tabCount(inboxEvents, tab.id);
+        button.textContent = count === null || count === 0 ? tab.label : `${tab.label} ${count}`;
+        button.addEventListener('click', () => selectInboxTab(tab.id));
+        return button;
+    }));
+    inboxMarkAllReadButton.hidden = inboxTab === 'assigned' || inboxTab === 'done';
+}
+function selectInboxTab(tab) {
+    inboxTab = tab;
+    renderInboxTabs();
+    if (tab === 'assigned') {
+        renderInboxIssues();
+    }
+    else {
+        void loadInboxEvents();
+    }
+}
+async function loadInboxEvents() {
+    try {
+        const result = await api('/inbox/events');
+        if (inboxView.hidden || inboxTab === 'assigned')
+            return;
+        inboxEvents = result.events;
+        renderInboxTabs();
+        renderInboxEvents();
+    }
+    catch (error) {
+        if (inboxView.hidden)
+            return;
+        inboxEvents = [];
+        renderInboxTabs();
+        inboxIssueList.replaceChildren();
+        inboxEmptyState.hidden = false;
+        inboxEmptyState.textContent = 'Could not load your events.';
+        report(error instanceof Error ? error.message : 'Could not load your events.', true);
+    }
+}
+function renderInboxEvents() {
+    const events = eventsForTab(inboxEvents, inboxTab);
+    const unread = inboxEvents.filter((event) => !event.done && !event.read).length;
+    inboxSummary.textContent = `${unread} unread ${unread === 1 ? 'event' : 'events'}.`;
+    inboxIssueList.replaceChildren(...events.map((event) => createEventRow(event, {
+        open: (target) => void openInboxEvent(target),
+        toggleRead: (target) => void updateInboxEvent(target, { read: !target.read }),
+        toggleDone: (target) => void updateInboxEvent(target, { done: !target.done, read: true }),
+    })));
+    inboxEmptyState.textContent = 'Nothing here.';
+    inboxEmptyState.hidden = events.length > 0;
+}
+async function updateInboxEvent(event, change) {
+    try {
+        const result = await api(`/inbox/events/${event.id}`, {
+            method: 'PATCH',
+            body: JSON.stringify(change),
+        });
+        inboxEvents = inboxEvents.map((candidate) => (candidate.id === event.id ? result.event : candidate));
+        renderInboxTabs();
+        renderInboxEvents();
+    }
+    catch (error) {
+        report(error instanceof Error ? error.message : 'Could not update the event.', true);
+    }
+}
+async function markAllInboxEventsRead() {
+    try {
+        await api('/inbox/events/read-all', { method: 'POST' });
+        inboxEvents = inboxEvents.map((event) => ({ ...event, read: true }));
+        renderInboxTabs();
+        renderInboxEvents();
+    }
+    catch (error) {
+        report(error instanceof Error ? error.message : 'Could not mark events as read.', true);
+    }
+}
+async function openInboxEvent(event) {
+    if (!event.read)
+        void updateInboxEvent(event, { read: true });
+    await loadProjectDetail(event.project_id);
+    if (activeProject?.id !== event.project_id || projectView.hidden)
+        return;
+    if (event.issue_id !== null) {
+        await loadProjectIssues(event.project_id);
+        const issue = projectIssues.find((candidate) => candidate.id === event.issue_id);
+        if (issue === undefined)
+            report('This issue is no longer available.', true);
+        else
+            openIssue(issue);
+        return;
+    }
+    if (event.message_id === null)
+        return;
+    try {
+        const result = await api(`/projects/${event.project_id}/messages/${event.message_id}`);
+        if (activeProject?.id !== event.project_id || activeChatProjectId !== event.project_id)
+            return;
+        appendChatMessage(result.message);
+        selectChatMessage(result.message.id);
+    }
+    catch (error) {
+        if (error instanceof ApiFailure && error.status === 404) {
+            report('The source message is no longer available.', true);
+            return;
+        }
+        report(error instanceof Error ? error.message : 'Could not open the source message.', true);
+    }
+}
 function renderInboxIssues() {
     const projectCount = new Set(inboxIssues.map((issue) => issue.project_id)).size;
     inboxSummary.textContent = inboxIssues.length === 0
         ? 'Open issues assigned to you across your projects.'
         : `${inboxIssues.length} open ${inboxIssues.length === 1 ? 'issue' : 'issues'} assigned to you in ${projectCount} ${projectCount === 1 ? 'project' : 'projects'}.`;
     inboxIssueList.replaceChildren(...inboxIssues.map(createInboxIssueRow));
+    inboxEmptyState.textContent = 'You have no open issues assigned to you.';
     inboxEmptyState.hidden = inboxIssues.length > 0;
 }
 function createInboxIssueRow(issue) {
     const item = document.createElement('li');
     item.className = 'issue-card inbox-issue-card';
     item.dataset.issueId = String(issue.id);
+    const marker = document.createElement('span');
+    marker.className = `inbox-marker is-${issue.status}`;
+    marker.setAttribute('aria-hidden', 'true');
     const content = document.createElement('div');
     content.className = 'issue-content';
     const projectName = document.createElement('span');
@@ -1965,7 +2174,13 @@ function createInboxIssueRow(issue) {
     status.textContent = issueStatusLabel(issue.status);
     metadata.append(type, status);
     content.append(projectName, mainline, metadata);
-    item.append(content);
+    const updated = document.createElement('time');
+    updated.className = 'inbox-updated';
+    updated.dateTime = issue.updated_at;
+    updated.textContent = new Date(issue.updated_at).toLocaleString(undefined, {
+        day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+    });
+    item.append(marker, content, updated);
     return item;
 }
 async function openInboxIssue(issue) {
@@ -1980,20 +2195,137 @@ async function openInboxIssue(issue) {
     }
     openIssue(currentIssue);
 }
+function resetMilestoneForm() {
+    milestoneForm.reset();
+    editingMilestoneId = null;
+    milestoneFormHeading.textContent = 'Add a milestone';
+    milestoneFormSubmit.textContent = 'Add milestone';
+    milestoneFormCancel.hidden = true;
+    milestoneFormError.textContent = '';
+    milestoneFormError.hidden = true;
+}
+function renderMilestoneList() {
+    milestoneList.replaceChildren();
+    milestoneListEmpty.hidden = projectMilestones.length > 0;
+    for (const milestone of projectMilestones) {
+        const row = document.createElement('li');
+        row.className = 'milestone-row';
+        const info = document.createElement('div');
+        info.className = 'milestone-row-info';
+        const name = document.createElement('strong');
+        name.textContent = milestone.name;
+        const dueDate = document.createElement('span');
+        dueDate.textContent = milestone.due_date === null ? 'No due date' : `Due ${milestone.due_date}`;
+        info.append(name, dueDate);
+        const edit = document.createElement('button');
+        edit.type = 'button';
+        edit.className = 'button button-quiet';
+        edit.textContent = 'Edit';
+        edit.setAttribute('aria-label', `Edit milestone: ${milestone.name}`);
+        edit.addEventListener('click', () => {
+            editingMilestoneId = milestone.id;
+            milestoneNameInput.value = milestone.name;
+            milestoneDueDateInput.value = milestone.due_date ?? '';
+            milestoneFormHeading.textContent = 'Edit milestone';
+            milestoneFormSubmit.textContent = 'Save milestone';
+            milestoneFormCancel.hidden = false;
+            milestoneFormError.textContent = '';
+            milestoneFormError.hidden = true;
+            milestoneNameInput.focus();
+        });
+        row.append(info, edit);
+        milestoneList.append(row);
+    }
+}
+function openMilestoneManager() {
+    if (activeProject === null)
+        return;
+    resetMilestoneForm();
+    renderMilestoneList();
+    milestoneManagerDialog.showModal();
+    milestoneNameInput.focus();
+}
+function closeMilestoneManager() {
+    if (milestoneManagerDialog.open)
+        milestoneManagerDialog.close();
+}
+async function saveMilestone(event) {
+    event.preventDefault();
+    const projectId = activeProject?.id;
+    if (projectId === undefined)
+        return;
+    const editingId = editingMilestoneId;
+    const path = editingId === null
+        ? `/projects/${projectId}/milestones`
+        : `/projects/${projectId}/milestones/${editingId}`;
+    const payload = {
+        name: milestoneNameInput.value.trim(),
+        due_date: milestoneDueDateInput.value === '' ? null : milestoneDueDateInput.value,
+    };
+    milestoneFormError.textContent = '';
+    milestoneFormError.hidden = true;
+    milestoneFormSubmit.disabled = true;
+    milestoneFormCancel.disabled = true;
+    milestoneManagerClose.disabled = true;
+    milestoneNameInput.disabled = true;
+    milestoneDueDateInput.disabled = true;
+    try {
+        await api(path, {
+            method: editingId === null ? 'POST' : 'PATCH',
+            body: JSON.stringify(payload),
+        });
+        const result = await api(`/projects/${projectId}/milestones`);
+        if (activeProject?.id !== projectId)
+            return;
+        projectMilestones = result.milestones;
+        renderMilestoneList();
+        if (selectedIssue !== null)
+            renderIssueDetail();
+        populateIssueMilestoneSelect(issueDetailMilestoneInput, selectedIssue?.milestone_id ?? null);
+        resetMilestoneForm();
+        report(editingId === null ? 'Milestone created.' : 'Milestone updated.');
+        if (milestoneManagerDialog.open)
+            milestoneNameInput.focus();
+    }
+    catch (error) {
+        if (error instanceof ApiFailure && error.status === 401) {
+            closeMilestoneManager();
+            showSignedOut();
+            return;
+        }
+        milestoneFormError.textContent = error instanceof Error ? error.message : 'Could not save the milestone.';
+        milestoneFormError.hidden = false;
+        if (milestoneManagerDialog.open)
+            milestoneNameInput.focus();
+    }
+    finally {
+        milestoneFormSubmit.disabled = false;
+        milestoneFormCancel.disabled = false;
+        milestoneManagerClose.disabled = false;
+        milestoneNameInput.disabled = false;
+        milestoneDueDateInput.disabled = false;
+    }
+}
 async function loadProjectDetail(projectId, tab = 'issues', recordHistory = true) {
     const previousLocation = currentWorkspaceLocation();
+    if (milestoneManagerDialog.open)
+        closeMilestoneManager();
     stopChatPolling();
     selectedIssue = null;
     issueDetailEditForm.hidden = true;
     issueDetailDisplay.hidden = false;
     try {
-        const result = await api(`/projects/${projectId}`);
+        const [result, milestoneResult] = await Promise.all([
+            api(`/projects/${projectId}`),
+            api(`/projects/${projectId}/milestones`),
+        ]);
         const nextLocation = { view: 'project', projectId, tab };
         if (recordHistory && !sameWorkspaceLocation(previousLocation, nextLocation)) {
             workspaceViewHistory.push(previousLocation);
         }
         activeProject = result.project;
         activeProjectMembers = result.members;
+        projectMilestones = milestoneResult.milestones;
         populateIssueAssigneeSelect(issueQuickAddAssignee, null);
         populateIssueAssigneeSelect(issueDetailAssigneeInput, null);
         projectSidebarList.querySelectorAll('.project-sidebar-link').forEach((button) => {
@@ -2153,6 +2485,13 @@ function renderIssueDetail() {
     issueDetailTitle.textContent = selectedIssue.title;
     issueDetailType.textContent = issueTypeLabel(selectedIssue.type);
     issueDetailAssignee.textContent = issueAssigneeLabel(selectedIssue.assignee_id);
+    issueDetailMilestone.textContent = projectMilestones.find((milestone) => milestone.id === selectedIssue?.milestone_id)?.name ?? 'None';
+    issueDetailSharing.textContent = selectedIssue.is_shared ? 'Shared with guest' : 'Internal';
+    issueDetailApproval.textContent = selectedIssue.approved_at !== null
+        ? 'Approved by guest'
+        : selectedIssue.approval_requested_at !== null
+            ? 'Guest approval requested'
+            : 'No guest approval requested';
     issueDetailDescription.textContent = selectedIssue.description || 'No description yet.';
     issueDetailDescription.classList.toggle('is-empty', selectedIssue.description === '');
     issueDetailStatusLabel.textContent = issueStatusLabel(selectedIssue.status);
@@ -2446,6 +2785,10 @@ issueDetailEditButton.addEventListener('click', () => {
     issueDetailDescriptionInput.value = selectedIssue.description;
     issueDetailTypeInput.value = selectedIssue.type;
     populateIssueAssigneeSelect(issueDetailAssigneeInput, selectedIssue.assignee_id);
+    populateIssueMilestoneSelect(issueDetailMilestoneInput, selectedIssue.milestone_id);
+    issueDetailSharedInput.checked = selectedIssue.is_shared;
+    issueDetailApprovalInput.checked = selectedIssue.approval_requested_at !== null;
+    issueDetailApprovalInput.disabled = !selectedIssue.is_shared;
     issueDetailDisplay.hidden = true;
     issueDetailEditForm.hidden = false;
     issueDetailTitleInput.focus();
@@ -2478,6 +2821,9 @@ issueDetailEditForm.addEventListener('submit', async (event) => {
                 description: issueDetailDescriptionInput.value,
                 type: issueDetailTypeInput.value,
                 assignee_id: issueDetailAssigneeInput.value === '' ? null : Number(issueDetailAssigneeInput.value),
+                milestone_id: issueDetailMilestoneInput.value === '' ? null : Number(issueDetailMilestoneInput.value),
+                is_shared: issueDetailSharedInput.checked,
+                approval_requested: issueDetailApprovalInput.checked,
             }),
         });
         if (selectedIssue?.id !== issue.id || activeProject?.id !== issue.project_id)
@@ -2498,6 +2844,11 @@ issueDetailEditForm.addEventListener('submit', async (event) => {
     finally {
         issueDetailSaveButton.disabled = false;
     }
+});
+issueDetailSharedInput.addEventListener('change', () => {
+    if (!issueDetailSharedInput.checked)
+        issueDetailApprovalInput.checked = false;
+    issueDetailApprovalInput.disabled = !issueDetailSharedInput.checked;
 });
 issueDetailStatus.addEventListener('click', () => {
     if (selectedIssue !== null)
@@ -2705,6 +3056,7 @@ projectForm.addEventListener('submit', async (event) => {
 developerForm.addEventListener('submit', async (event) => {
     event.preventDefault();
     const values = new FormData(developerForm);
+    const role = values.get('role') === 'guest' ? 'guest' : 'developer';
     try {
         await api('/users', {
             method: 'POST',
@@ -2712,15 +3064,83 @@ developerForm.addEventListener('submit', async (event) => {
                 name: values.get('name'),
                 email: values.get('email'),
                 password: values.get('password'),
+                role,
             }),
         });
         developerForm.reset();
-        report('Developer added. Open a project to add them as a member.');
+        report(role === 'guest'
+            ? 'Guest added. Open a project to add them and share the client view.'
+            : 'Developer added. Open a project to add them as a member.');
     }
     catch (error) {
         report(error instanceof Error ? error.message : 'Could not add developer.', true);
     }
 });
+function showGuestShell(user) {
+    loginShell.hidden = true;
+    loginPanel.hidden = true;
+    workspacePanel.hidden = true;
+    accountBar.hidden = true;
+    keyboardHints.hidden = true;
+    guestShell.hidden = false;
+    guestUser.textContent = user.email;
+    document.body.classList.add('is-guest');
+    void loadGuestProjects();
+}
+async function loadGuestProjects() {
+    try {
+        const result = await api('/projects');
+        guestProjectSelect.replaceChildren(...result.projects.map((project) => {
+            const option = document.createElement('option');
+            option.value = String(project.id);
+            option.textContent = project.name;
+            return option;
+        }));
+        guestProjectLabel.hidden = result.projects.length < 2;
+        if (result.projects.length === 0) {
+            guestMain.replaceChildren();
+            const empty = document.createElement('p');
+            empty.className = 'guest-muted';
+            empty.textContent = 'No projects have been shared with you yet.';
+            guestMain.append(empty);
+            return;
+        }
+        await loadClientView(result.projects[0].id);
+    }
+    catch (error) {
+        if (error instanceof ApiFailure && error.status === 401) {
+            showSignedOut();
+            return;
+        }
+        report(error instanceof Error ? error.message : 'Could not load your projects.', true);
+    }
+}
+async function loadClientView(projectId) {
+    try {
+        const view = await api(`/projects/${projectId}/client-view`);
+        guestTitle.textContent = `${view.project.name} / Client portal`;
+        renderClientView(guestMain, view, {
+            approve: async (approvalId) => {
+                await api(`/approvals/${approvalId}/approve`, { method: 'POST' });
+                await loadClientView(projectId);
+            },
+            comment: async (body) => {
+                await api(`/projects/${projectId}/client-comments`, { method: 'POST', body: JSON.stringify({ body }) });
+                report('Message sent to the team.');
+            },
+        });
+    }
+    catch (error) {
+        if (error instanceof ApiFailure && error.status === 401) {
+            showSignedOut();
+            return;
+        }
+        report(error instanceof Error ? error.message : 'Could not load the client view.', true);
+    }
+}
+guestProjectSelect.addEventListener('change', () => { void loadClientView(Number(guestProjectSelect.value)); });
+guestLogoutButton.addEventListener('click', () => { void signOut(); });
+inboxMarkAllReadButton.addEventListener('click', () => { void markAllInboxEventsRead(); });
 async function signOut() {
     try {
         await api('/auth/logout', { method: 'POST' });
@@ -2734,6 +3154,8 @@ async function start() {
     try {
         const result = await api('/auth/me');
         showSignedIn(result.user);
+        if (result.user.role === 'guest')
+            return;
         await loadWorkspaces();
         await loadProjects();
     }

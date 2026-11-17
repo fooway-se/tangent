@@ -2,7 +2,7 @@
 
 Chat, projects and issues in one place for developers working remotely. Keep client work in separate workspaces, switch between them from the sidebar, and self-host on ordinary PHP + MySQL hosting.
 
-> **Status: pre-alpha.** Auth, multiple client workspaces with switching, projects, project chat, issue creation and editing, status changes, issue types, project-member assignment, a cross-project Inbox for open issues assigned to you, chat conversion, and keyboard navigation are implemented; broader chat and issue workflows remain planned.
+> **Status: pre-alpha.** Auth, multiple client workspaces with switching, projects, project chat, issue creation and editing, status changes, issue types, project-member assignment, event Inbox, a restricted guest client view, chat conversion, and keyboard navigation are implemented; broader chat and issue workflows remain planned.
 
 ## Why
 
@@ -11,7 +11,7 @@ Most teams spread work across a chat app, an issue tracker and a project board. 
 - **Keyboard-first workflow.** Use `g` then `w` to open the workspace picker; arrows choose, `Enter` switches, and `Esc` cancels. Use `g` then `i`/`c`/`m` to switch project features; within the Issues/Members tab bar, `←`/`→` switches tabs, while `Home`/`End` jumps to the first or last tab. Use `↑`/`↓` or `j`/`k` to move through lists or chat messages, `Page Up`/`Page Down` to move one screen through project and issue lists or focused chat messages, `/` to focus the issue filter, then `↓`/`↑` to jump to the first/last match. Press `s` to open the selected issue’s status picker, arrows to choose, Enter to save, or Escape to cancel. `Home`/`End` jumps to the first or last project or issue; from a focused chat message, they jump to the oldest or newest loaded message. Use `r`/`i` for chat replies and issue conversion. `Enter` opens a selected project or issue, submits forms, and sends chat messages; `Shift+Enter` inserts a newline in chat or description fields. `Esc` first leaves text fields with text intact, cancels staged workspace changes or drafts, and backs through views; Projects is the root. Press `Ctrl/Cmd+K` for commands or `?` for the full shortcut map.
 - **Chat and issues are connected.** Create a Backlog issue from a chat message; the message thread stays linked as context.
 - **Made for AI-assisted work.** Issue prompt export and agent tokens use the same API; those workflows are planned.
-- **Client view (planned).** Guests will see shared progress and updates; internal work stays hidden.
+- **Client view.** Guests see shared progress and updates, can comment and approve requested items; internal work stays hidden.
 - **Simple to host (planned).** The install wizard is not implemented yet. Production will need no Composer, npm, or framework.
 
 ## Planned features
@@ -19,8 +19,8 @@ Most teams spread work across a chat app, an issue tracker and a project board. 
 | Area | What |
 |---|---|
 | Chat | Standalone channels, DMs and broader chat workflows |
-| Issues | Planned: quick-add syntax (`Fix login bug @niklas !high due:fri`), priorities, milestones and linked PRs; issue types and project-member assignment are implemented |
-| Inbox | Implemented: cross-project list of open issues assigned to you. Planned: mentions, thread replies, status changes and PR events in one list |
+| Issues | Implemented: issue types, project-member assignment, sharing, guest approval requests, milestone assignment and a milestone create/edit dialog. Planned: quick-add syntax (`Fix login bug @niklas !high due:fri`), priorities, milestone deletion UI and linked PRs |
+| Inbox | Implemented: cross-project assigned issues plus mention, thread reply, assignment and status events. Planned: PR events |
 | Guests | Restricted client view with progress, milestones, shared issues and updates; comments on shared content and approvals for designated deliveries |
 | Integrations | GitHub via webhooks (GitLab later through the same interface) |
 | API | REST under `/api/v1/`, opaque Bearer tokens, OpenAPI description |
@@ -39,7 +39,7 @@ Architecture and conventions: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ## Mockups
 
-The current UI direction pairs warm sand-colored navigation and page surfaces with dark ink work panels and orange accents. The references cover sign-in, project list and work views, issue detail, members, keyboard overlays, administration, and a narrow mobile project view. See the [mockup guide in the spec](docs/SPEC.md#ui-referenser) for the screen index. Guest and inbox mockups are not in this set yet; their planned scope is still described in the spec.
+The current UI direction is **Putty & Screen**: warm putty navigation and page surfaces, dark screen work panels, and orange accents. References cover sign-in, project list and work views, issue detail, members, keyboard overlays, administration, mobile project view, the [Inbox](docs/mockups/Inkorg@2x.png), and the [guest client view](<docs/mockups/Gästvy (kund)@2x.png>). See the [mockup guide in the spec](docs/SPEC.md#ui-referenser) for the screen index.
 
 ## Installation
 

@@ -8,7 +8,11 @@ use Tangent\Core\ApiException;
 use Tangent\Core\AuthenticatedUser;
 use Tangent\Core\Permissions;
 use Tangent\Modules\Chat\ChatService;
+use Tangent\Modules\Inbox\InboxEvents;
+use Tangent\Modules\Projects\MilestoneRepository;
 use Tangent\Modules\Projects\ProjectRepository;
+use PDO;
+use Throwable;
 
 final class IssuesService
 {
@@ -18,6 +22,9 @@ final class IssuesService
         private readonly IssueRepository $issues,
         private readonly ProjectRepository $projects,
         private readonly ChatService $chat,
+        private readonly InboxEvents $inboxEvents,
+        private readonly PDO $pdo,
+        private readonly MilestoneRepository $milestones,
     ) {
     }
 
@@ -51,17 +58,27 @@ final class IssuesService
         $assigneeId = self::assigneeId($input['assignee_id'] ?? null);
         $this->requireProjectMemberAssignee($user->workspaceId, $projectId, $assigneeId);
 
-        return $this->issues->create(
-            $user->workspaceId,
-            $projectId,
-            $title,
-            $description,
-            $user->id,
-            null,
-            null,
-            $type,
-            $assigneeId,
-        );
+        $ownsTransaction = !$this->pdo->inTransaction();
+        if ($ownsTransaction) $this->pdo->beginTransaction();
+        try {
+            $issue = $this->issues->create(
+                $user->workspaceId,
+                $projectId,
+                $title,
+                $description,
+                $user->id,
+                null,
+                null,
+                $type,
+                $assigneeId,
+            );
+            $this->inboxEvents->recordAssigned($user->workspaceId, $projectId, $user->id, $assigneeId, (int) $issue['id'], $title);
+            if ($ownsTransaction) $this->pdo->commit();
+            return $issue;
+        } catch (Throwable $exception) {
+            if ($ownsTransaction && $this->pdo->inTransaction()) $this->pdo->rollBack();
+            throw $exception;
+        }
     }
 
     /** @return array<string, mixed> */
@@ -92,7 +109,15 @@ final class IssuesService
         if ($issue === null) {
             throw new ApiException(404, 'not_found', 'The issue was not found.');
         }
-        $this->requireProjectAccess($user, $issue['project_id'], 'issues.update');
+        $shareFields = ['is_shared', 'milestone_id', 'approval_requested'];
+        $issueFields = ['title', 'description', 'status', 'type', 'assignee_id'];
+        $hasShareFields = array_intersect($shareFields, array_keys($input)) !== [];
+        $hasIssueFields = array_intersect($issueFields, array_keys($input)) !== [];
+        if (!$hasShareFields && !$hasIssueFields) {
+            throw new ApiException(422, 'validation_failed', 'At least one issue field must be supplied.');
+        }
+        if ($hasIssueFields) $this->requireProjectAccess($user, $issue['project_id'], 'issues.update');
+        if ($hasShareFields) $this->requireProjectAccess($user, $issue['project_id'], 'issues.share');
 
         $updated = [
             'title' => $issue['title'],
@@ -100,6 +125,11 @@ final class IssuesService
             'type' => $issue['type'],
             'assignee_id' => $issue['assignee_id'],
             'status' => $issue['status'],
+            'is_shared' => $issue['is_shared'],
+            'milestone_id' => $issue['milestone_id'],
+            'approval_requested_at' => $issue['approval_requested_at'],
+            'approved_by' => $issue['approved_by'],
+            'approved_at' => $issue['approved_at'],
         ];
         if (array_key_exists('title', $input)) {
             if (!is_string($input['title'])) {
@@ -132,12 +162,100 @@ final class IssuesService
             }
             $updated['status'] = $input['status'];
         }
-        if (!array_intersect(['title', 'description', 'status', 'type', 'assignee_id'], array_keys($input))) {
-            throw new ApiException(422, 'validation_failed', 'At least one issue field must be supplied.');
+        if (array_key_exists('is_shared', $input)) {
+            if (!is_bool($input['is_shared'])) throw new ApiException(422, 'validation_failed', 'is_shared must be a boolean.');
+            $updated['is_shared'] = $input['is_shared'];
+        }
+        if (array_key_exists('milestone_id', $input)) {
+            if ($input['milestone_id'] !== null && (!is_int($input['milestone_id']) || $input['milestone_id'] < 1)) {
+                throw new ApiException(422, 'validation_failed', 'milestone_id must be a positive integer or null.');
+            }
+            $updated['milestone_id'] = $input['milestone_id'];
+            if ($updated['milestone_id'] !== null
+                && $this->milestones->find($user->workspaceId, $issue['project_id'], $updated['milestone_id']) === null) {
+                throw new ApiException(422, 'validation_failed', 'Milestones must belong to the issue project.');
+            }
+        }
+        if (array_key_exists('approval_requested', $input)) {
+            if (!is_bool($input['approval_requested'])) throw new ApiException(422, 'validation_failed', 'approval_requested must be a boolean.');
+            if ($input['approval_requested']) {
+                if ($issue['approval_requested_at'] === null) $updated['approval_requested_at'] = gmdate('Y-m-d H:i:s');
+            } else {
+                $updated['approval_requested_at'] = null;
+                $updated['approved_by'] = null;
+                $updated['approved_at'] = null;
+            }
         }
 
-        $this->issues->update($user->workspaceId, $issueId, $updated);
-        return $this->issues->find($user->workspaceId, $issueId) ?? [];
+        $assigneeChanged = $updated['assignee_id'] !== $issue['assignee_id'];
+        $statusChanged = $updated['status'] !== $issue['status'];
+        $ownsTransaction = !$this->pdo->inTransaction();
+        if ($ownsTransaction) $this->pdo->beginTransaction();
+        try {
+            $this->issues->update($user->workspaceId, $issueId, $updated);
+            if ($statusChanged) {
+                $this->issues->recordStatusTransition($user->workspaceId, $issueId, $user->id, $issue['status'], $updated['status']);
+            }
+            if ($assigneeChanged) {
+                $this->inboxEvents->recordAssigned($user->workspaceId, $issue['project_id'], $user->id, $updated['assignee_id'], $issueId, $updated['title']);
+            }
+            if ($statusChanged) {
+                $this->inboxEvents->recordStatus(
+                    $user->workspaceId,
+                    $issue['project_id'],
+                    $user->id,
+                    [$updated['assignee_id'], $issue['created_by']],
+                    $issueId,
+                    $updated['title'],
+                    $updated['status'],
+                );
+            }
+            if ($ownsTransaction) $this->pdo->commit();
+            return $this->issues->find($user->workspaceId, $issueId) ?? [];
+        } catch (Throwable $exception) {
+            if ($ownsTransaction && $this->pdo->inTransaction()) $this->pdo->rollBack();
+            throw $exception;
+        }
+    }
+
+    public function approve(AuthenticatedUser $user, int $issueId): void
+    {
+        $issue = $this->issues->approvalIssue($user->workspaceId, $issueId);
+        if ($issue === null) throw new ApiException(404, 'not_found', 'The approval was not found.');
+        $isMember = $this->projects->isMember($user->workspaceId, $issue['project_id'], $user->id);
+        if (!$isMember) throw new ApiException(404, 'not_found', 'The approval was not found.');
+        if (!Permissions::can($user, 'approvals.approve', ['is_member' => $isMember])) {
+            throw new ApiException(403, 'forbidden', 'You cannot approve this issue.');
+        }
+        if (!$issue['is_shared'] || $issue['approval_requested_at'] === null || $issue['status'] === 'cancelled') {
+            throw new ApiException(404, 'not_found', 'The approval was not found.');
+        }
+        if ($issue['approved_at'] !== null) throw new ApiException(409, 'already_approved', 'This issue has already been approved.');
+
+        $ownsTransaction = !$this->pdo->inTransaction();
+        if ($ownsTransaction) $this->pdo->beginTransaction();
+        try {
+            if (!$this->issues->approve($user->workspaceId, $issueId, $user->id)) {
+                $current = $this->issues->approvalIssue($user->workspaceId, $issueId);
+                if ($current !== null && $current['is_shared'] && $current['approval_requested_at'] !== null
+                    && $current['status'] !== 'cancelled' && $current['approved_at'] !== null) {
+                    throw new ApiException(409, 'already_approved', 'This issue has already been approved.');
+                }
+                throw new ApiException(404, 'not_found', 'The approval was not found.');
+            }
+            $this->inboxEvents->recordApproval(
+                $user->workspaceId,
+                $issue['project_id'],
+                $user->id,
+                $issue['created_by'],
+                $issueId,
+                $issue['title'],
+            );
+            if ($ownsTransaction) $this->pdo->commit();
+        } catch (Throwable $exception) {
+            if ($ownsTransaction && $this->pdo->inTransaction()) $this->pdo->rollBack();
+            throw $exception;
+        }
     }
 
     public function delete(AuthenticatedUser $user, int $issueId): void

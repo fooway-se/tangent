@@ -18,6 +18,15 @@ final class IssuesRoutes
 
     public function register(Router $router): void
     {
+        $router->add('POST', '/api/v1/approvals/{id}/approve', function (
+            Request $request,
+            array $params,
+            AuthenticatedUser $user,
+        ): Response {
+            $this->service->approve($user, self::positiveId($params['id']));
+            return Response::json(200, ['approved' => true]);
+        });
+
         $router->add('POST', '/api/v1/messages/{id}/issue', function (
             Request $request,
             array $params,

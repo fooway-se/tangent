@@ -40,6 +40,21 @@
       </main>
     </section>
 
+    <section id="guest-shell" class="guest-shell" hidden>
+      <header class="guest-header">
+        <a class="brand" href="/app.html" aria-label="Tangent home"><span class="brand-mark" aria-hidden="true">T</span><span>Tangent</span></a>
+        <h1 id="guest-title" class="guest-title">Client portal</h1>
+        <label id="guest-project-label" class="guest-project-label" hidden>Project
+          <select id="guest-project-select"></select>
+        </label>
+        <span class="guest-cap">Read-only · guest</span>
+        <span id="guest-user" class="guest-user"></span>
+        <button id="guest-logout-button" class="button button-quiet" type="button">Sign out</button>
+      </header>
+      <p id="guest-status" class="guest-status-line" role="status"></p>
+      <main id="guest-main" class="guest-main" aria-live="polite"></main>
+    </section>
+
     <section id="workspace-panel" class="workspace-layout" hidden>
       <aside class="workspace-sidebar" aria-label="Workspace navigation">
         <div class="workspace-brand">
@@ -114,7 +129,9 @@
                 <p class="eyebrow">Workspace</p>
                 <h1 id="inbox-heading" tabindex="-1">Inbox</h1>
               </div>
+              <button id="inbox-mark-all-read" class="button button-quiet" type="button">Mark all read</button>
             </header>
+            <div id="inbox-tabs" class="inbox-tabs" role="tablist" aria-label="Inbox filter"></div>
             <p id="inbox-summary" class="inbox-summary">Open issues assigned to you across your projects.</p>
             <ul id="inbox-issue-list" class="issue-list inbox-issue-list" aria-live="polite"></ul>
             <p id="inbox-empty-state" class="empty-state" hidden>You have no open issues assigned to you.</p>
@@ -130,7 +147,10 @@
               <section class="issue-progress-strip" aria-label="Project issue progress">
                 <div class="issue-progress-status">
                   <span class="eyebrow">Project status</span>
-                  <span id="project-state" class="project-status"></span>
+                  <div class="issue-progress-status-actions">
+                    <span id="project-state" class="project-status"></span>
+                    <button id="manage-milestones-button" class="button button-quiet milestone-manage-trigger" type="button" aria-haspopup="dialog" aria-controls="milestone-manager-dialog">Milestones</button>
+                  </div>
                 </div>
                 <div class="issue-progress-content">
                   <strong id="issue-progress-label">0 of 0 issues done</strong>
@@ -196,7 +216,7 @@
                 <h2 class="section-title">Project members</h2>
                 <ul id="member-list" class="member-list"></ul>
                 <form id="member-form" class="member-form" hidden>
-                  <label>Add a developer
+                  <label>Add a project member
                     <select id="member-select" name="user_id"></select>
                   </label>
                   <button id="add-member-button" class="button button-secondary" type="submit">Add to project</button>
@@ -221,6 +241,9 @@
                   <div class="issue-detail-metadata">
                     <span>Type: <strong id="issue-detail-type"></strong></span>
                     <span>Assignee: <strong id="issue-detail-assignee"></strong></span>
+                    <span>Milestone: <strong id="issue-detail-milestone"></strong></span>
+                    <span id="issue-detail-sharing"></span>
+                    <span id="issue-detail-approval"></span>
                   </div>
                   <p id="issue-detail-description" class="issue-detail-description"></p>
                   <a id="issue-source-link" class="issue-source-link" href="#project-chat-column" hidden>Open source chat thread</a>
@@ -246,6 +269,19 @@
                       <option value="">Unassigned</option>
                     </select>
                   </label>
+                  <label>Milestone
+                    <select id="issue-detail-milestone-input" name="milestone_id">
+                      <option value="">No milestone</option>
+                    </select>
+                  </label>
+                  <label class="form-check-label">
+                    <input id="issue-detail-shared-input" name="is_shared" type="checkbox">
+                    Share this issue with the guest
+                  </label>
+                  <label class="form-check-label">
+                    <input id="issue-detail-approval-input" name="approval_requested" type="checkbox">
+                    Request guest approval
+                  </label>
                   <div class="form-actions">
                     <button id="issue-detail-cancel-button" class="button button-quiet" type="button">Cancel</button>
                     <button id="issue-detail-save-button" class="button button-primary" type="submit">Save changes</button>
@@ -263,8 +299,8 @@
               </div>
             </header>
             <article class="panel admin-panel">
-              <h2>Add a developer</h2>
-              <p class="panel-description">Create a workspace account. Add them to a project from its Members view.</p>
+              <h2>Add a workspace member</h2>
+              <p class="panel-description">Create a developer or guest account, then add them to a project from its Members view.</p>
               <form id="developer-form" class="form-stack">
                 <label>Name
                   <input name="name" maxlength="120" required>
@@ -275,7 +311,13 @@
                 <label>Temporary password
                   <input name="password" type="password" minlength="12" autocomplete="new-password" required>
                 </label>
-                <button class="button button-primary" type="submit">Add developer</button>
+                <label>Role
+                  <select name="role">
+                    <option value="developer">Developer</option>
+                    <option value="guest">Guest</option>
+                  </select>
+                </label>
+                <button class="button button-primary" type="submit">Add member</button>
               </form>
             </article>
             <article class="panel admin-panel workspace-create-panel">
@@ -358,6 +400,32 @@
           <button id="member-removal-cancel" class="button button-quiet" type="button">Cancel</button>
           <button id="member-removal-confirm" class="button button-primary button-danger" type="button">Remove member</button>
         </div>
+      </section>
+    </dialog>
+
+    <dialog id="milestone-manager-dialog" class="milestone-manager" aria-labelledby="milestone-manager-heading" aria-describedby="milestone-manager-description">
+      <section class="milestone-manager-content">
+        <header class="dialog-heading">
+          <h2 id="milestone-manager-heading">Project milestones</h2>
+          <button id="milestone-manager-close" class="button button-quiet" type="button">Close</button>
+        </header>
+        <p id="milestone-manager-description" class="milestone-manager-description">Group project issues into milestones and set optional due dates.</p>
+        <p id="milestone-list-empty" class="milestone-list-empty" hidden>No milestones yet. Add one below.</p>
+        <ul id="milestone-list" class="milestone-list" aria-label="Project milestones"></ul>
+        <form id="milestone-form" class="milestone-form">
+          <h3 id="milestone-form-heading">Add a milestone</h3>
+          <label>Milestone name
+            <input id="milestone-name-input" name="name" maxlength="120" required>
+          </label>
+          <label>Due date (optional)
+            <input id="milestone-due-date-input" name="due_date" type="date">
+          </label>
+          <p id="milestone-form-error" class="milestone-form-error" role="alert" hidden></p>
+          <div class="form-actions">
+            <button id="milestone-form-cancel" class="button button-quiet" type="button" hidden>Cancel edit</button>
+            <button id="milestone-form-submit" class="button button-primary" type="submit">Add milestone</button>
+          </div>
+        </form>
       </section>
     </dialog>
 

@@ -85,7 +85,7 @@ final class ChatRepository
         [$projectFilter, $projectParameters] = self::projectFilter($projectIds);
         $statement = $this->pdo->prepare(
             'SELECT m.id, c.project_id, m.channel_id, m.parent_id, m.author_id,
-                    u.name AS author_name, m.body, m.created_at
+                    u.name AS author_name, m.body, m.is_client_visible, m.created_at
              FROM messages m
              INNER JOIN channels c ON c.workspace_id = m.workspace_id AND c.id = m.channel_id
              INNER JOIN users u ON u.workspace_id = m.workspace_id AND u.id = m.author_id
@@ -113,7 +113,7 @@ final class ChatRepository
     {
         if ($sinceId === null) {
             $statement = $this->pdo->prepare(
-                'SELECT m.id, m.channel_id, m.parent_id, m.author_id, u.name AS author_name, m.body, m.created_at
+                'SELECT m.id, m.channel_id, m.parent_id, m.author_id, u.name AS author_name, m.body, m.is_client_visible, m.created_at
                  FROM messages m
                  INNER JOIN users u ON u.workspace_id = m.workspace_id AND u.id = m.author_id
                  WHERE m.workspace_id = :workspace_id AND m.channel_id = :channel_id
@@ -125,7 +125,7 @@ final class ChatRepository
         }
 
         $statement = $this->pdo->prepare(
-            'SELECT m.id, m.channel_id, m.parent_id, m.author_id, u.name AS author_name, m.body, m.created_at
+            'SELECT m.id, m.channel_id, m.parent_id, m.author_id, u.name AS author_name, m.body, m.is_client_visible, m.created_at
              FROM messages m
              INNER JOIN users u ON u.workspace_id = m.workspace_id AND u.id = m.author_id
              WHERE m.workspace_id = :workspace_id AND m.channel_id = :channel_id AND m.id > :since_id
@@ -153,6 +153,12 @@ final class ChatRepository
             'id' => $messageId,
         ]);
         return $statement->fetchColumn() !== false;
+    }
+
+    /** @return array<string, mixed>|null */
+    public function getMessage(int $workspaceId, int $channelId, int $messageId): ?array
+    {
+        return $this->findMessage($workspaceId, $channelId, $messageId);
     }
 
     /** @return array<string, mixed>|null */
@@ -201,6 +207,30 @@ final class ChatRepository
         }
     }
 
+    /** @return list<int> */
+    public function threadParticipantIds(int $workspaceId, int $channelId, int $rootMessageId): array
+    {
+        $statement = $this->pdo->prepare(
+            'WITH RECURSIVE thread_messages AS (
+                SELECT id, parent_id, author_id FROM messages
+                WHERE workspace_id = :workspace_id AND channel_id = :channel_id AND id = :root_id
+                UNION ALL
+                SELECT child.id, child.parent_id, child.author_id FROM messages child
+                INNER JOIN thread_messages parent ON child.parent_id = parent.id
+                WHERE child.workspace_id = :child_workspace_id AND child.channel_id = :child_channel_id
+             )
+             SELECT DISTINCT author_id FROM thread_messages'
+        );
+        $statement->execute([
+            'workspace_id' => $workspaceId,
+            'channel_id' => $channelId,
+            'root_id' => $rootMessageId,
+            'child_workspace_id' => $workspaceId,
+            'child_channel_id' => $channelId,
+        ]);
+        return array_map('intval', $statement->fetchAll(PDO::FETCH_COLUMN));
+    }
+
     /** @return array<string, mixed> */
     public function createMessage(
         int $workspaceId,
@@ -208,10 +238,11 @@ final class ChatRepository
         int $authorId,
         ?int $parentId,
         string $body,
+        bool $clientVisible = false,
     ): array {
         $statement = $this->pdo->prepare(
-            'INSERT INTO messages (workspace_id, channel_id, author_id, parent_id, body)
-             VALUES (:workspace_id, :channel_id, :author_id, :parent_id, :body)'
+            'INSERT INTO messages (workspace_id, channel_id, author_id, parent_id, body, is_client_visible)
+             VALUES (:workspace_id, :channel_id, :author_id, :parent_id, :body, :is_client_visible)'
         );
         $statement->execute([
             'workspace_id' => $workspaceId,
@@ -219,6 +250,7 @@ final class ChatRepository
             'author_id' => $authorId,
             'parent_id' => $parentId,
             'body' => $body,
+            'is_client_visible' => $clientVisible ? 1 : 0,
         ]);
 
         $message = $this->findMessage($workspaceId, $channelId, (int) $this->pdo->lastInsertId());
@@ -229,7 +261,7 @@ final class ChatRepository
     private function findMessage(int $workspaceId, int $channelId, int $messageId): ?array
     {
         $statement = $this->pdo->prepare(
-            'SELECT m.id, m.channel_id, m.parent_id, m.author_id, u.name AS author_name, m.body, m.created_at
+            'SELECT m.id, m.channel_id, m.parent_id, m.author_id, u.name AS author_name, m.body, m.is_client_visible, m.created_at
              FROM messages m
              INNER JOIN users u ON u.workspace_id = m.workspace_id AND u.id = m.author_id
              WHERE m.workspace_id = :workspace_id AND m.channel_id = :channel_id AND m.id = :id
@@ -250,6 +282,7 @@ final class ChatRepository
         $message['id'] = (int) $message['id'];
         $message['channel_id'] = (int) $message['channel_id'];
         $message['author_id'] = (int) $message['author_id'];
+        $message['is_client_visible'] = (bool) ($message['is_client_visible'] ?? false);
         $message['parent_id'] = $message['parent_id'] === null ? null : (int) $message['parent_id'];
         return $message;
     }

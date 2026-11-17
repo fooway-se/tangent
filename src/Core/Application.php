@@ -19,9 +19,16 @@ use Tangent\Modules\Issues\IssuesRoutes;
 use Tangent\Modules\Issues\IssuesService;
 use Tangent\Modules\Inbox\InboxRoutes;
 use Tangent\Modules\Inbox\InboxService;
+use Tangent\Modules\Inbox\InboxEventRepository;
+use Tangent\Modules\Inbox\InboxEvents;
 use Tangent\Modules\Projects\ProjectRepository;
 use Tangent\Modules\Projects\ProjectRoutes;
 use Tangent\Modules\Projects\ProjectService;
+use Tangent\Modules\Projects\MilestoneRepository;
+use Tangent\Modules\Projects\MilestoneService;
+use Tangent\Modules\Projects\MilestoneRoutes;
+use Tangent\Modules\Projects\ClientViewService;
+use Tangent\Modules\Projects\ClientViewRoutes;
 use Tangent\Modules\Workspaces\WorkspaceRepository;
 use Tangent\Modules\Workspaces\WorkspaceRoutes;
 use Tangent\Modules\Workspaces\WorkspaceService;
@@ -34,11 +41,15 @@ final class Application
         $tokens = new TokenRepository($pdo);
         $auth = new AuthService($users, $tokens, new RateLimiter($pdo), $config);
         $projectRepository = new ProjectRepository($pdo);
-        $chat = new ChatService(new ChatRepository($pdo), $projectRepository);
+        $inboxEvents = new InboxEvents(new InboxEventRepository($pdo), $projectRepository, $users);
+        $chat = new ChatService(new ChatRepository($pdo), $projectRepository, $inboxEvents, $pdo);
         $issueRepository = new IssueRepository($pdo);
-        $issues = new IssuesService($issueRepository, $projectRepository, $chat);
+        $milestoneRepository = new MilestoneRepository($pdo);
+        $issues = new IssuesService($issueRepository, $projectRepository, $chat, $inboxEvents, $pdo, $milestoneRepository);
         $projects = new ProjectService($projectRepository, $users, $pdo, $chat, $issues);
         $inbox = new InboxService($issueRepository, $projects);
+        $clientView = new ClientViewService($projectRepository, $milestoneRepository, $issueRepository);
+        $milestones = new MilestoneService($milestoneRepository, $issueRepository, $projectRepository, $pdo);
         $router = new Router();
 
         (new AuthRoutes(
@@ -53,9 +64,11 @@ final class Application
             $config->sessionLifetimeSeconds,
         ))->register($router);
         (new ProjectRoutes($projects))->register($router);
+        (new ClientViewRoutes($clientView, $chat))->register($router);
+        (new MilestoneRoutes($milestones))->register($router);
         (new ChatRoutes($chat))->register($router);
         (new IssuesRoutes($issues))->register($router);
-        (new InboxRoutes($inbox))->register($router);
+        (new InboxRoutes($inbox, $inboxEvents))->register($router);
 
         return new Gateway($router, new Authenticator($tokens, $config));
     }

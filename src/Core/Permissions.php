@@ -9,6 +9,14 @@ final class Permissions
     /** @param array<string, mixed> $resource */
     public static function can(AuthenticatedUser $user, string $action, array $resource = []): bool
     {
+        if ($user->role === 'guest') {
+            return match ($action) {
+                'client_view.read', 'client_comments.create', 'approvals.approve'
+                    => ($resource['is_member'] ?? false) === true,
+                default => false,
+            };
+        }
+
         return match ($action) {
             'users.list', 'users.create', 'projects.create', 'projects.update', 'projects.manage_members'
                 => $user->role === 'admin',
@@ -24,6 +32,18 @@ final class Permissions
                 => $user->role === 'admin' || ($user->role === 'developer' && ($resource['is_member'] ?? false) === true),
             'tokens.create'
                 => in_array($user->role, ['admin', 'developer'], true),
+            'tokens.list'
+                => in_array($user->role, ['admin', 'developer'], true),
+            'inbox.read'
+                => in_array($user->role, ['admin', 'developer'], true),
+            'client_view.read'
+                => $user->role === 'admin' || (($user->role === 'developer') && ($resource['is_member'] ?? false) === true),
+            'client_comments.create'
+                => $user->role === 'admin' || (($user->role === 'developer') && ($resource['is_member'] ?? false) === true),
+            'approvals.approve'
+                => false,
+            'issues.share', 'milestones.manage'
+                => $user->role === 'admin' || (($user->role === 'developer') && ($resource['is_member'] ?? false) === true),
             'tokens.revoke'
                 => $user->role === 'admin' || (int) ($resource['user_id'] ?? 0) === $user->id,
             default => false,
