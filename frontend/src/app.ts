@@ -1813,6 +1813,7 @@ function renderProjectIssueBoard(): void {
   const open = total - completed;
   issueProgress.max = Math.max(total, 1);
   issueProgress.value = completed;
+  issueProgress.classList.toggle('is-complete', total > 0 && completed === total);
   issueProgressLabel.textContent = `${completed} of ${total} issues done`;
   issueCountSummary.textContent = `${open} open · ${completed} done`;
 
