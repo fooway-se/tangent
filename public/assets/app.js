@@ -34,6 +34,7 @@ const projectFormPanel = document.querySelector('#project-form-panel');
 const projectDescription = document.querySelector('#project-description');
 const projectState = document.querySelector('#project-state');
 const chatView = document.querySelector('#chat-view');
+const projectChatColumn = document.querySelector('#project-chat-column');
 const projectSidebarList = document.querySelector('#project-sidebar-list');
 const issuesView = document.querySelector('#issues-view');
 const membersView = document.querySelector('#members-view');
@@ -219,6 +220,7 @@ function showWorkspaceView(view) {
     projectsView.hidden = view !== 'projects';
     adminView.hidden = view !== 'admin';
     projectView.hidden = view !== 'project';
+    projectChatColumn.hidden = view !== 'project';
     workspaceNav.hidden = false;
     keyboardHints.hidden = false;
     projectKeyboardHints.hidden = view !== 'project';

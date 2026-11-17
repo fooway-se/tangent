@@ -1,0 +1,86 @@
+/*
+ * Tangent design tokens: "Putty & Screen".
+ *
+ * A beige 1979 home-computer case ("case", "key", "vent", "plate", "cap")
+ * holds dark CRT screens ("screen"). Every colour, font, radius and layout
+ * size lives here; app.css only references these tokens, so a new view never
+ * needs a hard-coded value.
+ *
+ * Fonts: the CSP only allows same-origin assets, so no web-font service is
+ * used. Archivo and IBM Plex Mono are picked up when installed. To ship them
+ * with the app, add @font-face rules here that point at files in
+ * /assets/fonts/; otherwise the stacks fall back to platform fonts.
+ */
+:root {
+  /* Type */
+  --font-display: "Archivo", "Helvetica Neue", Helvetica, Arial, "Liberation Sans", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+
+  /* The case: beige plastic */
+  --case-top: #e2dac6;
+  --case-mid: #d6ccb6;
+  --case-bottom: #cbc1a9;
+  --case-shade: #b3a98f;
+  --case-edge: #a89e86;
+  --case-light: #f4eedf;
+  --case-ink: #26231e;
+  --case-muted: #544d40;
+  --case-error: #a3271a;
+  --vent-dark: #a99f87;
+  --vent-light: #e8e1d0;
+  --footer-top: #d2c8b1;
+  --footer-bottom: #c8bda5;
+
+  /* Beige keys */
+  --key-top: #f1ebdb;
+  --key-bottom: #d4cab3;
+  --key-highlight: #fffdf5;
+
+  /* Black keycaps and the brand plate */
+  --cap-top: #3a3835;
+  --cap-bottom: #1f1d1b;
+  --cap-edge: #000000;
+  --plate: #1f1d1b;
+  --plate-ink: #efe6cf;
+  --plate-muted: #cfc6ae;
+
+  /* The screen */
+  --screen: #0e171b;
+  --screen-rim: #1b1a18;
+  --screen-glow: rgba(120, 190, 210, 0.12);
+  --screen-vignette: rgba(60, 150, 170, 0.13);
+  --screen-ink: #efe6cf;
+  --screen-muted: #9fb3b8;
+  --screen-header: rgba(255, 255, 255, 0.03);
+  --screen-panel: #16242b;
+  --screen-control-top: #1d303a;
+  --screen-inset: #0a1114;
+  --screen-border: #2b414b;
+  --screen-line: #223540;
+  --screen-hover: #1c2f38;
+  --screen-track: #0b1317;
+  --screen-group: #12202a;
+  --screen-group-top: #22363f;
+  --screen-group-bottom: #1a2b34;
+
+  /* Accent and the four-colour signal stripe */
+  --accent: #f0a02c;
+  --accent-edge: #a8620f;
+  --accent-ink: #26231e;
+  --accent-shine: rgba(255, 255, 255, 0.45);
+  --danger: #ff8a73;
+  --focus-ring: rgba(240, 160, 44, 0.4);
+  --signal-stripe: linear-gradient(to bottom, #d6402b 0 25%, #f08a24 25% 50%, #f3c231 50% 75%, #5fae4e 75% 100%);
+
+  /* Shape */
+  --radius-screen: 18px;
+  --radius-panel: 6px;
+  --radius-key: 7px;
+  --radius-cap: 4px;
+
+  /* Layout */
+  --gutter: 16px;
+  --header-height: 50px;
+  --sidebar-width: 256px;
+  --chat-width: 400px;
+}

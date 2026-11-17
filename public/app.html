@@ -5,13 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'">
     <title>Tangent · Projects</title>
+    <link rel="stylesheet" href="/assets/tokens.css">
     <link rel="stylesheet" href="/assets/app.css">
     <script type="module" src="/assets/app.js"></script>
   </head>
   <body>
     <section id="login-shell">
       <header class="topbar login-topbar">
-        <a class="brand" href="/app.html" aria-label="Tangent home">Tangent</a>
+        <a class="brand" href="/app.html" aria-label="Tangent home"><span class="brand-mark" aria-hidden="true">T</span><span>Tangent</span></a>
       </header>
       <main class="page-shell">
         <p id="login-status-message" class="status-message" role="status" aria-live="polite"></p>
@@ -52,6 +53,7 @@
       </aside>
 
       <section class="workspace-stage" aria-label="Workspace content">
+        <div class="workspace-screen">
         <header class="workspace-topbar">
           <nav class="workspace-breadcrumb" aria-label="Breadcrumb">
             <button id="breadcrumb-projects" class="breadcrumb-link" type="button" hidden>Projects</button>
@@ -189,9 +191,6 @@
                 </form>
               </section>
             </section>
-            <aside id="project-chat-column" class="project-chat-column" aria-label="Project chat">
-              <div id="chat-view" class="project-chat-host"></div>
-            </aside>
           </section>
 
           <section id="admin-view" class="workspace-view admin-view" hidden aria-labelledby="admin-heading">
@@ -229,7 +228,12 @@
             </article>
           </section>
         </main>
-        <footer id="keyboard-hints" class="keyboard-hints" hidden>
+        </div>
+        <aside id="project-chat-column" class="project-chat-column" aria-label="Project chat" hidden>
+          <div id="chat-view" class="project-chat-host"></div>
+        </aside>
+      </section>
+      <footer id="keyboard-hints" class="keyboard-hints" hidden>
           <span><kbd>j</kbd>/<kbd>k</kbd> Move</span>
           <span><kbd>Enter</kbd> Open</span>
           <span><kbd>g</kbd> <kbd>p</kbd> Projects · <kbd>g</kbd> <kbd>w</kbd> Workspace</span>
@@ -237,8 +241,7 @@
           <span id="project-keyboard-hints" hidden><kbd>g</kbd> <kbd>i</kbd> Issues <kbd>g</kbd> <kbd>c</kbd> Chat <kbd>g</kbd> <kbd>m</kbd> Members · <kbd>c</kbd> Create <kbd>e</kbd> Edit <kbd>s</kbd> Status · Chat: <kbd>j</kbd>/<kbd>k</kbd> Move <kbd>r</kbd> Reply <kbd>i</kbd> Issue · <kbd>Enter</kbd> Send <kbd>Shift</kbd>+<kbd>Enter</kbd> New line</span>
           <span><kbd>Ctrl/Cmd</kbd>+<kbd>K</kbd> Commands</span>
           <span><kbd>?</kbd> Shortcuts</span>
-        </footer>
-      </section>
+      </footer>
     </section>
 
     <dialog id="command-palette" class="command-palette" aria-labelledby="command-palette-heading">

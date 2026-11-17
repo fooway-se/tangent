@@ -107,6 +107,7 @@ const projectFormPanel = document.querySelector<HTMLElement>('#project-form-pane
 const projectDescription = document.querySelector<HTMLElement>('#project-description')!;
 const projectState = document.querySelector<HTMLElement>('#project-state')!;
 const chatView = document.querySelector<HTMLElement>('#chat-view')!;
+const projectChatColumn = document.querySelector<HTMLElement>('#project-chat-column')!;
 const projectSidebarList = document.querySelector<HTMLUListElement>('#project-sidebar-list')!;
 const issuesView = document.querySelector<HTMLElement>('#issues-view')!;
 const membersView = document.querySelector<HTMLElement>('#members-view')!;
@@ -298,6 +299,7 @@ function showWorkspaceView(view: 'projects' | 'admin' | 'project'): void {
   projectsView.hidden = view !== 'projects';
   adminView.hidden = view !== 'admin';
   projectView.hidden = view !== 'project';
+  projectChatColumn.hidden = view !== 'project';
   workspaceNav.hidden = false;
   keyboardHints.hidden = false;
   projectKeyboardHints.hidden = view !== 'project';

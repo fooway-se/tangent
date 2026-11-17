@@ -2,12 +2,14 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
+const tokens = await readFile(new URL('../../public/assets/tokens.css', import.meta.url), 'utf8');
 const css = await readFile(new URL('../../public/assets/app.css', import.meta.url), 'utf8');
+const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
 
-function rule(selector) {
-  const start = css.split('\n').findIndex((entry) => entry.trimStart().startsWith(`${selector} {`));
+function rule(source, selector) {
+  const lines = source.split('\n');
+  const start = lines.findIndex((entry) => entry.trimStart().startsWith(`${selector} {`));
   assert.notEqual(start, -1, `CSS rule exists for ${selector}`);
-  const lines = css.split('\n');
   const block = [];
   let depth = 0;
   for (const line of lines.slice(start)) {
@@ -18,32 +20,58 @@ function rule(selector) {
   return block.join('\n');
 }
 
-test('all views use the warm shell and dark teal work surface palette', () => {
-  assert.match(rule(':root'), /--canvas:\s*#[0-9a-f]{6}/i);
-  assert.match(rule(':root'), /--accent:\s*#[0-9a-f]{6}/i);
-  for (const selector of ['.workspace-sidebar', '.workspace-stage', '.keyboard-hints']) {
-    assert.match(rule(selector), /background:\s*var\(--canvas\)/, `${selector} uses the warm shell`);
-  }
-  for (const selector of ['.workspace-content', '.project-view', '.project-chat-column']) {
-    assert.match(rule(selector), /background:\s*var\(--deep-blue\)/, `${selector} uses the dark work surface`);
-  }
+test('tokens.css is linked before app.css so every view shares one palette', () => {
+  const tokenLink = html.indexOf('href="/assets/tokens.css"');
+  const appLink = html.indexOf('href="/assets/app.css"');
+  assert.notEqual(tokenLink, -1, 'tokens.css is linked');
+  assert.ok(tokenLink < appLink, 'tokens.css comes first');
 });
 
-test('shell, cards, and controls use the mockup corner scale and shared borders', () => {
-  assert.match(rule(':root'), /--radius-shell:\s*\d+px/);
-  assert.match(rule(':root'), /--radius-card:\s*\d+px/);
-  assert.match(rule(':root'), /--radius-control:\s*\d+px/);
-  assert.match(rule('.workspace-topbar'), /border-radius:\s*var\(--radius-shell\)/);
-  assert.match(rule('.workspace-content'), /border-radius:\s*0\s+0\s+var\(--radius-shell\)/);
+test('every CSS variable used by app.css is defined as a token', () => {
+  const used = new Set([...css.matchAll(/var\((--[a-z0-9-]+)/g)].map((match) => match[1]));
+  const defined = new Set([...`${tokens}\n${css}`.matchAll(/^\s*(--[a-z0-9-]+)\s*:/gm)].map((match) => match[1]));
+  const missing = [...used].filter((name) => !defined.has(name));
+  assert.deepEqual(missing, [], `undefined variables: ${missing.join(', ')}`);
+});
+
+test('app.css takes colours from tokens instead of hard-coding them', () => {
+  assert.deepEqual(css.match(/#[0-9a-f]{3,6}\b/gi) ?? [], [], 'no hex colours in app.css');
+});
+
+test('the palette is a beige case holding dark screens with an amber accent', () => {
+  const root = rule(tokens, ':root');
+  for (const token of ['--case-top', '--case-mid', '--case-bottom', '--key-top', '--cap-top', '--screen', '--screen-panel', '--accent']) {
+    assert.match(root, new RegExp(`${token}:\\s*#[0-9a-f]{6}`, 'i'), `${token} is a hex colour`);
+  }
+  assert.match(root, /--signal-stripe:\s*linear-gradient/);
+  assert.match(rule(css, 'body'), /background:\s*linear-gradient\([^;]*var\(--case-top\)/, 'the page is the case');
+  for (const selector of ['.workspace-screen, .project-chat-column']) {
+    assert.match(rule(css, selector), /var\(--screen\)/, `${selector} is a dark screen`);
+  }
+  assert.match(rule(css, '.keyboard-hints'), /var\(--footer-top\)/, 'the keyboard strip is on the case');
+});
+
+test('screens, panels and controls use the shared corner scale and borders', () => {
+  const root = rule(tokens, ':root');
+  for (const token of ['--radius-screen', '--radius-panel', '--radius-key', '--radius-cap']) {
+    assert.match(root, new RegExp(`${token}:\\s*\\d+px`), `${token} is a pixel radius`);
+  }
+  assert.match(rule(css, '.workspace-screen, .project-chat-column'), /border-radius:\s*var\(--radius-screen\)/);
   for (const selector of ['.panel', '.button', 'input, textarea, select']) {
-    assert.match(rule(selector), /border-radius:\s*var\(--radius-(?:card|control)\)/, `${selector} uses the shared corner scale`);
-    const borderToken = selector === '.button' ? /border:\s*1px solid var\(--border-strong\)/ : /border:\s*1px solid var\(--border\)/;
-    assert.match(rule(selector), borderToken, `${selector} uses the shared border token`);
+    assert.match(rule(css, selector), /border-radius:\s*var\(--radius-panel\)/, `${selector} uses the shared corner`);
+    assert.match(rule(css, selector), /border:\s*1px solid var\(--screen-border\)/, `${selector} uses the shared border`);
   }
-  assert.match(rule(':root'), /font-family:\s*ui-monospace/);
+  assert.match(rule(css, ':root'), /font-family:\s*var\(--font-mono\)/);
+  assert.match(rule(tokens, ':root'), /--font-mono:[^;]*ui-monospace/, 'monospace falls back to the platform font');
 });
 
-test('brand and main panel use the same striped signature accent', () => {
-  assert.match(rule('.workspace-brand::after'), /background:\s*var\(--signal-stripe\)/);
-  assert.match(rule('.workspace-content::before'), /background:\s*var\(--signal-stripe\)/);
+test('every screen and dialog header carries the signal stripe', () => {
+  for (const selector of ['.workspace-nav::before', '.workspace-topbar::after, .chat-heading::after', '.dialog-heading::after', '.topbar::after']) {
+    assert.match(rule(css, selector), /background:\s*var\(--signal-stripe\)/, `${selector} draws the stripe`);
+  }
+});
+
+test('shortcut keys are black keycaps on the case and beige keys elsewhere', () => {
+  assert.match(rule(css, '.keyboard-hints kbd'), /var\(--cap-top\)/);
+  assert.match(rule(css, 'kbd'), /var\(--key-top\)/);
 });
