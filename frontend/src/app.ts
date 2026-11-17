@@ -6,6 +6,7 @@ import { resolveShortcut, shouldSubmitOnEnter, type ShortcutAction } from './sho
 import {
   filterIssues,
   groupIssues,
+  groupIssuesByMilestone,
   milestoneProgress,
   sortIssues,
   type BoardIssue,
@@ -15,6 +16,7 @@ import {
 
 type Role = 'admin' | 'developer' | 'guest';
 type IssueType = 'task' | 'bug' | 'feature' | 'research' | 'maintenance';
+type IssueGrouping = 'status' | 'milestone';
 
 type WorkspaceLocation =
   | { view: 'projects'; focusedProjectId?: number }
@@ -284,8 +286,8 @@ const milestoneFormError = document.querySelector<HTMLElement>('#milestone-form-
 const milestoneFormCancel = document.querySelector<HTMLButtonElement>('#milestone-form-cancel')!;
 const milestoneFormSubmit = document.querySelector<HTMLButtonElement>('#milestone-form-submit')!;
 const issueFilter = document.querySelector<HTMLInputElement>('#issue-filter')!;
+const issueGrouping = document.querySelector<HTMLSelectElement>('#issue-grouping')!;
 const issueOrder = document.querySelector<HTMLSelectElement>('#issue-order')!;
-const issueGroupingLabel = document.querySelector<HTMLElement>('#issue-grouping-label')!;
 const issueCountSummary = document.querySelector<HTMLElement>('#issue-count-summary')!;
 const issueList = document.querySelector<HTMLUListElement>('#issue-list')!;
 const deletedIssuesDetails = document.querySelector<HTMLDetailsElement>('#deleted-issues-details')!;
@@ -324,6 +326,8 @@ let activeProjectMembers: Member[] = [];
 let projectMilestones: Milestone[] = [];
 let editingMilestoneId: number | null = null;
 let projectIssues: Issue[] = [];
+let issueGroupingBeforeNextUp: IssueGrouping = 'status';
+let issueGroupingForcedByNextUp = false;
 let inboxIssues: InboxIssue[] = [];
 let inboxEvents: InboxEvent[] = [];
 let inboxTab: InboxTab = 'assigned';
@@ -2022,7 +2026,8 @@ projectForm.querySelector<HTMLTextAreaElement>('textarea[name="description"]')
 issueDescriptionInput?.addEventListener('keydown', (event) => submitFormOnEnter(event, issueForm));
 issueDetailDescriptionInput.addEventListener('keydown', (event) => submitFormOnEnter(event, issueDetailEditForm));
 issueFilter.addEventListener('input', renderProjectIssueBoard);
-issueOrder.addEventListener('change', renderProjectIssueBoard);
+issueGrouping.addEventListener('change', renderProjectIssueBoard);
+issueOrder.addEventListener('change', handleIssueOrderChange);
 
 toggleProjectFormButton.addEventListener('click', () => {
   if (!projectFormPanel.hidden) {
@@ -2487,6 +2492,7 @@ async function loadProjectDetail(
     deletedProjectIssues = [];
     issueFilter.value = '';
     issueOrder.value = 'updated';
+    synchronizeIssueGroupingForOrder();
     issueDescriptionDetails.open = false;
     renderProjectIssueBoard();
     showWorkspaceView('project');
@@ -2549,6 +2555,24 @@ async function loadProjectIssues(projectId: number): Promise<void> {
   }
 }
 
+function synchronizeIssueGroupingForOrder(): void {
+  const nextUpMode = issueOrder.value === 'next_up';
+  if (nextUpMode && !issueGroupingForcedByNextUp) {
+    issueGroupingBeforeNextUp = issueGrouping.value as IssueGrouping;
+    issueGrouping.value = 'milestone';
+    issueGrouping.disabled = true;
+  } else if (!nextUpMode && issueGroupingForcedByNextUp) {
+    issueGrouping.value = issueGroupingBeforeNextUp;
+    issueGrouping.disabled = false;
+  }
+  issueGroupingForcedByNextUp = nextUpMode;
+}
+
+function handleIssueOrderChange(): void {
+  synchronizeIssueGroupingForOrder();
+  renderProjectIssueBoard();
+}
+
 function renderProjectIssueBoard(): void {
   const total = projectIssues.length;
   const completed = projectIssues.filter((issue) => issue.status === 'done').length;
@@ -2573,7 +2597,6 @@ function renderProjectIssueBoard(): void {
   }));
   const ordered = sortIssues(searchableIssues, issueOrder.value as IssueSortOrder);
   const nextUpMode = issueOrder.value === 'next_up';
-  issueGroupingLabel.textContent = nextUpMode ? 'Group: Milestone' : 'Group: Status';
   const workQueue = nextUpMode ? ordered.filter((issue) => ['backlog', 'todo', 'doing'].includes(issue.status)) : ordered;
   const visible = filterIssues(workQueue, issueFilter.value);
   issueList.replaceChildren();
@@ -2592,6 +2615,11 @@ function renderProjectIssueBoard(): void {
 
   if (nextUpMode) {
     renderNextUpIssueBoard(visible, workQueue);
+    return;
+  }
+
+  if (issueGrouping.value === 'milestone') {
+    renderMilestoneIssueBoard(visible);
     return;
   }
 
@@ -2622,30 +2650,27 @@ function renderProjectIssueBoard(): void {
   }
 }
 
-function renderNextUpIssueBoard(visibleIssues: Issue[], allOpenIssues: Issue[]): void {
-  const groups = new Map<string, { milestoneId: number | null; name: string; dueDate: string | null; issues: Issue[] }>();
-  for (const issue of visibleIssues) {
-    const milestoneId = issue.milestone_id;
-    const key = milestoneId === null ? 'none' : String(milestoneId);
-    let group = groups.get(key);
-    if (group === undefined) {
-      const milestone = milestoneId === null ? undefined : projectMilestones.find((candidate) => candidate.id === milestoneId);
-      group = {
-        milestoneId,
-        name: milestone?.name ?? 'No milestone',
-        dueDate: milestone?.due_date ?? null,
-        issues: [],
-      };
-      groups.set(key, group);
-    }
-    group.issues.push(issue);
-  }
-
-  for (const group of groups.values()) {
+function renderMilestoneIssueBoard(visibleIssues: Issue[]): void {
+  for (const group of groupIssuesByMilestone(visibleIssues, projectMilestones)) {
     const container = document.createElement('li');
-    container.className = 'next-up-group';
+    container.className = 'milestone-issue-group';
     const heading = document.createElement('h3');
-    heading.className = 'next-up-group-heading';
+    heading.className = 'milestone-issue-group-heading';
+    heading.textContent = group.dueDate === null ? group.name : `${group.name} · due ${group.dueDate}`;
+    const rows = document.createElement('ul');
+    rows.className = 'issue-group-items';
+    for (const issue of group.issues) rows.append(createIssueRow(issue, { showMilestoneTag: false }));
+    container.append(heading, rows);
+    issueList.append(container);
+  }
+}
+
+function renderNextUpIssueBoard(visibleIssues: Issue[], allOpenIssues: Issue[]): void {
+  for (const group of groupIssuesByMilestone(visibleIssues, projectMilestones)) {
+    const container = document.createElement('li');
+    container.className = 'milestone-issue-group';
+    const heading = document.createElement('h3');
+    heading.className = 'milestone-issue-group-heading';
     heading.textContent = group.dueDate === null ? group.name : `${group.name} · due ${group.dueDate}`;
     const rows = document.createElement('ul');
     rows.className = 'issue-group-items';
@@ -2934,7 +2959,7 @@ async function updateIssueStatus(issue: Issue, nextStatus: IssueStatus): Promise
 
 function createIssueRow(
   issue: Issue,
-  reorder?: { canMoveEarlier: boolean; canMoveLater: boolean; showMilestoneTag?: boolean },
+  reorder?: { canMoveEarlier?: boolean; canMoveLater?: boolean; showMilestoneTag?: boolean },
 ): HTMLElement {
   const item = document.createElement('li');
   item.className = 'issue-card';
@@ -2994,7 +3019,8 @@ function createIssueRow(
     content.append(source);
   }
 
-  if (reorder === undefined) {
+  const hasReorderActions = reorder?.canMoveEarlier !== undefined || reorder?.canMoveLater !== undefined;
+  if (!hasReorderActions) {
     item.append(content, createIssueStatusButton(issue));
   } else {
     const actions = document.createElement('div');
@@ -3004,7 +3030,9 @@ function createIssueRow(
       button.type = 'button';
       button.className = 'button button-quiet issue-order-button';
       button.dataset.moveDirection = direction;
-      button.disabled = direction === 'up' ? !reorder.canMoveEarlier : !reorder.canMoveLater;
+      button.disabled = direction === 'up'
+        ? reorder?.canMoveEarlier !== true
+        : reorder?.canMoveLater !== true;
       button.textContent = direction === 'up' ? '↑' : '↓';
       button.setAttribute('aria-label', `Move ${issue.title} ${direction === 'up' ? 'earlier' : 'later'}`);
       button.addEventListener('click', () => void moveIssue(issue, direction, button));

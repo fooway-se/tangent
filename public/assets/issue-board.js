@@ -19,6 +19,40 @@ export function groupIssues(issues) {
         return matches.length > 0 ? [{ status, issues: matches }] : [];
     });
 }
+export function groupIssuesByMilestone(issues, milestones) {
+    const issuesByMilestone = new Map();
+    for (const issue of issues) {
+        const milestoneId = issue.milestone_id ?? null;
+        const matches = issuesByMilestone.get(milestoneId) ?? [];
+        matches.push(issue);
+        issuesByMilestone.set(milestoneId, matches);
+    }
+    const milestoneById = new Map(milestones.map((milestone) => [milestone.id, milestone]));
+    const groups = [...issuesByMilestone.entries()]
+        .filter(([milestoneId]) => milestoneId !== null)
+        .map(([milestoneId, groupedIssues]) => {
+        const firstIssue = groupedIssues[0];
+        const milestone = milestoneById.get(milestoneId);
+        return {
+            milestoneId,
+            name: milestone?.name ?? firstIssue.milestone_name ?? `Milestone ${milestoneId}`,
+            dueDate: milestone?.due_date ?? firstIssue.milestone_due_date ?? null,
+            issues: groupedIssues,
+        };
+    })
+        .sort((a, b) => {
+        if (a.dueDate === null && b.dueDate !== null)
+            return 1;
+        if (a.dueDate !== null && b.dueDate === null)
+            return -1;
+        return (a.dueDate ?? '').localeCompare(b.dueDate ?? '')
+            || a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+    });
+    const unassigned = issuesByMilestone.get(null);
+    if (unassigned !== undefined)
+        groups.push({ milestoneId: null, name: 'No milestone', dueDate: null, issues: unassigned });
+    return groups;
+}
 export function sortIssues(issues, order) {
     return [...issues].sort((a, b) => {
         if (order === 'next_up')

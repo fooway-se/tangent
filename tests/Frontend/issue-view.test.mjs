@@ -7,10 +7,11 @@ const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url)
 const css = await readFile(new URL('../../public/assets/app.css', import.meta.url), 'utf8');
 
 test('project view has a compact progress strip, quick-add, and real issue controls', () => {
-  for (const id of ['issue-progress', 'issue-progress-label', 'issue-filter', 'issue-order', 'issue-form']) {
+  for (const id of ['issue-progress', 'issue-progress-label', 'issue-filter', 'issue-grouping', 'issue-order', 'issue-form']) {
     assert.ok(html.includes(`id="${id}"`), `${id} exists`);
   }
-  assert.match(html, /Group: Status/);
+  assert.match(html, /<option value="status">Group: Status<\/option>/);
+  assert.match(html, /<option value="milestone">Group: Milestone<\/option>/);
   assert.match(html, /Order: Updated/);
 });
 
@@ -18,6 +19,12 @@ test('the issue board keeps chat in its separate right column', () => {
   const center = html.indexOf('class="project-main"');
   const chat = html.indexOf('id="project-chat-column"');
   assert.ok(center >= 0 && chat > center);
+});
+
+test('the issue grouping control switches between status and milestone groups', () => {
+  assert.match(app, /issueGrouping\.addEventListener\('change', renderProjectIssueBoard\)/);
+  assert.match(app, /if \(issueGrouping\.value === 'milestone'\) \{\s*renderMilestoneIssueBoard\(visible\)/);
+  assert.match(app, /function renderMilestoneIssueBoard\(/);
 });
 
 test('quick add has a mouse cancel action and supports complete issue planning', () => {

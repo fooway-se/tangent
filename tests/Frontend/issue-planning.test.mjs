@@ -9,13 +9,16 @@ const css = await readFile(new URL('../../public/assets/app.css', import.meta.ur
 test('issue ordering offers a dedicated Next Up view', () => {
   assert.match(html, /<option value="next_up">Order: Next up<\/option>/);
   assert.match(app, /function renderNextUpIssueBoard\(/);
+  assert.match(app, /issueGrouping\.disabled = true/);
+  assert.match(app, /issueGrouping\.value = issueGroupingBeforeNextUp/);
+  assert.match(app, /issueOrder\.value = 'updated';\s*synchronizeIssueGroupingForOrder\(\)/);
 });
 
 test('issue rows show their milestone and Next Up exposes accessible move controls', () => {
   assert.match(app, /issue-milestone-tag/);
   assert.match(app, /data-move-direction/);
   assert.match(app, /`\/issues\/\$\{issue\.id\}\/move`/);
-  assert.match(css, /\.next-up-group-heading/);
+  assert.match(css, /\.milestone-issue-group-heading/);
 });
 
 test('issue rows mark shared issues and leave internal issues without a sharing badge', () => {

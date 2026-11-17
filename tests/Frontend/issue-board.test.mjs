@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { filterIssues, groupIssues, milestoneProgress, sortIssues } from '../../public/assets/issue-board.js';
+import { filterIssues, groupIssues, groupIssuesByMilestone, milestoneProgress, sortIssues } from '../../public/assets/issue-board.js';
 
 const issues = [
   { id: 12, title: 'Fix login redirect', description: 'After reset', status: 'doing', created_at: '2026-11-01', updated_at: '2026-11-14' },
@@ -13,6 +13,24 @@ test('issues group in the visual status order with accurate counts', () => {
   const groups = groupIssues(issues);
   assert.deepEqual(groups.map((group) => group.status), ['doing', 'todo', 'backlog', 'done']);
   assert.deepEqual(groups.map((group) => group.issues.length), [1, 1, 1, 1]);
+});
+
+test('issues group by milestone in due-date order with unassigned issues last', () => {
+  const milestones = [
+    { id: 7, name: 'Later', due_date: '2027-02-01' },
+    { id: 3, name: 'Soon', due_date: '2027-01-10' },
+    { id: 8, name: 'No date', due_date: null },
+  ];
+  const planned = [
+    { ...issues[0], id: 31, milestone_id: 7, milestone_name: 'Later', milestone_due_date: '2027-02-01' },
+    { ...issues[1], id: 32, milestone_id: null },
+    { ...issues[2], id: 33, milestone_id: 3, milestone_name: 'Soon', milestone_due_date: '2027-01-10' },
+    { ...issues[3], id: 34, milestone_id: 8, milestone_name: 'No date' },
+  ];
+
+  const groups = groupIssuesByMilestone(planned, milestones);
+  assert.deepEqual(groups.map((group) => group.name), ['Soon', 'Later', 'No date', 'No milestone']);
+  assert.deepEqual(groups.map((group) => group.issues.map((issue) => issue.id)), [[33], [31], [34], [32]]);
 });
 
 test('issue filter matches title, description, status, and identifier', () => {
