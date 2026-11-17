@@ -123,7 +123,7 @@ final class IssuesTest extends ApiTestCase
             'PATCH',
             "/api/v1/issues/{$created->body['issue']['id']}",
             $admin['cookie'],
-            ['status' => 'cancelled'],
+            ['status' => 'closed'],
             $admin['csrf'],
         );
         self::assertSame(422, $invalidStatus->status);

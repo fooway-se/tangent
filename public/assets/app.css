@@ -250,6 +250,16 @@ select { padding-right: 28px; background: var(--screen-inset) url("data:image/sv
 
 /* Issue groups and rows */
 .issue-list { display: grid; gap: 12px; margin: 12px 0 0; padding: 0; list-style: none; }
+.deleted-issues-details { margin-top: 16px; border-top: 1px solid var(--screen-border); padding-top: 10px; color: var(--screen-muted); }
+.deleted-issues-details summary { display: flex; align-items: center; gap: 7px; cursor: pointer; list-style: none; }
+.deleted-issues-details summary::-webkit-details-marker { display: none; }
+.deleted-issues-details summary::before { content: "›"; color: var(--screen-muted); }
+.deleted-issues-details[open] summary::before { transform: rotate(90deg); }
+.deleted-issue-list { display: grid; gap: 6px; margin: 10px 0 0; padding: 0; list-style: none; }
+.deleted-issue-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid var(--screen-border); border-radius: var(--radius-panel); padding: 8px 10px; background: var(--screen-panel); }
+.deleted-issue-content { display: grid; min-width: 0; gap: 2px; }
+.deleted-issue-content strong { overflow-wrap: anywhere; color: var(--screen-ink); font-size: 12px; }
+.deleted-issue-status { color: var(--screen-muted); font-size: 11px; }
 .issue-group { min-width: 0; overflow: hidden; border: 1px solid var(--screen-border); border-radius: var(--radius-panel); background: var(--screen-group); box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.25); }
 .issue-group-summary { display: flex; align-items: center; gap: 8px; padding: 8px 12px; color: var(--screen-ink); background: linear-gradient(180deg, var(--screen-group-top), var(--screen-group-bottom)); font-size: 11px; cursor: pointer; list-style: none; }
 .issue-group-summary::-webkit-details-marker { display: none; }
@@ -266,6 +276,10 @@ select { padding-right: 28px; background: var(--screen-inset) url("data:image/sv
 .issue-status-indicator.is-backlog { border-style: dashed; }
 .issue-status-indicator.is-doing { background: linear-gradient(90deg, var(--screen-muted) 50%, transparent 50%); }
 .issue-status-indicator.is-done { background: var(--screen-muted); }
+.issue-status-indicator.is-cancelled { position: relative; border: 0; border-radius: 0; }
+.issue-status-indicator.is-cancelled::before, .issue-status-indicator.is-cancelled::after { position: absolute; top: 1px; left: 6px; width: 1.5px; height: 12px; background: var(--screen-muted); content: ""; }
+.issue-status-indicator.is-cancelled::before { transform: rotate(45deg); }
+.issue-status-indicator.is-cancelled::after { transform: rotate(-45deg); }
 .issue-key { width: 2.4rem; flex: 0 0 auto; color: var(--screen-muted); font-size: 11px; }
 .issue-title { display: block; min-width: 0; color: var(--screen-ink); font-size: 13px; font-weight: 500; overflow-wrap: anywhere; }
 .issue-title-button { display: block; border: 0; padding: 0; color: inherit; background: transparent; text-align: left; cursor: pointer; }
@@ -281,6 +295,14 @@ select { padding-right: 28px; background: var(--screen-inset) url("data:image/sv
 
 /* Issue detail */
 .issue-detail-toolbar { display: flex; justify-content: space-between; gap: 12px; margin-top: 12px; border-bottom: 1px solid var(--screen-border); margin-bottom: 16px; padding-bottom: 10px; }
+.issue-detail-actions { display: flex; align-items: center; gap: 8px; }
+.button-danger { border-color: var(--danger); color: var(--danger); }
+.button-primary.button-danger { border-color: var(--danger); color: var(--case-ink); background: var(--danger); }
+.issue-delete-confirmation { width: min(480px, calc(100vw - 32px)); padding: 0 0 18px; }
+.issue-delete-description { margin: 18px 18px 8px; color: var(--screen-ink); font-size: 13px; }
+.issue-delete-recovery-note, .issue-delete-error { margin: 0 18px 12px; color: var(--screen-muted); font-size: 12px; }
+.issue-delete-error { color: var(--danger); }
+.issue-delete-confirmation .form-actions { margin: 16px 18px 0; }
 .issue-detail-status-row { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
 .issue-detail-status-row > span { display: block; }
 .issue-detail-status-row kbd { margin-left: 4px; }
@@ -415,6 +437,8 @@ dialog::backdrop { background: rgba(38, 35, 30, 0.6); }
   .sidebar-projects { grid-column: 1 / -1; grid-row: 3; }
   .sidebar-account { grid-column: 1 / -1; grid-row: 4; margin-top: 4px; }
   .workspace-topbar { padding: 0 14px; }
+  .issue-detail-toolbar { flex-wrap: wrap; }
+  .issue-detail-actions { margin-left: auto; }
   .issue-progress-strip { grid-template-columns: minmax(0, 1fr); }
   .issue-progress-status .eyebrow, .issue-progress-status .project-status, .issue-progress-content strong, #issue-progress { grid-column: 1; }
   .issue-progress-status .eyebrow { grid-row: 1; }
@@ -429,5 +453,6 @@ dialog::backdrop { background: rgba(38, 35, 30, 0.6); }
   .issue-card > .issue-status-button { justify-self: end; }
   .issue-key { width: 2.2rem; }
   .issue-description, .issue-source { margin-left: 4.25rem; }
+  .deleted-issue-item { flex-wrap: wrap; }
   .shortcut-list > div { grid-template-columns: 1fr; gap: 2px; }
 }

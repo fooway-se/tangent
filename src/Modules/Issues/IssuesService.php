@@ -26,6 +26,13 @@ final class IssuesService
         return $this->issues->listForProject($user->workspaceId, $projectId);
     }
 
+    /** @return list<array<string, mixed>> */
+    public function listDeleted(AuthenticatedUser $user, int $projectId): array
+    {
+        $this->requireProjectAccess($user, $projectId, 'issues.read');
+        return $this->issues->listDeletedForProject($user->workspaceId, $projectId);
+    }
+
     /** @param array<string, mixed> $input @return array<string, mixed> */
     public function create(AuthenticatedUser $user, int $projectId, array $input): array
     {
@@ -96,8 +103,8 @@ final class IssuesService
             throw new ApiException(422, 'validation_failed', 'Issue description cannot exceed 10000 characters.');
         }
         if (array_key_exists('status', $input)) {
-            if (!is_string($input['status']) || !in_array($input['status'], ['backlog', 'todo', 'doing', 'done'], true)) {
-                throw new ApiException(422, 'validation_failed', 'Issue status must be backlog, todo, doing, or done.');
+            if (!is_string($input['status']) || !in_array($input['status'], ['backlog', 'todo', 'doing', 'done', 'cancelled'], true)) {
+                throw new ApiException(422, 'validation_failed', 'Issue status must be backlog, todo, doing, done, or cancelled.');
             }
             $updated['status'] = $input['status'];
         }
@@ -106,6 +113,28 @@ final class IssuesService
         }
 
         $this->issues->update($user->workspaceId, $issueId, $updated);
+        return $this->issues->find($user->workspaceId, $issueId) ?? [];
+    }
+
+    public function delete(AuthenticatedUser $user, int $issueId): void
+    {
+        $issue = $this->issues->find($user->workspaceId, $issueId);
+        if ($issue === null) {
+            throw new ApiException(404, 'not_found', 'The issue was not found.');
+        }
+        $this->requireProjectAccess($user, $issue['project_id'], 'issues.update');
+        $this->issues->softDelete($user->workspaceId, $issueId);
+    }
+
+    /** @return array<string, mixed> */
+    public function restore(AuthenticatedUser $user, int $issueId): array
+    {
+        $issue = $this->issues->findDeleted($user->workspaceId, $issueId);
+        if ($issue === null) {
+            throw new ApiException(404, 'not_found', 'The deleted issue was not found.');
+        }
+        $this->requireProjectAccess($user, $issue['project_id'], 'issues.update');
+        $this->issues->restore($user->workspaceId, $issueId);
         return $this->issues->find($user->workspaceId, $issueId) ?? [];
     }
 

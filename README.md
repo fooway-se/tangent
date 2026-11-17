@@ -26,7 +26,7 @@ Most teams spread work across a chat app, an issue tracker and a project board. 
 | API | REST under `/api/v1/`, opaque Bearer tokens, OpenAPI description |
 
 See [`docs/SPEC.md`](docs/SPEC.md) for the full spec (Swedish) and phases.
-The current API contract is in [`docs/openapi.yaml`](docs/openapi.yaml). Project issues support create, list, status updates and creation from chat; project chat supports threaded text messages and adaptive polling.
+The current API contract is in [`docs/openapi.yaml`](docs/openapi.yaml). Project issues support create, list, status updates, cancellation, recoverable deletion/restoration and creation from chat; project chat supports threaded text messages and adaptive polling.
 
 ## Tech
 

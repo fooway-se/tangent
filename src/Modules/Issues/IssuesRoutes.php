@@ -38,6 +38,16 @@ final class IssuesRoutes
             ]);
         });
 
+        $router->add('GET', '/api/v1/projects/{id}/issues/deleted', function (
+            Request $request,
+            array $params,
+            AuthenticatedUser $user,
+        ): Response {
+            return Response::json(200, [
+                'issues' => $this->service->listDeleted($user, self::positiveId($params['id'])),
+            ]);
+        });
+
         $router->add('POST', '/api/v1/projects/{id}/issues', function (
             Request $request,
             array $params,
@@ -55,6 +65,25 @@ final class IssuesRoutes
         ): Response {
             return Response::json(200, [
                 'issue' => $this->service->update($user, self::positiveId($params['id']), $request->body),
+            ]);
+        });
+
+        $router->add('DELETE', '/api/v1/issues/{id}', function (
+            Request $request,
+            array $params,
+            AuthenticatedUser $user,
+        ): Response {
+            $this->service->delete($user, self::positiveId($params['id']));
+            return Response::json(204);
+        });
+
+        $router->add('POST', '/api/v1/issues/{id}/restore', function (
+            Request $request,
+            array $params,
+            AuthenticatedUser $user,
+        ): Response {
+            return Response::json(200, [
+                'issue' => $this->service->restore($user, self::positiveId($params['id'])),
             ]);
         });
     }

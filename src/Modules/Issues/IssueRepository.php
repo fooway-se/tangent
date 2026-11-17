@@ -17,10 +17,24 @@ final class IssueRepository
     {
         $statement = $this->pdo->prepare(
             "SELECT id, workspace_id, project_id, title, description, status, created_by,
-                    source_channel_id, source_message_id, created_at, updated_at
+                    source_channel_id, source_message_id, created_at, updated_at, deleted_at
              FROM issues
-             WHERE workspace_id = :workspace_id AND project_id = :project_id
-             ORDER BY FIELD(status, 'backlog', 'todo', 'doing', 'done'), id DESC"
+             WHERE workspace_id = :workspace_id AND project_id = :project_id AND deleted_at IS NULL
+             ORDER BY FIELD(status, 'backlog', 'todo', 'doing', 'done', 'cancelled'), id DESC"
+        );
+        $statement->execute(['workspace_id' => $workspaceId, 'project_id' => $projectId]);
+        return array_map(self::normalize(...), $statement->fetchAll(PDO::FETCH_ASSOC));
+    }
+
+    /** @return list<array<string, mixed>> */
+    public function listDeletedForProject(int $workspaceId, int $projectId): array
+    {
+        $statement = $this->pdo->prepare(
+            'SELECT id, workspace_id, project_id, title, description, status, created_by,
+                    source_channel_id, source_message_id, created_at, updated_at, deleted_at
+             FROM issues
+             WHERE workspace_id = :workspace_id AND project_id = :project_id AND deleted_at IS NOT NULL
+             ORDER BY deleted_at DESC, id DESC'
         );
         $statement->execute(['workspace_id' => $workspaceId, 'project_id' => $projectId]);
         return array_map(self::normalize(...), $statement->fetchAll(PDO::FETCH_ASSOC));
@@ -62,8 +76,21 @@ final class IssueRepository
     {
         $statement = $this->pdo->prepare(
             'SELECT id, workspace_id, project_id, title, description, status, created_by,
-                    source_channel_id, source_message_id, created_at, updated_at
-             FROM issues WHERE workspace_id = :workspace_id AND id = :id LIMIT 1'
+                    source_channel_id, source_message_id, created_at, updated_at, deleted_at
+             FROM issues WHERE workspace_id = :workspace_id AND id = :id AND deleted_at IS NULL LIMIT 1'
+        );
+        $statement->execute(['workspace_id' => $workspaceId, 'id' => $issueId]);
+        $issue = $statement->fetch(PDO::FETCH_ASSOC);
+        return $issue === false ? null : self::normalize($issue);
+    }
+
+    /** @return array<string, mixed>|null */
+    public function findDeleted(int $workspaceId, int $issueId): ?array
+    {
+        $statement = $this->pdo->prepare(
+            'SELECT id, workspace_id, project_id, title, description, status, created_by,
+                    source_channel_id, source_message_id, created_at, updated_at, deleted_at
+             FROM issues WHERE workspace_id = :workspace_id AND id = :id AND deleted_at IS NOT NULL LIMIT 1'
         );
         $statement->execute(['workspace_id' => $workspaceId, 'id' => $issueId]);
         $issue = $statement->fetch(PDO::FETCH_ASSOC);
@@ -76,7 +103,7 @@ final class IssueRepository
         $statement = $this->pdo->prepare(
             'UPDATE issues
              SET title = :title, description = :description, status = :status
-             WHERE workspace_id = :workspace_id AND id = :id'
+             WHERE workspace_id = :workspace_id AND id = :id AND deleted_at IS NULL'
         );
         $statement->execute([
             'workspace_id' => $workspaceId,
@@ -85,6 +112,24 @@ final class IssueRepository
             'description' => $issue['description'],
             'status' => $issue['status'],
         ]);
+    }
+
+    public function softDelete(int $workspaceId, int $issueId): void
+    {
+        $statement = $this->pdo->prepare(
+            'UPDATE issues SET deleted_at = CURRENT_TIMESTAMP
+             WHERE workspace_id = :workspace_id AND id = :id AND deleted_at IS NULL'
+        );
+        $statement->execute(['workspace_id' => $workspaceId, 'id' => $issueId]);
+    }
+
+    public function restore(int $workspaceId, int $issueId): void
+    {
+        $statement = $this->pdo->prepare(
+            'UPDATE issues SET deleted_at = NULL
+             WHERE workspace_id = :workspace_id AND id = :id AND deleted_at IS NOT NULL'
+        );
+        $statement->execute(['workspace_id' => $workspaceId, 'id' => $issueId]);
     }
 
     /** @param array<string, mixed> $issue @return array<string, mixed> */

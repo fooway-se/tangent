@@ -1,4 +1,4 @@
-export type IssueStatus = 'backlog' | 'todo' | 'doing' | 'done';
+export type IssueStatus = 'backlog' | 'todo' | 'doing' | 'done' | 'cancelled';
 export type IssueSortOrder = 'updated' | 'newest' | 'oldest' | 'title';
 
 export interface BoardIssue {
@@ -10,7 +10,7 @@ export interface BoardIssue {
   updated_at: string;
 }
 
-const statusOrder: IssueStatus[] = ['doing', 'todo', 'backlog', 'done'];
+const statusOrder: IssueStatus[] = ['doing', 'todo', 'backlog', 'done', 'cancelled'];
 
 export function filterIssues<T extends BoardIssue>(issues: readonly T[], query: string): T[] {
   const normalized = query.trim().toLocaleLowerCase();

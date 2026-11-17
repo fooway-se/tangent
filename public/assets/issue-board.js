@@ -1,4 +1,4 @@
-const statusOrder = ['doing', 'todo', 'backlog', 'done'];
+const statusOrder = ['doing', 'todo', 'backlog', 'done', 'cancelled'];
 export function filterIssues(issues, query) {
     const normalized = query.trim().toLocaleLowerCase();
     if (normalized === '')

@@ -45,6 +45,7 @@ interface Issue extends BoardIssue {
   created_by: number;
   source_channel_id: number | null;
   source_message_id: number | null;
+  deleted_at: string | null;
 }
 
 const ISSUE_STATUS_OPTIONS: Array<{ value: IssueStatus; label: string }> = [
@@ -52,6 +53,7 @@ const ISSUE_STATUS_OPTIONS: Array<{ value: IssueStatus; label: string }> = [
   { value: 'todo', label: 'Todo' },
   { value: 'doing', label: 'Doing' },
   { value: 'done', label: 'Done' },
+  { value: 'cancelled', label: 'Cancelled' },
 ];
 
 function issueStatusLabel(status: IssueStatus): string {
@@ -147,6 +149,7 @@ const issueDetailEditForm = document.querySelector<HTMLFormElement>('#issue-deta
 const issueDetailTitleInput = document.querySelector<HTMLInputElement>('#issue-detail-title-input')!;
 const issueDetailDescriptionInput = document.querySelector<HTMLTextAreaElement>('#issue-detail-description-input')!;
 const issueDetailEditButton = document.querySelector<HTMLButtonElement>('#issue-detail-edit-button')!;
+const issueDetailDeleteButton = document.querySelector<HTMLButtonElement>('#issue-detail-delete-button')!;
 const issueDetailSaveButton = document.querySelector<HTMLButtonElement>('#issue-detail-save-button')!;
 const keyboardHints = document.querySelector<HTMLElement>('#keyboard-hints')!;
 const projectKeyboardHints = document.querySelector<HTMLElement>('#project-keyboard-hints')!;
@@ -170,10 +173,18 @@ const issueFilter = document.querySelector<HTMLInputElement>('#issue-filter')!;
 const issueOrder = document.querySelector<HTMLSelectElement>('#issue-order')!;
 const issueCountSummary = document.querySelector<HTMLElement>('#issue-count-summary')!;
 const issueList = document.querySelector<HTMLUListElement>('#issue-list')!;
+const deletedIssuesDetails = document.querySelector<HTMLDetailsElement>('#deleted-issues-details')!;
+const deletedIssueCount = document.querySelector<HTMLElement>('#deleted-issue-count')!;
+const deletedIssueList = document.querySelector<HTMLUListElement>('#deleted-issue-list')!;
 const issueStatusPicker = document.querySelector<HTMLDialogElement>('#issue-status-picker')!;
 const issueStatusPickerClose = document.querySelector<HTMLButtonElement>('#issue-status-picker-close')!;
 const issueStatusPickerDescription = document.querySelector<HTMLElement>('#issue-status-picker-description')!;
 const issueStatusPickerOptions = document.querySelector<HTMLElement>('#issue-status-picker-options')!;
+const issueDeleteConfirmation = document.querySelector<HTMLDialogElement>('#issue-delete-confirmation')!;
+const issueDeleteDescription = document.querySelector<HTMLElement>('#issue-delete-description')!;
+const issueDeleteError = document.querySelector<HTMLElement>('#issue-delete-error')!;
+const issueDeleteCancel = document.querySelector<HTMLButtonElement>('#issue-delete-cancel')!;
+const issueDeleteConfirm = document.querySelector<HTMLButtonElement>('#issue-delete-confirm')!;
 const emptyIssues = document.querySelector<HTMLElement>('#empty-issues')!;
 const memberList = document.querySelector<HTMLUListElement>('#member-list')!;
 const memberForm = document.querySelector<HTMLFormElement>('#member-form')!;
@@ -192,6 +203,7 @@ let workspacePickerOptionIndex = 0;
 const workspaceViewHistory: WorkspaceLocation[] = [];
 let activeProjectMembers: Member[] = [];
 let projectIssues: Issue[] = [];
+let deletedProjectIssues: Issue[] = [];
 let selectedIssue: Issue | null = null;
 let activeChatProjectId: number | null = null;
 let chatPollTimer: number | null = null;
@@ -214,6 +226,7 @@ let statusMessageTimer: number | null = null;
 let issueStatusPickerIssue: Issue | null = null;
 let issueStatusPickerReturnFocus: HTMLElement | null = null;
 let issueStatusPickerOptionIndex = 0;
+let issueDeleteTarget: Issue | null = null;
 let paletteCommands: PaletteCommand[] = [];
 let visiblePaletteCommands: PaletteCommand[] = [];
 let activePaletteCommandIndex = 0;
@@ -614,6 +627,13 @@ function selectedIssueButton(): HTMLButtonElement | null {
     .find((button) => button.closest<HTMLDetailsElement>('.issue-group')?.open !== false) ?? null;
 }
 
+function issueSelectedInVisibleView(): Issue | null {
+  if (selectedIssue !== null) return selectedIssue;
+  const titleButton = selectedIssueButton();
+  const issueId = Number(titleButton?.closest<HTMLElement>('.issue-card')?.dataset.issueId);
+  return projectIssues.find((issue) => issue.id === issueId) ?? null;
+}
+
 function visibleIssueTitleButtons(): HTMLButtonElement[] {
   return Array.from(issueList.querySelectorAll<HTMLButtonElement>('.issue-title-button'))
     .filter((button) => button.closest<HTMLDetailsElement>('.issue-group')?.open !== false);
@@ -761,7 +781,7 @@ function shortcutContext(target: EventTarget | null) {
     hasSelectedChatMessage: selectedChatMessageId !== null && selectedChatMessageId > 0
       && chatMessagesById.has(selectedChatMessageId),
     textInputFocused: shouldBlurOnEscape(target),
-    modalOpen: commandPalette.open || shortcutHelp.open || issueStatusPicker.open || workspacePicker.open,
+    modalOpen: commandPalette.open || shortcutHelp.open || issueStatusPicker.open || issueDeleteConfirmation.open || workspacePicker.open,
     canDismiss: commandPalette.open || shortcutHelp.open || (!workspacePanel.hidden && (
       pendingWorkspaceId !== null
       || (!projectView.hidden && (!issueDetailView.hidden || !issueDetailEditForm.hidden
@@ -1018,6 +1038,7 @@ function getPaletteCommands(): PaletteCommand[] {
       run: beginCreateIssue,
     });
     if (hasSelectedIssueInVisibleView()) {
+      const issue = issueSelectedInVisibleView();
       commands.splice(2, 0, {
         label: 'Edit selected issue',
         detail: 'Edit the title and description',
@@ -1028,6 +1049,13 @@ function getPaletteCommands(): PaletteCommand[] {
         detail: 'Choose a status, then save or cancel',
         shortcut: 's',
         run: focusSelectedIssueStatus,
+      }, {
+        label: 'Delete issue',
+        detail: issue === null
+          ? 'Move the selected issue to Deleted issues; it can be restored later'
+          : `Move “${issue.title}” (${issueStatusLabel(issue.status)}) to Deleted issues; it can be restored later`,
+        shortcut: '',
+        run: () => openIssueDeleteConfirmation(issue),
       });
     }
     if (latestChatIssueButton() !== null) {
@@ -1102,6 +1130,7 @@ function runPaletteCommand(index: number): void {
 function openCommandPalette(): void {
   if (workspacePicker.open) resetPendingWorkspaceSwitch();
   if (issueStatusPicker.open) closeIssueStatusPicker();
+  if (issueDeleteConfirmation.open) closeIssueDeleteConfirmation();
   if (shortcutHelp.open) shortcutHelp.close();
   if (commandPalette.open) {
     closeCommandPalette();
@@ -1118,6 +1147,7 @@ function openCommandPalette(): void {
 function showShortcutHelp(): void {
   if (workspacePicker.open) resetPendingWorkspaceSwitch();
   if (issueStatusPicker.open) closeIssueStatusPicker();
+  if (issueDeleteConfirmation.open) closeIssueDeleteConfirmation();
   if (commandPalette.open) closeCommandPalette();
   if (shortcutHelp.open) {
     shortcutHelp.close();
@@ -1130,6 +1160,8 @@ function showShortcutHelp(): void {
 function dismissCurrentView(): void {
   if (workspacePicker.open) {
     resetPendingWorkspaceSwitch();
+  } else if (issueDeleteConfirmation.open) {
+    closeIssueDeleteConfirmation();
   } else if (issueStatusPicker.open) {
     closeIssueStatusPicker();
   } else if (commandPalette.open) {
@@ -1253,7 +1285,7 @@ function executeShortcut(action: ShortcutAction): void {
 }
 
 function handleKeyboardShortcut(event: KeyboardEvent): void {
-  if ((commandPalette.open || shortcutHelp.open || issueStatusPicker.open || workspacePicker.open)
+  if ((commandPalette.open || shortcutHelp.open || issueStatusPicker.open || issueDeleteConfirmation.open || workspacePicker.open)
     && event.key !== 'Escape'
     && !((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k')) return;
   const context = shortcutContext(event.target);
@@ -1813,9 +1845,13 @@ function switchProjectTab(tab: 'issues' | 'members', returnFocusIssueId?: number
 
 async function loadProjectIssues(projectId: number): Promise<void> {
   try {
-    const result = await api<{ issues: Issue[] }>(`/projects/${projectId}/issues`);
+    const [result, deletedResult] = await Promise.all([
+      api<{ issues: Issue[] }>(`/projects/${projectId}/issues`),
+      api<{ issues: Issue[] }>(`/projects/${projectId}/issues/deleted`),
+    ]);
     if (activeProject?.id !== projectId || issuesView.hidden) return;
     projectIssues = result.issues;
+    deletedProjectIssues = deletedResult.issues;
     renderProjectIssueBoard();
   } catch (error) {
     if (error instanceof ApiFailure && error.status === 401) {
@@ -1829,18 +1865,32 @@ async function loadProjectIssues(projectId: number): Promise<void> {
 function renderProjectIssueBoard(): void {
   const total = projectIssues.length;
   const completed = projectIssues.filter((issue) => issue.status === 'done').length;
-  const open = total - completed;
-  issueProgress.max = Math.max(total, 1);
+  const cancelled = projectIssues.filter((issue) => issue.status === 'cancelled').length;
+  const progressTotal = total - cancelled;
+  const open = progressTotal - completed;
+  issueProgress.max = Math.max(progressTotal, 1);
   issueProgress.value = completed;
-  issueProgress.classList.toggle('is-complete', total > 0 && completed === total);
-  issueProgressLabel.textContent = `${completed} of ${total} issues done`;
-  issueCountSummary.textContent = `${open} open · ${completed} done`;
+  issueProgress.classList.toggle('is-complete', progressTotal > 0 && completed === progressTotal);
+  issueProgressLabel.textContent = cancelled > 0
+    ? `${completed} of ${progressTotal} non-cancelled issues done · ${cancelled} cancelled`
+    : `${completed} of ${total} issues done`;
+  issueCountSummary.textContent = cancelled > 0
+    ? `${open} open · ${completed} done · ${cancelled} cancelled`
+    : `${open} open · ${completed} done`;
 
   const ordered = sortIssues(projectIssues, issueOrder.value as IssueSortOrder);
   const visible = filterIssues(ordered, issueFilter.value);
   issueList.replaceChildren();
   emptyIssues.hidden = visible.length > 0;
-  emptyIssues.textContent = total === 0 ? 'No issues yet. Create the first one.' : 'No issues match that filter.';
+  emptyIssues.textContent = total === 0
+    ? deletedProjectIssues.length > 0
+      ? 'No active issues. Restore one from Deleted issues or create a new issue.'
+      : 'No issues yet. Create the first one.'
+    : 'No issues match that filter.';
+
+  deletedIssueCount.textContent = String(deletedProjectIssues.length);
+  deletedIssuesDetails.hidden = deletedProjectIssues.length === 0;
+  deletedIssueList.replaceChildren(...deletedProjectIssues.map(createDeletedIssueRow));
 
   for (const group of groupIssues(visible)) {
     const details = document.createElement('details');
@@ -1867,6 +1917,28 @@ function renderProjectIssueBoard(): void {
     details.append(summary, rows);
     issueList.append(details);
   }
+}
+
+function createDeletedIssueRow(issue: Issue): HTMLLIElement {
+  const item = document.createElement('li');
+  item.className = 'deleted-issue-item';
+  const content = document.createElement('div');
+  content.className = 'deleted-issue-content';
+  const title = document.createElement('strong');
+  title.textContent = issue.title;
+  const status = document.createElement('span');
+  status.className = 'deleted-issue-status';
+  status.textContent = `Was ${issueStatusLabel(issue.status)}`;
+  content.append(title, status);
+
+  const restoreButton = document.createElement('button');
+  restoreButton.type = 'button';
+  restoreButton.className = 'button button-secondary';
+  restoreButton.textContent = 'Restore';
+  restoreButton.setAttribute('aria-label', `Restore ${issue.title}`);
+  restoreButton.addEventListener('click', () => void restoreIssue(issue, restoreButton));
+  item.append(content, restoreButton);
+  return item;
 }
 
 function renderIssueDetail(): void {
@@ -1959,6 +2031,75 @@ function closeIssueStatusPicker(): void {
   if (issueStatusPicker.open) issueStatusPicker.close();
 }
 
+function openIssueDeleteConfirmation(issue: Issue | null = selectedIssue): void {
+  if (issue === null) return;
+  issueDeleteTarget = issue;
+  issueDeleteDescription.textContent = `“${issue.title}” is currently ${issueStatusLabel(issue.status)}. It will be moved to Deleted issues, where you can restore it later.`;
+  issueDeleteError.textContent = '';
+  issueDeleteError.hidden = true;
+  issueDeleteConfirmation.showModal();
+  issueDeleteCancel.focus();
+}
+
+function closeIssueDeleteConfirmation(): void {
+  if (issueDeleteConfirmation.open) issueDeleteConfirmation.close();
+  issueDeleteTarget = null;
+  issueDeleteError.textContent = '';
+  issueDeleteError.hidden = true;
+  issueDeleteConfirm.disabled = false;
+}
+
+async function deleteSelectedIssue(): Promise<void> {
+  const issue = issueDeleteTarget;
+  const projectId = activeProject?.id;
+  if (issue === null || projectId !== issue.project_id) return;
+
+  issueDeleteConfirm.disabled = true;
+  issueDeleteError.textContent = '';
+  issueDeleteError.hidden = true;
+  try {
+    await api<void>(`/issues/${issue.id}`, { method: 'DELETE' });
+    closeIssueDeleteConfirmation();
+    if (activeProject?.id !== projectId) return;
+    if (selectedIssue?.id === issue.id) {
+      selectedIssue = null;
+      issueDetailEditForm.reset();
+      issueDetailEditForm.hidden = true;
+      issueDetailDisplay.hidden = false;
+      switchProjectTab('issues', issue.id);
+    } else {
+      await loadProjectIssues(projectId);
+      if (!focusIssueTitleButton(issue.id)) issueFilter.focus();
+    }
+    report('Issue moved to Deleted issues. You can restore it from the issue list.');
+  } catch (error) {
+    if (error instanceof ApiFailure && error.status === 401) {
+      closeIssueDeleteConfirmation();
+      showSignedOut();
+      return;
+    }
+    issueDeleteError.textContent = error instanceof Error ? error.message : 'Could not delete the issue.';
+    issueDeleteError.hidden = false;
+    issueDeleteConfirm.focus();
+  } finally {
+    issueDeleteConfirm.disabled = false;
+  }
+}
+
+async function restoreIssue(issue: Issue, restoreButton: HTMLButtonElement): Promise<void> {
+  restoreButton.disabled = true;
+  try {
+    await api<{ issue: Issue }>(`/issues/${issue.id}/restore`, { method: 'POST' });
+    await loadProjectIssues(issue.project_id);
+    if (!focusIssueTitleButton(issue.id)) issuesTabButton.focus();
+    report('Issue restored.');
+  } catch (error) {
+    report(error instanceof Error ? error.message : 'Could not restore the issue.', true);
+  } finally {
+    restoreButton.disabled = false;
+  }
+}
+
 async function applyIssueStatusPickerSelection(): Promise<void> {
   const issue = issueStatusPickerIssue;
   const status = ISSUE_STATUS_OPTIONS[issueStatusPickerOptionIndex]?.value;
@@ -2000,7 +2141,9 @@ async function updateIssueStatus(issue: Issue, nextStatus: IssueStatus): Promise
     });
     if (selectedIssue?.id === issue.id) {
       selectedIssue = result.issue;
+      projectIssues = projectIssues.map((candidate) => candidate.id === issue.id ? result.issue : candidate);
       renderIssueDetail();
+      renderProjectIssueBoard();
     }
     report('Issue status updated.');
     if (issueDetailView.hidden) await loadProjectIssues(issue.project_id);
@@ -2056,6 +2199,10 @@ issueDetailEditButton.addEventListener('click', () => {
   issueDetailEditForm.hidden = false;
   issueDetailTitleInput.focus();
 });
+
+issueDetailDeleteButton.addEventListener('click', () => openIssueDeleteConfirmation());
+issueDeleteCancel.addEventListener('click', closeIssueDeleteConfirmation);
+issueDeleteConfirm.addEventListener('click', () => void deleteSelectedIssue());
 
 issueDetailCancelButton.addEventListener('click', () => {
   closeIssueDetailEditForm();

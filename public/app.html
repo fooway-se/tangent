@@ -158,6 +158,10 @@
                 </div>
                 <ul id="issue-list" class="issue-list" aria-live="polite"></ul>
                 <p id="empty-issues" class="empty-state" hidden>No issues yet. Create the first one.</p>
+                <details id="deleted-issues-details" class="deleted-issues-details" hidden>
+                  <summary>Deleted issues <span id="deleted-issue-count">0</span></summary>
+                  <ul id="deleted-issue-list" class="deleted-issue-list"></ul>
+                </details>
               </section>
               <section id="members-view" class="project-tab-view" role="tabpanel" tabindex="-1" hidden aria-labelledby="members-tab">
                 <h2 class="section-title">Project members</h2>
@@ -172,7 +176,10 @@
               <section id="issue-detail-view" class="project-tab-view issue-detail-view" role="tabpanel" hidden aria-labelledby="issues-tab issue-detail-title">
                 <header class="issue-detail-toolbar">
                   <button id="issue-back-button" class="button button-quiet" type="button">← Issues</button>
-                  <button id="issue-detail-edit-button" class="button" type="button">Edit issue <kbd>e</kbd></button>
+                  <div class="issue-detail-actions">
+                    <button id="issue-detail-edit-button" class="button" type="button">Edit issue <kbd>e</kbd></button>
+                    <button id="issue-detail-delete-button" class="button button-danger" type="button">Delete issue</button>
+                  </div>
                 </header>
                 <div class="issue-detail-status-row">
                   <span>Status <kbd>s</kbd></span>
@@ -275,6 +282,21 @@
         <p id="issue-status-picker-description" class="issue-status-picker-description"></p>
         <div id="issue-status-picker-options" class="issue-status-picker-options" role="listbox" aria-label="Choose a status"></div>
         <p class="issue-status-picker-help"><kbd>↑</kbd>/<kbd>↓</kbd> Choose · <kbd>Enter</kbd> Save · <kbd>Esc</kbd> Cancel</p>
+      </section>
+    </dialog>
+
+    <dialog id="issue-delete-confirmation" class="issue-delete-confirmation" aria-labelledby="issue-delete-heading" aria-describedby="issue-delete-description issue-delete-recovery-note">
+      <section class="issue-delete-confirmation-content">
+        <header class="dialog-heading">
+          <h2 id="issue-delete-heading">Delete issue?</h2>
+        </header>
+        <p id="issue-delete-description" class="issue-delete-description"></p>
+        <p id="issue-delete-recovery-note" class="issue-delete-recovery-note">Deleted issues can be restored from the issue list.</p>
+        <p id="issue-delete-error" class="issue-delete-error" role="alert" hidden></p>
+        <div class="form-actions">
+          <button id="issue-delete-cancel" class="button button-quiet" type="button">Cancel</button>
+          <button id="issue-delete-confirm" class="button button-primary button-danger" type="button">Move to Deleted issues</button>
+        </div>
       </section>
     </dialog>
 
