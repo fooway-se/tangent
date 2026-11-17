@@ -398,6 +398,9 @@ select { padding-right: 28px; background: var(--screen-inset) url("data:image/sv
 .chat-reply-context { grid-column: 2; grid-row: 2; max-width: 100%; overflow: hidden; margin: 4px 0 0; border: 0; border-left: 1px solid var(--screen-border); padding: 2px 7px; color: var(--screen-muted); background: transparent; font: 400 10px var(--font-mono); text-align: left; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
 .chat-reply-context:hover, .chat-reply-context:focus-visible { border-left-color: var(--accent); color: var(--screen-ink); }
 .chat-reply .chat-message-body { grid-row: 3; }
+.chat-message-reply-count { grid-column: 2; grid-row: 3; justify-self: start; margin-top: 6px; border: 1px solid var(--screen-border); border-radius: 999px; padding: 2px 7px; color: var(--screen-muted); background: transparent; font: 400 10px var(--font-mono); cursor: pointer; }
+.chat-message-reply-count:hover, .chat-message-reply-count:focus-visible { border-color: var(--accent); color: var(--screen-ink); }
+.chat-reply .chat-message-reply-count { grid-row: 4; }
 .chat-reply-button, .chat-create-issue-button { padding: 3px 6px; font-size: 11px; }
 .chat-create-issue-button { color: var(--accent); }
 .chat-composer { align-items: end; gap: 10px; margin: 0; border-top: 1px solid var(--screen-border); padding: 12px 18px 18px; }

@@ -48,17 +48,34 @@ final class ProjectChatTest extends ApiTestCase
         self::assertSame('Admin', $reply->body['message']['parent_author_name']);
         self::assertSame('<script>alert("hello")</script>', $reply->body['message']['parent_body']);
 
+        $secondReply = $this->postMessage($projectId, $admin, [
+            'body' => 'I will check too.',
+            'parent_id' => $parent->body['message']['id'],
+        ]);
+        self::assertSame(201, $secondReply->status, json_encode($secondReply->body));
+        $nestedReply = $this->postMessage($projectId, $admin, [
+            'body' => 'One more detail.',
+            'parent_id' => $reply->body['message']['id'],
+        ]);
+        self::assertSame(201, $nestedReply->status, json_encode($nestedReply->body));
+
         $messages = $this->getMessages($projectId, $admin['cookie']);
         self::assertSame(200, $messages->status);
-        self::assertCount(2, $messages->body['messages']);
+        self::assertCount(4, $messages->body['messages']);
         self::assertSame('Admin', $messages->body['messages'][0]['author_name']);
         self::assertSame('Admin', $messages->body['messages'][1]['parent_author_name']);
         self::assertSame('<script>alert("hello")</script>', $messages->body['messages'][1]['parent_body']);
+        self::assertSame(2, $messages->body['messages'][0]['reply_count']);
+        self::assertSame($reply->body['message']['id'], $messages->body['messages'][0]['first_reply_id']);
+        self::assertSame(1, $messages->body['messages'][1]['reply_count']);
+        self::assertSame($nestedReply->body['message']['id'], $messages->body['messages'][1]['first_reply_id']);
+        self::assertSame(0, $messages->body['messages'][2]['reply_count']);
+        self::assertNull($messages->body['messages'][2]['first_reply_id']);
 
         $replies = $this->getMessages($projectId, $admin['cookie'], [
             'since' => (string) $parent->body['message']['id'],
         ]);
-        self::assertCount(1, $replies->body['messages']);
+        self::assertCount(3, $replies->body['messages']);
         self::assertSame('I will check this.', $replies->body['messages'][0]['body']);
         self::assertSame('<script>alert("hello")</script>', $replies->body['messages'][0]['parent_body']);
 
@@ -69,6 +86,12 @@ final class ProjectChatTest extends ApiTestCase
         ))[0];
         self::assertSame('Admin', $replyEvent['parent_author_name']);
         self::assertSame('<script>alert("hello")</script>', $replyEvent['parent_body']);
+        $parentEvent = array_values(array_filter(
+            $events->body['events'],
+            static fn (array $event): bool => $event['id'] === $parent->body['message']['id'],
+        ))[0];
+        self::assertSame(2, $parentEvent['reply_count']);
+        self::assertSame($reply->body['message']['id'], $parentEvent['first_reply_id']);
     }
 
     public function testNonMembersCannotReadOrPostProjectMessages(): void

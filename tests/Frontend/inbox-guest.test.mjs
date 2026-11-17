@@ -113,6 +113,14 @@ test('project chat replies quote their parent and can jump back to it', () => {
   assert.match(css, /\.chat-reply-context\s*\{[^}]*white-space:\s*nowrap/);
 });
 
+test('project chat shows reply counts that jump to the first reply', () => {
+  assert.match(app, /reply_count/);
+  assert.match(app, /first_reply_id/);
+  assert.match(app, /chat-message-reply-count/);
+  assert.match(app, /focusChatMessageById\(firstReplyId\)/);
+  assert.match(css, /\.chat-message-reply-count\s*\{/);
+});
+
 test('sending a chat message brings it into view without auto-scrolling for other messages', () => {
   assert.match(app, /function appendChatMessage\(message: ChatMessage, scrollToBottom = false\)/);
   assert.match(app, /const followingMessage = scrollToBottom \? null/);

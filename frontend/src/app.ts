@@ -154,6 +154,8 @@ interface ChatMessage {
   author_name: string;
   parent_author_name?: string | null;
   parent_body?: string | null;
+  reply_count?: number;
+  first_reply_id?: number | null;
   body: string;
   created_at: string;
   is_client_visible?: boolean;
@@ -1688,6 +1690,10 @@ function appendChatMessage(message: ChatMessage, scrollToBottom = false): void {
     return;
   }
   chatMessagesById.set(message.id, message);
+  if (message.parent_id !== null && message.id > 0) {
+    const parent = chatMessagesById.get(message.parent_id);
+    if (parent !== undefined) updateChatMessageReplyCount(parent);
+  }
 
   const item = document.createElement('article');
   item.className = message.parent_id === null ? 'chat-message' : 'chat-message chat-reply';
@@ -1784,9 +1790,49 @@ function appendChatMessage(message: ChatMessage, scrollToBottom = false): void {
     return Number.isFinite(existingId) && existingId > message.id;
   });
   chatMessageList.insertBefore(item, followingMessage ?? null);
+  updateChatMessageReplyCount(message);
   chatEmptyState!.hidden = true;
   chatCursor = Math.max(chatCursor, message.id);
   if (scrollToBottom) scrollChatToBottom();
+}
+
+function updateChatMessageReplyCount(message: ChatMessage): void {
+  const item = chatMessageList?.querySelector<HTMLElement>(`.chat-message[data-message-id="${message.id}"]`);
+  if (item === null || item === undefined) return;
+
+  const replies = Array.from(chatMessagesById.values()).filter((candidate) =>
+    candidate.id > 0 && candidate.parent_id === message.id,
+  );
+  const replyCount = Math.max(message.reply_count ?? 0, replies.length);
+  const loadedFirstReplyId = replies.reduce<number | null>((firstId, reply) =>
+    firstId === null || reply.id < firstId ? reply.id : firstId, null);
+  const firstReplyId = message.first_reply_id === null || message.first_reply_id === undefined
+    ? loadedFirstReplyId
+    : loadedFirstReplyId === null ? message.first_reply_id : Math.min(message.first_reply_id, loadedFirstReplyId);
+  message.reply_count = replyCount;
+  message.first_reply_id = firstReplyId;
+
+  const existing = item.querySelector<HTMLButtonElement>('.chat-message-reply-count');
+  if (replyCount === 0 || firstReplyId === null) {
+    existing?.remove();
+    return;
+  }
+
+  const button = existing ?? document.createElement('button');
+  button.className = 'chat-message-reply-count';
+  button.type = 'button';
+  button.dataset.firstReplyId = String(firstReplyId);
+  const label = `${replyCount} ${replyCount === 1 ? 'reply' : 'replies'}`;
+  button.textContent = label;
+  button.title = `Show ${label} to ${message.author_name}'s message`;
+  button.setAttribute('aria-label', `Jump to the first of ${label} to ${message.author_name}'s message`);
+  if (existing === null) {
+    button.addEventListener('click', () => {
+      const firstReplyId = Number(button.dataset.firstReplyId);
+      if (Number.isSafeInteger(firstReplyId)) void focusChatMessageById(firstReplyId);
+    });
+    item.append(button);
+  }
 }
 
 function scrollChatToBottom(): void {
@@ -1972,6 +2018,7 @@ function createProjectChat(projectId: number): HTMLElement {
       });
       if (activeChatProjectId === projectId) {
         chatMessageList?.querySelector(`[data-message-id="${optimisticId}"]`)?.remove();
+        chatMessagesById.delete(optimisticId);
         appendChatMessage(result.message);
         scrollChatToBottom();
         selectChatMessage(result.message.id, false);
@@ -1984,6 +2031,7 @@ function createProjectChat(projectId: number): HTMLElement {
     } catch (error) {
       if (activeChatProjectId === projectId) {
         chatMessageList?.querySelector(`[data-message-id="${optimisticId}"]`)?.remove();
+        chatMessagesById.delete(optimisticId);
         report(error instanceof Error ? error.message : 'Could not send the message.', true);
       }
     } finally {

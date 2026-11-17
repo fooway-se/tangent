@@ -102,6 +102,12 @@ final class ChatRepository
             SELECT messages.id, messages.project_id, messages.channel_id, messages.parent_id, messages.author_id,
                    users.name AS author_name, users.role AS author_role, messages.body,
                    parent_users.name AS parent_author_name, parent_message.body AS parent_body,
+                   (SELECT COUNT(*) FROM messages reply
+                    WHERE reply.workspace_id = :reply_count_workspace_id
+                      AND reply.channel_id = messages.channel_id AND reply.parent_id = messages.id) AS reply_count,
+                   (SELECT MIN(reply.id) FROM messages reply
+                    WHERE reply.workspace_id = :first_reply_workspace_id
+                      AND reply.channel_id = messages.channel_id AND reply.parent_id = messages.id) AS first_reply_id,
                    (messages.message_client_visible OR messages.root_client_visible) AS is_client_visible,
                    messages.created_at
             FROM project_messages messages
@@ -122,6 +128,8 @@ final class ChatRepository
             'author_workspace_id' => $workspaceId,
             'parent_workspace_id' => $workspaceId,
             'parent_author_workspace_id' => $workspaceId,
+            'reply_count_workspace_id' => $workspaceId,
+            'first_reply_workspace_id' => $workspaceId,
             'since_id' => $sinceId,
             ...$projectParameters,
         ]);
@@ -156,6 +164,12 @@ final class ChatRepository
             SELECT messages.id, messages.channel_id, messages.parent_id, messages.author_id,
                    users.name AS author_name, users.role AS author_role, messages.body,
                    parent_users.name AS parent_author_name, parent_message.body AS parent_body,
+                   (SELECT COUNT(*) FROM messages reply
+                    WHERE reply.workspace_id = :reply_count_workspace_id
+                      AND reply.channel_id = messages.channel_id AND reply.parent_id = messages.id) AS reply_count,
+                   (SELECT MIN(reply.id) FROM messages reply
+                    WHERE reply.workspace_id = :first_reply_workspace_id
+                      AND reply.channel_id = messages.channel_id AND reply.parent_id = messages.id) AS first_reply_id,
                    (messages.message_client_visible OR messages.root_client_visible) AS is_client_visible,
                    messages.created_at
             FROM selected_messages messages
@@ -175,6 +189,8 @@ final class ChatRepository
             'author_workspace_id' => $workspaceId,
             'parent_workspace_id' => $workspaceId,
             'parent_author_workspace_id' => $workspaceId,
+            'reply_count_workspace_id' => $workspaceId,
+            'first_reply_workspace_id' => $workspaceId,
         ];
         if ($sinceId !== null) $parameters['since_id'] = $sinceId;
         $statement->execute($parameters);
@@ -346,7 +362,13 @@ final class ChatRepository
         $statement = $this->pdo->prepare(
             'SELECT m.id, m.channel_id, m.parent_id, m.author_id, u.name AS author_name, u.role AS author_role,
                     m.body, m.is_client_visible, m.created_at,
-                    parent_user.name AS parent_author_name, parent.body AS parent_body
+                    parent_user.name AS parent_author_name, parent.body AS parent_body,
+                    (SELECT COUNT(*) FROM messages replies
+                     WHERE replies.workspace_id = m.workspace_id
+                       AND replies.channel_id = m.channel_id AND replies.parent_id = m.id) AS reply_count,
+                    (SELECT MIN(replies.id) FROM messages replies
+                     WHERE replies.workspace_id = m.workspace_id
+                       AND replies.channel_id = m.channel_id AND replies.parent_id = m.id) AS first_reply_id
              FROM messages m
              INNER JOIN users u ON u.workspace_id = m.workspace_id AND u.id = m.author_id
              LEFT JOIN messages parent
@@ -378,6 +400,8 @@ final class ChatRepository
         $message['parent_id'] = $message['parent_id'] === null ? null : (int) $message['parent_id'];
         $message['parent_author_name'] = $message['parent_author_name'] ?? null;
         $message['parent_body'] = $message['parent_body'] ?? null;
+        $message['reply_count'] = (int) ($message['reply_count'] ?? 0);
+        $message['first_reply_id'] = $message['first_reply_id'] === null ? null : (int) $message['first_reply_id'];
         return $message;
     }
 
