@@ -1066,6 +1066,22 @@ function getPaletteCommands(): PaletteCommand[] {
         run: createIssueFromSelectedChatMessage,
       });
     }
+    if (deletedProjectIssues.length > 0) {
+      commands.push({
+        label: 'Show deleted issues',
+        detail: `Jump to ${deletedProjectIssues.length} deleted issue${deletedProjectIssues.length === 1 ? '' : 's'} in ${activeProject.name}`,
+        shortcut: '',
+        run: () => showDeletedIssues(),
+      });
+      for (const issue of deletedProjectIssues) {
+        commands.push({
+          label: `Restore issue: ${issue.title}`,
+          detail: `Restore it with its previous status (${issueStatusLabel(issue.status)})`,
+          shortcut: '',
+          run: () => showDeletedIssues(issue.id),
+        });
+      }
+    }
   }
   commands.push({
     label: 'Sign out',
@@ -1798,6 +1814,7 @@ async function loadProjectDetail(
     projectDescription.hidden = result.project.description.trim() === '';
     projectState.textContent = result.project.status;
     projectIssues = [];
+    deletedProjectIssues = [];
     issueFilter.value = '';
     issueOrder.value = 'updated';
     issueDescriptionDetails.open = false;
@@ -1813,7 +1830,7 @@ async function loadProjectDetail(
   }
 }
 
-function switchProjectTab(tab: 'issues' | 'members', returnFocusIssueId?: number): void {
+function switchProjectTab(tab: 'issues' | 'members', returnFocusIssueId?: number, loadIssues = true): void {
   if (activeProject === null) return;
   const showingIssueDetail = tab === 'issues' && selectedIssue !== null;
   issuesView.hidden = tab !== 'issues' || showingIssueDetail;
@@ -1826,7 +1843,7 @@ function switchProjectTab(tab: 'issues' | 'members', returnFocusIssueId?: number
   issuesTabButton.tabIndex = tab === 'issues' ? 0 : -1;
   membersTabButton.tabIndex = tab === 'members' ? 0 : -1;
   if (tab === 'issues') {
-    if (!showingIssueDetail) {
+    if (!showingIssueDetail && loadIssues) {
       const projectId = activeProject.id;
       const loadingIssues = loadProjectIssues(projectId);
       if (returnFocusIssueId !== undefined) {
@@ -1935,6 +1952,7 @@ function createDeletedIssueRow(issue: Issue): HTMLLIElement {
   restoreButton.type = 'button';
   restoreButton.className = 'button button-secondary';
   restoreButton.textContent = 'Restore';
+  restoreButton.dataset.issueId = String(issue.id);
   restoreButton.setAttribute('aria-label', `Restore ${issue.title}`);
   restoreButton.addEventListener('click', () => void restoreIssue(issue, restoreButton));
   item.append(content, restoreButton);
@@ -2098,6 +2116,31 @@ async function restoreIssue(issue: Issue, restoreButton: HTMLButtonElement): Pro
   } finally {
     restoreButton.disabled = false;
   }
+}
+
+function showDeletedIssues(restoreIssueId?: number): void {
+  const projectId = activeProject?.id;
+  if (projectId === undefined || deletedProjectIssues.length === 0) return;
+
+  selectedIssue = null;
+  issueDetailEditForm.reset();
+  issueDetailEditForm.hidden = true;
+  issueDetailDisplay.hidden = false;
+  switchProjectTab('issues', undefined, false);
+  void loadProjectIssues(projectId).then(() => {
+    if (activeProject?.id !== projectId || issuesView.hidden || deletedProjectIssues.length === 0) return;
+    deletedIssuesDetails.open = true;
+    deletedIssuesDetails.scrollIntoView({ block: 'nearest' });
+    if (restoreIssueId !== undefined) {
+      const restoreButton = Array.from(deletedIssueList.querySelectorAll<HTMLButtonElement>('.deleted-issue-item button'))
+        .find((button) => button.dataset.issueId === String(restoreIssueId));
+      if (restoreButton !== undefined) {
+        restoreButton.click();
+        return;
+      }
+    }
+    deletedIssuesDetails.querySelector<HTMLElement>('summary')?.focus();
+  });
 }
 
 async function applyIssueStatusPickerSelection(): Promise<void> {
