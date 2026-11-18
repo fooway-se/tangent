@@ -72,3 +72,23 @@ test('computer card handles Escape before workspace navigation', () => {
   assert.match(commandPaletteHandler, /if \(themeAboutDialog\.open\) themeAboutDialog\.close\(\);/);
   assert.match(dismissHandler, /if \(themeAboutDialog\.open\)\s*\{\s*themeAboutDialog\.close\(\);/);
 });
+
+test('computer card button uses the theme selector vertical sizing', () => {
+  const selectRule = css.match(/\.theme-select \{([^}]+)\}/)?.[1] ?? '';
+  const buttonRule = css.match(/\.theme-about-button \{([^}]+)\}/)?.[1] ?? '';
+  const declaration = (rule, property) => rule.match(new RegExp(`(?:^|;)\\s*${property}:\\s*([^;]+)`))?.[1]?.trim();
+  for (const property of ['border-bottom-width', 'font']) {
+    assert.equal(declaration(buttonRule, property), declaration(selectRule, property), `${property} matches the selector`);
+  }
+  const [buttonVerticalPadding, buttonHorizontalPadding = buttonVerticalPadding] = declaration(buttonRule, 'padding')?.split(/\s+/) ?? [];
+  const [selectVerticalPadding, selectHorizontalPadding = selectVerticalPadding] = declaration(selectRule, 'padding')?.split(/\s+/) ?? [];
+  assert.equal(buttonVerticalPadding, selectVerticalPadding, 'vertical padding keeps the same height');
+  assert.ok(Number.parseFloat(buttonHorizontalPadding) < Number.parseFloat(selectHorizontalPadding), 'horizontal padding is smaller');
+  assert.equal(declaration(buttonRule, 'width'), '29px', 'button shrinks to the icon and compact padding');
+  assert.doesNotMatch(buttonRule, /\bheight\s*:/, 'button height follows the shared vertical sizing');
+});
+
+test('retro computer icon is slightly smaller than the compact card button', () => {
+  assert.match(css, /\.retro-computer-icon\s*\{[^}]*width:\s*17px;[^}]*height:\s*12px;/);
+  assert.match(css, /\.retro-computer-icon > span::after\s*\{[^}]*width:\s*7px;/);
+});
