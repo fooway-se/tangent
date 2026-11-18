@@ -22,7 +22,7 @@ final class SeedAdminCommandTest extends ApiTestCase
             'TANGENT_WORKSPACE_SLUG' => $slug,
             'TANGENT_DB_HOST' => getenv('TANGENT_TEST_DB_HOST') ?: 'mysql',
             'TANGENT_DB_PORT' => getenv('TANGENT_TEST_DB_PORT') ?: '3306',
-            'TANGENT_DB_NAME' => getenv('TANGENT_TEST_DB_NAME') ?: 'tangent_test',
+            'TANGENT_DB_NAME' => getenv('TANGENT_TEST_DB_NAME') ?: 'tangent_test_suite',
             'TANGENT_DB_USER' => getenv('TANGENT_TEST_DB_USER') ?: 'tangent',
             'TANGENT_DB_PASSWORD' => getenv('TANGENT_TEST_DB_PASSWORD') ?: 'tangent_dev_password',
         ];
@@ -47,7 +47,7 @@ final class SeedAdminCommandTest extends ApiTestCase
         $verification = new PDO(
             'mysql:host=' . (getenv('TANGENT_TEST_DB_HOST') ?: 'mysql')
                 . ';port=' . (getenv('TANGENT_TEST_DB_PORT') ?: '3306')
-                . ';dbname=' . (getenv('TANGENT_TEST_DB_NAME') ?: 'tangent_test')
+                . ';dbname=' . (getenv('TANGENT_TEST_DB_NAME') ?: 'tangent_test_suite')
                 . ';charset=utf8mb4',
             getenv('TANGENT_TEST_DB_USER') ?: 'tangent',
             getenv('TANGENT_TEST_DB_PASSWORD') ?: 'tangent_dev_password',

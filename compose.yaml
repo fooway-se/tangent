@@ -22,7 +22,7 @@ services:
       TANGENT_APP_URL: "http://localhost:${TANGENT_HTTP_PORT:-8081}"
       TANGENT_TEST_DB_HOST: mysql
       TANGENT_TEST_DB_PORT: "3306"
-      TANGENT_TEST_DB_NAME: tangent_test
+      TANGENT_TEST_DB_NAME: tangent_test_suite
       TANGENT_TEST_DB_USER: tangent
       TANGENT_TEST_DB_PASSWORD: tangent_dev_password
       TANGENT_INSTALL_TEST_DB_HOST: mysql

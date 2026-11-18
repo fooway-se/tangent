@@ -33,7 +33,7 @@ abstract class ApiTestCase extends TestCase
         $database = Database::connect(
             getenv('TANGENT_TEST_DB_HOST') ?: '127.0.0.1',
             (int) (getenv('TANGENT_TEST_DB_PORT') ?: 3306),
-            getenv('TANGENT_TEST_DB_NAME') ?: 'tangent_test',
+            getenv('TANGENT_TEST_DB_NAME') ?: 'tangent_test_suite',
             getenv('TANGENT_TEST_DB_USER') ?: 'tangent',
             getenv('TANGENT_TEST_DB_PASSWORD') ?: 'tangent_dev_password',
         );
