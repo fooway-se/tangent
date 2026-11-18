@@ -602,6 +602,7 @@ let chatPollTimer: number | null = null;
 let chatCursor = 0;
 let chatEtag: string | null = null;
 let chatPollDelay = 1000;
+let chatFollowLatest = true;
 let chatMessageList: HTMLElement | null = null;
 let chatEmptyState: HTMLElement | null = null;
 let chatInput: HTMLTextAreaElement | null = null;
@@ -1454,6 +1455,7 @@ function stopChatPolling(): void {
   chatCancelReply = null;
   chatReplyParent = null;
   selectedChatMessageId = null;
+  chatFollowLatest = true;
   chatMessagesById.clear();
 }
 
@@ -1697,6 +1699,7 @@ function selectChatMessage(id: number, focus = true): void {
   const item = chatMessageList?.querySelector<HTMLElement>(`.chat-message[data-message-id="${id}"]`);
   if (item === null || item === undefined) return;
   selectedChatMessageId = id;
+  chatFollowLatest = chatMessageElements().at(-1) === item;
   chatMessageList?.querySelectorAll<HTMLElement>('.chat-message').forEach((message) => {
     message.classList.toggle('is-keyboard-selected', message === item);
   });
@@ -2611,7 +2614,7 @@ async function pollProjectChat(projectId: number): Promise<void> {
       const received = payload.events ?? [];
       for (const event of received) {
         chatCursor = Math.max(chatCursor, event.id);
-        if (event.project_id === projectId) appendChatMessage(event);
+        if (event.project_id === projectId) appendChatMessage(event, chatFollowLatest);
       }
       if (received.length > 0) {
         chatPollDelay = 1000;
@@ -2636,6 +2639,7 @@ async function loadProjectChatHistory(projectId: number): Promise<void> {
     const result = await api<{ messages: ChatMessage[] }>(`/projects/${projectId}/messages`);
     if (activeChatProjectId !== projectId) return;
     for (const message of result.messages) appendChatMessage(message);
+    if (chatFollowLatest) scrollChatToBottom();
     void pollProjectChat(projectId);
   } catch (error) {
     if (error instanceof ApiFailure && error.status === 401) {
@@ -2664,7 +2668,7 @@ function appendChatMessage(message: ChatMessage, scrollToBottom = false): void {
   item.dataset.messageId = String(message.id);
   item.tabIndex = -1;
   item.setAttribute('aria-keyshortcuts', 'j k ArrowUp ArrowDown Home End PageUp PageDown Enter r i');
-  item.addEventListener('focus', () => selectChatMessage(message.id, false));
+  item.addEventListener('focusin', () => selectChatMessage(message.id, false));
   item.addEventListener('click', (event) => {
     if (!(event.target instanceof HTMLElement) || event.target.closest('button') === null) {
       selectChatMessage(message.id);
@@ -2787,7 +2791,13 @@ function updateChatMessageReplyCount(message: ChatMessage): void {
   }
 }
 
+function isChatNearBottom(): boolean {
+  if (chatMessageList === null) return true;
+  return chatMessageList.scrollHeight - chatMessageList.scrollTop - chatMessageList.clientHeight <= 24;
+}
+
 function scrollChatToBottom(): void {
+  chatFollowLatest = true;
   if (chatMessageList !== null) chatMessageList.scrollTop = chatMessageList.scrollHeight;
 }
 
@@ -2904,12 +2914,19 @@ function createProjectChat(projectId: number): HTMLElement {
   memberCount.textContent = `${activeProjectMembers.length} ${activeProjectMembers.length === 1 ? 'member' : 'members'}`;
   heading.append(channelName, memberCount);
 
-  chatMessageList = document.createElement('div');
-  chatMessageList.className = 'chat-message-list';
-  chatEmptyState = document.createElement('p');
-  chatEmptyState.className = 'chat-empty-state';
-  chatEmptyState.textContent = 'No messages yet.';
-  chatMessageList.append(chatEmptyState);
+  chatFollowLatest = true;
+  const messageList = document.createElement('div');
+  messageList.className = 'chat-message-list';
+  chatMessageList = messageList;
+  const emptyState = document.createElement('p');
+  emptyState.className = 'chat-empty-state';
+  emptyState.textContent = 'No messages yet.';
+  chatEmptyState = emptyState;
+  messageList.append(emptyState);
+  messageList.addEventListener('scroll', () => {
+    if (chatMessageList !== messageList) return;
+    chatFollowLatest = isChatNearBottom();
+  });
 
   const form = document.createElement('form');
   form.className = 'chat-composer form-stack';
@@ -3584,6 +3601,7 @@ async function openInboxEvent(event: InboxEvent): Promise<void> {
     if (activeProject?.id !== event.project_id || activeChatProjectId !== event.project_id) return;
     appendChatMessage(result.message);
     selectChatMessage(result.message.id);
+    chatFollowLatest = false;
   } catch (error) {
     if (error instanceof ApiFailure && error.status === 404) {
       report('The source message is no longer available.', true);

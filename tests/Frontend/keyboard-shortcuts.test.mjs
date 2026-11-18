@@ -183,6 +183,7 @@ test('chat message selection supports navigation, reply, issue creation, and com
   assert.equal(resolve('Enter', chatSelection), 'focus-chat-composer');
   assert.equal(resolve('r'), null);
   assert.match(app, /chatMessagesFocused:[\s\S]{0,100}target\.closest\('\.chat-message'\)/);
+  assert.match(app, /item\.addEventListener\('focusin', \(\) => selectChatMessage\(message\.id, false\)\)/);
   assert.match(app, /aria-keyshortcuts', 'j k ArrowUp ArrowDown Home End PageUp PageDown Enter r i'/);
 });
 

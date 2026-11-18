@@ -390,6 +390,7 @@ let chatPollTimer = null;
 let chatCursor = 0;
 let chatEtag = null;
 let chatPollDelay = 1000;
+let chatFollowLatest = true;
 let chatMessageList = null;
 let chatEmptyState = null;
 let chatInput = null;
@@ -1250,6 +1251,7 @@ function stopChatPolling() {
     chatCancelReply = null;
     chatReplyParent = null;
     selectedChatMessageId = null;
+    chatFollowLatest = true;
     chatMessagesById.clear();
 }
 function pauseIssuePolling() {
@@ -1485,6 +1487,7 @@ function selectChatMessage(id, focus = true) {
     if (item === null || item === undefined)
         return;
     selectedChatMessageId = id;
+    chatFollowLatest = chatMessageElements().at(-1) === item;
     chatMessageList?.querySelectorAll('.chat-message').forEach((message) => {
         message.classList.toggle('is-keyboard-selected', message === item);
     });
@@ -2519,7 +2522,7 @@ async function pollProjectChat(projectId) {
             for (const event of received) {
                 chatCursor = Math.max(chatCursor, event.id);
                 if (event.project_id === projectId)
-                    appendChatMessage(event);
+                    appendChatMessage(event, chatFollowLatest);
             }
             if (received.length > 0) {
                 chatPollDelay = 1000;
@@ -2547,6 +2550,8 @@ async function loadProjectChatHistory(projectId) {
             return;
         for (const message of result.messages)
             appendChatMessage(message);
+        if (chatFollowLatest)
+            scrollChatToBottom();
         void pollProjectChat(projectId);
     }
     catch (error) {
@@ -2577,7 +2582,7 @@ function appendChatMessage(message, scrollToBottom = false) {
     item.dataset.messageId = String(message.id);
     item.tabIndex = -1;
     item.setAttribute('aria-keyshortcuts', 'j k ArrowUp ArrowDown Home End PageUp PageDown Enter r i');
-    item.addEventListener('focus', () => selectChatMessage(message.id, false));
+    item.addEventListener('focusin', () => selectChatMessage(message.id, false));
     item.addEventListener('click', (event) => {
         if (!(event.target instanceof HTMLElement) || event.target.closest('button') === null) {
             selectChatMessage(message.id);
@@ -2696,7 +2701,13 @@ function updateChatMessageReplyCount(message) {
         item.append(button);
     }
 }
+function isChatNearBottom() {
+    if (chatMessageList === null)
+        return true;
+    return chatMessageList.scrollHeight - chatMessageList.scrollTop - chatMessageList.clientHeight <= 24;
+}
 function scrollChatToBottom() {
+    chatFollowLatest = true;
     if (chatMessageList !== null)
         chatMessageList.scrollTop = chatMessageList.scrollHeight;
 }
@@ -2809,12 +2820,20 @@ function createProjectChat(projectId) {
     memberCount.className = 'chat-members-count';
     memberCount.textContent = `${activeProjectMembers.length} ${activeProjectMembers.length === 1 ? 'member' : 'members'}`;
     heading.append(channelName, memberCount);
-    chatMessageList = document.createElement('div');
-    chatMessageList.className = 'chat-message-list';
-    chatEmptyState = document.createElement('p');
-    chatEmptyState.className = 'chat-empty-state';
-    chatEmptyState.textContent = 'No messages yet.';
-    chatMessageList.append(chatEmptyState);
+    chatFollowLatest = true;
+    const messageList = document.createElement('div');
+    messageList.className = 'chat-message-list';
+    chatMessageList = messageList;
+    const emptyState = document.createElement('p');
+    emptyState.className = 'chat-empty-state';
+    emptyState.textContent = 'No messages yet.';
+    chatEmptyState = emptyState;
+    messageList.append(emptyState);
+    messageList.addEventListener('scroll', () => {
+        if (chatMessageList !== messageList)
+            return;
+        chatFollowLatest = isChatNearBottom();
+    });
     const form = document.createElement('form');
     form.className = 'chat-composer form-stack';
     const label = document.createElement('label');
@@ -3502,6 +3521,7 @@ async function openInboxEvent(event) {
             return;
         appendChatMessage(result.message);
         selectChatMessage(result.message.id);
+        chatFollowLatest = false;
     }
     catch (error) {
         if (error instanceof ApiFailure && error.status === 404) {

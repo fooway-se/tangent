@@ -121,12 +121,22 @@ test('project chat shows reply counts that jump to the first reply', () => {
   assert.match(css, /\.chat-message-reply-count\s*\{/);
 });
 
-test('sending a chat message brings it into view without auto-scrolling for other messages', () => {
+test('chat follows incoming messages until someone navigates into history', () => {
   assert.match(app, /function appendChatMessage\(message: ChatMessage, scrollToBottom = false\)/);
   assert.match(app, /const followingMessage = scrollToBottom \? null/);
+  assert.match(app, /let chatFollowLatest = true/);
+  assert.match(app, /appendChatMessage\(event, chatFollowLatest\)/);
+  assert.match(app, /function loadProjectChatHistory[\s\S]*?if \(chatFollowLatest\) scrollChatToBottom\(\)/);
+  assert.match(app, /function isChatNearBottom\(\): boolean[\s\S]*?<= 24/);
+  assert.match(app, /messageList\.addEventListener\('scroll', \(\) => \{\s*if \(chatMessageList !== messageList\) return;\s*chatFollowLatest = isChatNearBottom\(\)/);
+  assert.match(app, /chatFollowLatest = chatMessageElements\(\)\.at\(-1\) === item/);
+  assert.match(app, /item\.addEventListener\('focusin', \(\) => selectChatMessage\(message\.id, false\)\)/);
+  assert.match(app, /function scrollChatToBottom\(\)[\s\S]*?chatFollowLatest = true[\s\S]*?chatMessageList\.scrollTop = chatMessageList\.scrollHeight/);
+});
+
+test('sending a chat message returns the conversation to the latest message', () => {
   assert.match(app, /appendChatMessage\(optimisticMessage, true\)/);
   assert.match(app, /appendChatMessage\(result\.message\);\s*scrollChatToBottom\(\)/);
-  assert.match(app, /function scrollChatToBottom\(\)[\s\S]*?chatMessageList\.scrollTop = chatMessageList\.scrollHeight/);
 });
 
 test('guest with no projects gets the same framed customer screen', () => {
@@ -181,5 +191,6 @@ test('inbox message events select their source chat message', () => {
   const openEvent = app.slice(app.indexOf('async function openInboxEvent('), app.indexOf('function renderInboxIssues('));
   assert.match(openEvent, /event\.message_id/);
   assert.match(openEvent, /selectChatMessage\(/);
+  assert.match(openEvent, /selectChatMessage\(result\.message\.id\);\s*chatFollowLatest = false/);
   assert.match(openEvent, /This issue is no longer available/);
 });
