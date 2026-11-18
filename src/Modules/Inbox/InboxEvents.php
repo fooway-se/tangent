@@ -62,20 +62,32 @@ final class InboxEvents
         array $threadParticipantIds,
     ): void {
         $members = $this->projects->members($workspaceId, $projectId);
-        $byMention = [];
+        $matchesByOffset = [];
         foreach ($members as $member) {
             if (!(bool) ($member['is_active'] ?? true) || (int) $member['id'] === $actorId) continue;
             $nameParts = preg_split('/\s+/u', trim((string) $member['name'])) ?: [];
             $firstName = $nameParts[0] ?? '';
             $emailHandle = strstr((string) $member['email'], '@', true);
-            foreach ([$firstName, $emailHandle] as $candidate) {
-                if (is_string($candidate) && $candidate !== '' && preg_match(
-                    '/(?<![\pL\pN_])@' . preg_quote($candidate, '/') . '(?![\pL\pN_])/iu',
-                    (string) $message['body'],
-                ) === 1) {
-                    $byMention[(int) $member['id']] = true;
-                    break;
+            foreach (array_unique(array_filter([implode(' ', $nameParts), $firstName, $emailHandle], static fn ($value): bool => is_string($value) && $value !== '')) as $candidate) {
+                $parts = preg_split('/\s+/u', (string) $candidate) ?: [];
+                $phrase = implode('\\s+', array_map(static fn (string $part): string => preg_quote($part, '/'), $parts));
+                $pattern = '/(?<![\pL\pN_])@' . $phrase . '(?![\pL\pN_])/iu';
+                if (preg_match_all($pattern, (string) $message['body'], $matches, PREG_OFFSET_CAPTURE) === false) {
+                    continue;
                 }
+                foreach ($matches[0] as [$matchedText, $offset]) {
+                    $matchesByOffset[$offset][] = [
+                        'member_id' => (int) $member['id'],
+                        'length' => strlen($matchedText),
+                    ];
+                }
+            }
+        }
+        $byMention = [];
+        foreach ($matchesByOffset as $matchesAtOffset) {
+            $longestMatch = max(array_column($matchesAtOffset, 'length'));
+            foreach ($matchesAtOffset as $match) {
+                if ($match['length'] === $longestMatch) $byMention[$match['member_id']] = true;
             }
         }
         $detail = mb_substr((string) $message['body'], 0, 200, 'UTF-8');

@@ -67,6 +67,26 @@ final class InboxEventsTest extends ApiTestCase
         self::assertContains('reply', array_column($developerEvents, 'type'));
     }
 
+    public function testFullNameMentionTargetsTheSelectedMemberWhenFirstNamesOverlap(): void
+    {
+        $admin = $this->login($this->adminEmail);
+        $projectId = $this->createProject($admin, 'Full name mentions');
+        $richardKId = $this->createDeveloper($admin, 'Richard K', 'richard-k@example.test');
+        $richardMId = $this->createDeveloper($admin, 'Richard M', 'richard-m@example.test');
+        $this->addMember($admin, $projectId, $richardKId);
+        $this->addMember($admin, $projectId, $richardMId);
+
+        $message = $this->sendMessage($projectId, $admin, ['body' => 'Could you look at this, @Richard K?']);
+        self::assertSame(201, $message->status, json_encode($message->body));
+
+        $richardKEvents = $this->events($this->login('richard-k@example.test')['cookie']);
+        $richardMEvents = $this->events($this->login('richard-m@example.test')['cookie']);
+        self::assertCount(1, $richardKEvents);
+        self::assertSame('mention', $richardKEvents[0]['type']);
+        self::assertSame($message->body['message']['id'], $richardKEvents[0]['message_id']);
+        self::assertSame([], $richardMEvents);
+    }
+
     public function testIssueAssignmentAndStatusEventsGoToTheRightUsers(): void
     {
         $admin = $this->login($this->adminEmail);

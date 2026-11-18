@@ -508,11 +508,18 @@ select { padding-right: 28px; background: var(--screen-inset) url("data:image/sv
 .chat-reply .chat-message-reply-count { grid-row: 4; }
 .chat-reply-button, .chat-create-issue-button { padding: 3px 6px; font-size: 11px; }
 .chat-create-issue-button { color: var(--accent); }
-.chat-composer { align-items: end; gap: 10px; margin: 0; border-top: 1px solid var(--screen-border); padding: 12px 18px 18px; }
+.chat-composer { position: relative; align-items: end; gap: 10px; margin: 0; border-top: 1px solid var(--screen-border); padding: 12px 18px 18px; }
 .chat-composer label { font-size: 0; }
 .chat-composer textarea { resize: none; font-size: 12px; }
 .chat-composer-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
 .chat-reply-hint { margin: 0; color: var(--accent); font-size: 12px; }
+.chat-mention-suggestions { position: absolute; z-index: 20; right: 18px; bottom: calc(100% - 4px); left: 18px; display: grid; max-height: min(260px, 40vh); gap: 3px; overflow-y: auto; border: 1px solid var(--screen-border); border-radius: var(--radius-panel); padding: 5px; background: var(--screen-panel); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35); }
+.chat-mention-suggestions[hidden] { display: none; }
+.chat-mention-option { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; width: 100%; border: 1px solid transparent; border-radius: var(--radius-panel); padding: 8px 10px; color: var(--screen-ink); background: transparent; font: inherit; text-align: left; cursor: pointer; }
+.chat-mention-option[aria-selected="true"], .chat-mention-option:hover { border-color: var(--accent-edge); background: var(--screen-hover); }
+.chat-mention-option strong { overflow: hidden; font: 700 12px var(--font-display); text-overflow: ellipsis; white-space: nowrap; }
+.chat-mention-option span { overflow: hidden; color: var(--screen-muted); font: 400 11px var(--font-mono); text-overflow: ellipsis; white-space: nowrap; }
+.chat-mention-empty { padding: 8px 10px; color: var(--screen-muted); font-size: 12px; }
 
 /* Keyboard strip: black keycaps on the case */
 .keyboard-hints { grid-column: 1 / -1; grid-row: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding: 10px 18px; border-top: 2px solid var(--case-shade); background: linear-gradient(180deg, var(--footer-top), var(--footer-bottom)); box-shadow: inset 0 1px 0 var(--case-light); color: var(--case-muted); font-size: 11px; }

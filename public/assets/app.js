@@ -1,6 +1,7 @@
 import { INBOX_TABS, createEventRow, eventsForTab, tabCount, } from './inbox-events.js';
 import { diffInboxCollections, nextInboxPollDelay, shouldDeferInboxUpdates, } from './inbox-polling.js';
 import { renderClientEmptyState, renderClientView } from './guest-view.js';
+import { filterMentionMembers, findMentionQuery, mentionEmptyMessage, replaceMentionQuery } from './chat-mentions.js';
 import { resolveShortcut, shouldSubmitOnEnter } from './shortcuts.js';
 import { parseQuickIssueInput } from './quick-issue.js';
 import { formatIssueMarkdown, formatIssuePrompt } from './issue-export.js';
@@ -395,6 +396,11 @@ let chatFollowLatest = true;
 let chatMessageList = null;
 let chatEmptyState = null;
 let chatInput = null;
+let chatMentionList = null;
+let chatMentionQuery = null;
+let chatMentionMatches = [];
+let chatMentionSelectedIndex = 0;
+let chatMentionDismissed = false;
 let selectedChatMessageId = null;
 const chatMessagesById = new Map();
 let chatReplyHint = null;
@@ -1248,6 +1254,11 @@ function stopChatPolling() {
     chatMessageList = null;
     chatEmptyState = null;
     chatInput = null;
+    chatMentionList = null;
+    chatMentionQuery = null;
+    chatMentionMatches = [];
+    chatMentionSelectedIndex = 0;
+    chatMentionDismissed = false;
     chatReplyHint = null;
     chatCancelReply = null;
     chatReplyParent = null;
@@ -2803,6 +2814,111 @@ function clearChatReplyParent() {
     if (chatCancelReply !== null)
         chatCancelReply.hidden = true;
 }
+function updateChatMentionSuggestions() {
+    if (chatInput === null || chatMentionList === null || chatMentionDismissed)
+        return;
+    const query = findMentionQuery(chatInput.value, chatInput.selectionStart);
+    if (query === null) {
+        hideChatMentionSuggestions();
+        return;
+    }
+    const matches = filterMentionMembers(activeProjectMembers, query.query, activeUser?.id ?? null);
+    if (matches.length === 0) {
+        chatMentionQuery = query;
+        chatMentionMatches = [];
+        chatMentionSelectedIndex = 0;
+        const empty = document.createElement('div');
+        empty.className = 'chat-mention-empty';
+        empty.setAttribute('role', 'option');
+        empty.setAttribute('aria-disabled', 'true');
+        empty.setAttribute('aria-selected', 'false');
+        empty.textContent = mentionEmptyMessage(activeProjectMembers, query.query, activeUser?.id ?? null);
+        chatMentionList.replaceChildren(empty);
+        chatMentionList.hidden = false;
+        chatInput.setAttribute('aria-expanded', 'true');
+        chatInput.removeAttribute('aria-activedescendant');
+        return;
+    }
+    chatMentionQuery = query;
+    chatMentionMatches = matches;
+    chatMentionSelectedIndex = Math.min(chatMentionSelectedIndex, matches.length - 1);
+    chatMentionList.replaceChildren(...matches.map((member, index) => {
+        const option = document.createElement('button');
+        option.type = 'button';
+        option.id = `chat-mention-option-${index}`;
+        option.className = 'chat-mention-option';
+        option.setAttribute('role', 'option');
+        option.setAttribute('aria-selected', String(index === chatMentionSelectedIndex));
+        const name = document.createElement('strong');
+        name.textContent = member.name;
+        const email = document.createElement('span');
+        email.textContent = member.email;
+        option.append(name, email);
+        option.addEventListener('mousedown', (event) => event.preventDefault());
+        option.addEventListener('click', () => selectChatMention(member));
+        return option;
+    }));
+    chatMentionList.hidden = false;
+    chatInput.setAttribute('aria-expanded', 'true');
+    chatInput.setAttribute('aria-activedescendant', `chat-mention-option-${chatMentionSelectedIndex}`);
+}
+function hideChatMentionSuggestions() {
+    chatMentionQuery = null;
+    chatMentionMatches = [];
+    chatMentionSelectedIndex = 0;
+    if (chatMentionList !== null) {
+        chatMentionList.hidden = true;
+        chatMentionList.replaceChildren();
+    }
+    chatInput?.setAttribute('aria-expanded', 'false');
+    chatInput?.removeAttribute('aria-activedescendant');
+}
+function selectChatMention(member) {
+    if (chatInput === null || chatMentionQuery === null)
+        return;
+    const insertion = replaceMentionQuery(chatInput.value, chatMentionQuery, member.name);
+    chatInput.value = insertion.value;
+    chatInput.setSelectionRange(insertion.cursor, insertion.cursor);
+    chatMentionDismissed = true;
+    hideChatMentionSuggestions();
+    chatInput.focus();
+}
+function handleChatMentionKeydown(event) {
+    if (chatMentionList === null || chatMentionList.hidden)
+        return false;
+    if (event.key === 'Escape') {
+        event.preventDefault();
+        event.stopPropagation();
+        chatMentionDismissed = true;
+        hideChatMentionSuggestions();
+        return true;
+    }
+    if (chatMentionMatches.length === 0)
+        return false;
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        chatMentionSelectedIndex = (chatMentionSelectedIndex + (event.key === 'ArrowDown' ? 1 : -1) + chatMentionMatches.length)
+            % chatMentionMatches.length;
+        const options = Array.from(chatMentionList.querySelectorAll('[role="option"]'));
+        options.forEach((option, index) => option.setAttribute('aria-selected', String(index === chatMentionSelectedIndex)));
+        const selected = options[chatMentionSelectedIndex];
+        if (selected !== undefined) {
+            chatInput?.setAttribute('aria-activedescendant', selected.id);
+            selected.scrollIntoView({ block: 'nearest' });
+        }
+        return true;
+    }
+    if ((event.key === 'Enter' && !event.shiftKey && !event.isComposing) || event.key === 'Tab') {
+        const member = chatMentionMatches[chatMentionSelectedIndex];
+        if (member === undefined)
+            return false;
+        event.preventDefault();
+        event.stopPropagation();
+        selectChatMention(member);
+        return true;
+    }
+    return false;
+}
 function createProjectChat(projectId) {
     const section = document.createElement('section');
     section.className = 'project-chat';
@@ -2837,6 +2953,12 @@ function createProjectChat(projectId) {
     });
     const form = document.createElement('form');
     form.className = 'chat-composer form-stack';
+    chatMentionList = document.createElement('div');
+    chatMentionList.id = `chat-mention-suggestions-${projectId}`;
+    chatMentionList.className = 'chat-mention-suggestions';
+    chatMentionList.setAttribute('role', 'listbox');
+    chatMentionList.setAttribute('aria-label', 'Mention a project member');
+    chatMentionList.hidden = true;
     const label = document.createElement('label');
     label.textContent = 'Message';
     chatInput = document.createElement('textarea');
@@ -2846,7 +2968,21 @@ function createProjectChat(projectId) {
     chatInput.required = true;
     chatInput.placeholder = `Message #${activeProject?.slug ?? 'project'}…`;
     chatInput.setAttribute('aria-label', 'Message');
-    chatInput.addEventListener('keydown', (event) => submitFormOnEnter(event, form));
+    chatInput.setAttribute('aria-autocomplete', 'list');
+    chatInput.setAttribute('aria-controls', chatMentionList.id);
+    chatInput.setAttribute('aria-expanded', 'false');
+    chatInput.addEventListener('input', () => {
+        chatMentionDismissed = false;
+        updateChatMentionSuggestions();
+    });
+    chatInput.addEventListener('click', updateChatMentionSuggestions);
+    chatInput.addEventListener('select', updateChatMentionSuggestions);
+    chatInput.addEventListener('keyup', updateChatMentionSuggestions);
+    chatInput.addEventListener('blur', hideChatMentionSuggestions);
+    chatInput.addEventListener('keydown', (event) => {
+        if (!handleChatMentionKeydown(event))
+            submitFormOnEnter(event, form);
+    });
     label.append(chatInput);
     chatReplyHint = document.createElement('p');
     chatReplyHint.className = 'chat-reply-hint';
@@ -2864,7 +3000,7 @@ function createProjectChat(projectId) {
     send.type = 'submit';
     send.textContent = 'Send';
     actions.append(chatCancelReply, send);
-    form.append(label, chatReplyHint, actions);
+    form.append(chatMentionList, label, chatReplyHint, actions);
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
         const body = chatInput?.value.trim() ?? '';
@@ -2900,6 +3036,8 @@ function createProjectChat(projectId) {
                 scrollChatToBottom();
                 selectChatMessage(result.message.id, false);
                 chatInput.value = '';
+                chatMentionDismissed = false;
+                hideChatMentionSuggestions();
                 clearChatReplyParent();
                 chatEtag = null;
                 chatPollDelay = 1000;
