@@ -804,7 +804,7 @@ paths:
   /inbox:
     get:
       summary: List open issues assigned to the authenticated user
-      description: Returns active backlog, todo, and doing issues across projects visible to the authenticated user, ordered by most recently updated. Matching If-None-Match returns 304.
+      description: Returns active backlog, todo, doing, and testing issues across projects visible to the authenticated user, ordered by most recently updated. Matching If-None-Match returns 304.
       parameters:
         - name: If-None-Match
           in: header
@@ -1045,7 +1045,7 @@ paths:
                 priority: { type: string, enum: [low, medium, high, urgent] }
                 due_date: { type: [string, 'null'], format: date, description: Issue due date in YYYY-MM-DD format; null clears the due date. }
                 assignee_id: { type: [integer, 'null'], minimum: 1, description: Project member responsible for the issue; null means unassigned. }
-                status: { type: string, enum: [backlog, todo, doing, done, cancelled] }
+                status: { type: string, enum: [backlog, todo, doing, testing, done, cancelled] }
                 is_shared: { type: boolean, description: Whether this issue appears in the guest client view. }
                 milestone_id: { type: [integer, 'null'], minimum: 1 }
                 approval_requested: { type: boolean }
@@ -1094,8 +1094,8 @@ paths:
                       required: [id, from_status, to_status, actor_name, created_at]
                       properties:
                         id: { type: integer }
-                        from_status: { type: [string, 'null'], enum: [backlog, todo, doing, done, cancelled, null] }
-                        to_status: { type: string, enum: [backlog, todo, doing, done, cancelled] }
+                        from_status: { type: [string, 'null'], enum: [backlog, todo, doing, testing, done, cancelled, null] }
+                        to_status: { type: string, enum: [backlog, todo, doing, testing, done, cancelled] }
                         actor_name: { type: string }
                         created_at: { type: string, format: date-time }
         '401': { $ref: '#/components/responses/Unauthorized' }
@@ -1422,7 +1422,7 @@ components:
         approval_requested_at: { type: [string, 'null'], format: date-time }
         approved_by: { type: [integer, 'null'] }
         approved_at: { type: [string, 'null'], format: date-time }
-        status: { type: string, enum: [backlog, todo, doing, done, cancelled] }
+        status: { type: string, enum: [backlog, todo, doing, testing, done, cancelled] }
         priority: { type: string, enum: [low, medium, high, urgent], default: medium }
         due_date: { type: [string, 'null'], format: date, description: Issue due date in YYYY-MM-DD format. }
         created_by: { type: integer }

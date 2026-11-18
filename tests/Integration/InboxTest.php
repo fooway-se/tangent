@@ -20,6 +20,7 @@ final class InboxTest extends ApiTestCase
         $developer = $this->login($this->developerEmail);
         $firstIssue = $this->createAssignedIssue($developer, $firstProjectId, 'Fix login', 'bug');
         $secondIssue = $this->createAssignedIssue($developer, $secondProjectId, 'Study caching', 'research');
+        $this->updateIssue($developer, $secondIssue, ['status' => 'testing']);
 
         $doneIssue = $this->createAssignedIssue($developer, $firstProjectId, 'Ship dashboard');
         $this->updateIssue($developer, $doneIssue, ['status' => 'done']);
@@ -52,6 +53,7 @@ final class InboxTest extends ApiTestCase
         self::assertSame('backlog', $issueById[$firstIssue]['status']);
         self::assertSame('Inbox beta', $issueById[$secondIssue]['project_name']);
         self::assertSame('research', $issueById[$secondIssue]['type']);
+        self::assertSame('testing', $issueById[$secondIssue]['status']);
     }
 
     public function testInboxRequiresAuthentication(): void

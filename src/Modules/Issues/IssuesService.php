@@ -262,8 +262,8 @@ final class IssuesService
             $updated['due_date'] = self::issueDueDate($input['due_date']);
         }
         if (array_key_exists('status', $input)) {
-            if (!is_string($input['status']) || !in_array($input['status'], ['backlog', 'todo', 'doing', 'done', 'cancelled'], true)) {
-                throw new ApiException(422, 'validation_failed', 'Issue status must be backlog, todo, doing, done, or cancelled.');
+            if (!is_string($input['status']) || !in_array($input['status'], ['backlog', 'todo', 'doing', 'testing', 'done', 'cancelled'], true)) {
+                throw new ApiException(422, 'validation_failed', 'Issue status must be backlog, todo, doing, testing, done, or cancelled.');
             }
             $updated['status'] = $input['status'];
         }
@@ -381,7 +381,7 @@ final class IssuesService
             || !in_array($direction, ['up', 'down'], true)) {
             throw new ApiException(422, 'validation_failed', 'direction must be up or down.');
         }
-        if (!in_array($issue['status'], ['backlog', 'todo', 'doing'], true)) {
+        if (!in_array($issue['status'], ['backlog', 'todo', 'doing', 'testing'], true)) {
             throw new ApiException(422, 'validation_failed', 'Only open issues can be reordered.');
         }
 

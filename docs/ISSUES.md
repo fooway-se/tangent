@@ -2,6 +2,8 @@
 
 Issues can be created from the project issue list or from a chat message. An issue created from chat keeps a link to its source thread. Issue details include status, priority, due date, type, assignee, milestone, description, and an issue discussion.
 
+Issue statuses are **Backlog**, **Todo**, **Doing**, **Testing**, **Done**, and **Cancelled**. Move an issue to **Testing** when implementation is ready for verification; move it to **Done** after it passes.
+
 ## Quick-add issues
 
 Enter a title in the issue quick-add field. You can add priority and due date tokens directly to the title:

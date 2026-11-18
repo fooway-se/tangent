@@ -27,7 +27,7 @@ final class GuestViewTest extends ApiTestCase
         ]);
         $approval = $this->createIssue($admin, $projectId, 'Shared approval item');
         $this->updateIssue($admin, $approval, [
-            'status' => 'doing',
+            'status' => 'testing',
             'is_shared' => true,
             'milestone_id' => $milestone,
             'approval_requested' => true,

@@ -21,7 +21,7 @@ final class IssueRepository
                     created_at, updated_at, deleted_at
              FROM issues
              WHERE workspace_id = :workspace_id AND project_id = :project_id AND deleted_at IS NULL
-             ORDER BY FIELD(status, 'backlog', 'todo', 'doing', 'done', 'cancelled'), id DESC"
+             ORDER BY FIELD(status, 'backlog', 'todo', 'doing', 'testing', 'done', 'cancelled'), id DESC"
         );
         $statement->execute(['workspace_id' => $workspaceId, 'project_id' => $projectId]);
         return array_map(self::normalize(...), $statement->fetchAll(PDO::FETCH_ASSOC));
@@ -48,7 +48,7 @@ final class IssueRepository
                     created_at, updated_at, deleted_at
              FROM issues
              WHERE workspace_id = :workspace_id AND assignee_id = :assignee_id AND deleted_at IS NULL
-               AND status IN ('backlog', 'todo', 'doing')
+               AND status IN ('backlog', 'todo', 'doing', 'testing')
                AND project_id IN (" . implode(', ', $projectPlaceholders) . ")
              ORDER BY updated_at DESC, id DESC"
         );
@@ -217,7 +217,7 @@ final class IssueRepository
         $statement = $this->pdo->prepare(
             "SELECT id, sort_order FROM issues
              WHERE workspace_id = :workspace_id AND project_id = :project_id AND milestone_id <=> :milestone_id
-               AND status IN ('backlog', 'todo', 'doing') AND deleted_at IS NULL
+               AND status IN ('backlog', 'todo', 'doing', 'testing') AND deleted_at IS NULL
              ORDER BY sort_order, id FOR UPDATE"
         );
         $statement->execute([
@@ -315,7 +315,7 @@ final class IssueRepository
                ON m.workspace_id = i.workspace_id AND m.id = i.milestone_id
              WHERE i.workspace_id = :workspace_id AND i.project_id = :project_id AND i.is_shared = 1
                AND i.deleted_at IS NULL AND i.status <> 'cancelled'
-             ORDER BY FIELD(i.status, 'backlog', 'todo', 'doing', 'done'), i.id DESC"
+             ORDER BY FIELD(i.status, 'backlog', 'todo', 'doing', 'testing', 'done'), i.id DESC"
         );
         $statement->execute(['workspace_id' => $workspaceId, 'project_id' => $projectId]);
         $rows = $statement->fetchAll(PDO::FETCH_ASSOC);
@@ -397,7 +397,7 @@ final class IssueRepository
         $statement->execute(['workspace_id' => $workspaceId, 'project_id' => $projectId]);
         return array_map(static function (array $row): array {
             $label = match ($row['to_status']) {
-                'backlog' => 'planned', 'todo' => 'to do', 'doing' => 'in progress', 'done' => 'done', 'cancelled' => 'cancelled',
+                'backlog' => 'planned', 'todo' => 'to do', 'doing' => 'in progress', 'testing' => 'testing', 'done' => 'done', 'cancelled' => 'cancelled',
                 default => 'updated',
             };
             $text = $row['to_status'] === 'done'

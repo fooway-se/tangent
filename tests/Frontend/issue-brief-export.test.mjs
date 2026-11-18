@@ -83,6 +83,23 @@ test('issue Markdown export includes metadata and structured brief sections', ()
   assert.match(markdown, /## Acceptance criteria\n- \[ \] The brief can be copied\.\n- \[ \] The Markdown includes every section\./);
 });
 
+test('issue Markdown export uses the Testing status label', () => {
+  const markdown = formatIssueMarkdown({
+    id: 43,
+    title: 'Run regression suite',
+    description: '',
+    status: 'testing',
+    priority: 'medium',
+    due_date: null,
+    type: 'task',
+    context: '',
+    expected_outcome: '',
+    acceptance_criteria: '',
+  });
+
+  assert.match(markdown, /Status: Testing/);
+});
+
 test('prompt export instructs implementation and omits empty brief sections', () => {
   const prompt = formatIssuePrompt({
     id: 7,

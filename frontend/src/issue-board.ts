@@ -1,4 +1,4 @@
-export type IssueStatus = 'backlog' | 'todo' | 'doing' | 'done' | 'cancelled';
+export type IssueStatus = 'backlog' | 'todo' | 'doing' | 'testing' | 'done' | 'cancelled';
 export type IssueSortOrder = 'updated' | 'newest' | 'oldest' | 'title' | 'priority' | 'next_up';
 
 export interface BoardIssue {
@@ -31,7 +31,7 @@ export interface MilestoneProgress {
   complete: boolean;
 }
 
-const statusOrder: IssueStatus[] = ['doing', 'todo', 'backlog', 'done', 'cancelled'];
+const statusOrder: IssueStatus[] = ['doing', 'testing', 'todo', 'backlog', 'done', 'cancelled'];
 
 export function milestoneProgress(issues: readonly Pick<BoardIssue, 'status'>[]): MilestoneProgress {
   const cancelled = issues.filter((issue) => issue.status === 'cancelled').length;

@@ -57,7 +57,7 @@ final class ClientViewService
                 'description' => $issue['description'],
                 'milestone_id' => $issue['milestone_id'],
                 'status' => match ($issue['status']) {
-                    'doing' => 'doing', 'done' => 'done', default => 'planned',
+                    'doing', 'testing' => 'doing', 'done' => 'done', default => 'planned',
                 },
                 'milestone_name' => $issue['milestone_name'],
             ];

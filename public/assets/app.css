@@ -198,7 +198,7 @@ kbd {
 .inbox-updated { color: var(--screen-muted); font-size: 11px; white-space: nowrap; }
 .inbox-project-name { display: block; margin-bottom: 3px; color: var(--screen-muted); font: 700 11px var(--font-display); letter-spacing: 1.4px; text-transform: uppercase; }
 .inbox-issue-metadata { margin-left: 0; }
-.inbox-issue-status.is-doing { color: var(--accent); }
+.inbox-issue-status.is-doing, .inbox-issue-status.is-testing { color: var(--accent); }
 .eyebrow { margin-bottom: 4px; color: var(--screen-muted); font: 700 11px/1.4 var(--font-display); letter-spacing: 2px; text-transform: uppercase; }
 .page-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin: 4px 0 16px; border-bottom: 1px solid var(--screen-border); padding-bottom: 12px; }
 .workspace-content .section-title { color: var(--screen-muted); }
@@ -345,6 +345,7 @@ select { padding-right: 28px; background: var(--screen-inset) url("data:image/sv
 .issue-status-indicator { width: 14px; height: 14px; flex: 0 0 auto; border: 1.5px solid var(--screen-muted); border-radius: 50%; }
 .issue-status-indicator.is-backlog { border-style: dashed; }
 .issue-status-indicator.is-doing { background: linear-gradient(90deg, var(--screen-muted) 50%, transparent 50%); }
+.issue-status-indicator.is-testing { border-color: var(--accent); background: var(--accent); }
 .issue-status-indicator.is-done { background: var(--screen-muted); }
 .issue-status-indicator.is-cancelled { position: relative; border: 0; border-radius: 0; }
 .issue-status-indicator.is-cancelled::before, .issue-status-indicator.is-cancelled::after { position: absolute; top: 1px; left: 6px; width: 1.5px; height: 12px; background: var(--screen-muted); content: ""; }

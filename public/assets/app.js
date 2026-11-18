@@ -11,6 +11,7 @@ const ISSUE_STATUS_OPTIONS = [
     { value: 'backlog', label: 'Backlog' },
     { value: 'todo', label: 'Todo' },
     { value: 'doing', label: 'Doing' },
+    { value: 'testing', label: 'Testing' },
     { value: 'done', label: 'Done' },
     { value: 'cancelled', label: 'Cancelled' },
 ];
@@ -4013,7 +4014,7 @@ function renderProjectIssueBoard() {
     }));
     const ordered = sortIssues(searchableIssues, issueOrder.value);
     const nextUpMode = issueOrder.value === 'next_up';
-    const workQueue = nextUpMode ? ordered.filter((issue) => ['backlog', 'todo', 'doing'].includes(issue.status)) : ordered;
+    const workQueue = nextUpMode ? ordered.filter((issue) => ['backlog', 'todo', 'doing', 'testing'].includes(issue.status)) : ordered;
     const visible = filterIssues(workQueue, issueFilter.value);
     emptyIssues.hidden = visible.length > 0;
     setTextContentIfChanged(emptyIssues, nextUpMode && workQueue.length === 0

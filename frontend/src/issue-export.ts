@@ -15,6 +15,7 @@ const statusLabels: Record<string, string> = {
   backlog: 'Backlog',
   todo: 'To do',
   doing: 'In progress',
+  testing: 'Testing',
   done: 'Done',
   cancelled: 'Cancelled',
 };

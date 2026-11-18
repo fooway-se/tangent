@@ -72,7 +72,7 @@ final class IssuesTest extends ApiTestCase
         self::assertSame(201, $created->status, json_encode($created->body));
         $issueId = (int) $created->body['issue']['id'];
 
-        foreach (['todo', 'doing', 'done'] as $status) {
+        foreach (['todo', 'doing', 'testing', 'done'] as $status) {
             $updated = $this->apiCookieRequest(
                 'PATCH',
                 "/api/v1/issues/{$issueId}",
@@ -92,10 +92,10 @@ final class IssuesTest extends ApiTestCase
 
         $history = $this->apiCookieRequest('GET', "/api/v1/issues/{$issueId}/history", $admin['cookie']);
         self::assertSame(200, $history->status, json_encode($history->body));
-        self::assertCount(3, $history->body['transitions']);
-        self::assertSame(['done', 'doing', 'todo'], array_column($history->body['transitions'], 'to_status'));
-        self::assertSame(['doing', 'todo', 'backlog'], array_column($history->body['transitions'], 'from_status'));
-        self::assertSame(['Admin', 'Admin', 'Admin'], array_column($history->body['transitions'], 'actor_name'));
+        self::assertCount(4, $history->body['transitions']);
+        self::assertSame(['done', 'testing', 'doing', 'todo'], array_column($history->body['transitions'], 'to_status'));
+        self::assertSame(['testing', 'doing', 'todo', 'backlog'], array_column($history->body['transitions'], 'from_status'));
+        self::assertSame(['Admin', 'Admin', 'Admin', 'Admin'], array_column($history->body['transitions'], 'actor_name'));
         self::assertNotEmpty($history->body['transitions'][0]['created_at']);
     }
 

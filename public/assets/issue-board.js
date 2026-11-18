@@ -1,4 +1,4 @@
-const statusOrder = ['doing', 'todo', 'backlog', 'done', 'cancelled'];
+const statusOrder = ['doing', 'testing', 'todo', 'backlog', 'done', 'cancelled'];
 export function milestoneProgress(issues) {
     const cancelled = issues.filter((issue) => issue.status === 'cancelled').length;
     const active = issues.length - cancelled;

@@ -2,6 +2,7 @@ const statusLabels = {
     backlog: 'Backlog',
     todo: 'To do',
     doing: 'In progress',
+    testing: 'Testing',
     done: 'Done',
     cancelled: 'Cancelled',
 };
