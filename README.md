@@ -10,6 +10,7 @@ A keyboard-first, self-hosted workspace for small dev teams and freelancers: pro
 ## Why Tangent
 
 - **Keyboard first.** Move, open, change status, create and reply without the mouse. There is a command palette (`Ctrl/Cmd+K`) and a shortcut list (`?`). Statuses are changed with a key or a menu, never by drag and drop.
+- **See when someone else is around.** A small power light in project chat shows whether another authorized viewer is active, without showing names or a count.
 - **Chat mentions.** Type `@` to find a project member by their saved name; selecting them inserts an exact mention and sends them an inbox notification.
 - **Project notes.** Each project has one internal Markdown page for durable context, with a safe rendered preview. Guest clients cannot access it.
 - **Fifteen retro themes.** Choose Putty & Screen, Rubber & Rainbow, Breadbin, Broadcast & Beige, Cassette & Colour, Mono & Membrane, Stripe & Signal, Paper & Rainbow, Desk & Phosphor, Silver & Speech, Blue & Byte, Cartridge & Cobalt, Nordic & Phosphor, Icon & Mouse, or Copper & Chroma in the login, guest, or workspace view; the choice is saved in this browser.
@@ -57,7 +58,7 @@ Open [http://localhost:8081](http://localhost:8081). The seed command prompts yo
 
 ## Status
 
-Implemented: authentication and invites, workspaces, project chat, issue tracking, inbox events, the restricted client guest view and the shared-host installer.
+Implemented: authentication and invites, workspaces, project chat with viewer presence, issue tracking, inbox events, the restricted client guest view and the shared-host installer.
 
 Planned: standalone channels and direct messages, GitLab links, weekly client summaries, and agent-friendly API access. See [ROADMAP.md](ROADMAP.md).
 
