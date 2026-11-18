@@ -24,6 +24,10 @@ Planned work, in no fixed order. Tangent is pre-alpha, so this list will change.
 - Consider a CLI or MCP server for agents. The REST API is described in [docs/openapi.yaml](docs/openapi.yaml).
 - Choose how browser credentials are stored, balancing local storage against secure cookies and CSRF protection.
 
+## Workspaces and teams
+
+- Add first-run workspace setup and basic workspace administration so developers can create a workspace and manage its members. Keep single-workspace setup simple; revisit shared-hosting needs later.
+
 ## Installation and hosting
 
 - Test the installer, upgrade flow and release archive on common shared-host providers, then publish versioned downloads.
