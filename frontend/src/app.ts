@@ -5441,6 +5441,12 @@ function createIssueDiscussionMessage(
     }
   });
 
+  const avatar = document.createElement('span');
+  avatar.className = 'chat-message-avatar';
+  avatar.setAttribute('aria-hidden', 'true');
+  avatar.textContent = avatarInitials(message.author_name);
+  item.append(avatar);
+
   if (message.parent_id !== null && message.parent_body !== null) {
     const parent = document.createElement('button');
     parent.type = 'button';
@@ -5994,7 +6000,6 @@ function createIssueRow(
     source.textContent = 'From chat thread';
     metadata.append(source);
   }
-  if (discussionIndicator !== null) metadata.append(discussionIndicator);
   content.append(mainline, metadata);
   if (issue.description !== '') {
     const description = document.createElement('p');
@@ -6005,10 +6010,15 @@ function createIssueRow(
 
   const hasReorderActions = reorder?.canMoveEarlier !== undefined || reorder?.canMoveLater !== undefined;
   if (!hasReorderActions) {
-    item.append(content, createIssueStatusButton(issue));
+    const actions = document.createElement('div');
+    actions.className = 'issue-row-actions';
+    if (discussionIndicator !== null) actions.append(discussionIndicator);
+    actions.append(createIssueStatusButton(issue));
+    item.append(content, actions);
   } else {
     const actions = document.createElement('div');
     actions.className = 'issue-row-actions';
+    if (discussionIndicator !== null) actions.append(discussionIndicator);
     for (const direction of ['up', 'down'] as const) {
       const button = document.createElement('button');
       button.type = 'button';
@@ -6039,10 +6049,11 @@ function createDiscussionIndicator(count: number): HTMLSpanElement | null {
   indicator.title = label;
 
   const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  icon.setAttribute('viewBox', '0 0 16 16');
+  icon.setAttribute('viewBox', '0 0 11 10');
   icon.setAttribute('aria-hidden', 'true');
   const bubble = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-  bubble.setAttribute('d', 'M2 3.25A2.25 2.25 0 0 1 4.25 1h7.5A2.25 2.25 0 0 1 14 3.25v5.5A2.25 2.25 0 0 1 11.75 11H7l-3.5 3v-3.15A2.25 2.25 0 0 1 2 8.75z');
+  // A pixel-grid speech bubble, drawn on 1px cells so it stays crisp.
+  bubble.setAttribute('d', 'M1 0h9v1H1zM0 1h1v6H0zM10 1h1v6h-1zM1 7h9v1H1zM3 8h2v1H3zM3 9h1v1H3z');
   icon.append(bubble);
 
   const value = document.createElement('span');

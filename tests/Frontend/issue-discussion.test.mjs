@@ -49,10 +49,18 @@ test('issue rows show an accessible discussion indicator when messages exist', (
   assert.match(css, /\.issue-discussion-indicator/);
 });
 
-test('discussion indicators use a compact outlined pill in the metadata row', () => {
-  assert.match(app, /metadata\.append\(discussionIndicator\)/);
+test('discussion indicators are a plain pixel bubble next to the row status control', () => {
+  assert.match(app, /actions\.append\(discussionIndicator\)/);
   assert.doesNotMatch(app, /mainline\.append\(discussionIndicator\)/);
-  assert.match(css, /\.issue-discussion-indicator\s*\{[^}]*border:\s*1px solid var\(--screen-border\)[^}]*border-radius:\s*999px/);
+  const rule = css.split('\n').find((line) => line.startsWith('.issue-discussion-indicator {')) ?? '';
+  assert.doesNotMatch(rule, /border:\s*1px|border-radius/, 'no chip border');
+  assert.match(app, /viewBox', '0 0 11 10'/, 'pixel-grid bubble icon');
+});
+
+test('issue discussion messages reuse the chat avatar and thread styling', () => {
+  assert.match(app, /avatar\.className = 'chat-message-avatar'/);
+  assert.match(css, /\.issue-discussion-message\.is-reply\s*\{[^}]*border-left:\s*3px solid var\(--accent\)/);
+  assert.match(css, /\.issue-discussion-author\s*\{[^}]*700 13px var\(--font-display\)/);
 });
 
 test('issue discussion replies remain within the selected issue and show their parent context', () => {

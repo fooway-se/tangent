@@ -387,8 +387,6 @@ select { padding-right: 28px; background: var(--screen-inset) url("data:image/sv
 .issue-title { display: block; min-width: 0; color: var(--screen-ink); font-size: 13px; font-weight: 500; overflow-wrap: anywhere; }
 .issue-title-button { display: block; flex: 1 1 auto; border: 0; padding: 0; color: inherit; background: transparent; text-align: left; cursor: pointer; }
 .issue-title-button:hover { color: var(--accent); }
-.issue-discussion-indicator { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 4px; border: 1px solid var(--screen-border); border-radius: 999px; padding: 2px 7px; color: var(--screen-muted); background: transparent; font: 400 11px/1 var(--font-mono); white-space: nowrap; }
-.issue-discussion-indicator svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.3; }
 .issue-description { overflow: hidden; margin: 2px 0 0 4.75rem; color: var(--screen-muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
 .issue-source { color: var(--accent); }
 .issue-metadata { display: flex; flex-wrap: wrap; align-items: center; gap: 0 14px; margin: 3px 0 0 4.75rem; color: var(--screen-muted); font: 400 11px/1.5 var(--font-mono); }
@@ -489,28 +487,12 @@ select { padding-right: 28px; background: var(--screen-inset) url("data:image/sv
 .issue-status-history-actor { grid-column: 1; }
 .issue-status-history-item time { grid-column: 2; grid-row: 1 / span 2; text-align: right; }
 .issue-detail-edit-form { max-width: 780px; margin-top: 8px; }
-.issue-discussion { margin-top: 24px; border-top: 1px solid var(--screen-border); padding-top: 14px; }
 .issue-discussion-heading { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
 .issue-discussion-status, .issue-discussion-empty { margin: 0 0 10px; color: var(--screen-muted); font-size: 11px; }
-.issue-discussion-list { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
-.issue-discussion-message { border-left: 2px solid var(--screen-border); padding: 2px 0 2px 10px; }
-.issue-discussion-message.is-reply { margin-left: 18px; border-left-color: var(--accent-edge); }
-.issue-discussion-message:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.issue-discussion-message.is-keyboard-selected { border-left-color: var(--accent); background: var(--screen-hover); }
-.issue-discussion-message-heading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin-bottom: 4px; }
-.issue-discussion-actions { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 2px; margin-left: auto; }
-.issue-discussion-actions button { padding: 2px 6px; font-size: 11px; }
 .issue-discussion-delete-prompt { color: var(--screen-muted); font-size: 11px; }
 .issue-discussion-delete-confirm { color: var(--danger); }
-.issue-discussion-author { color: var(--screen-ink); font: 700 12px var(--font-display); }
-.issue-discussion-message time { color: var(--screen-muted); font-size: 11px; }
-.issue-discussion-body { margin: 0 0 4px; color: var(--screen-ink); font-size: 13px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
 .issue-discussion-reply-context { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 8px; color: var(--screen-muted); font-size: 11px; }
 .issue-discussion-reply-context button, .issue-discussion-reply-button { flex: 0 0 auto; padding: 2px 6px; font-size: 11px; }
-.issue-discussion-parent { margin: 0 0 4px; border-left: 2px solid var(--screen-border); padding: 2px 0 2px 8px; color: var(--screen-muted); font-size: 11px; text-align: left; }
-.issue-discussion-form { display: grid; gap: 8px; margin-top: 14px; border-top: 1px solid var(--screen-border); padding-top: 12px; }
-.issue-discussion-form > label { color: var(--screen-muted); font-size: 11px; }
-.issue-discussion-form textarea { width: 100%; min-height: 66px; resize: vertical; }
 .issue-discussion-form .form-actions { justify-content: flex-end; margin-top: 0; }
 .issue-discussion-edit-form { display: grid; gap: 7px; margin-top: 4px; }
 .issue-discussion-edit-form > label { color: var(--screen-muted); font-size: 11px; }
@@ -830,17 +812,7 @@ dialog::backdrop { background: var(--backdrop); }
 .workspace-admin-member-actions .button-quiet:hover:not(:disabled), .inbox-event-actions .button-quiet:hover, .member-list .button-quiet:hover:not(:disabled) { color: var(--screen-ink); background: var(--screen-hover); }
 
 /* Theme picker: a small key on case surfaces. */
-.theme-select { max-width: 160px; border: 1px solid var(--case-edge); border-bottom-width: 2px; border-radius: var(--radius-key); padding: 4px 8px; background: linear-gradient(180deg, var(--key-top), var(--key-bottom)); color: var(--case-ink); font: 600 12px var(--font-display); cursor: pointer; }
-.theme-select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .theme-picker-controls { display: inline-flex; align-items: center; gap: 6px; }
-.theme-about-button { display: inline-grid; width: 29px; flex: 0 0 auto; place-items: center; border: 1px solid var(--case-edge); border-bottom-width: 2px; border-radius: var(--radius-key); padding: 4px; color: var(--case-ink); background: linear-gradient(180deg, var(--key-top), var(--key-bottom)); font: 600 12px var(--font-display); box-shadow: inset 0 1px 0 var(--key-highlight); cursor: pointer; }
-.theme-about-button:hover { color: var(--accent-ink); background: var(--accent); }
-.theme-about-button:active { transform: translateY(2px); border-bottom-width: 1px; }
-.theme-about-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.retro-computer-icon { position: relative; display: block; width: 17px; height: 12px; border: 2px solid currentColor; border-radius: 3px; }
-.retro-computer-icon > span { position: absolute; inset: 2px; border-radius: 1px; background: currentColor; }
-.retro-computer-icon > span::before { position: absolute; bottom: -4px; left: 5px; width: 3px; height: 3px; background: currentColor; content: ""; }
-.retro-computer-icon > span::after { position: absolute; bottom: -6px; left: 3px; width: 7px; height: 2px; border-radius: 1px; background: currentColor; content: ""; }
 .login-topbar { justify-content: space-between; }
 .sidebar-account { flex-wrap: wrap; }
 .sidebar-account .theme-picker-controls { order: 3; flex: 1 1 100%; }
@@ -895,3 +867,46 @@ dialog::backdrop { background: var(--backdrop); }
   .project-edit-dialog { width: calc(100vw - 24px); max-height: calc(100dvh - 24px); }
   .issue-pull-request-dialog { width: calc(100vw - 24px); max-height: calc(100dvh - 24px); }
 }
+
+/* Discussion indicator: plain pixel bubble and count, no chip. */
+.issue-discussion-indicator { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 5px; margin-right: 6px; color: var(--screen-muted); font: 400 11px/1 var(--font-mono); white-space: nowrap; }
+.issue-discussion-indicator svg { width: 11px; height: 10px; fill: currentColor; shape-rendering: crispEdges; }
+.inbox-issue-card .issue-discussion-indicator { margin-right: 0; }
+
+/* Issue discussion: same message language as project chat. */
+.issue-discussion { max-width: 860px; margin-top: 24px; border-top: 1px solid var(--screen-border); padding-top: 14px; }
+.issue-discussion-list { display: block; margin: 0; padding: 0; list-style: none; }
+.issue-discussion-message { display: grid; grid-template-columns: 30px minmax(0, 1fr); column-gap: 10px; border-bottom: 1px solid var(--screen-line); padding: 12px 0; }
+.issue-discussion-message > * { grid-column: 2; }
+.issue-discussion-message > .chat-message-avatar { grid-column: 1; grid-row: 1 / span 4; }
+.issue-discussion-message-heading { grid-row: 1; }
+.issue-discussion-parent { grid-row: 2; justify-self: start; max-width: 100%; overflow: hidden; margin: 4px 0 0; border: 0; border-left: 1px solid var(--screen-border); border-radius: 0; padding: 2px 7px; color: var(--screen-muted); background: transparent; font: 400 11px var(--font-mono); text-align: left; text-overflow: ellipsis; white-space: nowrap; }
+.issue-discussion-parent:hover, .issue-discussion-parent:focus-visible { border-left-color: var(--accent); color: var(--screen-ink); }
+.issue-discussion-body, .issue-discussion-edit-form { grid-row: 3; }
+.issue-discussion-message.is-reply { margin-left: 14px; border-left: 3px solid var(--accent); padding-left: 10px; grid-template-columns: 28px minmax(0, 1fr); }
+.issue-discussion-message.is-reply > .chat-message-avatar { width: 28px; height: 28px; }
+.issue-discussion-message-heading { display: flex; align-items: baseline; gap: 6px; }
+.issue-discussion-message time { color: var(--screen-muted); font-size: 11px; }
+.issue-discussion-author { color: var(--screen-ink); font: 700 13px var(--font-display); }
+.issue-discussion-body { margin: 4px 0 0; color: var(--screen-ink); font-size: 13px; line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; }
+.issue-discussion-actions { display: inline-flex; align-items: center; gap: 2px; margin-left: auto; opacity: 0; }
+.issue-discussion-message:hover .issue-discussion-actions, .issue-discussion-message:focus-within .issue-discussion-actions, .issue-discussion-message.is-keyboard-selected .issue-discussion-actions { opacity: 1; }
+@media (hover: none) { .issue-discussion-actions { opacity: 1; } }
+.issue-discussion-actions button { padding: 2px 6px; font-size: 11px; }
+.issue-discussion-message.is-keyboard-selected { background: var(--screen-hover); }
+.issue-discussion-message:focus-visible { outline: 1.5px solid var(--accent); outline-offset: -2px; }
+.issue-discussion-form { display: grid; gap: 8px; margin-top: 14px; }
+.issue-discussion-form textarea { width: 100%; min-height: 66px; resize: vertical; font-size: 12px; }
+
+/* Theme picker: one joined key, select plus "about this computer". */
+.theme-picker-controls { display: inline-flex; align-items: stretch; gap: 0; }
+.theme-select, .theme-about-button { box-sizing: border-box; height: 28px; border: 1px solid var(--case-edge); border-bottom-width: 2px; color: var(--case-ink); background-color: var(--key-bottom); font: 600 12px/1 var(--font-display); box-shadow: inset 0 1px 0 var(--key-highlight); cursor: pointer; }
+.theme-select { max-width: 160px; appearance: none; border-radius: var(--radius-key) 0 0 var(--radius-key); padding: 0 24px 0 9px; background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%), linear-gradient(180deg, var(--key-top), var(--key-bottom)); background-position: calc(100% - 13px) 12px, calc(100% - 9px) 12px, 0 0; background-size: 4px 4px, 4px 4px, auto; background-repeat: no-repeat; }
+.theme-about-button { display: inline-grid; width: 30px; flex: 0 0 auto; place-items: center; border-left-width: 0; border-radius: 0 var(--radius-key) var(--radius-key) 0; padding: 0; background-image: linear-gradient(180deg, var(--key-top), var(--key-bottom)); box-shadow: inset 1px 0 0 var(--case-edge), inset 0 1px 0 var(--key-highlight); }
+.theme-about-button:hover { color: var(--accent-ink); background-image: none; background-color: var(--accent); }
+.theme-about-button:active { transform: translateY(1px); }
+.theme-select:focus-visible, .theme-about-button:focus-visible { position: relative; outline: 2px solid var(--accent); outline-offset: 2px; }
+.retro-computer-icon { position: relative; display: block; width: 14px; height: 10px; margin-bottom: 5px; border: 2px solid currentColor; }
+.retro-computer-icon > span { position: absolute; bottom: 1px; left: 1px; width: 4px; height: 2px; background: currentColor; }
+.retro-computer-icon::before { position: absolute; bottom: -5px; left: 4px; width: 2px; height: 3px; background: currentColor; content: ""; }
+.retro-computer-icon::after { position: absolute; bottom: -7px; left: 1px; width: 8px; height: 2px; background: currentColor; content: ""; }

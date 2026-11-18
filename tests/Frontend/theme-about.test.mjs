@@ -73,22 +73,14 @@ test('computer card handles Escape before workspace navigation', () => {
   assert.match(dismissHandler, /if \(themeAboutDialog\.open\)\s*\{\s*themeAboutDialog\.close\(\);/);
 });
 
-test('computer card button uses the theme selector vertical sizing', () => {
-  const selectRule = css.match(/\.theme-select \{([^}]+)\}/)?.[1] ?? '';
-  const buttonRule = css.match(/\.theme-about-button \{([^}]+)\}/)?.[1] ?? '';
-  const declaration = (rule, property) => rule.match(new RegExp(`(?:^|;)\\s*${property}:\\s*([^;]+)`))?.[1]?.trim();
-  for (const property of ['border-bottom-width', 'font']) {
-    assert.equal(declaration(buttonRule, property), declaration(selectRule, property), `${property} matches the selector`);
-  }
-  const [buttonVerticalPadding, buttonHorizontalPadding = buttonVerticalPadding] = declaration(buttonRule, 'padding')?.split(/\s+/) ?? [];
-  const [selectVerticalPadding, selectHorizontalPadding = selectVerticalPadding] = declaration(selectRule, 'padding')?.split(/\s+/) ?? [];
-  assert.equal(buttonVerticalPadding, selectVerticalPadding, 'vertical padding keeps the same height');
-  assert.ok(Number.parseFloat(buttonHorizontalPadding) < Number.parseFloat(selectHorizontalPadding), 'horizontal padding is smaller');
-  assert.equal(declaration(buttonRule, 'width'), '29px', 'button shrinks to the icon and compact padding');
-  assert.doesNotMatch(buttonRule, /\bheight\s*:/, 'button height follows the shared vertical sizing');
+test('computer card button is joined to the theme selector with the same height and key style', () => {
+  const shared = css.split('\n').find((line) => line.startsWith('.theme-select, .theme-about-button {')) ?? '';
+  assert.match(shared, /height:\s*28px/, 'both controls share one height');
+  assert.match(shared, /border-bottom-width:\s*2px/);
+  assert.match(css, /\.theme-picker-controls\s*\{[^}]*gap:\s*0/, 'controls are joined');
 });
 
-test('retro computer icon is slightly smaller than the compact card button', () => {
-  assert.match(css, /\.retro-computer-icon\s*\{[^}]*width:\s*17px;[^}]*height:\s*12px;/);
-  assert.match(css, /\.retro-computer-icon > span::after\s*\{[^}]*width:\s*7px;/);
+test('retro computer icon is a crisp square-cornered monitor that fits the joined control', () => {
+  assert.match(css, /\.retro-computer-icon\s*\{[^}]*width:\s*14px;[^}]*height:\s*10px;/);
+  assert.doesNotMatch(css.match(/\.retro-computer-icon\s*\{([^}]+)\}/)?.[1] ?? '', /border-radius/);
 });
