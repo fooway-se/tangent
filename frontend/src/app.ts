@@ -9,6 +9,7 @@ import {
 import { renderClientEmptyState, renderClientView, type ClientView } from './guest-view.js';
 import { resolveShortcut, shouldSubmitOnEnter, type ShortcutAction } from './shortcuts.js';
 import { parseQuickIssueInput } from './quick-issue.js';
+import { formatIssueMarkdown, formatIssuePrompt } from './issue-export.js';
 import {
   filterIssues,
   groupIssues,
@@ -98,6 +99,9 @@ interface Issue extends BoardIssue {
   type: IssueType;
   priority: IssuePriority;
   due_date: string | null;
+  context: string;
+  expected_outcome: string;
+  acceptance_criteria: string;
   assignee_id: number | null;
   workspace_id: number;
   project_id: number;
@@ -382,6 +386,13 @@ const issueDetailTitle = document.querySelector<HTMLElement>('#issue-detail-titl
 const issueDetailPriority = document.querySelector<HTMLElement>('#issue-detail-priority')!;
 const issueDetailDueDate = document.querySelector<HTMLElement>('#issue-detail-due-date')!;
 const issueDetailDescription = document.querySelector<HTMLElement>('#issue-detail-description')!;
+const issueDetailBrief = document.querySelector<HTMLDetailsElement>('#issue-detail-brief')!;
+const issueDetailContextSection = document.querySelector<HTMLElement>('#issue-detail-context-section')!;
+const issueDetailContext = document.querySelector<HTMLElement>('#issue-detail-context')!;
+const issueDetailExpectedOutcomeSection = document.querySelector<HTMLElement>('#issue-detail-expected-outcome-section')!;
+const issueDetailExpectedOutcome = document.querySelector<HTMLElement>('#issue-detail-expected-outcome')!;
+const issueDetailAcceptanceCriteriaSection = document.querySelector<HTMLElement>('#issue-detail-acceptance-criteria-section')!;
+const issueDetailAcceptanceCriteria = document.querySelector<HTMLElement>('#issue-detail-acceptance-criteria')!;
 const issueDetailStatus = document.querySelector<HTMLButtonElement>('#issue-detail-status')!;
 const issueDetailStatusLabel = document.querySelector<HTMLElement>('#issue-detail-status-label')!;
 const issueSourceLink = document.querySelector<HTMLAnchorElement>('#issue-source-link')!;
@@ -391,6 +402,29 @@ const issueDetailDescriptionInput = document.querySelector<HTMLTextAreaElement>(
 const issueDetailPriorityInput = document.querySelector<HTMLSelectElement>('#issue-detail-priority-input')!;
 const issueDetailDueDateInput = document.querySelector<HTMLInputElement>('#issue-detail-due-date-input')!;
 const issueDetailEditButton = document.querySelector<HTMLButtonElement>('#issue-detail-edit-button')!;
+const issueAiPromptButton = document.querySelector<HTMLButtonElement>('#issue-ai-prompt-button')!;
+const issueAiPromptDialog = document.querySelector<HTMLDialogElement>('#issue-ai-prompt-dialog')!;
+const issueAiPromptCloseButton = document.querySelector<HTMLButtonElement>('#issue-ai-prompt-close')!;
+const issueAiPromptStepCount = document.querySelector<HTMLElement>('#issue-ai-prompt-step-count')!;
+const issueAiPromptSteps = [
+  document.querySelector<HTMLElement>('#issue-ai-prompt-step-context')!,
+  document.querySelector<HTMLElement>('#issue-ai-prompt-step-outcome')!,
+  document.querySelector<HTMLElement>('#issue-ai-prompt-step-criteria')!,
+  document.querySelector<HTMLElement>('#issue-ai-prompt-step-preview')!,
+];
+const issueAiPromptContext = document.querySelector<HTMLTextAreaElement>('#issue-ai-prompt-context')!;
+const issueAiPromptOutcome = document.querySelector<HTMLTextAreaElement>('#issue-ai-prompt-outcome')!;
+const issueAiPromptCriteria = document.querySelector<HTMLTextAreaElement>('#issue-ai-prompt-criteria')!;
+const issueAiPromptPreview = document.querySelector<HTMLTextAreaElement>('#issue-ai-prompt-preview')!;
+const issueAiPromptStatus = document.querySelector<HTMLElement>('#issue-ai-prompt-status')!;
+const issueAiPromptBackButton = document.querySelector<HTMLButtonElement>('#issue-ai-prompt-back')!;
+const issueAiPromptSkipButton = document.querySelector<HTMLButtonElement>('#issue-ai-prompt-skip')!;
+const issueAiPromptNextButton = document.querySelector<HTMLButtonElement>('#issue-ai-prompt-next')!;
+const issueAiPromptActions = document.querySelector<HTMLElement>('#issue-ai-prompt-actions')!;
+const issueAiPromptSaveButton = document.querySelector<HTMLButtonElement>('#issue-ai-prompt-save')!;
+const issueAiPromptCopyButton = document.querySelector<HTMLButtonElement>('#issue-ai-prompt-copy')!;
+const issueAiPromptCopyMarkdownButton = document.querySelector<HTMLButtonElement>('#issue-ai-prompt-copy-markdown')!;
+const issueAiPromptDownloadButton = document.querySelector<HTMLButtonElement>('#issue-ai-prompt-download')!;
 const issueDetailDeleteButton = document.querySelector<HTMLButtonElement>('#issue-detail-delete-button')!;
 const issueDetailSaveButton = document.querySelector<HTMLButtonElement>('#issue-detail-save-button')!;
 const keyboardHints = document.querySelector<HTMLElement>('#keyboard-hints')!;
@@ -542,6 +576,7 @@ const guestProjectSelect = document.querySelector<HTMLSelectElement>('#guest-pro
 const guestLogoutButton = document.querySelector<HTMLButtonElement>('#guest-logout-button')!;
 let deletedProjectIssues: Issue[] = [];
 let selectedIssue: Issue | null = null;
+let issueAiPromptStepIndex = 0;
 let activeChatProjectId: number | null = null;
 let issuePollTimer: number | null = null;
 let issuePollDelay = 1000;
@@ -4246,6 +4281,15 @@ function renderIssueDetail(): void {
       : 'No guest approval requested';
   issueDetailDescription.textContent = selectedIssue.description || 'No description yet.';
   issueDetailDescription.classList.toggle('is-empty', selectedIssue.description === '');
+  issueDetailContext.textContent = selectedIssue.context;
+  issueDetailExpectedOutcome.textContent = selectedIssue.expected_outcome;
+  issueDetailAcceptanceCriteria.textContent = selectedIssue.acceptance_criteria;
+  issueDetailContextSection.hidden = selectedIssue.context === '';
+  issueDetailExpectedOutcomeSection.hidden = selectedIssue.expected_outcome === '';
+  issueDetailAcceptanceCriteriaSection.hidden = selectedIssue.acceptance_criteria === '';
+  issueDetailBrief.hidden = selectedIssue.context === ''
+    && selectedIssue.expected_outcome === ''
+    && selectedIssue.acceptance_criteria === '';
   issueDetailStatusLabel.textContent = issueStatusLabel(selectedIssue.status);
   issueDetailStatus.setAttribute('aria-label', `Change status for ${selectedIssue.title}. Current status: ${issueStatusLabel(selectedIssue.status)}.`);
   issueSourceLink.hidden = selectedIssue.source_message_id === null;
@@ -4884,6 +4928,162 @@ async function moveIssue(issue: Issue, direction: 'up' | 'down', button: HTMLBut
     button.disabled = false;
   }
 }
+
+function issueAiPromptDraft(issue: Issue): Issue {
+  return {
+    ...issue,
+    context: issueAiPromptContext.value.trim(),
+    expected_outcome: issueAiPromptOutcome.value.trim(),
+    acceptance_criteria: issueAiPromptCriteria.value.trim(),
+  };
+}
+
+function issueAiPromptHasChanges(issue: Issue): boolean {
+  return issueAiPromptContext.value.trim() !== issue.context
+    || issueAiPromptOutcome.value.trim() !== issue.expected_outcome
+    || issueAiPromptCriteria.value.trim() !== issue.acceptance_criteria;
+}
+
+function renderIssueAiPromptStep(): void {
+  issueAiPromptSteps.forEach((step, index) => { step.hidden = index !== issueAiPromptStepIndex; });
+  const isPreview = issueAiPromptStepIndex === issueAiPromptSteps.length - 1;
+  issueAiPromptStepCount.textContent = `Step ${issueAiPromptStepIndex + 1} of ${issueAiPromptSteps.length}`;
+  issueAiPromptBackButton.hidden = issueAiPromptStepIndex === 0;
+  issueAiPromptSkipButton.hidden = isPreview;
+  issueAiPromptNextButton.hidden = isPreview;
+  issueAiPromptActions.hidden = !isPreview;
+  if (isPreview && selectedIssue !== null) {
+    issueAiPromptPreview.value = formatIssuePrompt(issueAiPromptDraft(selectedIssue));
+    issueAiPromptSaveButton.disabled = !issueAiPromptHasChanges(selectedIssue);
+  }
+}
+
+function updateIssueAiPromptDraft(): void {
+  if (selectedIssue === null) return;
+  issueAiPromptStatus.textContent = issueAiPromptHasChanges(selectedIssue) ? 'Unsaved context changes.' : '';
+  issueAiPromptStatus.classList.remove('is-error');
+  issueAiPromptSaveButton.disabled = !issueAiPromptHasChanges(selectedIssue);
+  if (issueAiPromptStepIndex === issueAiPromptSteps.length - 1) renderIssueAiPromptStep();
+}
+
+function openIssueAiPrompt(): void {
+  if (selectedIssue === null) return;
+  issueAiPromptContext.value = selectedIssue.context;
+  issueAiPromptOutcome.value = selectedIssue.expected_outcome;
+  issueAiPromptCriteria.value = selectedIssue.acceptance_criteria;
+  issueAiPromptStepIndex = 0;
+  issueAiPromptStatus.textContent = '';
+  issueAiPromptStatus.classList.remove('is-error');
+  renderIssueAiPromptStep();
+  issueAiPromptDialog.showModal();
+  issueAiPromptContext.focus();
+}
+
+async function saveIssueAiPromptContext(): Promise<void> {
+  const issue = selectedIssue;
+  if (issue === null || !issueAiPromptHasChanges(issue)) return;
+  const draft = issueAiPromptDraft(issue);
+  issueAiPromptSaveButton.disabled = true;
+  issueAiPromptStatus.classList.remove('is-error');
+  issueAiPromptStatus.textContent = 'Saving prompt context…';
+  try {
+    const result = await api<{ issue: Issue }>(`/issues/${issue.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        context: draft.context,
+        expected_outcome: draft.expected_outcome,
+        acceptance_criteria: draft.acceptance_criteria,
+      }),
+    });
+    if (selectedIssue?.id !== issue.id || activeProject?.id !== issue.project_id) return;
+    selectedIssue = result.issue;
+    projectIssues = projectIssues.map((candidate) => candidate.id === issue.id ? result.issue : candidate);
+    renderIssueDetail();
+    renderProjectIssueBoard();
+    issueAiPromptSaveButton.disabled = true;
+    issueAiPromptStatus.textContent = 'Prompt context saved to this issue.';
+  } catch (error) {
+    if (error instanceof ApiFailure && error.status === 401) {
+      issueAiPromptDialog.close();
+      showSignedOut();
+      return;
+    }
+    issueAiPromptStatus.classList.add('is-error');
+    issueAiPromptStatus.textContent = error instanceof Error ? error.message : 'Could not save prompt context.';
+    issueAiPromptSaveButton.disabled = false;
+  }
+}
+
+async function copyIssueAiPrompt(text: string, message: string): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(text);
+    issueAiPromptStatus.classList.remove('is-error');
+    issueAiPromptStatus.textContent = message;
+  } catch {
+    issueAiPromptPreview.value = text;
+    issueAiPromptPreview.focus();
+    issueAiPromptPreview.select();
+    issueAiPromptStatus.classList.remove('is-error');
+    issueAiPromptStatus.textContent = 'Clipboard unavailable. Export text selected for copying.';
+  }
+}
+
+function downloadIssueMarkdown(issue: Issue): void {
+  const markdown = formatIssueMarkdown(issue);
+  const blobUrl = URL.createObjectURL(new Blob([markdown], { type: 'text/markdown;charset=utf-8' }));
+  const titleSlug = issue.title.toLocaleLowerCase()
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 60) || 'issue';
+  const download = document.createElement('a');
+  download.href = blobUrl;
+  download.download = `issue-${issue.id}-${titleSlug}.md`;
+  document.body.append(download);
+  download.click();
+  download.remove();
+  window.setTimeout(() => URL.revokeObjectURL(blobUrl), 0);
+}
+
+issueAiPromptButton.addEventListener('click', openIssueAiPrompt);
+issueAiPromptCloseButton.addEventListener('click', () => issueAiPromptDialog.close());
+issueAiPromptNextButton.addEventListener('click', () => {
+  issueAiPromptStepIndex = Math.min(issueAiPromptStepIndex + 1, issueAiPromptSteps.length - 1);
+  renderIssueAiPromptStep();
+  const nextField = [issueAiPromptOutcome, issueAiPromptCriteria, issueAiPromptPreview][issueAiPromptStepIndex - 1];
+  nextField?.focus();
+});
+issueAiPromptBackButton.addEventListener('click', () => {
+  issueAiPromptStepIndex = Math.max(issueAiPromptStepIndex - 1, 0);
+  renderIssueAiPromptStep();
+  [issueAiPromptContext, issueAiPromptOutcome, issueAiPromptCriteria][issueAiPromptStepIndex]?.focus();
+});
+issueAiPromptSkipButton.addEventListener('click', () => {
+  issueAiPromptStepIndex = issueAiPromptSteps.length - 1;
+  renderIssueAiPromptStep();
+  issueAiPromptPreview.focus();
+});
+for (const field of [issueAiPromptContext, issueAiPromptOutcome, issueAiPromptCriteria]) {
+  field.addEventListener('input', updateIssueAiPromptDraft);
+}
+issueAiPromptSaveButton.addEventListener('click', () => void saveIssueAiPromptContext());
+issueAiPromptCopyButton.addEventListener('click', () => {
+  if (selectedIssue === null) return;
+  const prompt = formatIssuePrompt(issueAiPromptDraft(selectedIssue));
+  issueAiPromptPreview.value = prompt;
+  void copyIssueAiPrompt(prompt, 'Prompt copied.');
+});
+issueAiPromptCopyMarkdownButton.addEventListener('click', () => {
+  if (selectedIssue === null) return;
+  void copyIssueAiPrompt(formatIssueMarkdown(issueAiPromptDraft(selectedIssue)), 'Markdown copied.');
+});
+issueAiPromptDownloadButton.addEventListener('click', () => {
+  if (selectedIssue === null) return;
+  downloadIssueMarkdown(issueAiPromptDraft(selectedIssue));
+  issueAiPromptStatus.classList.remove('is-error');
+  issueAiPromptStatus.textContent = 'Markdown downloaded.';
+});
 
 issueDetailEditButton.addEventListener('click', () => {
   if (selectedIssue === null) return;

@@ -15,7 +15,8 @@ final class IssueRepository
     public function listForProject(int $workspaceId, int $projectId): array
     {
         $statement = $this->pdo->prepare(
-            "SELECT id, workspace_id, project_id, title, description, issue_type AS type, assignee_id, status, priority, due_date, created_by,
+            "SELECT id, workspace_id, project_id, title, description, context, expected_outcome, acceptance_criteria,
+                    issue_type AS type, assignee_id, status, priority, due_date, created_by,
                     source_channel_id, source_message_id, is_shared, milestone_id, sort_order, approval_requested_at, approved_by, approved_at,
                     created_at, updated_at, deleted_at
              FROM issues
@@ -41,7 +42,8 @@ final class IssueRepository
         }
 
         $statement = $this->pdo->prepare(
-            "SELECT id, workspace_id, project_id, title, description, issue_type AS type, assignee_id, status, priority, due_date, created_by,
+            "SELECT id, workspace_id, project_id, title, description, context, expected_outcome, acceptance_criteria,
+                    issue_type AS type, assignee_id, status, priority, due_date, created_by,
                     source_channel_id, source_message_id, is_shared, milestone_id, sort_order, approval_requested_at, approved_by, approved_at,
                     created_at, updated_at, deleted_at
              FROM issues
@@ -57,7 +59,8 @@ final class IssueRepository
     public function listDeletedForProject(int $workspaceId, int $projectId): array
     {
         $statement = $this->pdo->prepare(
-            'SELECT id, workspace_id, project_id, title, description, issue_type AS type, assignee_id, status, priority, due_date, created_by,
+            'SELECT id, workspace_id, project_id, title, description, context, expected_outcome, acceptance_criteria,
+                    issue_type AS type, assignee_id, status, priority, due_date, created_by,
                     source_channel_id, source_message_id, is_shared, milestone_id, sort_order, approval_requested_at, approved_by, approved_at,
                     created_at, updated_at, deleted_at
              FROM issues
@@ -83,13 +86,18 @@ final class IssueRepository
         bool $approvalRequested = false,
         string $priority = 'medium',
         ?string $dueDate = null,
+        string $context = '',
+        string $expectedOutcome = '',
+        string $acceptanceCriteria = '',
     ): array {
         $statement = $this->pdo->prepare(
             "INSERT INTO issues (
-                workspace_id, project_id, title, description, issue_type, status, priority, due_date, created_by, assignee_id,
+                workspace_id, project_id, title, description, context, expected_outcome, acceptance_criteria,
+                issue_type, status, priority, due_date, created_by, assignee_id,
                 source_channel_id, source_message_id, is_shared, milestone_id, approval_requested_at
              ) VALUES (
-                :workspace_id, :project_id, :title, :description, :type, 'backlog', :priority, :due_date, :created_by, :assignee_id,
+                :workspace_id, :project_id, :title, :description, :context, :expected_outcome, :acceptance_criteria,
+                :type, 'backlog', :priority, :due_date, :created_by, :assignee_id,
                 :source_channel_id, :source_message_id, :is_shared, :milestone_id, :approval_requested_at
              )"
         );
@@ -99,6 +107,9 @@ final class IssueRepository
             'project_id' => $projectId,
             'title' => $title,
             'description' => $description,
+            'context' => $context,
+            'expected_outcome' => $expectedOutcome,
+            'acceptance_criteria' => $acceptanceCriteria,
             'type' => $type,
             'priority' => $priority,
             'due_date' => $dueDate,
@@ -123,7 +134,8 @@ final class IssueRepository
     public function find(int $workspaceId, int $issueId): ?array
     {
         $statement = $this->pdo->prepare(
-            'SELECT id, workspace_id, project_id, title, description, issue_type AS type, assignee_id, status, priority, due_date, created_by,
+            'SELECT id, workspace_id, project_id, title, description, context, expected_outcome, acceptance_criteria,
+                    issue_type AS type, assignee_id, status, priority, due_date, created_by,
                     source_channel_id, source_message_id, is_shared, milestone_id, sort_order, approval_requested_at, approved_by, approved_at,
                     created_at, updated_at, deleted_at
              FROM issues WHERE workspace_id = :workspace_id AND id = :id AND deleted_at IS NULL LIMIT 1'
@@ -136,7 +148,8 @@ final class IssueRepository
     public function findDeleted(int $workspaceId, int $issueId): ?array
     {
         $statement = $this->pdo->prepare(
-            'SELECT id, workspace_id, project_id, title, description, issue_type AS type, assignee_id, status, priority, due_date, created_by,
+            'SELECT id, workspace_id, project_id, title, description, context, expected_outcome, acceptance_criteria,
+                    issue_type AS type, assignee_id, status, priority, due_date, created_by,
                     source_channel_id, source_message_id, is_shared, milestone_id, sort_order, approval_requested_at, approved_by, approved_at,
                     created_at, updated_at, deleted_at
              FROM issues WHERE workspace_id = :workspace_id AND id = :id AND deleted_at IS NOT NULL LIMIT 1'
@@ -150,7 +163,8 @@ final class IssueRepository
     {
         $statement = $this->pdo->prepare(
             'UPDATE issues
-             SET title = :title, description = :description, issue_type = :type, assignee_id = :assignee_id,
+             SET title = :title, description = :description, context = :context, expected_outcome = :expected_outcome,
+                 acceptance_criteria = :acceptance_criteria, issue_type = :type, assignee_id = :assignee_id,
                  status = :status, priority = :priority, due_date = :due_date,
                  is_shared = :is_shared, milestone_id = :milestone_id, sort_order = :sort_order,
                  approval_requested_at = :approval_requested_at, approved_by = :approved_by, approved_at = :approved_at
@@ -161,6 +175,9 @@ final class IssueRepository
             'id' => $issueId,
             'title' => $issue['title'],
             'description' => $issue['description'],
+            'context' => $issue['context'],
+            'expected_outcome' => $issue['expected_outcome'],
+            'acceptance_criteria' => $issue['acceptance_criteria'],
             'type' => $issue['type'],
             'assignee_id' => $issue['assignee_id'],
             'status' => $issue['status'],
@@ -463,6 +480,9 @@ final class IssueRepository
         $issue['milestone_id'] = $issue['milestone_id'] === null ? null : (int) $issue['milestone_id'];
         $issue['priority'] = (string) $issue['priority'];
         $issue['due_date'] = $issue['due_date'] === null ? null : (string) $issue['due_date'];
+        foreach (['context', 'expected_outcome', 'acceptance_criteria'] as $field) {
+            $issue[$field] = $issue[$field] === null ? '' : (string) $issue[$field];
+        }
         $issue['approved_by'] = $issue['approved_by'] === null ? null : (int) $issue['approved_by'];
         foreach (['source_channel_id', 'source_message_id'] as $field) {
             $issue[$field] = $issue[$field] === null ? null : (int) $issue[$field];

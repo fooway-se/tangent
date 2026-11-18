@@ -103,6 +103,9 @@ final class IssuesService
         $type = self::issueType($input['type'] ?? 'task');
         $priority = self::issuePriority($input['priority'] ?? 'medium');
         $dueDate = self::issueDueDate($input['due_date'] ?? null);
+        $context = self::issueBriefText($input, 'context');
+        $expectedOutcome = self::issueBriefText($input, 'expected_outcome');
+        $acceptanceCriteria = self::issueBriefText($input, 'acceptance_criteria');
         $assigneeId = self::assigneeId($input['assignee_id'] ?? null);
         $this->requireProjectMemberAssignee($user->workspaceId, $projectId, $assigneeId);
         $milestoneId = $input['milestone_id'] ?? null;
@@ -154,6 +157,9 @@ final class IssuesService
                 $approvalRequested,
                 $priority,
                 $dueDate,
+                $context,
+                $expectedOutcome,
+                $acceptanceCriteria,
             );
             $this->inboxEvents->recordAssigned($user->workspaceId, $projectId, $user->id, $assigneeId, (int) $issue['id'], $title);
             if ($ownsTransaction) $this->pdo->commit();
@@ -191,7 +197,10 @@ final class IssuesService
             throw new ApiException(404, 'not_found', 'The issue was not found.');
         }
         $shareFields = ['is_shared', 'milestone_id', 'approval_requested'];
-        $issueFields = ['title', 'description', 'status', 'type', 'assignee_id', 'priority', 'due_date'];
+        $issueFields = [
+            'title', 'description', 'status', 'type', 'assignee_id', 'priority', 'due_date',
+            'context', 'expected_outcome', 'acceptance_criteria',
+        ];
         $hasShareFields = array_intersect($shareFields, array_keys($input)) !== [];
         $hasIssueFields = array_intersect($issueFields, array_keys($input)) !== [];
         if (!$hasShareFields && !$hasIssueFields) {
@@ -203,6 +212,9 @@ final class IssuesService
         $updated = [
             'title' => $issue['title'],
             'description' => $issue['description'],
+            'context' => $issue['context'],
+            'expected_outcome' => $issue['expected_outcome'],
+            'acceptance_criteria' => $issue['acceptance_criteria'],
             'type' => $issue['type'],
             'assignee_id' => $issue['assignee_id'],
             'status' => $issue['status'],
@@ -232,6 +244,9 @@ final class IssuesService
         }
         if (mb_strlen($updated['description'], 'UTF-8') > 10_000) {
             throw new ApiException(422, 'validation_failed', 'Issue description cannot exceed 10000 characters.');
+        }
+        foreach (['context', 'expected_outcome', 'acceptance_criteria'] as $field) {
+            $updated[$field] = self::issueBriefText($input, $field, $updated[$field]);
         }
         if (array_key_exists('type', $input)) {
             $updated['type'] = self::issueType($input['type']);
@@ -448,6 +463,19 @@ final class IssuesService
             || (int) $matches[1] < 1000
             || !checkdate((int) $matches[2], (int) $matches[3], (int) $matches[1])) {
             throw new ApiException(422, 'validation_failed', 'Issue due date must be a valid YYYY-MM-DD date or null.');
+        }
+        return $value;
+    }
+
+    private static function issueBriefText(array $input, string $field, string $current = ''): string
+    {
+        if (!array_key_exists($field, $input)) return $current;
+        if (!is_string($input[$field])) {
+            throw new ApiException(422, 'validation_failed', "Issue {$field} must be text.");
+        }
+        $value = trim($input[$field]);
+        if (mb_strlen($value, 'UTF-8') > 10_000) {
+            throw new ApiException(422, 'validation_failed', "Issue {$field} cannot exceed 10000 characters.");
         }
         return $value;
     }

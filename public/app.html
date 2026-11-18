@@ -280,6 +280,7 @@
                   <button id="issue-back-button" class="button button-quiet" type="button">← Issues</button>
                   <div class="issue-detail-actions">
                     <button id="issue-detail-edit-button" class="button" type="button">Edit issue <kbd>e</kbd></button>
+                    <button id="issue-ai-prompt-button" class="button" type="button">Prepare AI prompt</button>
                     <button id="issue-detail-delete-button" class="button button-danger" type="button">Delete issue</button>
                   </div>
                 </header>
@@ -301,6 +302,21 @@
                     <span id="issue-detail-approval"></span>
                   </div>
                   <p id="issue-detail-description" class="issue-detail-description"></p>
+                  <details id="issue-detail-brief" class="issue-detail-brief" hidden aria-labelledby="issue-detail-brief-heading">
+                    <summary id="issue-detail-brief-heading">AI prompt context saved</summary>
+                    <section id="issue-detail-context-section" class="issue-detail-brief-section" hidden>
+                      <h4>Context</h4>
+                      <p id="issue-detail-context"></p>
+                    </section>
+                    <section id="issue-detail-expected-outcome-section" class="issue-detail-brief-section" hidden>
+                      <h4>Expected outcome</h4>
+                      <p id="issue-detail-expected-outcome"></p>
+                    </section>
+                    <section id="issue-detail-acceptance-criteria-section" class="issue-detail-brief-section" hidden>
+                      <h4>Acceptance criteria</h4>
+                      <p id="issue-detail-acceptance-criteria"></p>
+                    </section>
+                  </details>
                   <a id="issue-source-link" class="issue-source-link" href="#project-chat-column" hidden>Open source chat thread</a>
                   <details id="issue-status-history" class="issue-status-history" hidden>
                     <summary>
@@ -552,6 +568,54 @@
         <div class="form-actions">
           <button id="issue-delete-cancel" class="button button-quiet" type="button">Cancel</button>
           <button id="issue-delete-confirm" class="button button-primary button-danger" type="button">Move to Deleted issues</button>
+        </div>
+      </section>
+    </dialog>
+
+    <dialog id="issue-ai-prompt-dialog" class="issue-ai-prompt-dialog" aria-labelledby="issue-ai-prompt-heading">
+      <section class="issue-ai-prompt-content">
+        <header class="dialog-heading">
+          <h2 id="issue-ai-prompt-heading">Prepare an AI prompt</h2>
+          <button id="issue-ai-prompt-close" class="button button-quiet" type="button">Close</button>
+        </header>
+        <p class="issue-ai-prompt-intro">AI prompt context is optional. Leave any answer blank or skip straight to preview.</p>
+        <p id="issue-ai-prompt-step-count" class="issue-ai-prompt-step-count" aria-live="polite">Step 1 of 4</p>
+        <section id="issue-ai-prompt-step-context" class="issue-ai-prompt-step" aria-labelledby="issue-ai-prompt-context-heading">
+          <h3 id="issue-ai-prompt-context-heading">What should the AI know about how this works today?</h3>
+          <p id="issue-ai-prompt-context-help" class="issue-ai-prompt-help">Include relevant background, existing behavior, and constraints to preserve.</p>
+          <label>Context
+            <textarea id="issue-ai-prompt-context" rows="5" maxlength="10000" aria-describedby="issue-ai-prompt-context-help" placeholder="Example: Issues are saved through the project API, and existing descriptions must remain unchanged."></textarea>
+          </label>
+        </section>
+        <section id="issue-ai-prompt-step-outcome" class="issue-ai-prompt-step" hidden aria-labelledby="issue-ai-prompt-outcome-heading">
+          <h3 id="issue-ai-prompt-outcome-heading">What should someone be able to observe when this is done?</h3>
+          <p id="issue-ai-prompt-outcome-help" class="issue-ai-prompt-help">Describe the result from a user's or teammate's point of view.</p>
+          <label>Expected outcome
+            <textarea id="issue-ai-prompt-outcome" rows="5" maxlength="10000" aria-describedby="issue-ai-prompt-outcome-help" placeholder="Example: A teammate can copy a complete prompt from the issue detail view."></textarea>
+          </label>
+        </section>
+        <section id="issue-ai-prompt-step-criteria" class="issue-ai-prompt-step" hidden aria-labelledby="issue-ai-prompt-criteria-heading">
+          <h3 id="issue-ai-prompt-criteria-heading">How will you verify the result?</h3>
+          <p id="issue-ai-prompt-criteria-help" class="issue-ai-prompt-help">List specific, testable outcomes, one per line.</p>
+          <label>Acceptance criteria
+            <textarea id="issue-ai-prompt-criteria" rows="6" maxlength="10000" aria-describedby="issue-ai-prompt-criteria-help" placeholder="Saving keeps the context after reload.&#10;Copying includes every non-empty section."></textarea>
+          </label>
+        </section>
+        <section id="issue-ai-prompt-step-preview" class="issue-ai-prompt-step" hidden aria-labelledby="issue-ai-prompt-preview-heading">
+          <h3 id="issue-ai-prompt-preview-heading">Prompt preview</h3>
+          <textarea id="issue-ai-prompt-preview" rows="16" readonly spellcheck="false" aria-label="Generated AI prompt"></textarea>
+        </section>
+        <p id="issue-ai-prompt-status" class="issue-ai-prompt-status" role="status" aria-live="polite"></p>
+        <div class="issue-ai-prompt-navigation">
+          <button id="issue-ai-prompt-back" class="button button-quiet" type="button" hidden>Back</button>
+          <button id="issue-ai-prompt-skip" class="button button-quiet" type="button">Skip to preview</button>
+          <button id="issue-ai-prompt-next" class="button button-primary" type="button">Next</button>
+        </div>
+        <div id="issue-ai-prompt-actions" class="form-actions" hidden>
+          <button id="issue-ai-prompt-save" class="button" type="button">Save context</button>
+          <button id="issue-ai-prompt-copy" class="button button-primary" type="button">Copy prompt</button>
+          <button id="issue-ai-prompt-copy-markdown" class="button" type="button">Copy Markdown</button>
+          <button id="issue-ai-prompt-download" class="button" type="button">Download Markdown</button>
         </div>
       </section>
     </dialog>

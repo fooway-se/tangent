@@ -260,6 +260,70 @@ final class IssuesTest extends ApiTestCase
         self::assertSame(422, $invalidDueDate->status);
     }
 
+    public function testIssueBriefFieldsCanBeCreatedListedUpdatedAndCleared(): void
+    {
+        $admin = $this->login($this->adminEmail);
+        $projectId = $this->createProject($admin, 'Issue brief fields');
+        $created = $this->apiCookieRequest(
+            'POST',
+            "/api/v1/projects/{$projectId}/issues",
+            $admin['cookie'],
+            [
+                'title' => 'Add structured issue brief',
+                'context' => "  The current issue lacks implementation context.  ",
+                'expected_outcome' => "  A coding assistant can understand the intended result.\n",
+                'acceptance_criteria' => "  The fields persist on the issue.\nCriteria appear in exports.  ",
+            ],
+            $admin['csrf'],
+        );
+
+        self::assertSame(201, $created->status, json_encode($created->body));
+        self::assertSame('The current issue lacks implementation context.', $created->body['issue']['context']);
+        self::assertSame('A coding assistant can understand the intended result.', $created->body['issue']['expected_outcome']);
+        self::assertSame("The fields persist on the issue.\nCriteria appear in exports.", $created->body['issue']['acceptance_criteria']);
+        $issueId = (int) $created->body['issue']['id'];
+
+        $listed = $this->apiCookieRequest('GET', "/api/v1/projects/{$projectId}/issues", $admin['cookie']);
+        self::assertSame(200, $listed->status);
+        self::assertSame($created->body['issue']['context'], $listed->body['issues'][0]['context']);
+        self::assertSame($created->body['issue']['expected_outcome'], $listed->body['issues'][0]['expected_outcome']);
+        self::assertSame($created->body['issue']['acceptance_criteria'], $listed->body['issues'][0]['acceptance_criteria']);
+
+        $updated = $this->apiCookieRequest(
+            'PATCH',
+            "/api/v1/issues/{$issueId}",
+            $admin['cookie'],
+            [
+                'context' => 'Context updated.',
+                'expected_outcome' => 'Outcome updated.',
+                'acceptance_criteria' => '',
+            ],
+            $admin['csrf'],
+        );
+        self::assertSame(200, $updated->status, json_encode($updated->body));
+        self::assertSame('Context updated.', $updated->body['issue']['context']);
+        self::assertSame('Outcome updated.', $updated->body['issue']['expected_outcome']);
+        self::assertSame('', $updated->body['issue']['acceptance_criteria']);
+
+        $invalidType = $this->apiCookieRequest(
+            'PATCH',
+            "/api/v1/issues/{$issueId}",
+            $admin['cookie'],
+            ['context' => ['internal' => 'array']],
+            $admin['csrf'],
+        );
+        self::assertSame(422, $invalidType->status);
+
+        $tooLong = $this->apiCookieRequest(
+            'PATCH',
+            "/api/v1/issues/{$issueId}",
+            $admin['cookie'],
+            ['acceptance_criteria' => str_repeat('a', 10_001)],
+            $admin['csrf'],
+        );
+        self::assertSame(422, $tooLong->status);
+    }
+
     public function testNonMemberCannotReadOrCreateProjectIssues(): void
     {
         $admin = $this->login($this->adminEmail);
