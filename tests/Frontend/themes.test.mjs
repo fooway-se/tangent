@@ -22,12 +22,38 @@ const themeIds = THEMES.map((theme) => theme.id).filter((id) => id !== 'putty');
 const themes = Object.fromEntries(themeIds.map((id) => [id, { ...base, ...declarations(block(`:root[data-theme="${id}"]`)) }]));
 themes.putty = base;
 
+test('classic computer themes use the chosen indirect names', () => {
+  assert.deepEqual(
+    THEMES.filter(({ id }) => ['broadcast', 'cassette', 'mono', 'stripe', 'paper', 'desk', 'silver', 'blue'].includes(id)).map(({ id, label }) => [id, label]),
+    [
+      ['broadcast', 'Broadcast & Beige'],
+      ['cassette', 'Cassette & Colour'],
+      ['mono', 'Mono & Membrane'],
+      ['stripe', 'Stripe & Signal'],
+      ['paper', 'Paper & Rainbow'],
+      ['desk', 'Desk & Phosphor'],
+      ['silver', 'Silver & Speech'],
+      ['blue', 'Blue & Byte'],
+    ],
+  );
+});
+
 test('theme helpers normalise and cycle', () => {
   assert.equal(normalizeTheme('breadbin'), 'breadbin');
+  assert.equal(normalizeTheme('broadcast'), 'broadcast');
+  assert.equal(normalizeTheme('cassette'), 'cassette');
+  assert.equal(normalizeTheme('mono'), 'mono');
+  assert.equal(normalizeTheme('stripe'), 'stripe');
+  assert.equal(normalizeTheme('paper'), 'paper');
+  assert.equal(normalizeTheme('desk'), 'desk');
+  assert.equal(normalizeTheme('silver'), 'silver');
+  assert.equal(normalizeTheme('blue'), 'blue');
   assert.equal(normalizeTheme('unknown'), 'putty');
   assert.equal(normalizeTheme(null), 'putty');
   assert.equal(nextTheme('putty'), 'rainbow');
-  assert.equal(nextTheme('breadbin'), 'putty');
+  assert.equal(nextTheme('breadbin'), 'broadcast');
+  assert.equal(nextTheme('mono'), 'stripe');
+  assert.equal(nextTheme('blue'), 'putty');
 });
 
 test('every theme defines every colour token of the default theme', () => {

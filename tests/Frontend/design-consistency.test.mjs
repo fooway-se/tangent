@@ -62,6 +62,11 @@ test('the palette is a beige case holding dark screens with an amber accent', ()
   assert.match(rule(css, '.keyboard-hints'), /var\(--footer-top\)/, 'the keyboard strip is on the case');
 });
 
+test('active project links use foreground text with sufficient contrast on the accent', () => {
+  const activeProjectLink = rule(css, '.workspace-nav-button.is-active, .project-sidebar-link.is-active');
+  assert.match(activeProjectLink, /color:\s*var\(--accent-ink\)/);
+});
+
 test('screens, panels and controls use the shared corner scale and borders', () => {
   const root = rule(tokens, ':root');
   for (const token of ['--radius-screen', '--radius-panel', '--radius-key', '--radius-cap']) {

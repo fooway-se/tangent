@@ -149,7 +149,7 @@ kbd {
 }
 .workspace-nav-button:hover, .project-sidebar-link:hover { filter: brightness(1.06); }
 .workspace-nav-button:active, .project-sidebar-link:active { transform: translateY(2px); }
-.workspace-nav-button.is-active, .project-sidebar-link.is-active { border-color: var(--accent-edge); background: var(--accent); box-shadow: inset 0 1px 0 var(--accent-shine); font-weight: 800; }
+.workspace-nav-button.is-active, .project-sidebar-link.is-active { border-color: var(--accent-edge); color: var(--accent-ink); background: var(--accent); box-shadow: inset 0 1px 0 var(--accent-shine); font-weight: 800; }
 .section-title { margin: 0 0 8px; color: var(--case-muted); font: 700 11px/1.4 var(--font-display); letter-spacing: 2px; text-transform: uppercase; }
 .sidebar-projects { display: flex; flex: 1; flex-direction: column; min-height: 0; }
 .sidebar-projects .section-title { margin: 22px 4px 8px; }

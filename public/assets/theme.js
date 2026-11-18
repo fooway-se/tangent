@@ -3,6 +3,14 @@ export const THEMES = [
     { id: 'putty', label: 'Putty & Screen' },
     { id: 'rainbow', label: 'Rubber & Rainbow' },
     { id: 'breadbin', label: 'Breadbin' },
+    { id: 'broadcast', label: 'Broadcast & Beige' },
+    { id: 'cassette', label: 'Cassette & Colour' },
+    { id: 'mono', label: 'Mono & Membrane' },
+    { id: 'stripe', label: 'Stripe & Signal' },
+    { id: 'paper', label: 'Paper & Rainbow' },
+    { id: 'desk', label: 'Desk & Phosphor' },
+    { id: 'silver', label: 'Silver & Speech' },
+    { id: 'blue', label: 'Blue & Byte' },
 ];
 export function normalizeTheme(value) {
     return THEMES.some((theme) => theme.id === value) ? value : 'putty';
