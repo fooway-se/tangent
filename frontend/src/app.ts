@@ -430,6 +430,10 @@ const issueDetailSaveButton = document.querySelector<HTMLButtonElement>('#issue-
 const keyboardHints = document.querySelector<HTMLElement>('#keyboard-hints')!;
 const projectKeyboardHints = document.querySelector<HTMLElement>('#project-keyboard-hints')!;
 const goPrefixHint = document.querySelector<HTMLElement>('#go-prefix-hint')!;
+const goPrefixWorkspaceOption = document.querySelector<HTMLElement>('#go-prefix-workspace-option')!;
+const goPrefixProjectOptions = document.querySelector<HTMLElement>('#go-prefix-project-options')!;
+const adminGoPrefixOption = document.querySelector<HTMLElement>('#admin-go-prefix-option')!;
+const workspaceSwitchHint = document.querySelector<HTMLElement>('#workspace-switch-hint')!;
 const commandPalette = document.querySelector<HTMLDialogElement>('#command-palette')!;
 const commandPaletteClose = document.querySelector<HTMLButtonElement>('#command-palette-close')!;
 const commandSearch = document.querySelector<HTMLInputElement>('#command-search')!;
@@ -577,6 +581,7 @@ const guestLogoutButton = document.querySelector<HTMLButtonElement>('#guest-logo
 let deletedProjectIssues: Issue[] = [];
 let selectedIssue: Issue | null = null;
 let issueAiPromptStepIndex = 0;
+let issueAiPromptReturnFocus: HTMLElement | null = null;
 let activeChatProjectId: number | null = null;
 let issuePollTimer: number | null = null;
 let issuePollDelay = 1000;
@@ -820,7 +825,8 @@ function renderWorkspaceSwitcher(): void {
     ?? 'Choose workspace';
   workspaceSwitcherLabel.textContent = currentName;
   workspaceSwitcher.setAttribute('aria-label', `Choose workspace. Current workspace: ${currentName}.`);
-  workspaceSwitcher.disabled = activeWorkspaces.length === 0;
+  workspaceSwitcher.disabled = activeWorkspaces.length < 2;
+  workspaceSwitchHint.hidden = activeWorkspaces.length < 2;
 }
 
 function resetPendingWorkspaceSwitch(): void {
@@ -853,7 +859,7 @@ function stageWorkspaceSwitch(workspaceId: number): void {
 }
 
 function openWorkspacePicker(proposedWorkspaceId?: number): void {
-  if (activeUser === null || activeWorkspaces.length === 0) return;
+  if (activeUser === null || activeWorkspaces.length < 2) return;
   if (workspacePicker.open) {
     resetPendingWorkspaceSwitch();
     return;
@@ -1798,6 +1804,7 @@ function shortcutContext(target: EventTarget | null) {
     targetIsEditable: isEditableTarget(target),
     goPrefixPending,
     hasWorkspace: activeUser !== null,
+    canSwitchWorkspace: activeWorkspaces.length > 1,
     canAdmin: activeUser?.role === 'admin',
     hasProject: activeProject !== null && !projectView.hidden,
     projectListVisible: !workspacePanel.hidden && !projectsView.hidden,
@@ -1809,8 +1816,8 @@ function shortcutContext(target: EventTarget | null) {
     issueDetailVisible: !projectView.hidden && !issueDetailView.hidden,
     hasSelectedIssue: hasSelectedIssueInVisibleView(),
     hasLatestChatMessage: latestChatIssueButton() !== null,
-    chatMessagesFocused: document.activeElement instanceof HTMLElement
-      && document.activeElement.matches('.chat-message'),
+    chatMessagesFocused: target instanceof HTMLElement
+      && target.closest('.chat-message') !== null,
     hasSelectedChatMessage: selectedChatMessageId !== null && selectedChatMessageId > 0
       && chatMessagesById.has(selectedChatMessageId),
     issueDiscussionMessagesFocused: target instanceof HTMLElement
@@ -1820,7 +1827,7 @@ function shortcutContext(target: EventTarget | null) {
     issueGroupFocused: target instanceof HTMLElement && target.closest('.issue-group > summary') !== null,
     statusHistoryFocused: issueStatusHistory.open && issueStatusHistory.contains(document.activeElement),
     textInputFocused: shouldBlurOnEscape(target),
-    modalOpen: commandPalette.open || shortcutHelp.open || issueStatusPicker.open || issueDeleteConfirmation.open
+    modalOpen: commandPalette.open || shortcutHelp.open || issueAiPromptDialog.open || issueStatusPicker.open || issueDeleteConfirmation.open
       || memberRemovalConfirmation.open || workspaceMemberDeactivationDialog.open || workspaceMemberRoleDialog.open
       || workspaceGuestProjectsDialog.open || milestoneDeleteConfirmation.open || milestoneManagerDialog.open
       || workspacePicker.open,
@@ -1844,6 +1851,9 @@ function clearGoPrefix(): void {
 function startGoPrefix(): void {
   clearGoPrefix();
   goPrefixPending = true;
+  goPrefixWorkspaceOption.hidden = activeWorkspaces.length < 2;
+  goPrefixProjectOptions.hidden = activeProject === null || projectView.hidden;
+  adminGoPrefixOption.hidden = activeUser?.role !== 'admin';
   goPrefixHint.hidden = false;
   goPrefixTimer = window.setTimeout(clearGoPrefix, 1200);
 }
@@ -2073,20 +2083,28 @@ function beginCreateIssueFromChatMessage(message: ChatMessage, trigger: HTMLButt
 }
 
 function getPaletteCommands(): PaletteCommand[] {
+  if (activeUser === null) return [];
   const commands: PaletteCommand[] = [
     { label: 'Go to Projects', detail: 'Open the project list', shortcut: 'g p', run: goToProjects },
     { label: 'Open Inbox', detail: 'Review open issues assigned to you', shortcut: 'g n', run: goToInbox },
-    { label: 'Switch workspace', detail: 'Choose a workspace; Enter switches, Escape cancels', shortcut: 'g w', run: openWorkspacePicker },
     { label: 'Show keyboard shortcuts', detail: 'View key bindings', shortcut: '?', run: showShortcutHelp },
   ];
-  for (const workspace of activeWorkspaces) {
-    if (workspace.id === activeUser?.workspace_id) continue;
-    commands.splice(1, 0, {
-      label: `Switch to ${workspace.name}`,
-      detail: `Review and confirm switching to ${workspace.name}`,
-      shortcut: '',
-      run: () => openWorkspacePicker(workspace.id),
+  if (activeWorkspaces.length > 1) {
+    commands.splice(2, 0, {
+      label: 'Switch workspace',
+      detail: 'Choose a workspace; Enter switches, Escape cancels',
+      shortcut: 'g w',
+      run: openWorkspacePicker,
     });
+    for (const workspace of activeWorkspaces) {
+      if (workspace.id === activeUser.workspace_id) continue;
+      commands.splice(1, 0, {
+        label: `Switch to ${workspace.name}`,
+        detail: `Review and confirm switching to ${workspace.name}`,
+        shortcut: '',
+        run: () => openWorkspacePicker(workspace.id),
+      });
+    }
   }
   if (activeUser?.role === 'admin' && !projectsView.hidden) {
     commands.unshift({
@@ -2099,10 +2117,16 @@ function getPaletteCommands(): PaletteCommand[] {
       },
     });
   }
-  if (activeUser?.role === 'admin') {
+  if (activeUser.role === 'admin') {
+    commands.unshift({
+      label: 'Workspace admin',
+      detail: 'Open workspace administration',
+      shortcut: 'g a',
+      run: openWorkspaceAdmin,
+    });
     commands.unshift({
       label: 'Create workspace',
-      detail: 'Create a separate workspace for another client',
+      detail: 'Create a workspace for a separate organization',
       shortcut: '',
       run: () => {
         openWorkspaceAdmin();
@@ -2132,14 +2156,6 @@ function getPaletteCommands(): PaletteCommand[] {
         run: goToProjectMembers,
       },
     );
-    if (activeUser?.role === 'admin') {
-      commands.splice(4, 0, {
-        label: 'Workspace admin',
-        detail: 'Open workspace administration',
-        shortcut: 'g a',
-        run: openWorkspaceAdmin,
-      });
-    }
     commands.splice(1, 0, {
       label: 'New issue',
       detail: `Create an issue in ${activeProject.name}`,
@@ -2253,8 +2269,9 @@ function runPaletteCommand(index: number): void {
 }
 
 function openCommandPalette(): void {
-  if (milestoneDeleteConfirm.disabled) return;
+  if (activeUser === null || milestoneDeleteConfirm.disabled) return;
   if (workspacePicker.open) resetPendingWorkspaceSwitch();
+  if (issueAiPromptDialog.open) issueAiPromptDialog.close();
   if (milestoneDeleteConfirmation.open) closeMilestoneDeleteConfirmation();
   if (milestoneManagerDialog.open) closeMilestoneManager();
   if (issueStatusPicker.open) closeIssueStatusPicker();
@@ -2277,8 +2294,9 @@ function openCommandPalette(): void {
 }
 
 function showShortcutHelp(): void {
-  if (milestoneDeleteConfirm.disabled) return;
+  if (activeUser === null || milestoneDeleteConfirm.disabled) return;
   if (workspacePicker.open) resetPendingWorkspaceSwitch();
+  if (issueAiPromptDialog.open) issueAiPromptDialog.close();
   if (milestoneDeleteConfirmation.open) closeMilestoneDeleteConfirmation();
   if (milestoneManagerDialog.open) closeMilestoneManager();
   if (issueStatusPicker.open) closeIssueStatusPicker();
@@ -2300,6 +2318,8 @@ function dismissCurrentView(): void {
   if (milestoneDeleteConfirm.disabled) return;
   if (workspacePicker.open) {
     resetPendingWorkspaceSwitch();
+  } else if (issueAiPromptDialog.open) {
+    issueAiPromptDialog.close();
   } else if (milestoneDeleteConfirmation.open) {
     closeMilestoneDeleteConfirmation();
   } else if (milestoneManagerDialog.open) {
@@ -2493,7 +2513,7 @@ function executeShortcut(action: ShortcutAction): void {
 }
 
 function handleKeyboardShortcut(event: KeyboardEvent): void {
-  if ((commandPalette.open || shortcutHelp.open || issueStatusPicker.open || issueDeleteConfirmation.open || memberRemovalConfirmation.open || workspaceMemberDeactivationDialog.open || workspaceMemberRoleDialog.open || workspaceGuestProjectsDialog.open || milestoneDeleteConfirmation.open || milestoneManagerDialog.open || workspacePicker.open)
+  if ((commandPalette.open || shortcutHelp.open || issueAiPromptDialog.open || issueStatusPicker.open || issueDeleteConfirmation.open || memberRemovalConfirmation.open || workspaceMemberDeactivationDialog.open || workspaceMemberRoleDialog.open || workspaceGuestProjectsDialog.open || milestoneDeleteConfirmation.open || milestoneManagerDialog.open || workspacePicker.open)
     && event.key !== 'Escape'
     && !((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k')) return;
   const context = shortcutContext(event.target);
@@ -2643,7 +2663,7 @@ function appendChatMessage(message: ChatMessage, scrollToBottom = false): void {
   item.className = message.parent_id === null ? 'chat-message' : 'chat-message chat-reply';
   item.dataset.messageId = String(message.id);
   item.tabIndex = -1;
-  item.setAttribute('aria-keyshortcuts', 'j k ArrowUp ArrowDown Home End PageUp PageDown Enter r');
+  item.setAttribute('aria-keyshortcuts', 'j k ArrowUp ArrowDown Home End PageUp PageDown Enter r i');
   item.addEventListener('focus', () => selectChatMessage(message.id, false));
   item.addEventListener('click', (event) => {
     if (!(event.target instanceof HTMLElement) || event.target.closest('button') === null) {
@@ -3388,6 +3408,7 @@ function renderInboxTabs(): void {
     }
     button.classList.toggle('is-active', tab.id === inboxTab);
     button.setAttribute('aria-selected', String(tab.id === inboxTab));
+    button.tabIndex = tab.id === inboxTab ? 0 : -1;
     const count = tabCount(inboxEvents, tab.id);
     button.textContent = count === null || count === 0 ? tab.label : `${tab.label} ${count}`;
     placeNodeAtPosition(inboxTabsElement, button, index);
@@ -3407,6 +3428,27 @@ function selectInboxTab(tab: InboxTab): void {
   }
   scheduleInboxPoll(0);
 }
+
+inboxTabsElement.addEventListener('keydown', (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLButtonElement) || event.altKey || event.ctrlKey || event.metaKey) return;
+  const currentIndex = INBOX_TABS.findIndex((tab) => tab.id === target.dataset.inboxTab);
+  if (currentIndex < 0) return;
+
+  let nextIndex: number;
+  if (event.key === 'ArrowRight') nextIndex = (currentIndex + 1) % INBOX_TABS.length;
+  else if (event.key === 'ArrowLeft') nextIndex = (currentIndex - 1 + INBOX_TABS.length) % INBOX_TABS.length;
+  else if (event.key === 'Home') nextIndex = 0;
+  else if (event.key === 'End') nextIndex = INBOX_TABS.length - 1;
+  else return;
+
+  const nextTab = INBOX_TABS[nextIndex];
+  if (nextTab === undefined) return;
+  event.preventDefault();
+  event.stopPropagation();
+  selectInboxTab(nextTab.id);
+  inboxTabsElement.querySelector<HTMLButtonElement>(`#inbox-tab-${nextTab.id}`)?.focus();
+});
 
 function reconcileInboxRows<T extends { id: number }>(
   list: HTMLUListElement,
@@ -4980,6 +5022,9 @@ function updateIssueAiPromptDraft(): void {
 
 function openIssueAiPrompt(): void {
   if (selectedIssue === null) return;
+  issueAiPromptReturnFocus = document.activeElement instanceof HTMLElement
+    ? document.activeElement
+    : issueAiPromptButton;
   issueAiPromptContext.value = selectedIssue.context;
   issueAiPromptOutcome.value = selectedIssue.expected_outcome;
   issueAiPromptCriteria.value = selectedIssue.acceptance_criteria;
@@ -5060,6 +5105,14 @@ function downloadIssueMarkdown(issue: Issue): void {
 
 issueAiPromptButton.addEventListener('click', openIssueAiPrompt);
 issueAiPromptCloseButton.addEventListener('click', () => issueAiPromptDialog.close());
+issueAiPromptDialog.addEventListener('close', () => {
+  const target = issueAiPromptReturnFocus;
+  issueAiPromptReturnFocus = null;
+  if (target !== null && target.isConnected && target.closest('[hidden]') === null
+    && document.querySelector('dialog[open]') === null) {
+    target.focus();
+  }
+});
 issueAiPromptNextButton.addEventListener('click', () => {
   issueAiPromptStepIndex = Math.min(issueAiPromptStepIndex + 1, issueAiPromptSteps.length - 1);
   renderIssueAiPromptStep();

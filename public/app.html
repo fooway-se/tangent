@@ -523,8 +523,8 @@
       <footer id="keyboard-hints" class="keyboard-hints" hidden>
           <span><kbd>j</kbd>/<kbd>k</kbd> Move</span>
           <span><kbd>Enter</kbd> Open</span>
-          <span><kbd>g</kbd> <kbd>p</kbd> Projects · <kbd>g</kbd> <kbd>n</kbd> Inbox · <kbd>g</kbd> <kbd>w</kbd> Workspace</span>
-          <span id="go-prefix-hint" class="go-prefix-hint" hidden><kbd>p</kbd> Projects · <kbd>n</kbd> Inbox · <kbd>w</kbd> Workspace · <kbd>i</kbd> Issues · <kbd>c</kbd> Chat · <kbd>m</kbd> Members</span>
+          <span><kbd>g</kbd> <kbd>p</kbd> Projects · <kbd>g</kbd> <kbd>n</kbd> Inbox<span id="workspace-switch-hint" hidden> · <kbd>g</kbd> <kbd>w</kbd> Workspace</span></span>
+          <span id="go-prefix-hint" class="go-prefix-hint" hidden><kbd>p</kbd> Projects · <kbd>n</kbd> Inbox<span id="go-prefix-workspace-option" hidden> · <kbd>w</kbd> Workspace</span><span id="go-prefix-project-options" hidden> · <kbd>i</kbd> Issues · <kbd>c</kbd> Chat · <kbd>m</kbd> Members</span><span id="admin-go-prefix-option" hidden> · <kbd>a</kbd> Administration</span></span>
           <span id="project-keyboard-hints" hidden><kbd>g</kbd> <kbd>i</kbd> Issues <kbd>g</kbd> <kbd>c</kbd> Chat <kbd>g</kbd> <kbd>m</kbd> Members · <kbd>c</kbd> Create <kbd>e</kbd> Edit <kbd>s</kbd> Status · Chat: <kbd>j</kbd>/<kbd>k</kbd> Move <kbd>r</kbd> Reply <kbd>i</kbd> Issue · <kbd>Enter</kbd> Send <kbd>Shift</kbd>+<kbd>Enter</kbd> New line</span>
           <span><kbd>Ctrl/Cmd</kbd>+<kbd>K</kbd> Commands</span>
           <span><kbd>?</kbd> Shortcuts</span>
@@ -698,17 +698,16 @@
         <dl class="shortcut-list">
           <div><dt><kbd>Ctrl/Cmd</kbd>+<kbd>K</kbd></dt><dd>Open command palette</dd></div>
           <div><dt><kbd>?</kbd></dt><dd>Show keyboard shortcuts</dd></div>
-          <div><dt><kbd>↑</kbd>/<kbd>↓</kbd> or <kbd>j</kbd>/<kbd>k</kbd></dt><dd>Move through projects, issues, or selected chat and discussion messages; in the issue filter, Down/Up jumps to the first/last match</dd></div>
-          <div><dt><kbd>Home</kbd>/<kbd>End</kbd></dt><dd>In a project or Workspace Administration tab bar, jump to the first or last tab; in lists, jump to the first or last project or issue; from a focused chat or discussion message, jump to the oldest or newest loaded message</dd></div>
-          <div><dt><kbd>←</kbd>/<kbd>→</kbd></dt><dd>Switch between Issues and Members in a project, or sections in Workspace Administration, when a tab is focused</dd></div>
+          <div><dt><kbd>↑</kbd>/<kbd>↓</kbd> or <kbd>j</kbd>/<kbd>k</kbd></dt><dd>Move through project and issue lists; when a chat or discussion message is focused, move between messages. In the issue filter, Down/Up jumps to the first/last match</dd></div>
+          <div><dt><kbd>Home</kbd>/<kbd>End</kbd></dt><dd>In a project, Inbox filter, or Workspace Administration tab list, jump to the first or last tab; in lists, jump to the first or last project or issue; from a focused chat or discussion message, jump to the oldest or newest loaded message</dd></div>
+          <div><dt><kbd>←</kbd>/<kbd>→</kbd></dt><dd>Switch between Inbox filters, Issues and Members in a project, or sections in Workspace Administration, when a tab is focused</dd></div>
           <div><dt><kbd>Tab</kbd>/<kbd>Shift</kbd>+<kbd>Tab</kbd></dt><dd>Enter the selected tab's section and move through its controls</dd></div>
           <div><dt><kbd>Page Up</kbd>/<kbd>Page Down</kbd></dt><dd>Move one screen in project and issue lists; from a focused chat or discussion message, move one screen through messages</dd></div>
           <div><dt><kbd>/</kbd></dt><dd>Focus the issue filter</dd></div>
           <div><dt><kbd>Enter</kbd></dt><dd>Open a selected project or issue; submit a form</dd></div>
-          <div><dt><kbd>Esc</kbd></dt><dd>Leave a text field; in Workspace Administration, return focus to its section tab</dd></div>
           <div><dt><kbd>g</kbd>, <kbd>p</kbd></dt><dd>Go to projects</dd></div>
           <div><dt><kbd>g</kbd>, <kbd>n</kbd></dt><dd>Open your Inbox</dd></div>
-          <div><dt><kbd>g</kbd>, <kbd>w</kbd></dt><dd>Open the workspace picker; arrows choose, Enter switches, Escape cancels</dd></div>
+          <div><dt><kbd>g</kbd>, <kbd>w</kbd></dt><dd>When you belong to multiple workspaces, open the picker; arrows choose, Enter switches, Escape cancels</dd></div>
           <div><dt><kbd>g</kbd>, <kbd>i</kbd></dt><dd>Focus project issues</dd></div>
           <div><dt><kbd>g</kbd>, <kbd>c</kbd></dt><dd>Focus project chat</dd></div>
           <div><dt><kbd>g</kbd>, <kbd>m</kbd></dt><dd>Focus project members</dd></div>
@@ -716,12 +715,12 @@
           <div><dt><kbd>c</kbd></dt><dd>Create issue in the open project</dd></div>
           <div><dt><kbd>e</kbd></dt><dd>Edit selected issue</dd></div>
           <div><dt><kbd>s</kbd></dt><dd>Open the status picker; arrows choose, Enter saves, Escape cancels</dd></div>
-          <div><dt><kbd>↑</kbd>/<kbd>↓</kbd> or <kbd>j</kbd>/<kbd>k</kbd></dt><dd>Move through selected chat messages</dd></div>
+          <div><dt><kbd>Delete</kbd></dt><dd>Delete a milestone from Project milestones after confirmation</dd></div>
           <div><dt><kbd>r</kbd></dt><dd>Reply to the selected chat or discussion message</dd></div>
           <div><dt><kbd>i</kbd></dt><dd>Create an issue from the selected or latest chat message</dd></div>
           <div><dt><kbd>Enter</kbd></dt><dd>Focus the chat or discussion composer on a selected message; send from the composer</dd></div>
-          <div><dt><kbd>Shift</kbd>+<kbd>Enter</kbd></dt><dd>Insert a newline in chat or a description field</dd></div>
-          <div><dt><kbd>Esc</kbd></dt><dd>Close the current layer; in a text field, first exit with text intact. Further presses cancel drafts or panels, then return through the previous workspace views. Projects is the root.</dd></div>
+          <div><dt><kbd>Shift</kbd>+<kbd>Enter</kbd></dt><dd>Insert a newline in chat, issue discussion, or a description field</dd></div>
+          <div><dt><kbd>Esc</kbd></dt><dd>Close an open dialog. Outside dialogs, leave a text field with its text intact; in Workspace Administration, return focus to its section tab. When the status history disclosure is focused, collapse it before leaving issue details. Then cancel drafts or return through workspace views. Projects is the root.</dd></div>
         </dl>
       </section>
     </dialog>

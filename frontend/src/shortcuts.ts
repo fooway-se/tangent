@@ -55,6 +55,7 @@ export interface ShortcutContext {
   targetIsEditable: boolean;
   goPrefixPending: boolean;
   hasWorkspace: boolean;
+  canSwitchWorkspace: boolean;
   canAdmin: boolean;
   hasProject: boolean;
   projectListVisible: boolean;
@@ -85,7 +86,7 @@ export const shouldSendChatOnEnter = shouldSubmitOnEnter;
 
 export function resolveShortcut(event: ShortcutEvent, context: ShortcutContext): ShortcutAction | null {
   const key = event.key.toLowerCase();
-  if ((event.ctrlKey || event.metaKey) && !event.altKey && key === 'k') return 'command-palette';
+  if (context.hasWorkspace && (event.ctrlKey || event.metaKey) && !event.altKey && key === 'k') return 'command-palette';
   if (event.key === 'Escape') {
     if (context.modalOpen) return 'dismiss';
     if (context.statusHistoryFocused) return 'collapse-status-history';
@@ -106,14 +107,14 @@ export function resolveShortcut(event: ShortcutEvent, context: ShortcutContext):
   if (context.goPrefixPending) {
     if (key === 'p' && context.hasWorkspace) return 'projects';
     if (key === 'n' && context.hasWorkspace) return 'inbox';
-    if (key === 'w' && context.hasWorkspace) return 'workspace-switcher';
+    if (key === 'w' && context.canSwitchWorkspace) return 'workspace-switcher';
     if (key === 'i' && context.hasProject) return 'issues';
     if (key === 'c' && context.hasProject) return 'chat';
     if (key === 'm' && context.hasProject) return 'members';
     if (key === 'a' && context.canAdmin) return 'workspace-admin';
     return null;
   }
-  if (event.key === '?') return 'shortcut-help';
+  if (event.key === '?' && context.hasWorkspace) return 'shortcut-help';
   if (key === 'g' && context.hasWorkspace) return 'await-projects-key';
 
   if (context.issueDiscussionMessagesFocused && context.hasSelectedIssueDiscussionMessage) {

@@ -9,6 +9,7 @@ const baseContext = {
   targetIsEditable: false,
   goPrefixPending: false,
   hasWorkspace: true,
+  canSwitchWorkspace: true,
   canAdmin: false,
   hasProject: false,
   projectListVisible: false,
@@ -40,6 +41,11 @@ test('command palette works with Control or Meta even in an editable field', () 
   const editable = { targetIsEditable: true };
   assert.equal(resolve('k', editable, { ctrlKey: true }), 'command-palette');
   assert.equal(resolve('k', editable, { metaKey: true }), 'command-palette');
+});
+
+test('workspace shortcuts are unavailable on the sign-in screen', () => {
+  assert.equal(resolve('k', { hasWorkspace: false }, { ctrlKey: true }), null);
+  assert.equal(resolve('?', { hasWorkspace: false }), null);
 });
 
 test('single-key actions stay inactive while typing', () => {
@@ -124,6 +130,16 @@ test('g sequences switch between available project features', () => {
 
 test('g then w focuses the workspace switcher', () => {
   assert.equal(resolve('w', { goPrefixPending: true, hasWorkspace: true }), 'workspace-switcher');
+  assert.equal(resolve('w', { goPrefixPending: true, hasWorkspace: true, canSwitchWorkspace: false }), null);
+});
+
+test('the AI prompt dialog participates in modal keyboard handling', () => {
+  const context = app.slice(app.indexOf('function shortcutContext'), app.indexOf('function clearGoPrefix'));
+  assert.match(context, /modalOpen:[\s\S]*issueAiPromptDialog\.open/);
+  const dismiss = app.slice(app.indexOf('function dismissCurrentView'), app.indexOf('function focusIssueQuickAddReturnTarget'));
+  assert.match(dismiss, /issueAiPromptDialog\.open[\s\S]*issueAiPromptDialog\.close\(\)/);
+  assert.match(app, /issueAiPromptDialog\.addEventListener\('close'/);
+  assert.match(app, /commandPalette\.open \|\| shortcutHelp\.open \|\| issueAiPromptDialog\.open/);
 });
 
 test('Escape from a Workspace Admin field returns to its tab bar for section switching', () => {
@@ -133,8 +149,16 @@ test('Escape from a Workspace Admin field returns to its tab bar for section swi
   assert.match(app, /workspaceAdminTabs\.addEventListener\('keydown'/);
   assert.match(app, /function updateWorkspaceAdminPanelTabIndex\(/);
   assert.match(app, /panel\.tabIndex = hasFocusableContent \? -1 : 0/);
-  assert.match(html, /Switch between Issues and Members in a project, or sections in Workspace Administration/);
+  assert.match(html, /Switch between Inbox filters, Issues and Members in a project, or sections in Workspace Administration/);
   assert.match(html, /<kbd>Tab<\/kbd><\/dt><dd>Enter the selected tab's section/);
+});
+
+test('Inbox tabs use the same arrow and Home/End navigation as other tab bars', () => {
+  const tabs = app.slice(app.indexOf('function renderInboxTabs'), app.indexOf('function selectInboxTab'));
+  assert.match(tabs, /button\.tabIndex = tab\.id === inboxTab \? 0 : -1/);
+  assert.match(app, /inboxTabsElement\.addEventListener\('keydown'/);
+  assert.match(html, /<kbd>Home<\/kbd>\/<kbd>End<\/kbd>[\s\S]*Inbox filter/);
+  assert.match(html, /<kbd>←<\/kbd>\/<kbd>→<\/kbd>[\s\S]*Inbox filters/);
 });
 
 test('Escape dismisses the milestone dialog before blurring its focused field', () => {
@@ -158,6 +182,8 @@ test('chat message selection supports navigation, reply, issue creation, and com
   assert.equal(resolve('i', chatSelection), 'issue-from-selected-chat-message');
   assert.equal(resolve('Enter', chatSelection), 'focus-chat-composer');
   assert.equal(resolve('r'), null);
+  assert.match(app, /chatMessagesFocused:[\s\S]{0,100}target\.closest\('\.chat-message'\)/);
+  assert.match(app, /aria-keyshortcuts', 'j k ArrowUp ArrowDown Home End PageUp PageDown Enter r i'/);
 });
 
 test('issue discussion messages use the chat navigation, reply, and composer shortcuts', () => {
@@ -199,4 +225,16 @@ test('command palette, shortcut help, and contextual hints are present in the wo
   for (const id of ['command-palette', 'command-search', 'command-results', 'shortcut-help', 'keyboard-hints', 'project-keyboard-hints', 'inbox-view']) {
     assert.ok(html.includes(`id="${id}"`), `${id} is present`);
   }
+  assert.match(html, /Delete[\s\S]*Delete a milestone from Project milestones/);
+  assert.equal((html.match(/<dt><kbd>Esc<\/kbd><\/dt>/g) ?? []).length, 1, 'Escape guidance has one authoritative entry');
+  assert.doesNotMatch(html, /Move through selected chat messages/);
+  assert.match(html, /admin-go-prefix-option/);
+  assert.match(app, /goPrefixWorkspaceOption\.hidden = activeWorkspaces\.length < 2/);
+  assert.match(app, /goPrefixProjectOptions\.hidden = activeProject === null \|\| projectView\.hidden/);
+  assert.match(app, /adminGoPrefixOption\.hidden = activeUser\?\.role !== 'admin'/);
+  assert.match(app, /workspaceSwitcher\.disabled = activeWorkspaces\.length < 2/);
+  assert.match(app, /function openWorkspacePicker[\s\S]{0,120}activeWorkspaces\.length < 2/);
+  const commands = app.slice(app.indexOf('function getPaletteCommands'), app.indexOf('function renderCommandResults'));
+  assert.ok(commands.indexOf("label: 'Workspace admin'") < commands.indexOf('if (activeProject !== null)'), 'workspace admin command is available outside projects');
+  assert.match(commands, /if \(activeWorkspaces\.length > 1\)/);
 });

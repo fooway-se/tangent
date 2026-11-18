@@ -4,7 +4,7 @@ export function shouldSubmitOnEnter(key, shiftKey, isComposing) {
 export const shouldSendChatOnEnter = shouldSubmitOnEnter;
 export function resolveShortcut(event, context) {
     const key = event.key.toLowerCase();
-    if ((event.ctrlKey || event.metaKey) && !event.altKey && key === 'k')
+    if (context.hasWorkspace && (event.ctrlKey || event.metaKey) && !event.altKey && key === 'k')
         return 'command-palette';
     if (event.key === 'Escape') {
         if (context.modalOpen)
@@ -37,7 +37,7 @@ export function resolveShortcut(event, context) {
             return 'projects';
         if (key === 'n' && context.hasWorkspace)
             return 'inbox';
-        if (key === 'w' && context.hasWorkspace)
+        if (key === 'w' && context.canSwitchWorkspace)
             return 'workspace-switcher';
         if (key === 'i' && context.hasProject)
             return 'issues';
@@ -49,7 +49,7 @@ export function resolveShortcut(event, context) {
             return 'workspace-admin';
         return null;
     }
-    if (event.key === '?')
+    if (event.key === '?' && context.hasWorkspace)
         return 'shortcut-help';
     if (key === 'g' && context.hasWorkspace)
         return 'await-projects-key';
