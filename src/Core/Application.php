@@ -18,6 +18,7 @@ use Tangent\Modules\Chat\ChatRepository;
 use Tangent\Modules\Chat\ChatRoutes;
 use Tangent\Modules\Chat\ChatService;
 use Tangent\Modules\Issues\IssueRepository;
+use Tangent\Modules\Issues\IssueDiscussionRepository;
 use Tangent\Modules\Issues\IssuesRoutes;
 use Tangent\Modules\Issues\IssuesService;
 use Tangent\Modules\Inbox\InboxRoutes;
@@ -66,7 +67,15 @@ final class Application
         $chat = new ChatService(new ChatRepository($pdo), $projectRepository, $inboxEvents, $pdo);
         $issueRepository = new IssueRepository($pdo);
         $milestoneRepository = new MilestoneRepository($pdo);
-        $issues = new IssuesService($issueRepository, $projectRepository, $chat, $inboxEvents, $pdo, $milestoneRepository);
+        $issues = new IssuesService(
+            $issueRepository,
+            $projectRepository,
+            $chat,
+            $inboxEvents,
+            $pdo,
+            $milestoneRepository,
+            new IssueDiscussionRepository($pdo),
+        );
         $projects = new ProjectService($projectRepository, $users, $pdo, $chat, $issues, $workspaceRepository);
         $inbox = new InboxService($issueRepository, $projects);
         $clientView = new ClientViewService($projectRepository, $milestoneRepository, $issueRepository, $chat);

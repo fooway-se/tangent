@@ -133,6 +133,18 @@ interface IssueStatusTransition {
   created_at: string;
 }
 
+interface IssueDiscussionMessage {
+  id: number;
+  issue_id: number;
+  parent_id: number | null;
+  author_id: number;
+  author_name: string;
+  parent_author_name: string | null;
+  parent_body: string | null;
+  body: string;
+  created_at: string;
+}
+
 interface IssueBoardGroup {
   key: string;
   name: string;
@@ -416,6 +428,17 @@ const issueStatusHistory = document.querySelector<HTMLDetailsElement>('#issue-st
 const issueStatusHistoryCount = document.querySelector<HTMLElement>('#issue-status-history-count')!;
 const issueStatusHistoryEmpty = document.querySelector<HTMLElement>('#issue-status-history-empty')!;
 const issueStatusHistoryList = document.querySelector<HTMLOListElement>('#issue-status-history-list')!;
+const issueDiscussionHeading = document.querySelector<HTMLHeadingElement>('#issue-discussion-heading')!;
+const issueDiscussionCount = document.querySelector<HTMLElement>('#issue-discussion-count')!;
+const issueDiscussionStatus = document.querySelector<HTMLElement>('#issue-discussion-status')!;
+const issueDiscussionEmpty = document.querySelector<HTMLElement>('#issue-discussion-empty')!;
+const issueDiscussionList = document.querySelector<HTMLOListElement>('#issue-discussion-list')!;
+const issueDiscussionForm = document.querySelector<HTMLFormElement>('#issue-discussion-form')!;
+const issueDiscussionInput = document.querySelector<HTMLTextAreaElement>('#issue-discussion-input')!;
+const issueDiscussionSubmit = document.querySelector<HTMLButtonElement>('#issue-discussion-submit')!;
+const issueDiscussionReplyContext = document.querySelector<HTMLElement>('#issue-discussion-reply-context')!;
+const issueDiscussionReplyLabel = document.querySelector<HTMLElement>('#issue-discussion-reply-label')!;
+const issueDiscussionReplyCancel = document.querySelector<HTMLButtonElement>('#issue-discussion-reply-cancel')!;
 const issueDescriptionDetails = document.querySelector<HTMLDetailsElement>('#issue-description-details')!;
 const issueProgress = document.querySelector<HTMLProgressElement>('#issue-progress')!;
 const issueProgressLabel = document.querySelector<HTMLElement>('#issue-progress-label')!;
@@ -527,6 +550,11 @@ let issuePollHasDeferredChanges = false;
 let issuePollInFlightProjectId: number | null = null;
 let issuePollRequestVersion = 0;
 let issueStatusHistoryRequestVersion = 0;
+let issueDiscussionRequestVersion = 0;
+let issueDiscussionPollTimer: number | null = null;
+let issueDiscussionMessages: IssueDiscussionMessage[] = [];
+let selectedIssueDiscussionMessageId: number | null = null;
+let issueDiscussionParent: IssueDiscussionMessage | null = null;
 const issueRowRenderSignatures = new WeakMap<HTMLLIElement, string>();
 const deletedIssueRowRenderSignatures = new WeakMap<HTMLLIElement, string>();
 let chatPollTimer: number | null = null;
@@ -664,6 +692,7 @@ function showSignedOut(): void {
   issueQuickAddSourceProjectId = null;
   issueQuickAddReturnFocus = null;
   stopIssuePolling();
+  clearIssueDiscussion();
   stopInboxPolling();
   resetPendingWorkspaceSwitch();
   stopChatPolling();
@@ -840,6 +869,7 @@ function showWorkspaceView(view: 'projects' | 'inbox' | 'admin' | 'project'): vo
     if (activeProject !== null) projectReturnFocusId = activeProject.id;
     stopChatPolling();
     stopIssuePolling();
+    clearIssueDiscussion();
     activeProject = null;
     activeProjectMembers = [];
     selectedIssue = null;
@@ -1695,6 +1725,7 @@ function createIssueFromSelectedChatMessage(): void {
 
 function goToProjectIssues(): void {
   if (activeProject === null) return;
+  clearIssueDiscussion();
   selectedIssue = null;
   issueDetailEditForm.hidden = true;
   issueDetailDisplay.hidden = false;
@@ -1746,6 +1777,10 @@ function shortcutContext(target: EventTarget | null) {
       && document.activeElement.matches('.chat-message'),
     hasSelectedChatMessage: selectedChatMessageId !== null && selectedChatMessageId > 0
       && chatMessagesById.has(selectedChatMessageId),
+    issueDiscussionMessagesFocused: target instanceof HTMLElement
+      && target.closest('.issue-discussion-message') !== null,
+    hasSelectedIssueDiscussionMessage: selectedIssueDiscussionMessageId !== null
+      && issueDiscussionMessages.some((message) => message.id === selectedIssueDiscussionMessageId),
     issueGroupFocused: target instanceof HTMLElement && target.closest('.issue-group > summary') !== null,
     statusHistoryFocused: issueStatusHistory.open && issueStatusHistory.contains(document.activeElement),
     textInputFocused: shouldBlurOnEscape(target),
@@ -1908,6 +1943,9 @@ function moveProjectSelectionToBoundary(edge: 'first' | 'last'): void {
 function moveSelectionByPage(direction: -1 | 1): void {
   if (document.activeElement instanceof HTMLElement && document.activeElement.matches('.chat-message')) {
     moveChatMessageSelectionByPage(direction);
+  } else if (document.activeElement instanceof HTMLElement
+    && document.activeElement.closest('.issue-discussion-message') !== null) {
+    moveIssueDiscussionSelectionByPage(direction);
   } else if (!projectsView.hidden) {
     moveFocusByPage(
       Array.from(projectList.querySelectorAll<HTMLButtonElement>('.project-card button')),
@@ -1934,6 +1972,7 @@ function moveSelection(direction: -1 | 1): void {
 
 function beginCreateIssue(): void {
   if (activeProject === null) return;
+  clearIssueDiscussion();
   selectedIssue = null;
   switchProjectTab('issues');
   issueQuickAddTitle.focus();
@@ -1987,6 +2026,7 @@ function beginCreateIssueFromChatMessage(message: ChatMessage, trigger: HTMLButt
   issueDescriptionDetails.open = false;
   issueQuickAddEscapePending = false;
   updateIssueQuickAddApproval();
+  clearIssueDiscussion();
   selectedIssue = null;
   issueDetailEditForm.hidden = true;
   issueDetailDisplay.hidden = false;
@@ -2339,6 +2379,16 @@ function blurTextInput(): void {
     workspaceAdminTabs.querySelector<HTMLButtonElement>('[role="tab"][aria-selected="true"]')?.focus();
     return;
   }
+  if (focused === issueDiscussionInput) {
+    const selected = selectedIssueDiscussionMessageId === null
+      ? null
+      : issueDiscussionList.querySelector<HTMLElement>(`.issue-discussion-message[data-message-id="${selectedIssueDiscussionMessageId}"]`);
+    const latest = issueDiscussionMessageElements().at(-1) ?? null;
+    const target = selected ?? latest;
+    if (target !== null) selectIssueDiscussionMessage(Number(target.dataset.messageId));
+    else issueDiscussionHeading.focus();
+    return;
+  }
   if (focused !== chatInput) return;
 
   const selected = selectedChatMessageId === null
@@ -2374,6 +2424,8 @@ function executeShortcut(action: ShortcutAction): void {
     case 'open-selected-project': selectedProjectButton()?.click(); break;
     case 'first-chat-message': moveChatMessageSelectionToBoundary('first'); break;
     case 'last-chat-message': moveChatMessageSelectionToBoundary('last'); break;
+    case 'first-issue-discussion-message': moveIssueDiscussionSelectionToBoundary('first'); break;
+    case 'last-issue-discussion-message': moveIssueDiscussionSelectionToBoundary('last'); break;
     case 'page-up': moveSelectionByPage(-1); break;
     case 'page-down': moveSelectionByPage(1); break;
     case 'next': moveIssueSelection(1); break;
@@ -2391,8 +2443,12 @@ function executeShortcut(action: ShortcutAction): void {
     case 'issue-from-latest-message': createIssueFromLatestMessage(); break;
     case 'next-chat-message': moveChatMessageSelection(1); break;
     case 'previous-chat-message': moveChatMessageSelection(-1); break;
+    case 'next-issue-discussion-message': moveIssueDiscussionSelection(1); break;
+    case 'previous-issue-discussion-message': moveIssueDiscussionSelection(-1); break;
     case 'focus-chat-composer': chatInput?.focus(); break;
     case 'reply-to-chat-message': replyToSelectedChatMessage(); break;
+    case 'focus-issue-discussion-composer': issueDiscussionInput.focus(); break;
+    case 'reply-to-issue-discussion-message': replyToSelectedIssueDiscussionMessage(); break;
     case 'issue-from-selected-chat-message': createIssueFromSelectedChatMessage(); break;
     case 'blur-text-input': blurTextInput(); break;
     case 'collapse-status-history': issueStatusHistory.open = false; break;
@@ -2551,6 +2607,7 @@ function appendChatMessage(message: ChatMessage, scrollToBottom = false): void {
   item.className = message.parent_id === null ? 'chat-message' : 'chat-message chat-reply';
   item.dataset.messageId = String(message.id);
   item.tabIndex = -1;
+  item.setAttribute('aria-keyshortcuts', 'j k ArrowUp ArrowDown Home End PageUp PageDown Enter r');
   item.addEventListener('focus', () => selectChatMessage(message.id, false));
   item.addEventListener('click', (event) => {
     if (!(event.target instanceof HTMLElement) || event.target.closest('button') === null) {
@@ -3016,6 +3073,9 @@ projectForm.querySelector<HTMLTextAreaElement>('textarea[name="description"]')
   ?.addEventListener('keydown', (event) => submitFormOnEnter(event, projectForm));
 issueDescriptionInput?.addEventListener('keydown', (event) => submitFormOnEnter(event, issueForm));
 issueDetailDescriptionInput.addEventListener('keydown', (event) => submitFormOnEnter(event, issueDetailEditForm));
+issueDiscussionInput.addEventListener('keydown', (event) => submitFormOnEnter(event, issueDiscussionForm));
+issueDiscussionForm.addEventListener('submit', (event) => void postIssueDiscussionMessage(event));
+issueDiscussionReplyCancel.addEventListener('click', clearIssueDiscussionReply);
 issueFilter.addEventListener('input', renderProjectIssueBoard);
 issueGrouping.addEventListener('change', renderProjectIssueBoard);
 issueOrder.addEventListener('change', handleIssueOrderChange);
@@ -3845,6 +3905,7 @@ function switchProjectTab(tab: 'issues' | 'members', returnFocusIssueId?: number
   membersTabButton.tabIndex = tab === 'members' ? 0 : -1;
   if (tab !== 'issues') pauseIssuePolling();
   if (tab === 'issues') {
+    if (showingIssueDetail && selectedIssue !== null) scheduleIssueDiscussionPoll(selectedIssue.id);
     if (!showingIssueDetail && loadIssues) {
       const projectId = activeProject.id;
       const loadingIssues = loadProjectIssues(projectId);
@@ -4221,6 +4282,228 @@ async function loadIssueStatusHistory(issueId: number): Promise<void> {
   }
 }
 
+function stopIssueDiscussionPolling(): void {
+  if (issueDiscussionPollTimer !== null) window.clearTimeout(issueDiscussionPollTimer);
+  issueDiscussionPollTimer = null;
+  issueDiscussionRequestVersion += 1;
+}
+
+function clearIssueDiscussion(): void {
+  stopIssueDiscussionPolling();
+  issueDiscussionMessages = [];
+  selectedIssueDiscussionMessageId = null;
+  issueDiscussionList.replaceChildren();
+  issueDiscussionInput.value = '';
+  issueDiscussionStatus.textContent = '';
+  clearIssueDiscussionReply();
+  renderIssueDiscussion();
+}
+
+function scheduleIssueDiscussionPoll(issueId: number): void {
+  if (issueDiscussionPollTimer !== null) window.clearTimeout(issueDiscussionPollTimer);
+  issueDiscussionPollTimer = null;
+  if (selectedIssue?.id !== issueId || issueDetailView.hidden) return;
+  issueDiscussionPollTimer = window.setTimeout(() => {
+    issueDiscussionPollTimer = null;
+    void loadIssueDiscussion(issueId, false);
+  }, 5_000);
+}
+
+async function loadIssueDiscussion(issueId: number, showLoading = true): Promise<void> {
+  const requestVersion = ++issueDiscussionRequestVersion;
+  if (showLoading) issueDiscussionStatus.textContent = 'Loading discussion…';
+  try {
+    const result = await api<{ messages: IssueDiscussionMessage[] }>(`/issues/${issueId}/discussion`);
+    if (requestVersion !== issueDiscussionRequestVersion || selectedIssue?.id !== issueId) return;
+    const changed = result.messages.length !== issueDiscussionMessages.length
+      || result.messages.some((message, index) => {
+        const current = issueDiscussionMessages[index];
+        return current === undefined || current.id !== message.id || current.body !== message.body
+          || current.parent_id !== message.parent_id;
+      });
+    issueDiscussionMessages = result.messages;
+    issueDiscussionStatus.textContent = '';
+    if (changed) renderIssueDiscussion();
+  } catch (error) {
+    if (requestVersion !== issueDiscussionRequestVersion || selectedIssue?.id !== issueId) return;
+    if (error instanceof ApiFailure && error.status === 401) {
+      showSignedOut();
+      return;
+    }
+    issueDiscussionStatus.textContent = error instanceof Error ? error.message : 'Could not load the discussion.';
+  } finally {
+    scheduleIssueDiscussionPoll(issueId);
+  }
+}
+
+function renderIssueDiscussion(): void {
+  issueDiscussionCount.textContent = String(issueDiscussionMessages.length);
+  issueDiscussionEmpty.hidden = issueDiscussionMessages.length > 0;
+  const existingIds = new Set(
+    Array.from(issueDiscussionList.querySelectorAll<HTMLElement>('.issue-discussion-message'))
+      .map((message) => Number(message.dataset.messageId)),
+  );
+  for (const message of issueDiscussionMessages) {
+    if (existingIds.has(message.id)) continue;
+    issueDiscussionList.append(createIssueDiscussionMessage(message));
+  }
+}
+
+function issueDiscussionMessageElements(): HTMLElement[] {
+  return Array.from(issueDiscussionList.querySelectorAll<HTMLElement>('.issue-discussion-message'));
+}
+
+function selectIssueDiscussionMessage(id: number, focus = true): void {
+  const item = issueDiscussionList.querySelector<HTMLElement>(`.issue-discussion-message[data-message-id="${id}"]`);
+  if (item === null) return;
+  selectedIssueDiscussionMessageId = id;
+  issueDiscussionMessageElements().forEach((message) => {
+    message.classList.toggle('is-keyboard-selected', message === item);
+  });
+  if (focus) item.focus();
+}
+
+function moveIssueDiscussionSelection(direction: -1 | 1): void {
+  const messages = issueDiscussionMessageElements();
+  if (messages.length === 0) {
+    issueDiscussionInput.focus();
+    return;
+  }
+  const currentIndex = messages.findIndex((message) => Number(message.dataset.messageId) === selectedIssueDiscussionMessageId);
+  const nextIndex = currentIndex < 0
+    ? direction > 0 ? 0 : messages.length - 1
+    : Math.max(0, Math.min(messages.length - 1, currentIndex + direction));
+  const next = messages[nextIndex];
+  if (next !== undefined) selectIssueDiscussionMessage(Number(next.dataset.messageId));
+}
+
+function moveIssueDiscussionSelectionToBoundary(edge: 'first' | 'last'): void {
+  const messages = issueDiscussionMessageElements();
+  const target = messages[edge === 'first' ? 0 : messages.length - 1];
+  if (target !== undefined) selectIssueDiscussionMessage(Number(target.dataset.messageId));
+}
+
+function moveIssueDiscussionSelectionByPage(direction: -1 | 1): void {
+  const messages = issueDiscussionMessageElements();
+  if (messages.length === 0) {
+    issueDiscussionInput.focus();
+    return;
+  }
+  const currentIndex = messages.findIndex((message) => Number(message.dataset.messageId) === selectedIssueDiscussionMessageId);
+  const pageSize = Math.max(1, visibleRowsInViewport(messages, projectMain, '.issue-discussion-message') - 1);
+  const baseIndex = currentIndex < 0
+    ? direction > 0 ? 0 : Math.min(pageSize, messages.length - 1)
+    : currentIndex;
+  const targetIndex = Math.max(0, Math.min(messages.length - 1, baseIndex + direction * pageSize));
+  const target = messages[targetIndex];
+  if (target !== undefined) selectIssueDiscussionMessage(Number(target.dataset.messageId));
+}
+
+function replyToSelectedIssueDiscussionMessage(): void {
+  if (selectedIssueDiscussionMessageId === null) return;
+  const message = issueDiscussionMessages.find((candidate) => candidate.id === selectedIssueDiscussionMessageId);
+  if (message !== undefined) setIssueDiscussionReply(message);
+}
+
+function createIssueDiscussionMessage(message: IssueDiscussionMessage): HTMLLIElement {
+  const item = document.createElement('li');
+  item.className = `issue-discussion-message${message.parent_id === null ? '' : ' is-reply'}`;
+  item.dataset.messageId = String(message.id);
+  item.tabIndex = -1;
+  item.setAttribute('aria-keyshortcuts', 'j k ArrowUp ArrowDown Home End PageUp PageDown Enter r');
+  item.addEventListener('focusin', () => selectIssueDiscussionMessage(message.id, false));
+  item.addEventListener('click', (event) => {
+    if (!(event.target instanceof HTMLElement) || event.target.closest('button') === null) {
+      selectIssueDiscussionMessage(message.id);
+    }
+  });
+
+  if (message.parent_id !== null && message.parent_body !== null) {
+    const parent = document.createElement('button');
+    parent.type = 'button';
+    parent.className = 'button button-quiet issue-discussion-parent';
+    parent.textContent = `↳ ${message.parent_author_name ?? 'Earlier message'}: ${message.parent_body.slice(0, 100)}`;
+    parent.addEventListener('click', () => {
+      const parentMessage = issueDiscussionList.querySelector<HTMLElement>(`[data-message-id="${message.parent_id}"]`);
+      parentMessage?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      parentMessage?.focus();
+    });
+    item.append(parent);
+  }
+
+  const heading = document.createElement('header');
+  heading.className = 'issue-discussion-message-heading';
+  const author = document.createElement('span');
+  author.className = 'issue-discussion-author';
+  author.textContent = message.author_name;
+  const time = document.createElement('time');
+  time.dateTime = message.created_at.replace(' ', 'T');
+  const parsedDate = new Date(message.created_at.replace(' ', 'T'));
+  time.textContent = Number.isNaN(parsedDate.getTime())
+    ? message.created_at
+    : new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(parsedDate);
+  const reply = document.createElement('button');
+  reply.type = 'button';
+  reply.className = 'button button-quiet issue-discussion-reply-button';
+  reply.textContent = 'Reply';
+  reply.setAttribute('aria-label', `Reply to ${message.author_name}`);
+  reply.addEventListener('click', () => setIssueDiscussionReply(message));
+  heading.append(author, time, reply);
+
+  const body = document.createElement('p');
+  body.className = 'issue-discussion-body';
+  body.textContent = message.body;
+  item.append(heading, body);
+  return item;
+}
+
+function setIssueDiscussionReply(message: IssueDiscussionMessage): void {
+  selectIssueDiscussionMessage(message.id, false);
+  issueDiscussionParent = message;
+  const excerpt = message.body.length > 100 ? `${message.body.slice(0, 100)}…` : message.body;
+  issueDiscussionReplyLabel.textContent = `Replying to ${message.author_name}: ${excerpt}`;
+  issueDiscussionReplyContext.hidden = false;
+  issueDiscussionInput.focus();
+}
+
+function clearIssueDiscussionReply(): void {
+  issueDiscussionParent = null;
+  issueDiscussionReplyLabel.textContent = '';
+  issueDiscussionReplyContext.hidden = true;
+}
+
+async function postIssueDiscussionMessage(event: SubmitEvent): Promise<void> {
+  event.preventDefault();
+  const issueId = selectedIssue?.id;
+  const body = issueDiscussionInput.value.trim();
+  if (issueId === undefined || body === '') return;
+  const parentId = issueDiscussionParent?.id ?? null;
+  issueDiscussionSubmit.disabled = true;
+  issueDiscussionStatus.textContent = '';
+  try {
+    const result = await api<{ message: IssueDiscussionMessage }>(`/issues/${issueId}/discussion`, {
+      method: 'POST',
+      body: JSON.stringify({ body, parent_id: parentId }),
+    });
+    if (selectedIssue?.id !== issueId) return;
+    issueDiscussionMessages.push(result.message);
+    renderIssueDiscussion();
+    if (issueDiscussionInput.value.trim() === body) issueDiscussionInput.value = '';
+    if (issueDiscussionParent?.id === parentId) clearIssueDiscussionReply();
+    issueDiscussionList.querySelector<HTMLElement>(`[data-message-id="${result.message.id}"]`)
+      ?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    issueDiscussionInput.focus();
+  } catch (error) {
+    if (error instanceof ApiFailure && error.status === 401) {
+      showSignedOut();
+      return;
+    }
+    issueDiscussionStatus.textContent = error instanceof Error ? error.message : 'Could not send the message.';
+  } finally {
+    issueDiscussionSubmit.disabled = false;
+  }
+}
+
 function createIssueStatusHistoryRow(transition: IssueStatusTransition): HTMLLIElement {
   const item = document.createElement('li');
   item.className = 'issue-status-history-item';
@@ -4259,7 +4542,14 @@ function closeIssueDetailEditForm(): void {
 }
 
 function openIssue(issue: Issue): void {
+  stopIssueDiscussionPolling();
   selectedIssue = issue;
+  issueDiscussionMessages = [];
+  selectedIssueDiscussionMessageId = null;
+  issueDiscussionList.replaceChildren();
+  issueDiscussionInput.value = '';
+  clearIssueDiscussionReply();
+  renderIssueDiscussion();
   issueList.querySelectorAll<HTMLElement>('.issue-card').forEach((row) => {
     row.classList.toggle('is-keyboard-selected', row.dataset.issueId === String(issue.id));
   });
@@ -4267,6 +4557,7 @@ function openIssue(issue: Issue): void {
   issueDetailEditForm.hidden = true;
   renderIssueDetail();
   void loadIssueStatusHistory(issue.id);
+  void loadIssueDiscussion(issue.id);
   switchProjectTab('issues');
   issueBackButton.focus();
 }

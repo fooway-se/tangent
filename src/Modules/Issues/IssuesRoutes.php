@@ -69,6 +69,30 @@ final class IssuesRoutes
             ]);
         });
 
+        $router->add('GET', '/api/v1/issues/{id}/discussion', function (
+            Request $request,
+            array $params,
+            AuthenticatedUser $user,
+        ): Response {
+            return Response::json(200, [
+                'messages' => $this->service->discussion($user, self::positiveId($params['id'])),
+            ]);
+        });
+
+        $router->add('POST', '/api/v1/issues/{id}/discussion', function (
+            Request $request,
+            array $params,
+            AuthenticatedUser $user,
+        ): Response {
+            return Response::json(201, [
+                'message' => $this->service->addDiscussionMessage(
+                    $user,
+                    self::positiveId($params['id']),
+                    $request->body,
+                ),
+            ]);
+        });
+
         $router->add('POST', '/api/v1/projects/{id}/issues', function (
             Request $request,
             array $params,

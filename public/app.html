@@ -361,6 +361,26 @@
                     <button id="issue-detail-save-button" class="button button-primary" type="submit">Save changes</button>
                   </div>
                 </form>
+                <section id="issue-discussion" class="issue-discussion" aria-labelledby="issue-discussion-heading">
+                  <header class="issue-discussion-heading">
+                    <h3 id="issue-discussion-heading" tabindex="-1">Discussion</h3>
+                    <span id="issue-discussion-count" class="issue-discussion-count">0</span>
+                  </header>
+                  <p id="issue-discussion-status" class="issue-discussion-status" role="status" aria-live="polite"></p>
+                  <p id="issue-discussion-empty" class="issue-discussion-empty" hidden>No discussion yet.</p>
+                  <ol id="issue-discussion-list" class="issue-discussion-list" aria-live="polite"></ol>
+                  <form id="issue-discussion-form" class="issue-discussion-form">
+                    <p id="issue-discussion-reply-context" class="issue-discussion-reply-context" hidden>
+                      <span id="issue-discussion-reply-label"></span>
+                      <button id="issue-discussion-reply-cancel" class="button button-quiet" type="button">Cancel reply</button>
+                    </p>
+                    <label for="issue-discussion-input">Add to discussion</label>
+                    <textarea id="issue-discussion-input" name="body" rows="3" maxlength="10000" required></textarea>
+                    <div class="form-actions">
+                      <button id="issue-discussion-submit" class="button button-primary" type="submit">Send</button>
+                    </div>
+                  </form>
+                </section>
               </section>
             </section>
           </section>
@@ -614,11 +634,11 @@
         <dl class="shortcut-list">
           <div><dt><kbd>Ctrl/Cmd</kbd>+<kbd>K</kbd></dt><dd>Open command palette</dd></div>
           <div><dt><kbd>?</kbd></dt><dd>Show keyboard shortcuts</dd></div>
-          <div><dt><kbd>↑</kbd>/<kbd>↓</kbd> or <kbd>j</kbd>/<kbd>k</kbd></dt><dd>Move through projects, issues, or selected chat messages; in the issue filter, Down/Up jumps to the first/last match</dd></div>
-          <div><dt><kbd>Home</kbd>/<kbd>End</kbd></dt><dd>In a project or Workspace Administration tab bar, jump to the first or last tab; in lists, jump to the first or last project or issue; from a focused chat message, jump to the oldest or newest loaded message</dd></div>
+          <div><dt><kbd>↑</kbd>/<kbd>↓</kbd> or <kbd>j</kbd>/<kbd>k</kbd></dt><dd>Move through projects, issues, or selected chat and discussion messages; in the issue filter, Down/Up jumps to the first/last match</dd></div>
+          <div><dt><kbd>Home</kbd>/<kbd>End</kbd></dt><dd>In a project or Workspace Administration tab bar, jump to the first or last tab; in lists, jump to the first or last project or issue; from a focused chat or discussion message, jump to the oldest or newest loaded message</dd></div>
           <div><dt><kbd>←</kbd>/<kbd>→</kbd></dt><dd>Switch between Issues and Members in a project, or sections in Workspace Administration, when a tab is focused</dd></div>
           <div><dt><kbd>Tab</kbd>/<kbd>Shift</kbd>+<kbd>Tab</kbd></dt><dd>Enter the selected tab's section and move through its controls</dd></div>
-          <div><dt><kbd>Page Up</kbd>/<kbd>Page Down</kbd></dt><dd>Move one screen in project and issue lists; from a focused chat message, move one screen through messages</dd></div>
+          <div><dt><kbd>Page Up</kbd>/<kbd>Page Down</kbd></dt><dd>Move one screen in project and issue lists; from a focused chat or discussion message, move one screen through messages</dd></div>
           <div><dt><kbd>/</kbd></dt><dd>Focus the issue filter</dd></div>
           <div><dt><kbd>Enter</kbd></dt><dd>Open a selected project or issue; submit a form</dd></div>
           <div><dt><kbd>Esc</kbd></dt><dd>Leave a text field; in Workspace Administration, return focus to its section tab</dd></div>
@@ -633,9 +653,9 @@
           <div><dt><kbd>e</kbd></dt><dd>Edit selected issue</dd></div>
           <div><dt><kbd>s</kbd></dt><dd>Open the status picker; arrows choose, Enter saves, Escape cancels</dd></div>
           <div><dt><kbd>↑</kbd>/<kbd>↓</kbd> or <kbd>j</kbd>/<kbd>k</kbd></dt><dd>Move through selected chat messages</dd></div>
-          <div><dt><kbd>r</kbd></dt><dd>Reply to the selected chat message</dd></div>
+          <div><dt><kbd>r</kbd></dt><dd>Reply to the selected chat or discussion message</dd></div>
           <div><dt><kbd>i</kbd></dt><dd>Create an issue from the selected or latest chat message</dd></div>
-          <div><dt><kbd>Enter</kbd></dt><dd>Focus the chat composer on a selected message; send from the composer</dd></div>
+          <div><dt><kbd>Enter</kbd></dt><dd>Focus the chat or discussion composer on a selected message; send from the composer</dd></div>
           <div><dt><kbd>Shift</kbd>+<kbd>Enter</kbd></dt><dd>Insert a newline in chat or a description field</dd></div>
           <div><dt><kbd>Esc</kbd></dt><dd>Close the current layer; in a text field, first exit with text intact. Further presses cancel drafts or panels, then return through the previous workspace views. Projects is the root.</dd></div>
         </dl>

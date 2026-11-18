@@ -1094,6 +1094,55 @@ paths:
                         created_at: { type: string, format: date-time }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
+  /issues/{id}/discussion:
+    get:
+      summary: List discussion messages for an issue
+      description: Returns the issue's discussion in chronological order. Restricted to users who can read the issue's project.
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Issue discussion messages.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [messages]
+                properties:
+                  messages:
+                    type: array
+                    items: { $ref: '#/components/schemas/IssueDiscussionMessage' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      summary: Add a message or reply to an issue discussion
+      description: Restricted to users who can update the issue's project. Replies must target an existing message on the same issue.
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [body]
+              properties:
+                body: { type: string, minLength: 1, maxLength: 10000 }
+                parent_id: { type: [integer, 'null'], minimum: 1, description: Existing message on this issue to reply to; null starts a new discussion message. }
+      responses:
+        '201':
+          description: Discussion message created.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [message]
+                properties:
+                  message: { $ref: '#/components/schemas/IssueDiscussionMessage' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
   /issues/{id}/restore:
     post:
       summary: Restore a deleted issue
@@ -1325,6 +1374,19 @@ components:
         first_reply_id: { type: [integer, 'null'], minimum: 1, description: ID of the earliest direct reply, or null when there are no replies. }
         body: { type: string }
         is_client_visible: { type: boolean, description: True when the message is shared directly or belongs to a client-visible conversation thread. }
+        created_at: { type: string, format: date-time }
+    IssueDiscussionMessage:
+      type: object
+      required: [id, issue_id, parent_id, author_id, author_name, parent_author_name, parent_body, body, created_at]
+      properties:
+        id: { type: integer }
+        issue_id: { type: integer }
+        parent_id: { type: [integer, 'null'], minimum: 1 }
+        author_id: { type: integer }
+        author_name: { type: string }
+        parent_author_name: { type: [string, 'null'] }
+        parent_body: { type: [string, 'null'] }
+        body: { type: string }
         created_at: { type: string, format: date-time }
     Event:
       allOf:

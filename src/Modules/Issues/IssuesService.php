@@ -26,6 +26,7 @@ final class IssuesService
         private readonly InboxEvents $inboxEvents,
         private readonly PDO $pdo,
         private readonly MilestoneRepository $milestones,
+        private readonly IssueDiscussionRepository $discussion,
     ) {
     }
 
@@ -49,6 +50,39 @@ final class IssuesService
         }
         $this->requireProjectAccess($user, $issue['project_id'], 'issues.read');
         return $this->issues->statusHistory($user->workspaceId, $issueId);
+    }
+
+    public function discussion(AuthenticatedUser $user, int $issueId): array
+    {
+        $issue = $this->issues->find($user->workspaceId, $issueId);
+        if ($issue === null) throw new ApiException(404, 'not_found', 'The issue was not found.');
+        $this->requireProjectAccess($user, $issue['project_id'], 'issues.read');
+        return $this->discussion->listForIssue($user->workspaceId, $issueId);
+    }
+
+    public function addDiscussionMessage(AuthenticatedUser $user, int $issueId, array $input): array
+    {
+        $issue = $this->issues->find($user->workspaceId, $issueId);
+        if ($issue === null) throw new ApiException(404, 'not_found', 'The issue was not found.');
+        $this->requireProjectAccess($user, $issue['project_id'], 'issues.update');
+
+        $body = is_string($input['body'] ?? null) ? trim($input['body']) : '';
+        if ($body === '' || mb_strlen($body, 'UTF-8') > 10_000) {
+            throw new ApiException(422, 'validation_failed', 'Discussion message must be between 1 and 10000 characters.');
+        }
+
+        $parentId = null;
+        if (array_key_exists('parent_id', $input) && $input['parent_id'] !== null) {
+            if (!is_int($input['parent_id']) || $input['parent_id'] < 1) {
+                throw new ApiException(422, 'validation_failed', 'parent_id must be a positive integer or null.');
+            }
+            if ($this->discussion->find($user->workspaceId, $issueId, $input['parent_id']) === null) {
+                throw new ApiException(404, 'not_found', 'The discussion message was not found.');
+            }
+            $parentId = $input['parent_id'];
+        }
+
+        return $this->discussion->create($user->workspaceId, $issueId, $user->id, $parentId, $body);
     }
 
     public function create(AuthenticatedUser $user, int $projectId, array $input): array

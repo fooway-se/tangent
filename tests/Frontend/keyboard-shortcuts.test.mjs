@@ -160,6 +160,34 @@ test('chat message selection supports navigation, reply, issue creation, and com
   assert.equal(resolve('r'), null);
 });
 
+test('issue discussion messages use the chat navigation, reply, and composer shortcuts', () => {
+  const discussionSelection = {
+    issueDiscussionMessagesFocused: true,
+    hasSelectedIssueDiscussionMessage: true,
+    issueDetailVisible: true,
+    hasSelectedIssue: true,
+  };
+  assert.equal(resolve('j', discussionSelection), 'next-issue-discussion-message');
+  assert.equal(resolve('ArrowDown', discussionSelection), 'next-issue-discussion-message');
+  assert.equal(resolve('k', discussionSelection), 'previous-issue-discussion-message');
+  assert.equal(resolve('ArrowUp', discussionSelection), 'previous-issue-discussion-message');
+  assert.equal(resolve('Home', discussionSelection), 'first-issue-discussion-message');
+  assert.equal(resolve('End', discussionSelection), 'last-issue-discussion-message');
+  assert.equal(resolve('PageUp', discussionSelection), 'page-up');
+  assert.equal(resolve('PageDown', discussionSelection), 'page-down');
+  assert.equal(resolve('Enter', discussionSelection), 'focus-issue-discussion-composer');
+  assert.equal(resolve('r', discussionSelection), 'reply-to-issue-discussion-message');
+  assert.match(app, /issueDiscussionMessagesFocused:[\s\S]{0,100}closest\('\.issue-discussion-message'\)/);
+  assert.match(app, /case 'next-issue-discussion-message': moveIssueDiscussionSelection\(1\)/);
+  assert.match(app, /function moveIssueDiscussionSelectionByPage\(/);
+  assert.match(app, /function replyToSelectedIssueDiscussionMessage\(/);
+  assert.match(app, /item\.addEventListener\('focusin', \(\) => selectIssueDiscussionMessage/);
+  const blurHandler = app.slice(app.indexOf('function blurTextInput'), app.indexOf('function executeShortcut'));
+  assert.match(blurHandler, /focused === issueDiscussionInput/);
+  assert.match(blurHandler, /issueDiscussionHeading\.focus\(\)/);
+  assert.match(html, /id="issue-discussion-heading"[^>]*tabindex="-1"/);
+});
+
 test('Enter sends chat unless Shift is held or an IME composition is active', () => {
   assert.equal(shouldSendChatOnEnter('Enter', false, false), true);
   assert.equal(shouldSendChatOnEnter('Enter', true, false), false);

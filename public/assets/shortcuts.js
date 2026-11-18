@@ -53,6 +53,24 @@ export function resolveShortcut(event, context) {
         return 'shortcut-help';
     if (key === 'g' && context.hasWorkspace)
         return 'await-projects-key';
+    if (context.issueDiscussionMessagesFocused && context.hasSelectedIssueDiscussionMessage) {
+        if (key === 'home')
+            return 'first-issue-discussion-message';
+        if (key === 'end')
+            return 'last-issue-discussion-message';
+        if (key === 'pageup')
+            return 'page-up';
+        if (key === 'pagedown')
+            return 'page-down';
+        if (key === 'j' || key === 'arrowdown')
+            return 'next-issue-discussion-message';
+        if (key === 'k' || key === 'arrowup')
+            return 'previous-issue-discussion-message';
+        if (event.key === 'Enter')
+            return 'focus-issue-discussion-composer';
+        if (key === 'r')
+            return 'reply-to-issue-discussion-message';
+    }
     if (context.chatMessagesFocused && context.hasSelectedChatMessage) {
         if (key === 'home')
             return 'first-chat-message';
