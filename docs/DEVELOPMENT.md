@@ -29,6 +29,10 @@ Configure these values in the host environment or in `config.php` for production
 |---|---|---|---|
 | `TANGENT_APP_URL` | `app_url` | Public base URL used to build copyable invite and reset links; set this to the exact HTTPS site address. | `http://localhost:8080` |
 | `TANGENT_HIBP_ENABLED` | `hibp_enabled` | Enables the optional Have I Been Pwned Pwned Passwords range lookup. | `false` |
+| `TANGENT_GITHUB_APP_ID` | — | Numeric GitHub App ID for repository selection and pull-request tracking. | unset |
+| `TANGENT_GITHUB_APP_SLUG` | — | GitHub App URL slug. | unset |
+| `TANGENT_GITHUB_PRIVATE_KEY` | — | GitHub App PEM private key; environment values may use `\n` for newlines. | unset |
+| `TANGENT_GITHUB_WEBHOOK_SECRET` | — | Secret used to verify GitHub webhook signatures. | unset |
 
 Tangent does not send email. Admins copy and manually deliver invite and reset links. The optional breach lookup sends only the first five hexadecimal characters of the password's SHA-1 hash to the service, verifies the full hash against the returned suffix list, and fails open when the network check is unavailable. Leave it disabled on hosts without outbound HTTPS access.
 
@@ -44,6 +48,8 @@ For the TypeScript UI, install the development compiler and build the browser mo
 docker compose --profile frontend run --rm frontend ci --ignore-scripts
 docker compose --profile frontend run --rm frontend run build
 ```
+
+See [GitHub pull-request tracking](GITHUB.md) for GitHub App permissions and setup.
 
 ## Test-driven development
 

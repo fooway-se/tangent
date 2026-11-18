@@ -88,7 +88,7 @@ export function createEventRow(event: InboxEvent, handlers: EventRowHandlers): H
   const open = document.createElement('button');
   open.type = 'button';
   open.className = 'issue-title issue-title-button';
-  open.textContent = `${event.actor_name} ${event.summary}`;
+  open.textContent = [event.actor_name, event.summary].filter(Boolean).join(' ');
   open.addEventListener('click', () => handlers.open(event));
   mainline.append(open);
   content.append(project, mainline);

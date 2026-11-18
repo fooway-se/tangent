@@ -854,8 +854,30 @@ dialog::backdrop { background: var(--backdrop); }
 .project-edit-message { margin: 0; color: var(--screen-muted); font-size: 12px; }
 .project-edit-message:empty { display: none; }
 .project-edit-message.is-error { color: var(--danger); }
+.github-connect-button { justify-self: start; }
+.github-project-selection-status { margin: 0; color: var(--screen-muted); font-size: 11px; line-height: 1.5; }
+.github-project-selection-status:empty { display: none; }
+.issue-pull-request-dialog { width: min(560px, calc(100vw - 32px)); max-height: min(820px, calc(100dvh - 32px)); overflow: auto; }
+.issue-pull-request-content { padding: 0 18px 18px; }
+.issue-pull-request-dialog .dialog-heading { margin: 0 -18px 14px; }
+.issue-pull-requests { margin: 18px 0; border-top: 1px solid var(--screen-border); padding-top: 12px; }
+.issue-pull-requests-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.issue-pull-requests-heading h3 { margin: 0; color: var(--screen-muted); font: 700 11px var(--font-display); letter-spacing: 1.5px; text-transform: uppercase; }
+.issue-pull-requests-list { display: grid; gap: 7px; margin: 8px 0 0; padding: 0; list-style: none; }
+.issue-pull-request-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid var(--screen-border); border-radius: var(--radius-panel); padding: 8px 10px; background: var(--screen-panel); }
+.issue-pull-request-main { display: grid; min-width: 0; gap: 4px; }
+.issue-pull-request-link { color: var(--screen-ink); overflow-wrap: anywhere; text-underline-offset: 2px; }
+.issue-pull-request-meta { display: flex; flex-wrap: wrap; gap: 8px; color: var(--screen-muted); font-size: 11px; }
+.issue-pull-request-state { color: var(--accent); text-transform: capitalize; }
+.issue-pull-request-state.is-closed { color: var(--screen-muted); }
+.issue-pull-requests-empty { margin: 8px 0 0; color: var(--screen-muted); font-size: 12px; }
+.issue-pull-request-intro { margin: 0 0 14px; color: var(--screen-muted); font-size: 12px; line-height: 1.5; }
+.issue-pull-request-message { margin: 0; color: var(--screen-muted); font-size: 12px; }
+.issue-pull-request-message:empty { display: none; }
+.issue-pull-request-message.is-error { color: var(--danger); }
 @media (max-width: 560px) {
   .theme-about-machine { grid-template-columns: minmax(0, 1fr); }
   .theme-about-dialog { width: calc(100vw - 24px); max-height: calc(100dvh - 24px); }
   .project-edit-dialog { width: calc(100vw - 24px); max-height: calc(100dvh - 24px); }
+  .issue-pull-request-dialog { width: calc(100vw - 24px); max-height: calc(100dvh - 24px); }
 }

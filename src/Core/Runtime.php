@@ -40,6 +40,10 @@ final class Runtime
             43200,
             rtrim($publicAppUrl, '/'),
             filter_var($hibpEnabled, FILTER_VALIDATE_BOOL),
+            self::environment('TANGENT_GITHUB_APP_ID', ''),
+            self::environment('TANGENT_GITHUB_APP_SLUG', ''),
+            str_replace('\\n', "\n", self::environment('TANGENT_GITHUB_PRIVATE_KEY', '')),
+            self::environment('TANGENT_GITHUB_WEBHOOK_SECRET', ''),
         );
     }
 

@@ -76,4 +76,35 @@ final class ProjectNotesTest extends ApiTestCase
         );
         self::assertSame(422, $tooLong->status);
     }
+
+    private function createProject(array $admin, string $name): int
+    {
+        $response = $this->cookieRequest('POST', '/api/v1/projects', $admin['cookie'], ['name' => $name], $admin['csrf']);
+        self::assertSame(201, $response->status, json_encode($response->body));
+        return (int) $response->body['project']['id'];
+    }
+
+    private function createUser(array $admin, string $name, string $email, string $role): int
+    {
+        $response = $this->cookieRequest('POST', '/api/v1/users', $admin['cookie'], [
+            'name' => $name,
+            'email' => $email,
+            'password' => $this->password,
+            'role' => $role,
+        ], $admin['csrf']);
+        self::assertSame(201, $response->status, json_encode($response->body));
+        return (int) $response->body['user']['id'];
+    }
+
+    private function addMember(array $admin, int $projectId, int $userId): void
+    {
+        $response = $this->cookieRequest(
+            'PUT',
+            "/api/v1/projects/{$projectId}/members/{$userId}",
+            $admin['cookie'],
+            [],
+            $admin['csrf'],
+        );
+        self::assertSame(200, $response->status, json_encode($response->body));
+    }
 }

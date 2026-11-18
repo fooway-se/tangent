@@ -9,10 +9,10 @@ Planned work, in no fixed order. Tangent is pre-alpha, so this list will change.
 
 ## GitHub and other integrations
 
-- Link issues to pull requests and commits. Process GitHub webhooks for opened or merged pull requests and commits that reference issue keys, and show those events in the inbox.
+- Link commits to issues and show commit activity in the inbox.
 - Generate a branch name from an issue.
 - Add GitLab support through a provider-neutral integration interface.
-- Decide whether GitHub authentication should use a personal access token or a GitHub App. Two-way issue and comment sync is deferred.
+- Expand the GitHub App integration beyond manual pull-request links. Two-way issue and comment sync is deferred.
 
 ## Client updates
 

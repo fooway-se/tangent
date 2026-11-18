@@ -145,6 +145,12 @@ const projectReadOnlyNotice = document.querySelector('#project-read-only-notice'
 const projectEditMessage = document.querySelector('#project-edit-message');
 const projectEditSave = document.querySelector('#project-edit-save');
 const editProjectButton = document.querySelector('#edit-project-button');
+const projectGithubRepository = document.querySelector('#project-github-repository');
+const projectEditGithubRepository = document.querySelector('#project-edit-github-repository');
+const githubProjectSelectionStatus = document.querySelector('#github-project-selection-status');
+const githubProjectEditStatus = document.querySelector('#github-project-edit-status');
+const connectGithubCreateButton = document.querySelector('#connect-github-create-button');
+const connectGithubEditButton = document.querySelector('#connect-github-edit-button');
 function openThemeAbout() {
     const machine = THEME_MACHINES[activeTheme];
     themeAboutHeading.textContent = machine.model;
@@ -288,6 +294,17 @@ const issueDetailAcceptanceCriteria = document.querySelector('#issue-detail-acce
 const issueDetailStatus = document.querySelector('#issue-detail-status');
 const issueDetailStatusLabel = document.querySelector('#issue-detail-status-label');
 const issueSourceLink = document.querySelector('#issue-source-link');
+const issuePullRequests = document.querySelector('#issue-pull-requests');
+const issuePullRequestsList = document.querySelector('#issue-pull-requests-list');
+const issuePullRequestsEmpty = document.querySelector('#issue-pull-requests-empty');
+const linkPullRequestButton = document.querySelector('#link-pull-request-button');
+const issuePullRequestDialog = document.querySelector('#issue-pull-request-dialog');
+const issuePullRequestForm = document.querySelector('#issue-pull-request-form');
+const issuePullRequestClose = document.querySelector('#issue-pull-request-close');
+const issuePullRequestCancel = document.querySelector('#issue-pull-request-cancel');
+const issuePullRequestUrl = document.querySelector('#issue-pull-request-url');
+const issuePullRequestMessage = document.querySelector('#issue-pull-request-message');
+const issuePullRequestSubmit = document.querySelector('#issue-pull-request-submit');
 const issueDetailEditForm = document.querySelector('#issue-detail-edit-form');
 const issueDetailTitleInput = document.querySelector('#issue-detail-title-input');
 const issueDetailDescriptionInput = document.querySelector('#issue-detail-description-input');
@@ -469,6 +486,9 @@ const guestProjectSelect = document.querySelector('#guest-project-select');
 const guestLogoutButton = document.querySelector('#guest-logout-button');
 let deletedProjectIssues = [];
 let selectedIssue = null;
+let linkedPullRequests = [];
+let issuePullRequestsRequestVersion = 0;
+let githubRepositories = [];
 let issueAiPromptStepIndex = 0;
 let issueAiPromptReturnFocus = null;
 let activeChatProjectId = null;
@@ -633,6 +653,13 @@ function showSignedOut() {
     resetPendingWorkspaceSwitch();
     stopChatPolling();
     activeUser = null;
+    githubRepositories = [];
+    projectGithubRepository.replaceChildren(new Option('No repository connected', ''));
+    projectEditGithubRepository.replaceChildren(new Option('No repository connected', ''));
+    githubProjectSelectionStatus.textContent = '';
+    githubProjectEditStatus.textContent = '';
+    connectGithubCreateButton.hidden = true;
+    connectGithubEditButton.hidden = true;
     editProjectButton.hidden = true;
     if (projectEditDialog.open)
         projectEditDialog.close();
@@ -685,6 +712,8 @@ function showSignedIn(user) {
     adminNavButton.hidden = user.role !== 'admin';
     toggleProjectFormButton.hidden = user.role !== 'admin';
     showWorkspaceView('projects');
+    if (user.role === 'admin')
+        void loadGithubRepositories();
     report('');
 }
 async function loadWorkspaces() {
@@ -2359,12 +2388,73 @@ function closeProjectForm() {
     projectFormPanel.hidden = true;
     toggleProjectFormButton.focus();
 }
+function populateGithubRepositorySelect(select, selectedId = null) {
+    const options = [new Option('No repository connected', '')];
+    for (const repository of githubRepositories) {
+        options.push(new Option(repository.full_name, String(repository.id)));
+    }
+    if (selectedId !== null && !githubRepositories.some((repository) => repository.id === selectedId)) {
+        const current = activeProject?.github_repository;
+        if (current?.id === selectedId)
+            options.push(new Option(`${current.full_name} (access unavailable)`, String(current.id)));
+    }
+    select.replaceChildren(...options);
+    select.value = selectedId === null ? '' : String(selectedId);
+}
+async function loadGithubRepositories() {
+    if (activeUser?.role !== 'admin')
+        return;
+    try {
+        const result = await api('/github/repositories');
+        githubRepositories = result.repositories;
+        const createSelectedId = projectGithubRepository.value === '' ? null : Number(projectGithubRepository.value);
+        const editSelectedId = activeProject?.github_repository?.id
+            ?? (projectEditGithubRepository.value === '' ? null : Number(projectEditGithubRepository.value));
+        populateGithubRepositorySelect(projectGithubRepository, createSelectedId);
+        populateGithubRepositorySelect(projectEditGithubRepository, editSelectedId);
+        const status = !result.configured
+            ? 'GitHub App settings are not configured for this Tangent installation.'
+            : !result.connected
+                ? 'Connect a GitHub App installation to choose a repository.'
+                : result.repositories.length === 0
+                    ? 'No repositories are available. Check which repositories the GitHub App can access.'
+                    : 'Choose a repository available to this workspace.';
+        githubProjectSelectionStatus.textContent = status;
+        githubProjectEditStatus.textContent = status;
+        connectGithubCreateButton.hidden = !result.configured;
+        connectGithubEditButton.hidden = !result.configured;
+    }
+    catch (error) {
+        const message = error instanceof Error ? error.message : 'Could not load GitHub repositories.';
+        githubProjectSelectionStatus.textContent = message;
+        githubProjectEditStatus.textContent = message;
+        connectGithubCreateButton.hidden = false;
+        connectGithubEditButton.hidden = false;
+    }
+}
+async function connectGithub() {
+    const githubWindow = window.open('about:blank', '_blank');
+    if (githubWindow === null) {
+        report('Allow pop-up windows to connect a GitHub installation.', true);
+        return;
+    }
+    githubWindow.opener = null;
+    try {
+        const result = await api('/github/install', { method: 'POST', body: '{}' });
+        githubWindow.location.assign(result.url);
+    }
+    catch (error) {
+        githubWindow.close();
+        report(error instanceof Error ? error.message : 'Could not start GitHub connection.', true);
+    }
+}
 function openProjectEditDialog() {
     if (activeUser?.role !== 'admin' || activeProject === null)
         return;
     projectEditName.value = activeProject.name;
     projectEditDescription.value = activeProject.description;
     projectEditStatus.value = activeProject.status;
+    populateGithubRepositorySelect(projectEditGithubRepository, activeProject.github_repository?.id ?? null);
     updateProjectStatusHint();
     projectEditMessage.textContent = '';
     projectEditMessage.classList.remove('is-error');
@@ -2419,6 +2509,7 @@ function updateProjectStatusHint() {
     const archivedLocked = activeProject?.status === 'archived' && status === 'archived';
     projectEditName.disabled = completedLocked || archivedLocked;
     projectEditDescription.disabled = completedLocked || archivedLocked;
+    projectEditGithubRepository.disabled = completedLocked || archivedLocked;
     const archivedFromStatus = activeProject?.status === 'archived' ? activeProject.archived_from_status : null;
     if (activeProject?.status === 'archived' && archivedFromStatus !== null && status === 'archived') {
         const previousState = PROJECT_STATUS_LABELS[archivedFromStatus];
@@ -2446,6 +2537,7 @@ async function saveProjectEdit(event) {
                 name: projectEditName.value,
                 description: projectEditDescription.value,
                 status: projectEditStatus.value,
+                github_repository_id: projectEditGithubRepository.value === '' ? null : Number(projectEditGithubRepository.value),
             }),
         });
         if (activeProject?.id !== projectId)
@@ -2458,6 +2550,8 @@ async function saveProjectEdit(event) {
         projectState.classList.toggle('is-paused', result.project.status === 'paused');
         projectState.classList.toggle('is-read-only', result.project.status === 'completed' || result.project.status === 'archived');
         updateProjectReadOnlyNotice(result.project.status);
+        if (selectedIssue !== null)
+            renderIssueDetail();
         breadcrumbCurrent.textContent = result.project.name;
         report('Project updated.');
         projectEditDialog.close();
@@ -3488,8 +3582,54 @@ toggleProjectFormButton.addEventListener('click', () => {
     projectForm.querySelector('input[name="name"]')?.focus();
 });
 editProjectButton.addEventListener('click', openProjectEditDialog);
+connectGithubCreateButton.addEventListener('click', () => void connectGithub());
+connectGithubEditButton.addEventListener('click', () => void connectGithub());
 projectEditStatus.addEventListener('change', updateProjectStatusHint);
 cancelProjectFormButton.addEventListener('click', closeProjectForm);
+linkPullRequestButton.addEventListener('click', () => {
+    if (selectedIssue === null || activeProject === null || activeProject.github_repository === null
+        || projectStatusIsReadOnly(activeProject.status))
+        return;
+    issuePullRequestForm.reset();
+    issuePullRequestMessage.textContent = '';
+    issuePullRequestMessage.classList.remove('is-error');
+    issuePullRequestDialog.showModal();
+    issuePullRequestUrl.focus();
+});
+issuePullRequestClose.addEventListener('click', () => issuePullRequestDialog.close());
+issuePullRequestCancel.addEventListener('click', () => issuePullRequestDialog.close());
+issuePullRequestDialog.addEventListener('close', () => {
+    issuePullRequestForm.reset();
+    issuePullRequestMessage.textContent = '';
+    issuePullRequestMessage.classList.remove('is-error');
+    if (selectedIssue !== null && !issueDetailView.hidden)
+        linkPullRequestButton.focus();
+});
+issuePullRequestForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const issueId = selectedIssue?.id;
+    if (issueId === undefined || activeProject === null || activeProject.github_repository === null)
+        return;
+    issuePullRequestSubmit.disabled = true;
+    issuePullRequestMessage.textContent = '';
+    issuePullRequestMessage.classList.remove('is-error');
+    void api(`/issues/${issueId}/pull-requests`, {
+        method: 'POST',
+        body: JSON.stringify({ url: issuePullRequestUrl.value }),
+    }).then(async () => {
+        if (selectedIssue?.id !== issueId)
+            return;
+        await loadIssuePullRequests(issueId);
+        issuePullRequestDialog.close();
+        report('Pull request linked.');
+    }).catch((error) => {
+        issuePullRequestMessage.textContent = error instanceof Error ? error.message : 'Could not link pull request.';
+        issuePullRequestMessage.classList.add('is-error');
+        issuePullRequestUrl.focus();
+    }).finally(() => {
+        issuePullRequestSubmit.disabled = false;
+    });
+});
 issueForm.addEventListener('submit', async (event) => {
     event.preventDefault();
     if (activeProject === null)
@@ -4811,6 +4951,84 @@ function renderIssueDetail() {
     else {
         delete issueSourceLink.dataset.messageId;
     }
+    renderIssuePullRequests();
+}
+function renderIssuePullRequests(message = '') {
+    const hasIssue = selectedIssue !== null;
+    const canManage = hasIssue
+        && activeProject !== null
+        && !projectStatusIsReadOnly(activeProject.status)
+        && activeUser?.role !== 'guest';
+    const canLink = canManage && activeProject !== null && activeProject.github_repository !== null;
+    issuePullRequestsList.replaceChildren(...linkedPullRequests.map((pullRequest) => {
+        const item = document.createElement('li');
+        item.className = 'issue-pull-request-row';
+        const main = document.createElement('div');
+        main.className = 'issue-pull-request-main';
+        const link = document.createElement('a');
+        link.className = 'issue-pull-request-link';
+        link.href = pullRequest.html_url;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = `${pullRequest.repository_full_name} #${pullRequest.pull_number} · ${pullRequest.title}`;
+        const metadata = document.createElement('div');
+        metadata.className = 'issue-pull-request-meta';
+        const state = document.createElement('span');
+        state.className = `issue-pull-request-state${pullRequest.state !== 'open' ? ' is-closed' : ''}`;
+        state.textContent = `${pullRequest.is_draft ? 'Draft · ' : ''}${pullRequest.state}`;
+        const author = document.createElement('span');
+        author.textContent = pullRequest.author_login === '' ? 'Author unknown' : `@${pullRequest.author_login}`;
+        const updated = document.createElement('time');
+        updated.dateTime = pullRequest.github_updated_at;
+        updated.textContent = `Updated ${new Date(`${pullRequest.github_updated_at}Z`).toLocaleDateString()}`;
+        metadata.append(state, author, updated);
+        main.append(link, metadata);
+        item.append(main);
+        if (canManage && selectedIssue !== null) {
+            const issueId = selectedIssue.id;
+            const unlink = document.createElement('button');
+            unlink.type = 'button';
+            unlink.className = 'button button-quiet';
+            unlink.textContent = 'Unlink';
+            unlink.setAttribute('aria-label', `Unlink pull request ${pullRequest.repository_full_name} #${pullRequest.pull_number}`);
+            unlink.addEventListener('click', () => void unlinkIssuePullRequest(issueId, pullRequest.id, unlink));
+            item.append(unlink);
+        }
+        return item;
+    }));
+    issuePullRequests.hidden = !hasIssue
+        || ((activeProject === null || activeProject.github_repository === null) && linkedPullRequests.length === 0);
+    linkPullRequestButton.hidden = !canLink;
+    issuePullRequestsEmpty.hidden = linkedPullRequests.length > 0;
+    issuePullRequestsEmpty.textContent = message || 'No pull requests linked yet.';
+}
+async function loadIssuePullRequests(issueId) {
+    const requestVersion = ++issuePullRequestsRequestVersion;
+    renderIssuePullRequests('Loading pull requests…');
+    try {
+        const result = await api(`/issues/${issueId}/pull-requests`);
+        if (requestVersion !== issuePullRequestsRequestVersion || selectedIssue?.id !== issueId)
+            return;
+        linkedPullRequests = result.pull_requests;
+        renderIssuePullRequests();
+    }
+    catch (error) {
+        if (requestVersion !== issuePullRequestsRequestVersion || selectedIssue?.id !== issueId)
+            return;
+        linkedPullRequests = [];
+        renderIssuePullRequests(error instanceof Error ? error.message : 'Could not load linked pull requests.');
+    }
+}
+async function unlinkIssuePullRequest(issueId, pullRequestId, button) {
+    button.disabled = true;
+    try {
+        await api(`/issues/${issueId}/pull-requests/${pullRequestId}`, { method: 'DELETE' });
+        await loadIssuePullRequests(issueId);
+    }
+    catch (error) {
+        button.disabled = false;
+        report(error instanceof Error ? error.message : 'Could not unlink pull request.', true);
+    }
 }
 async function loadIssueStatusHistory(issueId) {
     const requestVersion = ++issueStatusHistoryRequestVersion;
@@ -5122,6 +5340,7 @@ function closeIssueDetailEditForm() {
 function openIssue(issue) {
     stopIssueDiscussionPolling();
     selectedIssue = issue;
+    linkedPullRequests = [];
     issueDiscussionMessages = [];
     selectedIssueDiscussionMessageId = null;
     issueDiscussionList.replaceChildren();
@@ -5134,6 +5353,7 @@ function openIssue(issue) {
     issueDetailDisplay.hidden = false;
     issueDetailEditForm.hidden = true;
     renderIssueDetail();
+    void loadIssuePullRequests(issue.id);
     void loadIssueStatusHistory(issue.id);
     void loadIssueDiscussion(issue.id);
     switchProjectTab('issues');
@@ -6130,7 +6350,11 @@ projectForm.addEventListener('submit', async (event) => {
     try {
         await api('/projects', {
             method: 'POST',
-            body: JSON.stringify({ name: values.get('name'), description: values.get('description') }),
+            body: JSON.stringify({
+                name: values.get('name'),
+                description: values.get('description'),
+                github_repository_id: projectGithubRepository.value === '' ? null : Number(projectGithubRepository.value),
+            }),
         });
         closeProjectForm();
         report('Project created.');
@@ -6239,6 +6463,10 @@ async function loadClientView(projectId) {
 guestProjectSelect.addEventListener('change', () => { void loadClientView(Number(guestProjectSelect.value)); });
 guestLogoutButton.addEventListener('click', () => { void signOut(); });
 inboxMarkAllReadButton.addEventListener('click', () => { void markAllInboxEventsRead(); });
+window.addEventListener('storage', (event) => {
+    if (event.key === 'tangent-github-connected' && activeUser?.role === 'admin')
+        void loadGithubRepositories();
+});
 async function signOut() {
     try {
         await api('/auth/logout', { method: 'POST' });
@@ -6249,6 +6477,18 @@ async function signOut() {
 }
 logoutButton.addEventListener('click', () => { void signOut(); });
 async function start() {
+    const url = new URL(window.location.href);
+    const githubConnected = url.searchParams.get('github') === 'connected';
+    if (githubConnected) {
+        url.searchParams.delete('github');
+        history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+        try {
+            localStorage.setItem('tangent-github-connected', String(Date.now()));
+        }
+        catch {
+            // GitHub connection still completes when local storage is unavailable.
+        }
+    }
     const credentialState = consumeCredentialFragment();
     if (credentialState !== null) {
         showSignedOut();
@@ -6262,6 +6502,8 @@ async function start() {
             return;
         await loadWorkspaces();
         await loadProjects();
+        if (githubConnected)
+            report('GitHub connected. Choose a repository in project settings.');
     }
     catch (error) {
         showSignedOut();

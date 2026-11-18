@@ -17,7 +17,9 @@ final class ProjectRepository
     public function listForWorkspace(int $workspaceId): array
     {
         $statement = $this->pdo->prepare(
-            'SELECT id, workspace_id, name, slug, description, status, archived_from_status, created_by, created_at, updated_at
+            'SELECT id, workspace_id, name, slug, description, status, archived_from_status,
+                    github_installation_id, github_repository_id, github_repository_owner, github_repository_name,
+                    github_repository_full_name, github_repository_url, created_by, created_at, updated_at
              FROM projects
              WHERE workspace_id = :workspace_id
              ORDER BY name, id'
@@ -29,7 +31,9 @@ final class ProjectRepository
     public function find(int $workspaceId, int $projectId): ?array
     {
         $statement = $this->pdo->prepare(
-            'SELECT id, workspace_id, name, slug, description, status, archived_from_status, created_by, created_at, updated_at
+            'SELECT id, workspace_id, name, slug, description, status, archived_from_status,
+                    github_installation_id, github_repository_id, github_repository_owner, github_repository_name,
+                    github_repository_full_name, github_repository_url, created_by, created_at, updated_at
              FROM projects
              WHERE workspace_id = :workspace_id AND id = :id
              LIMIT 1'
@@ -84,7 +88,14 @@ final class ProjectRepository
         ], $statement->fetchAll(PDO::FETCH_ASSOC));
     }
 
-    public function create(int $workspaceId, string $name, string $slug, string $description, int $creatorId): array
+    public function create(
+        int $workspaceId,
+        string $name,
+        string $slug,
+        string $description,
+        int $creatorId,
+        ?array $githubRepository = null,
+    ): array
     {
         $ownsTransaction = !$this->pdo->inTransaction();
         if ($ownsTransaction) {
@@ -93,8 +104,12 @@ final class ProjectRepository
 
         try {
             $statement = $this->pdo->prepare(
-                'INSERT INTO projects (workspace_id, name, slug, description, status, created_by)
-                 VALUES (:workspace_id, :name, :slug, :description, :status, :created_by)'
+                'INSERT INTO projects
+                    (workspace_id, name, slug, description, status, github_installation_id, github_repository_id,
+                     github_repository_owner, github_repository_name, github_repository_full_name, github_repository_url, created_by)
+                 VALUES
+                    (:workspace_id, :name, :slug, :description, :status, :github_installation_id, :github_repository_id,
+                     :github_repository_owner, :github_repository_name, :github_repository_full_name, :github_repository_url, :created_by)'
             );
             $statement->execute([
                 'workspace_id' => $workspaceId,
@@ -102,6 +117,12 @@ final class ProjectRepository
                 'slug' => $slug,
                 'description' => $description,
                 'status' => 'active',
+                'github_installation_id' => $githubRepository['installation_id'] ?? null,
+                'github_repository_id' => $githubRepository['id'] ?? null,
+                'github_repository_owner' => $githubRepository['owner'] ?? null,
+                'github_repository_name' => $githubRepository['name'] ?? null,
+                'github_repository_full_name' => $githubRepository['full_name'] ?? null,
+                'github_repository_url' => $githubRepository['html_url'] ?? null,
                 'created_by' => $creatorId,
             ]);
             $projectId = (int) $this->pdo->lastInsertId();
@@ -132,7 +153,10 @@ final class ProjectRepository
         $statement = $this->pdo->prepare(
             'UPDATE projects
              SET name = :name, description = :description, status = :status,
-                 archived_from_status = :archived_from_status
+                 archived_from_status = :archived_from_status,
+                 github_installation_id = :github_installation_id, github_repository_id = :github_repository_id,
+                 github_repository_owner = :github_repository_owner, github_repository_name = :github_repository_name,
+                 github_repository_full_name = :github_repository_full_name, github_repository_url = :github_repository_url
              WHERE workspace_id = :workspace_id AND id = :id'
         );
         $statement->execute([
@@ -142,6 +166,12 @@ final class ProjectRepository
             'description' => $project['description'],
             'status' => $project['status'],
             'archived_from_status' => $project['archived_from_status'],
+            'github_installation_id' => $project['github_repository']['installation_id'] ?? null,
+            'github_repository_id' => $project['github_repository']['id'] ?? null,
+            'github_repository_owner' => $project['github_repository']['owner'] ?? null,
+            'github_repository_name' => $project['github_repository']['name'] ?? null,
+            'github_repository_full_name' => $project['github_repository']['full_name'] ?? null,
+            'github_repository_url' => $project['github_repository']['html_url'] ?? null,
         ]);
     }
 
@@ -227,6 +257,26 @@ final class ProjectRepository
         foreach (['id', 'workspace_id', 'created_by'] as $field) {
             $project[$field] = (int) $project[$field];
         }
+        if ($project['github_repository_id'] === null) {
+            $project['github_repository'] = null;
+        } else {
+            $project['github_repository'] = [
+                'id' => (int) $project['github_repository_id'],
+                'installation_id' => (int) $project['github_installation_id'],
+                'owner' => $project['github_repository_owner'],
+                'name' => $project['github_repository_name'],
+                'full_name' => $project['github_repository_full_name'],
+                'html_url' => $project['github_repository_url'],
+            ];
+        }
+        unset(
+            $project['github_installation_id'],
+            $project['github_repository_id'],
+            $project['github_repository_owner'],
+            $project['github_repository_name'],
+            $project['github_repository_full_name'],
+            $project['github_repository_url'],
+        );
         return $project;
     }
 }

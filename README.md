@@ -14,6 +14,7 @@ A keyboard-first, self-hosted workspace for small dev teams and freelancers: pro
 - **Project notes.** Each project has one internal Markdown page for durable context, with a safe rendered preview. Guest clients cannot access it.
 - **Fifteen retro themes.** Choose Putty & Screen, Rubber & Rainbow, Breadbin, Broadcast & Beige, Cassette & Colour, Mono & Membrane, Stripe & Signal, Paper & Rainbow, Desk & Phosphor, Silver & Speech, Blue & Byte, Cartridge & Cobalt, Nordic & Phosphor, Icon & Mouse, or Copper & Chroma in the login, guest, or workspace view; the choice is saved in this browser.
 - **Issues come out of the conversation.** Turn a chat message into an issue; the issue keeps a link back to its thread. Issues support priorities, due dates, and an optional guided AI prompt builder with copy and Markdown export.
+- **Track linked pull requests.** Connect a GitHub repository to a project, manually link PRs to issues, and receive inbox updates as their state changes. Guests cannot see GitHub details.
 - **A client portal that is not your internal tracker.** Invited guests see only what you share: progress, milestones and shared items. They can comment and approve requested work. Internal issues stay hidden, and visibility is enforced in the API, not just in the interface.
 - **Built to be installed by uploading files.** Plain PHP JSON API, no framework and no runtime dependencies. The frontend is static HTML, CSS and TypeScript. The release archive needs no Composer or npm on the server.
 - **Self-hosted.** Your data stays on your own hosting, with strict CSP and invite-only membership.
@@ -58,13 +59,14 @@ Open [http://localhost:8081](http://localhost:8081). The seed command prompts yo
 
 Implemented: authentication and invites, workspaces, project chat, issue tracking, inbox events, the restricted client guest view and the shared-host installer.
 
-Planned: standalone channels and direct messages, GitHub and GitLab links, weekly client summaries, and agent-friendly API access. See [ROADMAP.md](ROADMAP.md).
+Planned: standalone channels and direct messages, GitLab links, weekly client summaries, and agent-friendly API access. See [ROADMAP.md](ROADMAP.md).
 
 ## Documentation
 
 - [Issues and AI prompt builder](docs/ISSUES.md)
 - [Architecture and conventions](docs/ARCHITECTURE.md)
 - [Development setup](docs/DEVELOPMENT.md)
+- [GitHub pull-request tracking](docs/GITHUB.md)
 - [API description (OpenAPI)](docs/openapi.yaml)
 - [Installation](INSTALL.md)
 

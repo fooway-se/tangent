@@ -124,6 +124,20 @@ final class InboxEvents
         $this->record($workspaceId, $projectId, [$creatorId], $actorId, 'status', $issueId, null, 'approved a shared issue', $title);
     }
 
+    public function recordGitHubPullRequest(int $workspaceId, int $projectId, int $issueId, string $summary, string $detail): void
+    {
+        $recipients = [];
+        foreach ($this->projects->members($workspaceId, $projectId) as $member) {
+            if ((bool) ($member['is_active'] ?? true) && in_array($member['role'] ?? '', ['admin', 'developer'], true)) {
+                $recipients[] = (int) $member['id'];
+            }
+        }
+        foreach ($this->users->list($workspaceId) as $user) {
+            if ((bool) $user['is_active'] && $user['role'] === 'admin') $recipients[] = (int) $user['id'];
+        }
+        $this->record($workspaceId, $projectId, $recipients, null, 'pr', $issueId, null, $summary, $detail);
+    }
+
     private function record(
         int $workspaceId,
         int $projectId,

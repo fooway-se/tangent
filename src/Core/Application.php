@@ -21,6 +21,12 @@ use Tangent\Modules\Issues\IssueRepository;
 use Tangent\Modules\Issues\IssueDiscussionRepository;
 use Tangent\Modules\Issues\IssuesRoutes;
 use Tangent\Modules\Issues\IssuesService;
+use Tangent\Modules\GitHub\GitHubAppClient;
+use Tangent\Modules\GitHub\GitHubApiClient;
+use Tangent\Modules\GitHub\GitHubInstallationRepository;
+use Tangent\Modules\GitHub\GitHubPullRequestRepository;
+use Tangent\Modules\GitHub\GitHubRoutes;
+use Tangent\Modules\GitHub\GitHubService;
 use Tangent\Modules\Inbox\InboxRoutes;
 use Tangent\Modules\Inbox\InboxService;
 use Tangent\Modules\Inbox\InboxEventRepository;
@@ -39,7 +45,7 @@ use Tangent\Modules\Workspaces\WorkspaceService;
 
 final class Application
 {
-    public static function create(PDO $pdo, AppConfig $config): Gateway
+    public static function create(PDO $pdo, AppConfig $config, ?GitHubApiClient $githubApiClient = null): Gateway
     {
         $basePath = AppBasePath::fromPublicUrl($config->publicAppUrl);
         $apiCookiePath = AppBasePath::apiCookiePath($basePath);
@@ -76,7 +82,17 @@ final class Application
             $milestoneRepository,
             new IssueDiscussionRepository($pdo),
         );
-        $projects = new ProjectService($projectRepository, $users, $pdo, $chat, $issues, $workspaceRepository);
+        $github = new GitHubService(
+            $githubApiClient ?? new GitHubAppClient($config->githubAppId, $config->githubPrivateKey),
+            new GitHubInstallationRepository($pdo),
+            new GitHubPullRequestRepository($pdo),
+            $projectRepository,
+            $issueRepository,
+            $inboxEvents,
+            $pdo,
+            $config,
+        );
+        $projects = new ProjectService($projectRepository, $users, $pdo, $chat, $issues, $workspaceRepository, $github);
         $inbox = new InboxService($issueRepository, $projects);
         $clientView = new ClientViewService($projectRepository, $milestoneRepository, $issueRepository, $chat);
         $milestones = new MilestoneService($milestoneRepository, $issueRepository, $projectRepository, $pdo);
@@ -104,6 +120,7 @@ final class Application
         (new ChatRoutes($chat))->register($router);
         (new IssuesRoutes($issues))->register($router);
         (new InboxRoutes($inbox, $inboxEvents))->register($router);
+        (new GitHubRoutes($github, $config))->register($router);
 
         return new Gateway($router, new Authenticator($tokens, $config));
     }

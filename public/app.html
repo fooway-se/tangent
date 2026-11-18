@@ -141,6 +141,13 @@
                 <label>Description
                   <textarea name="description" rows="3" maxlength="5000"></textarea>
                 </label>
+                <label>GitHub repository (optional)
+                  <select id="project-github-repository" name="github_repository_id">
+                    <option value="">No repository connected</option>
+                  </select>
+                </label>
+                <p id="github-project-selection-status" class="github-project-selection-status" role="status" aria-live="polite"></p>
+                <button id="connect-github-create-button" class="button button-secondary github-connect-button" type="button">Connect GitHub</button>
                 <div class="form-actions">
                   <button id="cancel-project-form" class="button button-quiet" type="button">Cancel</button>
                   <button class="button button-primary" type="submit">Create project</button>
@@ -362,6 +369,14 @@
                       <p id="issue-detail-acceptance-criteria"></p>
                     </section>
                   </details>
+                  <section id="issue-pull-requests" class="issue-pull-requests" hidden aria-labelledby="issue-pull-requests-heading">
+                    <header class="issue-pull-requests-heading">
+                      <h3 id="issue-pull-requests-heading">Pull requests</h3>
+                      <button id="link-pull-request-button" class="button button-secondary" type="button" hidden>Link pull request</button>
+                    </header>
+                    <ul id="issue-pull-requests-list" class="issue-pull-requests-list"></ul>
+                    <p id="issue-pull-requests-empty" class="issue-pull-requests-empty" hidden>No pull requests linked yet.</p>
+                  </section>
                   <a id="issue-source-link" class="issue-source-link" href="#project-chat-column" hidden>Open source chat thread</a>
                   <details id="issue-status-history" class="issue-status-history" hidden>
                     <summary>
@@ -624,6 +639,13 @@
           <label>Description
             <textarea id="project-edit-description-input" name="description" rows="4" maxlength="5000"></textarea>
           </label>
+          <label>GitHub repository (optional)
+            <select id="project-edit-github-repository" name="github_repository_id">
+              <option value="">No repository connected</option>
+            </select>
+          </label>
+          <p id="github-project-edit-status" class="github-project-selection-status" role="status" aria-live="polite"></p>
+          <button id="connect-github-edit-button" class="button button-secondary github-connect-button" type="button">Connect GitHub</button>
           <label>Status
             <select id="project-edit-status" name="status" aria-describedby="project-edit-status-help">
               <option value="active">Active</option>
@@ -714,6 +736,26 @@
           <button id="issue-ai-prompt-copy-markdown" class="button" type="button">Copy Markdown</button>
           <button id="issue-ai-prompt-download" class="button" type="button">Download Markdown</button>
         </div>
+      </section>
+    </dialog>
+
+    <dialog id="issue-pull-request-dialog" class="issue-pull-request-dialog" aria-labelledby="issue-pull-request-heading">
+      <section class="issue-pull-request-content">
+        <header class="dialog-heading">
+          <h2 id="issue-pull-request-heading">Link a pull request</h2>
+          <button id="issue-pull-request-close" class="button button-quiet" type="button">Close</button>
+        </header>
+        <p class="issue-pull-request-intro">Paste a pull request URL from the repository connected to this project.</p>
+        <form id="issue-pull-request-form" class="form-stack">
+          <label>Pull request URL
+            <input id="issue-pull-request-url" name="url" type="url" maxlength="500" placeholder="https://github.com/owner/repository/pull/123" required>
+          </label>
+          <p id="issue-pull-request-message" class="issue-pull-request-message" role="status" aria-live="polite"></p>
+          <div class="form-actions">
+            <button id="issue-pull-request-cancel" class="button button-quiet" type="button">Cancel</button>
+            <button id="issue-pull-request-submit" class="button button-primary" type="submit">Link pull request</button>
+          </div>
+        </form>
       </section>
     </dialog>
 

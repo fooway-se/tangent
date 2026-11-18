@@ -15,6 +15,7 @@ final class Request
         public readonly string $remoteAddress = 'unknown',
         public readonly bool $validJson = true,
         public readonly array $query = [],
+        public readonly string $rawBody = '',
     ) {
     }
 
@@ -26,8 +27,20 @@ final class Request
         array $cookies = [],
         string $remoteAddress = 'unknown',
         array $query = [],
+        ?string $rawBody = null,
     ): self {
-        return new self(strtoupper($method), $path, $body, $headers, $cookies, $remoteAddress, true, $query);
+        $encodedBody = json_encode($body);
+        return new self(
+            strtoupper($method),
+            $path,
+            $body,
+            $headers,
+            $cookies,
+            $remoteAddress,
+            true,
+            $query,
+            $rawBody ?? ($encodedBody === false ? '' : $encodedBody),
+        );
     }
 
     public static function fromHttp(
@@ -59,6 +72,7 @@ final class Request
             $remoteAddress,
             $validJson,
             $query,
+            $rawBody,
         );
     }
 

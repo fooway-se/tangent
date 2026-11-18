@@ -12,6 +12,7 @@ use Tangent\Core\Permissions;
 use Tangent\Modules\Auth\UserRepository;
 use Tangent\Modules\Chat\ChatService;
 use Tangent\Modules\Issues\IssuesService;
+use Tangent\Modules\GitHub\GitHubService;
 use Tangent\Modules\Workspaces\WorkspaceRepository;
 
 final class ProjectService
@@ -23,6 +24,7 @@ final class ProjectService
         private readonly ChatService $chat,
         private readonly IssuesService $issues,
         private readonly WorkspaceRepository $workspaces,
+        private readonly GitHubService $github,
     ) {
     }
 
@@ -49,6 +51,7 @@ final class ProjectService
     public function get(AuthenticatedUser $user, int $projectId): array
     {
         $project = $this->findVisible($user, $projectId);
+        if ($user->role === 'guest') $project['github_repository'] = null;
         return [
             'project' => $project,
             'members' => $this->projects->members($user->workspaceId, $projectId),
@@ -90,6 +93,14 @@ final class ProjectService
             throw new ApiException(422, 'validation_failed', 'Project description cannot exceed 5000 characters.');
         }
 
+        $githubRepository = null;
+        if (array_key_exists('github_repository_id', $body) && $body['github_repository_id'] !== null) {
+            if (!is_int($body['github_repository_id']) || $body['github_repository_id'] < 1) {
+                throw new ApiException(422, 'validation_failed', 'GitHub repository ID must be a positive integer or null.');
+            }
+            $githubRepository = $this->github->repositoryForWorkspace($user->workspaceId, $body['github_repository_id']);
+        }
+
         $slug = self::slug($name);
         $ownsTransaction = !$this->pdo->inTransaction();
         if ($ownsTransaction) {
@@ -97,7 +108,7 @@ final class ProjectService
         }
 
         try {
-            $project = $this->projects->create($user->workspaceId, $name, $slug, $description, $user->id);
+            $project = $this->projects->create($user->workspaceId, $name, $slug, $description, $user->id, $githubRepository);
             $this->chat->createProjectChannel($user->workspaceId, (int) $project['id']);
             if ($ownsTransaction) {
                 $this->pdo->commit();
@@ -126,6 +137,7 @@ final class ProjectService
             'description' => $project['description'],
             'status' => $project['status'],
             'archived_from_status' => $project['archived_from_status'],
+            'github_repository' => $project['github_repository'],
         ];
         if (array_key_exists('name', $body)) {
             if (!is_string($body['name'])) {
@@ -145,17 +157,30 @@ final class ProjectService
         if (mb_strlen($updated['description'], 'UTF-8') > 5000) {
             throw new ApiException(422, 'validation_failed', 'Project description cannot exceed 5000 characters.');
         }
+        if (array_key_exists('github_repository_id', $body)) {
+            if ($body['github_repository_id'] === null) {
+                $updated['github_repository'] = null;
+            } elseif (is_int($body['github_repository_id']) && $body['github_repository_id'] > 0) {
+                if ($project['github_repository'] === null || $project['github_repository']['id'] !== $body['github_repository_id']) {
+                    $updated['github_repository'] = $this->github->repositoryForWorkspace($user->workspaceId, $body['github_repository_id']);
+                }
+            } else {
+                throw new ApiException(422, 'validation_failed', 'GitHub repository ID must be a positive integer or null.');
+            }
+        }
         if (array_key_exists('status', $body)) {
             if (!is_string($body['status']) || !in_array($body['status'], ProjectLifecycle::STATUSES, true)) {
                 throw new ApiException(422, 'validation_failed', 'Project status must be active, paused, completed, or archived.');
             }
             $updated['status'] = $body['status'];
         }
-        if (!array_intersect(['name', 'description', 'status'], array_keys($body))) {
+        if (!array_intersect(['name', 'description', 'status', 'github_repository_id'], array_keys($body))) {
             throw new ApiException(422, 'validation_failed', 'At least one project field must be supplied.');
         }
 
-        $metadataChanged = $updated['name'] !== $project['name'] || $updated['description'] !== $project['description'];
+        $metadataChanged = $updated['name'] !== $project['name']
+            || $updated['description'] !== $project['description']
+            || $updated['github_repository'] !== $project['github_repository'];
         $staysReadOnly = ($project['status'] === 'completed'
                 && !in_array($updated['status'], ['active', 'paused'], true))
             || ($project['status'] === 'archived' && $updated['status'] === 'archived');
