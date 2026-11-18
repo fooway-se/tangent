@@ -7,10 +7,6 @@ Planned work, in no fixed order. Tangent is pre-alpha, so this list will change.
 - Add standalone channels and direct messages; decide whether group conversations are needed.
 - Evaluate optional SSE or WebSocket updates for hosts that support persistent connections.
 
-## Issues
-
-- Consider structured context, expected outcomes and acceptance criteria, with an option to copy or export an issue as a prompt or Markdown.
-
 ## GitHub and other integrations
 
 - Link issues to pull requests and commits. Process GitHub webhooks for opened or merged pull requests and commits that reference issue keys, and show those events in the inbox.
