@@ -61,6 +61,29 @@ test('invite and password reset fragments are removed before public requests', (
   assert.match(loginSubmit, /error instanceof ApiFailure && error\.status === 429\)[\s\S]{0,100}loginAdminHelp\.hidden = false/);
 });
 
+test('unusable invite links show one working action back to sign in', () => {
+  const failurePath = app.slice(
+    app.indexOf("credentialFlowDescription.textContent = 'This invite link cannot be used.';"),
+    app.indexOf("\n  }\n}", app.indexOf("credentialFlowDescription.textContent = 'This invite link cannot be used.';")),
+  );
+  assert.match(failurePath, /credentialSubmit\.hidden = true/);
+  assert.match(failurePath, /setCredentialCancelPrimary\(\)/);
+  assert.match(failurePath, /credentialCancel\.focus\(\)/);
+
+  const primaryAction = app.slice(app.indexOf('function setCredentialCancelPrimary('), app.indexOf('async function openCredentialFlow('));
+  assert.match(primaryAction, /credentialCancel\.classList\.add\('button', 'button-primary'\)/);
+  assert.match(primaryAction, /credentialCancel\.textContent = 'Back to sign in'/);
+
+  const reset = app.slice(app.indexOf('function resetAuthForms('), app.indexOf('function showCredentialFlow('));
+  assert.match(reset, /credentialSubmit\.hidden = false/);
+  assert.match(reset, /setCredentialCancelSecondary\(\)/);
+  assert.match(reset, /loginStatusMessage\.hidden = false/);
+  assert.match(reset, /loginKeyboardHints\.hidden = false/);
+
+  const cancelHandler = app.slice(app.indexOf("credentialCancel.addEventListener('click'"), app.indexOf("credentialForm.addEventListener('submit'"));
+  assert.match(cancelHandler, /resetAuthForms\(\)/);
+});
+
 test('workspace administration renders member and invite data as text', () => {
   assert.match(app, /function renderWorkspaceMembers\(/);
   assert.match(app, /function renderWorkspaceInvites\(/);

@@ -149,6 +149,7 @@ const workspaceGuestProjectsStatus = document.querySelector('#workspace-guest-pr
 const workspaceGuestProjectsCancel = document.querySelector('#workspace-guest-projects-cancel');
 const workspaceGuestProjectsSave = document.querySelector('#workspace-guest-projects-save');
 const loginAdminHelp = document.querySelector('#login-admin-help');
+const loginKeyboardHints = document.querySelector('.login-keyboard-hints');
 const credentialFlow = document.querySelector('#credential-flow');
 const credentialFlowHeading = document.querySelector('#credential-flow-heading');
 const credentialFlowDescription = document.querySelector('#credential-flow-description');
@@ -5049,6 +5050,11 @@ function resetAuthForms() {
     credentialFlowError.hidden = true;
     credentialFlowError.textContent = '';
     credentialForm.reset();
+    credentialSubmit.hidden = false;
+    credentialSubmit.disabled = false;
+    setCredentialCancelSecondary();
+    loginStatusMessage.hidden = false;
+    loginKeyboardHints.hidden = false;
     const password = credentialForm.elements.namedItem('password');
     const confirmation = credentialForm.elements.namedItem('confirmation');
     if (password instanceof HTMLInputElement)
@@ -5061,8 +5067,20 @@ function showCredentialFlow() {
     loginForm.hidden = true;
     loginAdminHelp.hidden = true;
     credentialFlow.hidden = false;
+    loginStatusMessage.hidden = true;
+    loginKeyboardHints.hidden = true;
     credentialFlowError.hidden = true;
     credentialFlowError.textContent = '';
+}
+function setCredentialCancelPrimary() {
+    credentialCancel.classList.remove('auth-text-button');
+    credentialCancel.classList.add('button', 'button-primary');
+    credentialCancel.textContent = 'Back to sign in';
+}
+function setCredentialCancelSecondary() {
+    credentialCancel.classList.remove('button', 'button-primary');
+    credentialCancel.classList.add('auth-text-button');
+    credentialCancel.textContent = 'Back to sign in';
 }
 async function openCredentialFlow(credential) {
     credentialFragment = credential;
@@ -5109,6 +5127,9 @@ async function openCredentialFlow(credential) {
         credentialFlowDescription.textContent = 'This invite link cannot be used.';
         credentialFlowError.textContent = error instanceof Error ? error.message : 'This invite link is invalid or expired.';
         credentialFlowError.hidden = false;
+        credentialSubmit.hidden = true;
+        setCredentialCancelPrimary();
+        credentialCancel.focus();
     }
 }
 credentialCancel.addEventListener('click', () => {

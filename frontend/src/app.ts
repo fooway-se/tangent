@@ -351,6 +351,7 @@ const workspaceGuestProjectsStatus = document.querySelector<HTMLElement>('#works
 const workspaceGuestProjectsCancel = document.querySelector<HTMLButtonElement>('#workspace-guest-projects-cancel')!;
 const workspaceGuestProjectsSave = document.querySelector<HTMLButtonElement>('#workspace-guest-projects-save')!;
 const loginAdminHelp = document.querySelector<HTMLElement>('#login-admin-help')!;
+const loginKeyboardHints = document.querySelector<HTMLElement>('.login-keyboard-hints')!;
 const credentialFlow = document.querySelector<HTMLElement>('#credential-flow')!;
 const credentialFlowHeading = document.querySelector<HTMLHeadingElement>('#credential-flow-heading')!;
 const credentialFlowDescription = document.querySelector<HTMLElement>('#credential-flow-description')!;
@@ -5143,6 +5144,11 @@ function resetAuthForms(): void {
   credentialFlowError.hidden = true;
   credentialFlowError.textContent = '';
   credentialForm.reset();
+  credentialSubmit.hidden = false;
+  credentialSubmit.disabled = false;
+  setCredentialCancelSecondary();
+  loginStatusMessage.hidden = false;
+  loginKeyboardHints.hidden = false;
   const password = credentialForm.elements.namedItem('password');
   const confirmation = credentialForm.elements.namedItem('confirmation');
   if (password instanceof HTMLInputElement) password.required = true;
@@ -5154,8 +5160,22 @@ function showCredentialFlow(): void {
   loginForm.hidden = true;
   loginAdminHelp.hidden = true;
   credentialFlow.hidden = false;
+  loginStatusMessage.hidden = true;
+  loginKeyboardHints.hidden = true;
   credentialFlowError.hidden = true;
   credentialFlowError.textContent = '';
+}
+
+function setCredentialCancelPrimary(): void {
+  credentialCancel.classList.remove('auth-text-button');
+  credentialCancel.classList.add('button', 'button-primary');
+  credentialCancel.textContent = 'Back to sign in';
+}
+
+function setCredentialCancelSecondary(): void {
+  credentialCancel.classList.remove('button', 'button-primary');
+  credentialCancel.classList.add('auth-text-button');
+  credentialCancel.textContent = 'Back to sign in';
 }
 
 async function openCredentialFlow(credential: CredentialFragment): Promise<void> {
@@ -5197,6 +5217,9 @@ async function openCredentialFlow(credential: CredentialFragment): Promise<void>
     credentialFlowDescription.textContent = 'This invite link cannot be used.';
     credentialFlowError.textContent = error instanceof Error ? error.message : 'This invite link is invalid or expired.';
     credentialFlowError.hidden = false;
+    credentialSubmit.hidden = true;
+    setCredentialCancelPrimary();
+    credentialCancel.focus();
   }
 }
 
