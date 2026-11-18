@@ -28,6 +28,52 @@ final class ProjectChatTest extends ApiTestCase
         self::assertSame(1, (int) $query->fetchColumn());
     }
 
+    public function testProjectPresenceReportsOnlyWhetherAnotherViewerIsActive(): void
+    {
+        $admin = $this->login($this->adminEmail);
+        $projectId = $this->createProject($admin, 'Project presence');
+
+        $adminHeartbeat = $this->postPresence($projectId, $admin);
+        self::assertSame(200, $adminHeartbeat->status, json_encode($adminHeartbeat->body));
+        self::assertSame(['someone_else_viewing' => false], $adminHeartbeat->body);
+
+        $this->cookieRequest(
+            'PUT',
+            "/api/v1/projects/{$projectId}/members/{$this->developerId}",
+            $admin['cookie'],
+            [],
+            $admin['csrf'],
+        );
+        $developer = $this->login($this->developerEmail);
+        $developerHeartbeat = $this->postPresence($projectId, $developer);
+        self::assertSame(200, $developerHeartbeat->status, json_encode($developerHeartbeat->body));
+        self::assertSame(['someone_else_viewing' => true], $developerHeartbeat->body);
+
+        $sameUserHeartbeat = $this->postPresence($projectId, $admin);
+        self::assertSame(['someone_else_viewing' => true], $sameUserHeartbeat->body);
+
+        $stalePresence = $this->pdo->prepare(
+            'UPDATE project_presence SET last_seen_at = UTC_TIMESTAMP() - INTERVAL 2 MINUTE
+             WHERE workspace_id = :workspace_id AND project_id = :project_id AND user_id = :user_id'
+        );
+        $stalePresence->execute([
+            'workspace_id' => $this->workspaceId,
+            'project_id' => $projectId,
+            'user_id' => $this->developerId,
+        ]);
+        $afterExpiry = $this->postPresence($projectId, $admin);
+        self::assertSame(['someone_else_viewing' => false], $afterExpiry->body);
+    }
+
+    public function testNonMembersCannotReportProjectPresence(): void
+    {
+        $admin = $this->login($this->adminEmail);
+        $projectId = $this->createProject($admin, 'Private project presence');
+        $developer = $this->login($this->developerEmail);
+
+        self::assertSame(404, $this->postPresence($projectId, $developer)->status);
+    }
+
     public function testProjectMembersCanPostMessagesAndThreadReplies(): void
     {
         $admin = $this->login($this->adminEmail);
@@ -223,6 +269,17 @@ final class ProjectChatTest extends ApiTestCase
             'POST',
             "/api/v1/projects/{$projectId}/messages",
             $body,
+            ['X-CSRF-Token' => $user['csrf']],
+            ['tangent_session' => $user['cookie']],
+        );
+    }
+
+    private function postPresence(int $projectId, array $user): Response
+    {
+        return $this->apiRequest(
+            'POST',
+            "/api/v1/projects/{$projectId}/presence",
+            [],
             ['X-CSRF-Token' => $user['csrf']],
             ['tangent_session' => $user['cookie']],
         );

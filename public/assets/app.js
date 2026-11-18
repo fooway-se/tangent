@@ -513,6 +513,10 @@ let chatPollTimer = null;
 let chatCursor = 0;
 let chatEtag = null;
 let chatPollDelay = 1000;
+const PROJECT_PRESENCE_INTERVAL_MS = 15_000;
+let projectPresenceTimer = null;
+let projectPresenceRequestVersion = 0;
+let chatPresenceIndicator = null;
 let chatFollowLatest = true;
 let chatMessageList = null;
 let chatEmptyState = null;
@@ -1381,6 +1385,7 @@ function goBackWorkspaceView() {
     }
 }
 function stopChatPolling() {
+    stopProjectPresencePolling();
     activeChatProjectId = null;
     if (chatPollTimer !== null)
         window.clearTimeout(chatPollTimer);
@@ -2861,6 +2866,76 @@ function scheduleChatPoll(delay = chatPollDelay) {
             void pollProjectChat(activeChatProjectId);
     }, delay);
 }
+function stopProjectPresencePolling() {
+    if (projectPresenceTimer !== null)
+        window.clearTimeout(projectPresenceTimer);
+    projectPresenceTimer = null;
+    projectPresenceRequestVersion += 1;
+    chatPresenceIndicator = null;
+}
+function scheduleProjectPresencePoll(delay = PROJECT_PRESENCE_INTERVAL_MS) {
+    if (projectPresenceTimer !== null)
+        window.clearTimeout(projectPresenceTimer);
+    projectPresenceTimer = null;
+    if (activeChatProjectId === null || chatPresenceIndicator === null)
+        return;
+    projectPresenceTimer = window.setTimeout(() => {
+        projectPresenceTimer = null;
+        if (activeChatProjectId !== null)
+            void pollProjectPresence(activeChatProjectId);
+    }, delay);
+}
+async function pollProjectPresence(projectId) {
+    if (projectPresenceTimer !== null)
+        window.clearTimeout(projectPresenceTimer);
+    projectPresenceTimer = null;
+    if (activeChatProjectId !== projectId || chatPresenceIndicator === null)
+        return;
+    const requestVersion = ++projectPresenceRequestVersion;
+    if (document.hidden) {
+        scheduleProjectPresencePoll();
+        return;
+    }
+    try {
+        const result = await api(`/projects/${projectId}/presence`, {
+            method: 'POST',
+            body: JSON.stringify({}),
+        });
+        if (requestVersion !== projectPresenceRequestVersion || activeChatProjectId !== projectId)
+            return;
+        setProjectPresenceState(result.someone_else_viewing === true ? 'active' : 'alone');
+    }
+    catch (error) {
+        if (requestVersion !== projectPresenceRequestVersion || activeChatProjectId !== projectId)
+            return;
+        if (error instanceof ApiFailure && error.status === 401) {
+            showSignedOut();
+            return;
+        }
+        setProjectPresenceState('unknown');
+    }
+    finally {
+        if (requestVersion === projectPresenceRequestVersion && activeChatProjectId === projectId) {
+            scheduleProjectPresencePoll();
+        }
+    }
+}
+function setProjectPresenceState(state) {
+    if (chatPresenceIndicator === null)
+        return;
+    const isActive = state === 'active';
+    const light = chatPresenceIndicator.querySelector('.chat-presence-light');
+    chatPresenceIndicator.className = state === 'active'
+        ? 'chat-presence is-active'
+        : state === 'unknown' ? 'chat-presence is-unknown' : 'chat-presence is-alone';
+    light?.classList.toggle('is-on', isActive);
+    light?.classList.toggle('is-off', !isActive);
+    const label = state === 'active'
+        ? 'Another person is viewing this project'
+        : state === 'unknown' ? 'Could not check whether anyone else is viewing this project' : 'No other active viewers';
+    chatPresenceIndicator.setAttribute('aria-label', label);
+    chatPresenceIndicator.title = label;
+}
 async function pollProjectChat(projectId) {
     if (activeChatProjectId !== projectId)
         return;
@@ -3282,6 +3357,7 @@ function handleChatMentionKeydown(event) {
     return false;
 }
 function createProjectChat(projectId) {
+    stopProjectPresencePolling();
     const section = document.createElement('section');
     section.className = 'project-chat';
     const heading = document.createElement('h3');
@@ -3298,7 +3374,19 @@ function createProjectChat(projectId) {
     const memberCount = document.createElement('span');
     memberCount.className = 'chat-members-count';
     memberCount.textContent = `${activeProjectMembers.length} ${activeProjectMembers.length === 1 ? 'member' : 'members'}`;
-    heading.append(channelName, memberCount);
+    const activity = document.createElement('span');
+    activity.className = 'chat-heading-activity';
+    const presenceIndicator = document.createElement('span');
+    presenceIndicator.className = 'chat-presence is-unknown';
+    presenceIndicator.setAttribute('role', 'status');
+    presenceIndicator.setAttribute('aria-label', 'Checking project viewer status');
+    presenceIndicator.title = 'Checking project viewer status';
+    const presenceLight = document.createElement('span');
+    presenceLight.className = 'login-power-light chat-presence-light is-off';
+    presenceLight.setAttribute('aria-hidden', 'true');
+    presenceIndicator.append(presenceLight);
+    activity.append(memberCount, presenceIndicator);
+    heading.append(channelName, activity);
     chatFollowLatest = true;
     const messageList = document.createElement('div');
     messageList.className = 'chat-message-list';
@@ -3421,9 +3509,11 @@ function createProjectChat(projectId) {
     });
     section.append(heading, chatMessageList, form);
     activeChatProjectId = projectId;
+    chatPresenceIndicator = presenceIndicator;
     chatCursor = 0;
     chatEtag = null;
     chatPollDelay = 1000;
+    void pollProjectPresence(projectId);
     void loadProjectChatHistory(projectId);
     return section;
 }
@@ -3431,6 +3521,7 @@ document.addEventListener('visibilitychange', () => {
     if (!document.hidden && activeChatProjectId !== null) {
         chatPollDelay = 1000;
         scheduleChatPoll(0);
+        void pollProjectPresence(activeChatProjectId);
     }
     if (!document.hidden && activeProject !== null && issuePollingIsActive(activeProject.id)) {
         issuePollDelay = 1000;

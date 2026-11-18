@@ -761,6 +761,25 @@ paths:
                   project: { $ref: '#/components/schemas/Project' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '409': { $ref: '#/components/responses/Conflict' }
+  /projects/{id}/presence:
+    post:
+      summary: Update viewer presence for a project
+      description: Records the authenticated viewer's active presence and returns only whether another authorized project chat viewer has an active heartbeat. Presence expires after 45 seconds without a heartbeat.
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/CsrfToken'
+      responses:
+        '200':
+          description: Boolean indication that another viewer is active.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [someone_else_viewing]
+                properties:
+                  someone_else_viewing: { type: boolean }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /projects/{id}/messages:
     get:
       summary: Read recent project messages or poll for messages after an ID

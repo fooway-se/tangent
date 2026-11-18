@@ -77,6 +77,17 @@ final class ChatRoutes
             ]);
         });
 
+        $router->add('POST', '/api/v1/projects/{id}/presence', function (
+            Request $request,
+            array $params,
+            AuthenticatedUser $user,
+        ): Response {
+            return Response::json(200, $this->service->heartbeatProjectPresence(
+                $user,
+                self::positiveId($params['id']),
+            ));
+        });
+
         $router->add('POST', '/api/v1/projects/{id}/messages', function (
             Request $request,
             array $params,

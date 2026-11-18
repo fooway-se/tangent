@@ -57,6 +57,18 @@ final class ChatService
         return $message;
     }
 
+    public function heartbeatProjectPresence(AuthenticatedUser $user, int $projectId): array
+    {
+        $this->visibleProjectChannel($user, $projectId);
+        return [
+            'someone_else_viewing' => $this->chat->heartbeatProjectPresence(
+                $user->workspaceId,
+                $projectId,
+                $user->id,
+            ),
+        ];
+    }
+
     public function clientConversationMessages(AuthenticatedUser $user, int $projectId): array
     {
         $channelId = $this->visibleProjectChannel($user, $projectId, 'client_view.read');

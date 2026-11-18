@@ -44,6 +44,42 @@ final class ChatRepository
         return $channelId === false ? null : (int) $channelId;
     }
 
+    public function heartbeatProjectPresence(int $workspaceId, int $projectId, int $userId): bool
+    {
+        $prune = $this->pdo->prepare(
+            'DELETE FROM project_presence
+             WHERE workspace_id = :workspace_id AND project_id = :project_id
+               AND last_seen_at < UTC_TIMESTAMP() - INTERVAL 1 DAY'
+        );
+        $prune->execute(['workspace_id' => $workspaceId, 'project_id' => $projectId]);
+
+        $heartbeat = $this->pdo->prepare(
+            'INSERT INTO project_presence (workspace_id, project_id, user_id, last_seen_at)
+             VALUES (:workspace_id, :project_id, :user_id, UTC_TIMESTAMP())
+             ON DUPLICATE KEY UPDATE last_seen_at = UTC_TIMESTAMP()'
+        );
+        $heartbeat->execute([
+            'workspace_id' => $workspaceId,
+            'project_id' => $projectId,
+            'user_id' => $userId,
+        ]);
+
+        $otherViewer = $this->pdo->prepare(
+            'SELECT EXISTS (
+                SELECT 1 FROM project_presence
+                WHERE workspace_id = :workspace_id AND project_id = :project_id
+                  AND user_id <> :user_id
+                  AND last_seen_at >= UTC_TIMESTAMP() - INTERVAL 45 SECOND
+             )'
+        );
+        $otherViewer->execute([
+            'workspace_id' => $workspaceId,
+            'project_id' => $projectId,
+            'user_id' => $userId,
+        ]);
+        return (bool) $otherViewer->fetchColumn();
+    }
+
     public function latestMessageId(int $workspaceId, int $channelId): int
     {
         $statement = $this->pdo->prepare(
