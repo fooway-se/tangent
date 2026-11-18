@@ -51,5 +51,5 @@ test('issue rows mark shared issues and leave internal issues without a sharing 
 });
 
 test('issue type, sharing, milestone, and assignee metadata use one typography rule', () => {
-  assert.match(css, /\.issue-metadata > \*\s*\{[^}]*font:\s*400 10px\/1\.4 var\(--font-mono\)/);
+  assert.match(css, /\.issue-metadata\s*\{[^}]*font:\s*400 11px\/1\.5 var\(--font-mono\)/);
 });

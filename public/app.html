@@ -285,22 +285,22 @@
                   </div>
                 </header>
                 <div class="issue-detail-status-row">
-                  <span>Status <kbd>s</kbd></span>
+                  <span class="issue-detail-label">Status <kbd>s</kbd></span>
                   <button id="issue-detail-status" class="button issue-status-button issue-detail-status-button" type="button" aria-haspopup="dialog">
                     <span id="issue-detail-status-label">Backlog</span><span class="issue-status-caret" aria-hidden="true">▾</span>
                   </button>
                 </div>
                 <div id="issue-detail-display" class="issue-detail-display">
                   <h2 id="issue-detail-title" class="issue-detail-title"></h2>
-                  <div class="issue-detail-metadata">
-                    <span>Type: <strong id="issue-detail-type"></strong></span>
-                    <span>Priority: <strong id="issue-detail-priority"></strong></span>
-                    <span>Due date: <strong id="issue-detail-due-date"></strong></span>
-                    <span>Assignee: <strong id="issue-detail-assignee"></strong></span>
-                    <span>Milestone: <strong id="issue-detail-milestone"></strong></span>
-                    <span id="issue-detail-sharing"></span>
-                    <span id="issue-detail-approval"></span>
-                  </div>
+                  <dl class="issue-detail-metadata">
+                    <div><dt>Type</dt><dd id="issue-detail-type"></dd></div>
+                    <div><dt>Priority</dt><dd id="issue-detail-priority"></dd></div>
+                    <div><dt>Due date</dt><dd id="issue-detail-due-date"></dd></div>
+                    <div><dt>Assignee</dt><dd id="issue-detail-assignee"></dd></div>
+                    <div><dt>Milestone</dt><dd id="issue-detail-milestone"></dd></div>
+                    <div><dt>Guests</dt><dd id="issue-detail-sharing"></dd></div>
+                    <div><dt>Approval</dt><dd id="issue-detail-approval"></dd></div>
+                  </dl>
                   <p id="issue-detail-description" class="issue-detail-description"></p>
                   <details id="issue-detail-brief" class="issue-detail-brief" hidden aria-labelledby="issue-detail-brief-heading">
                     <summary id="issue-detail-brief-heading">AI prompt context saved</summary>

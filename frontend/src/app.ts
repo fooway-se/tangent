@@ -3590,16 +3590,22 @@ function createInboxIssueRow(issue: InboxIssue): HTMLLIElement {
 
   const metadata = document.createElement('div');
   metadata.className = 'issue-metadata inbox-issue-metadata';
-  const type = document.createElement('span');
-  type.className = 'issue-type-tag';
-  type.textContent = issueTypeLabel(issue.type);
-  const priority = document.createElement('span');
-  priority.className = `issue-priority-tag is-${issue.priority}`;
-  priority.textContent = issuePriorityLabel(issue.priority);
   const status = document.createElement('span');
   status.className = `inbox-issue-status is-${issue.status}`;
   status.textContent = issueStatusLabel(issue.status);
-  metadata.append(type, priority, status);
+  metadata.append(status);
+  if (issue.type !== 'task') {
+    const type = document.createElement('span');
+    type.className = 'issue-type-tag';
+    type.textContent = issueTypeLabel(issue.type);
+    metadata.append(type);
+  }
+  if (issue.priority !== 'medium') {
+    const priority = document.createElement('span');
+    priority.className = `issue-priority-tag is-${issue.priority}`;
+    priority.textContent = `${issuePriorityLabel(issue.priority)} priority`;
+    metadata.append(priority);
+  }
   if (issue.due_date !== null) {
     const dueDate = document.createElement('span');
     const overdue = isIssueOverdue(issue);
@@ -4273,12 +4279,12 @@ function renderIssueDetail(): void {
   issueDetailDueDate.classList.toggle('is-overdue', overdue);
   issueDetailAssignee.textContent = issueAssigneeLabel(selectedIssue.assignee_id);
   issueDetailMilestone.textContent = projectMilestones.find((milestone) => milestone.id === selectedIssue?.milestone_id)?.name ?? 'None';
-  issueDetailSharing.textContent = selectedIssue.is_shared ? 'Shared with guest' : 'Internal';
+  issueDetailSharing.textContent = selectedIssue.is_shared ? 'Shared' : 'Internal only';
   issueDetailApproval.textContent = selectedIssue.approved_at !== null
-    ? 'Approved by guest'
+    ? 'Approved'
     : selectedIssue.approval_requested_at !== null
-      ? 'Guest approval requested'
-      : 'No guest approval requested';
+      ? 'Requested'
+      : 'Not requested';
   issueDetailDescription.textContent = selectedIssue.description || 'No description yet.';
   issueDetailDescription.classList.toggle('is-empty', selectedIssue.description === '');
   issueDetailContext.textContent = selectedIssue.context;
@@ -4827,18 +4833,18 @@ function createIssueRow(
   mainline.append(indicator, key, title);
   const metadata = document.createElement('div');
   metadata.className = 'issue-metadata';
-  const type = document.createElement('span');
-  type.className = 'issue-type-tag';
-  type.textContent = issueTypeLabel(issue.type);
-  const assignee = document.createElement('span');
-  assignee.className = 'issue-assignee-label';
-  assignee.textContent = `Assignee: ${issueAssigneeLabel(issue.assignee_id)}`;
-  metadata.append(type);
-  const priority = document.createElement('span');
-  priority.className = `issue-priority-tag is-${issue.priority}`;
-  priority.textContent = issuePriorityLabel(issue.priority);
-  priority.title = `Priority: ${issuePriorityLabel(issue.priority)}`;
-  metadata.append(priority);
+  if (issue.type !== 'task') {
+    const type = document.createElement('span');
+    type.className = 'issue-type-tag';
+    type.textContent = issueTypeLabel(issue.type);
+    metadata.append(type);
+  }
+  if (issue.priority !== 'medium') {
+    const priority = document.createElement('span');
+    priority.className = `issue-priority-tag is-${issue.priority}`;
+    priority.textContent = `${issuePriorityLabel(issue.priority)} priority`;
+    metadata.append(priority);
+  }
   if (issue.due_date !== null) {
     const dueDate = document.createElement('span');
     const overdue = isIssueOverdue(issue);
@@ -4858,22 +4864,28 @@ function createIssueRow(
     const milestone = document.createElement('span');
     milestone.className = 'issue-milestone-tag';
     milestone.textContent = issue.milestone_name;
-    milestone.title = issue.milestone_name;
+    milestone.title = `Milestone: ${issue.milestone_name}`;
     metadata.append(milestone);
   }
-  metadata.append(assignee);
+  if (issue.assignee_id !== null) {
+    const assignee = document.createElement('span');
+    assignee.className = 'issue-assignee-label';
+    assignee.textContent = issueAssigneeLabel(issue.assignee_id);
+    assignee.title = 'Assignee';
+    metadata.append(assignee);
+  }
+  if (issue.source_message_id !== null) {
+    const source = document.createElement('span');
+    source.className = 'issue-source';
+    source.textContent = 'From chat thread';
+    metadata.append(source);
+  }
   content.append(mainline, metadata);
   if (issue.description !== '') {
     const description = document.createElement('p');
     description.className = 'issue-description';
     description.textContent = issue.description;
     content.append(description);
-  }
-  if (issue.source_message_id !== null) {
-    const source = document.createElement('span');
-    source.className = 'issue-source';
-    source.textContent = 'From chat thread';
-    content.append(source);
   }
 
   const hasReorderActions = reorder?.canMoveEarlier !== undefined || reorder?.canMoveLater !== undefined;

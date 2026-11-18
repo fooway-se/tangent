@@ -2,7 +2,7 @@
 
 A keyboard-first, self-hosted workspace for small dev teams and freelancers: project chat, issues and a client portal in one place. It runs on ordinary PHP and MySQL hosting.
 
-![Project view with issues and chat](assets/screenshots/project-chat.webp)
+![Project view with issues and chat](assets/screenshots/project-issues.webp)
 
 > [!WARNING]
 > **Tangent is pre-alpha.** Do not use it for anything important. The database schema may change, and there is no upgrade guarantee yet: a future version may require a fresh install. There is no production release.
@@ -16,6 +16,8 @@ A keyboard-first, self-hosted workspace for small dev teams and freelancers: pro
 - **Self-hosted.** Your data stays on your own hosting, with strict CSP and invite-only membership.
 
 Aimed at freelancers, small remote teams and studios that coordinate client work.
+
+![Issue detail with discussion](assets/screenshots/issue-detail.webp)
 
 ![Client portal, guest view](assets/screenshots/guest-portal.webp)
 

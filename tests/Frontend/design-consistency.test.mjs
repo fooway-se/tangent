@@ -103,3 +103,25 @@ test('stacked admin panels are spaced and quiet row actions are visible', () => 
   assert.match(css, /\.workspace-admin-tab-panel > \.panel \+ \.panel \{[^}]*margin-top:/);
   assert.match(css, /\.member-list \.button-quiet \{[^}]*border-color:\s*var\(--screen-border\)/);
 });
+
+test('no text is set below the 11px minimum', () => {
+  const tooSmall = [...css.matchAll(/font(?:-size)?:[^;}]*?\b(\d+(?:\.\d+)?)px/g)]
+    .filter((match) => Number(match[1]) < 11)
+    .map((match) => match[0]);
+  assert.deepEqual(tooSmall, []);
+});
+
+test('issue list metadata is plain text, not bordered chips', () => {
+  for (const selector of ['.issue-type-tag', '.issue-priority-tag', '.issue-due-date-tag', '.issue-shared-tag', '.issue-milestone-tag', '.inbox-issue-status']) {
+    const line = css.split('\n').filter((entry) => entry.startsWith(`${selector} {`) || entry.includes(`, ${selector} {`)).join('');
+    assert.doesNotMatch(line, /border:\s*1px/, `${selector} has no chip border`);
+  }
+});
+
+test('issue detail section labels share one label style', () => {
+  const labels = ['.issue-detail-brief > summary', '.issue-status-history > summary', '.issue-discussion-heading h3', '.issue-detail-metadata dt'];
+  const line = css.split('\n').find((entry) => entry.startsWith('.issue-detail-metadata dt'));
+  assert.ok(line, 'shared label rule exists');
+  for (const label of labels) assert.ok(line.includes(label), `${label} uses the shared label rule`);
+  assert.match(line, /font:\s*700 11px\/1\.4 var\(--font-display\)/);
+});
