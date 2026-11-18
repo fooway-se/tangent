@@ -137,6 +137,19 @@ test('Escape from a Workspace Admin field returns to its tab bar for section swi
   assert.match(html, /<kbd>Tab<\/kbd><\/dt><dd>Enter the selected tab's section/);
 });
 
+test('Escape dismisses the milestone dialog before blurring its focused field', () => {
+  assert.equal(resolve('Escape', { modalOpen: true, textInputFocused: true, canDismiss: true }), 'dismiss');
+  const context = app.slice(app.indexOf('function shortcutContext'), app.indexOf('function clearGoPrefix'));
+  assert.match(context, /modalOpen:[\s\S]*milestoneDeleteConfirmation\.open[\s\S]*milestoneManagerDialog\.open/);
+  const dismiss = app.slice(app.indexOf('function dismissCurrentView'), app.indexOf('function handleKeyboardShortcut'));
+  assert.ok(dismiss.indexOf('milestoneDeleteConfirmation.open') < dismiss.indexOf('milestoneManagerDialog.open'));
+  const closeHandler = app.slice(
+    app.indexOf("milestoneManagerDialog.addEventListener('close'"),
+    app.indexOf("issuesTabButton.addEventListener('click'", app.indexOf("milestoneManagerDialog.addEventListener('close'")),
+  );
+  assert.match(closeHandler, /manageMilestonesButton\.focus\(\)/);
+});
+
 test('chat message selection supports navigation, reply, issue creation, and composer focus', () => {
   const chatSelection = { chatMessagesFocused: true, hasSelectedChatMessage: true };
   assert.equal(resolve('j', chatSelection), 'next-chat-message');

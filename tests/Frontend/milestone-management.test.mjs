@@ -43,3 +43,40 @@ test('milestone list shows issue progress and a green completion indicator', () 
   assert.match(app, /✓ Complete/);
   assert.match(css, /\.milestone-row-progress\.is-complete[^\{]*\{[^}]*var\(--success\)/);
 });
+
+test('milestone deletion uses an in-app confirmation and explains linked issue behavior', () => {
+  assert.match(app, /remove\.setAttribute\('aria-label', `Delete milestone:/);
+  assert.match(html, /<dialog id="milestone-delete-confirmation"[^>]*aria-labelledby="milestone-delete-heading"/);
+  assert.match(html, /id="milestone-delete-description"/);
+  assert.match(html, /id="milestone-delete-cancel"/);
+  assert.match(html, /id="milestone-delete-confirm"/);
+  assert.match(app, /function openMilestoneDeleteConfirmation\(/);
+  assert.match(app, /milestoneDeleteConfirmation\.showModal\(\)/);
+  assert.match(app, /milestoneDeleteConfirm\.addEventListener\('click'/);
+  assert.doesNotMatch(app, /window\.(?:alert|confirm|prompt)\s*\(/);
+  assert.match(app, /async function deleteMilestone\(/);
+  assert.match(app, /api\(`\/projects\/\$\{projectId\}\/milestones\/\$\{milestone\.id\}`/);
+  assert.match(app, /method:\s*'DELETE'/);
+  assert.match(app, /projectMilestones = projectMilestones\.filter/);
+  assert.match(app, /projectIssues = projectIssues\.map/);
+  assert.match(app, /renderProjectIssueBoard\(\)/);
+  assert.match(app, /milestone_id === milestone\.id/);
+  assert.match(app, /populateIssueMilestoneSelect\(issueQuickAddMilestone,/);
+});
+
+test('milestone rows can be deleted from the keyboard when focused', () => {
+  assert.match(app, /row\.tabIndex = 0/);
+  assert.match(app, /row\.setAttribute\('aria-keyshortcuts', 'Delete'\)/);
+  assert.match(app, /row\.addEventListener\('keydown'/);
+  assert.match(app, /event\.key !== 'Delete'/);
+  assert.match(app, /if \(nextMilestoneRow === undefined\) milestoneNameInput\.focus\(\);\s*else nextMilestoneRow\.focus\(\);/);
+});
+
+test('opening the milestone manager focuses a milestone when available', () => {
+  const openStart = app.indexOf('function openMilestoneManager(');
+  const openEnd = app.indexOf('\nfunction closeMilestoneManager(', openStart + 1);
+  const open = app.slice(openStart, openEnd);
+  assert.match(open, /milestoneManagerDialog\.showModal\(\)/);
+  assert.match(open, /const firstMilestoneRow = milestoneList\.querySelector/);
+  assert.match(open, /if \(firstMilestoneRow === null\) milestoneNameInput\.focus\(\);\s*else firstMilestoneRow\.focus\(\);/);
+});

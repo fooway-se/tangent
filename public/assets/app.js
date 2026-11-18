@@ -231,6 +231,11 @@ const issueProgress = document.querySelector('#issue-progress');
 const issueProgressLabel = document.querySelector('#issue-progress-label');
 const manageMilestonesButton = document.querySelector('#manage-milestones-button');
 const milestoneManagerDialog = document.querySelector('#milestone-manager-dialog');
+const milestoneDeleteConfirmation = document.querySelector('#milestone-delete-confirmation');
+const milestoneDeleteDescription = document.querySelector('#milestone-delete-description');
+const milestoneDeleteError = document.querySelector('#milestone-delete-error');
+const milestoneDeleteCancel = document.querySelector('#milestone-delete-cancel');
+const milestoneDeleteConfirm = document.querySelector('#milestone-delete-confirm');
 const milestoneManagerClose = document.querySelector('#milestone-manager-close');
 const milestoneList = document.querySelector('#milestone-list');
 const milestoneListEmpty = document.querySelector('#milestone-list-empty');
@@ -287,6 +292,7 @@ const workspaceViewHistory = [];
 let activeProjectMembers = [];
 let projectMilestones = [];
 let editingMilestoneId = null;
+let milestoneDeleteTarget = null;
 let projectIssues = [];
 let issueGroupingBeforeNextUp = 'status';
 let issueGroupingForcedByNextUp = false;
@@ -1220,7 +1226,8 @@ function issuePollingIsActive(projectId) {
 function issueUpdatesAreDeferred() {
     const dialogOpen = issueStatusPicker.open || issueDeleteConfirmation.open
         || memberRemovalConfirmation.open || workspaceMemberDeactivationDialog.open
-        || workspaceMemberRoleDialog.open || workspaceGuestProjectsDialog.open || milestoneManagerDialog.open;
+        || workspaceMemberRoleDialog.open || workspaceGuestProjectsDialog.open
+        || milestoneDeleteConfirmation.open || milestoneManagerDialog.open;
     return shouldDeferIssueUpdates({
         issueEditorOpen: !issueDetailEditForm.hidden,
         quickAddActive: issueForm.classList.contains('is-active') || issueQuickAddHasDraft(),
@@ -1550,7 +1557,7 @@ function shortcutContext(target) {
         textInputFocused: shouldBlurOnEscape(target),
         modalOpen: commandPalette.open || shortcutHelp.open || issueStatusPicker.open || issueDeleteConfirmation.open
             || memberRemovalConfirmation.open || workspaceMemberDeactivationDialog.open || workspaceMemberRoleDialog.open
-            || workspaceGuestProjectsDialog.open
+            || workspaceGuestProjectsDialog.open || milestoneDeleteConfirmation.open || milestoneManagerDialog.open
             || workspacePicker.open,
         canDismiss: commandPalette.open || shortcutHelp.open || (!workspacePanel.hidden && (pendingWorkspaceId !== null
             || (!projectView.hidden && (!issueDetailView.hidden || !issueDetailEditForm.hidden
@@ -1952,8 +1959,12 @@ function runPaletteCommand(index) {
     command.run();
 }
 function openCommandPalette() {
+    if (milestoneDeleteConfirm.disabled)
+        return;
     if (workspacePicker.open)
         resetPendingWorkspaceSwitch();
+    if (milestoneDeleteConfirmation.open)
+        closeMilestoneDeleteConfirmation();
     if (milestoneManagerDialog.open)
         closeMilestoneManager();
     if (issueStatusPicker.open)
@@ -1982,8 +1993,12 @@ function openCommandPalette() {
     commandSearch.focus();
 }
 function showShortcutHelp() {
+    if (milestoneDeleteConfirm.disabled)
+        return;
     if (workspacePicker.open)
         resetPendingWorkspaceSwitch();
+    if (milestoneDeleteConfirmation.open)
+        closeMilestoneDeleteConfirmation();
     if (milestoneManagerDialog.open)
         closeMilestoneManager();
     if (issueStatusPicker.open)
@@ -2008,8 +2023,13 @@ function showShortcutHelp() {
     shortcutHelpClose.focus();
 }
 function dismissCurrentView() {
+    if (milestoneDeleteConfirm.disabled)
+        return;
     if (workspacePicker.open) {
         resetPendingWorkspaceSwitch();
+    }
+    else if (milestoneDeleteConfirmation.open) {
+        closeMilestoneDeleteConfirmation();
     }
     else if (milestoneManagerDialog.open) {
         closeMilestoneManager();
@@ -2273,7 +2293,7 @@ function executeShortcut(action) {
     }
 }
 function handleKeyboardShortcut(event) {
-    if ((commandPalette.open || shortcutHelp.open || issueStatusPicker.open || issueDeleteConfirmation.open || memberRemovalConfirmation.open || workspaceMemberDeactivationDialog.open || workspaceMemberRoleDialog.open || workspaceGuestProjectsDialog.open || milestoneManagerDialog.open || workspacePicker.open)
+    if ((commandPalette.open || shortcutHelp.open || issueStatusPicker.open || issueDeleteConfirmation.open || memberRemovalConfirmation.open || workspaceMemberDeactivationDialog.open || workspaceMemberRoleDialog.open || workspaceGuestProjectsDialog.open || milestoneDeleteConfirmation.open || milestoneManagerDialog.open || workspacePicker.open)
         && event.key !== 'Escape'
         && !((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k'))
         return;
@@ -2821,6 +2841,16 @@ workspaceAdminTabs.addEventListener('keydown', (event) => {
 breadcrumbProjectsButton.addEventListener('click', goToProjects);
 manageMilestonesButton.addEventListener('click', openMilestoneManager);
 milestoneManagerClose.addEventListener('click', closeMilestoneManager);
+milestoneDeleteCancel.addEventListener('click', () => closeMilestoneDeleteConfirmation());
+milestoneDeleteConfirm.addEventListener('click', () => {
+    if (milestoneDeleteTarget !== null) {
+        void deleteMilestone(milestoneDeleteTarget.milestone, milestoneDeleteTarget.button);
+    }
+});
+milestoneDeleteConfirmation.addEventListener('cancel', (event) => {
+    event.preventDefault();
+    closeMilestoneDeleteConfirmation();
+});
 milestoneForm.addEventListener('submit', (event) => void saveMilestone(event));
 milestoneFormCancel.addEventListener('click', () => {
     resetMilestoneForm();
@@ -3426,6 +3456,8 @@ function renderMilestoneList() {
     for (const milestone of projectMilestones) {
         const row = document.createElement('li');
         row.className = 'milestone-row';
+        row.tabIndex = 0;
+        row.setAttribute('aria-keyshortcuts', 'Delete');
         const info = document.createElement('div');
         info.className = 'milestone-row-info';
         const name = document.createElement('strong');
@@ -3463,7 +3495,23 @@ function renderMilestoneList() {
             milestoneFormError.hidden = true;
             milestoneNameInput.focus();
         });
-        row.append(info, edit);
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'button button-quiet button-danger';
+        remove.textContent = 'Delete';
+        remove.setAttribute('aria-label', `Delete milestone: ${milestone.name}`);
+        remove.addEventListener('click', () => openMilestoneDeleteConfirmation(milestone, remove));
+        row.addEventListener('keydown', (event) => {
+            if (event.key !== 'Delete' || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || event.repeat)
+                return;
+            event.preventDefault();
+            event.stopPropagation();
+            remove.click();
+        });
+        const actions = document.createElement('div');
+        actions.className = 'milestone-row-actions';
+        actions.append(edit, remove);
+        row.append(info, actions);
         milestoneList.append(row);
     }
 }
@@ -3473,11 +3521,41 @@ function openMilestoneManager() {
     resetMilestoneForm();
     renderMilestoneList();
     milestoneManagerDialog.showModal();
-    milestoneNameInput.focus();
+    const firstMilestoneRow = milestoneList.querySelector('.milestone-row');
+    if (firstMilestoneRow === null)
+        milestoneNameInput.focus();
+    else
+        firstMilestoneRow.focus();
 }
 function closeMilestoneManager() {
+    if (milestoneDeleteConfirm.disabled)
+        return;
+    if (milestoneDeleteConfirmation.open)
+        closeMilestoneDeleteConfirmation();
     if (milestoneManagerDialog.open)
         milestoneManagerDialog.close();
+}
+function openMilestoneDeleteConfirmation(milestone, button) {
+    milestoneDeleteTarget = { milestone, button };
+    milestoneDeleteDescription.textContent = `Deleting “${milestone.name}” leaves its issues in the project and removes their milestone assignment.`;
+    milestoneDeleteError.textContent = '';
+    milestoneDeleteError.hidden = true;
+    milestoneDeleteConfirmation.showModal();
+    milestoneDeleteCancel.focus();
+}
+function closeMilestoneDeleteConfirmation(force = false) {
+    if (milestoneDeleteConfirm.disabled && !force)
+        return;
+    const target = milestoneDeleteTarget;
+    if (milestoneDeleteConfirmation.open)
+        milestoneDeleteConfirmation.close();
+    milestoneDeleteTarget = null;
+    milestoneDeleteError.textContent = '';
+    milestoneDeleteError.hidden = true;
+    milestoneDeleteConfirm.disabled = false;
+    milestoneDeleteCancel.disabled = false;
+    if (target?.button.isConnected && milestoneManagerDialog.open)
+        target.button.focus();
 }
 async function saveMilestone(event) {
     event.preventDefault();
@@ -3538,6 +3616,69 @@ async function saveMilestone(event) {
         milestoneManagerClose.disabled = false;
         milestoneNameInput.disabled = false;
         milestoneDueDateInput.disabled = false;
+    }
+}
+async function deleteMilestone(milestone, button) {
+    const projectId = activeProject?.id;
+    if (projectId === undefined)
+        return;
+    const milestoneIndex = Math.max(0, projectMilestones.findIndex((candidate) => candidate.id === milestone.id));
+    const quickAddMilestoneId = issueQuickAddMilestone.value === '' ? null : Number(issueQuickAddMilestone.value);
+    const detailMilestoneId = issueDetailMilestoneInput.value === '' ? null : Number(issueDetailMilestoneInput.value);
+    button.disabled = true;
+    milestoneDeleteConfirm.disabled = true;
+    milestoneDeleteCancel.disabled = true;
+    milestoneManagerClose.disabled = true;
+    try {
+        await api(`/projects/${projectId}/milestones/${milestone.id}`, { method: 'DELETE' });
+        if (activeProject?.id !== projectId)
+            return;
+        closeMilestoneDeleteConfirmation(true);
+        projectMilestones = projectMilestones.filter((candidate) => candidate.id !== milestone.id);
+        projectIssues = projectIssues.map((issue) => issue.milestone_id === milestone.id
+            ? { ...issue, milestone_id: null }
+            : issue);
+        if (selectedIssue?.milestone_id === milestone.id) {
+            selectedIssue = { ...selectedIssue, milestone_id: null };
+        }
+        populateIssueMilestoneSelect(issueQuickAddMilestone, quickAddMilestoneId === milestone.id ? null : quickAddMilestoneId);
+        const nextDetailMilestoneId = issueDetailEditForm.hidden
+            ? selectedIssue?.milestone_id ?? null
+            : detailMilestoneId;
+        populateIssueMilestoneSelect(issueDetailMilestoneInput, nextDetailMilestoneId === milestone.id ? null : nextDetailMilestoneId);
+        if (editingMilestoneId === milestone.id)
+            resetMilestoneForm();
+        renderMilestoneList();
+        renderProjectIssueBoard();
+        if (selectedIssue !== null)
+            renderIssueDetail();
+        report('Milestone deleted. Its issues are now unassigned.');
+        if (milestoneManagerDialog.open) {
+            const remainingRows = Array.from(milestoneList.querySelectorAll('.milestone-row'));
+            const nextMilestoneRow = remainingRows[Math.min(milestoneIndex, remainingRows.length - 1)];
+            if (nextMilestoneRow === undefined)
+                milestoneNameInput.focus();
+            else
+                nextMilestoneRow.focus();
+        }
+    }
+    catch (error) {
+        if (error instanceof ApiFailure && error.status === 401) {
+            closeMilestoneDeleteConfirmation(true);
+            closeMilestoneManager();
+            showSignedOut();
+            return;
+        }
+        milestoneDeleteError.textContent = error instanceof Error ? error.message : 'Could not delete the milestone.';
+        milestoneDeleteError.hidden = false;
+        if (milestoneDeleteConfirmation.open)
+            milestoneDeleteConfirm.focus();
+    }
+    finally {
+        button.disabled = false;
+        milestoneDeleteConfirm.disabled = false;
+        milestoneDeleteCancel.disabled = false;
+        milestoneManagerClose.disabled = false;
     }
 }
 async function loadProjectDetail(projectId, tab = 'issues', recordHistory = true) {
