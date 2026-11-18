@@ -1,0 +1,1462 @@
+openapi: 3.1.0
+info:
+  title: Tangent API
+  version: 1.0.0
+  description: Authentication, workspace membership and switching, internal project work, event inbox, and a permission-filtered guest client view.
+servers:
+  - url: /api/v1
+security:
+  - SessionCookie: []
+  - BearerToken: []
+paths:
+  /auth/login:
+    post:
+      security: []
+      summary: Sign in and create a browser session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, minLength: 1 }
+      responses:
+        '200':
+          description: Signed in; the server sets session, active-workspace, and CSRF cookies.
+          headers:
+            Set-Cookie: { schema: { type: string } }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [user, csrf_token, expires_at]
+                properties:
+                  user: { $ref: '#/components/schemas/User' }
+                  csrf_token: { type: string }
+                  expires_at: { type: string, format: date-time }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /auth/invites/inspect:
+    post:
+      security: []
+      summary: Inspect a workspace invite link
+      description: Public, rate-limited endpoint. The link token is sent in the JSON body, never in the URL. Indicates whether a new password is required; existing accounts are linked by the invite token.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token: { type: string, pattern: '^[a-f0-9]{64}$' }
+      responses:
+        '200':
+          description: Invite recipient and role details.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [invite]
+                properties:
+                  invite:
+                    type: object
+                    required: [name, email, workspace_name, role, project_ids, password_required]
+                    properties:
+                      name: { type: string }
+                      email: { type: string, format: email }
+                      workspace_name: { type: string }
+                      role: { type: string, enum: [developer, guest] }
+                      project_ids: { type: array, items: { type: integer } }
+                      password_required: { type: boolean }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /auth/invites/accept:
+    post:
+      security: []
+      summary: Accept an invite and create a session
+      description: Public, rate-limited, one-use token. New accounts must provide a password. If the email already has an account, the membership is linked to that account and its existing password remains unchanged. The member and guest project access are created atomically.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token: { type: string, pattern: '^[a-f0-9]{64}$' }
+                password: { type: string, minLength: 15, maxLength: 128, description: Required for new accounts. Any Unicode characters and spaces are allowed; validation also checks a common-password blocklist and account context. }
+      responses:
+        '200':
+          description: Invite accepted; session, workspace, and CSRF cookies are set.
+          headers:
+            Set-Cookie: { schema: { type: string } }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [user, csrf_token, expires_at]
+                properties:
+                  user: { $ref: '#/components/schemas/User' }
+                  csrf_token: { type: string }
+                  expires_at: { type: string, format: date-time }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /auth/password-reset/complete:
+    post:
+      security: []
+      summary: Set a new password using a reset token
+      description: Public, rate-limited, one-use token. Revokes all active browser and API sessions for the account after a successful reset.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, password]
+              properties:
+                token: { type: string, pattern: '^[a-f0-9]{64}$' }
+                password: { type: string, minLength: 15, maxLength: 128, description: All Unicode characters and spaces are accepted; common, leaked, and contextual passwords are rejected. }
+      responses:
+        '204': { description: Password updated and existing sessions revoked. }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /auth/me:
+    get:
+      summary: Return the authenticated user
+      responses:
+        '200':
+          description: Current user.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user: { $ref: '#/components/schemas/User' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /auth/logout:
+    post:
+      summary: Revoke the current session or API token
+      description: Cookie-authenticated requests must include X-CSRF-Token. Bearer requests do not need CSRF protection.
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+      responses:
+        '204': { description: Session revoked and browser cookies cleared. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/CsrfFailed' }
+  /workspaces:
+    get:
+      summary: List workspaces associated with the authenticated account
+      responses:
+        '200':
+          description: Workspaces the current account can access.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [workspaces]
+                properties:
+                  workspaces:
+                    type: array
+                    items: { $ref: '#/components/schemas/Workspace' }
+    post:
+      summary: Create a workspace for another client (admin only)
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, minLength: 2, maxLength: 120 }
+      responses:
+        '201':
+          description: Workspace created and the creator added as an admin.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  workspace: { $ref: '#/components/schemas/Workspace' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+  /workspaces/{id}/switch:
+    post:
+      security:
+        - SessionCookie: []
+      summary: Switch the browser session to another workspace
+      description: Requires a browser session and X-CSRF-Token. The session is rotated and the old session revoked.
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/CsrfToken'
+      responses:
+        '200':
+          description: Active workspace changed; session, workspace, and CSRF cookies are replaced.
+          headers:
+            Set-Cookie: { schema: { type: string } }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [user, workspace, csrf_token, expires_at]
+                properties:
+                  user: { $ref: '#/components/schemas/User' }
+                  workspace: { $ref: '#/components/schemas/Workspace' }
+                  csrf_token: { type: string }
+                  expires_at: { type: string, format: date-time }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /users:
+    get:
+      summary: List workspace users (admin only)
+      responses:
+        '200':
+          description: Workspace users.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  users:
+                    type: array
+                    items: { $ref: '#/components/schemas/User' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      summary: Create a developer or guest (admin only)
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password]
+              properties:
+                name: { type: string, minLength: 2, maxLength: 120 }
+                email: { type: string, format: email, maxLength: 254 }
+                password: { type: string, minLength: 15, maxLength: 128, description: Password policy is shared with invite and reset flows. }
+                role: { type: string, enum: [developer, guest], default: developer }
+      responses:
+        '201':
+          description: Developer or guest created.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user: { $ref: '#/components/schemas/User' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+  /users/invites:
+    get:
+      summary: List pending workspace invites (admin only)
+      responses:
+        '200':
+          description: Pending invites without secret tokens.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [invites]
+                properties:
+                  invites:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, name, email, role, project_ids, expires_at, created_at]
+                      properties:
+                        id: { type: integer }
+                        name: { type: string }
+                        email: { type: string, format: email }
+                        role: { type: string, enum: [developer, guest] }
+                        project_ids: { type: array, items: { type: integer } }
+                        expires_at: { type: string, format: date-time }
+                        created_at: { type: string, format: date-time }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      summary: Create a workspace invite link (admin only)
+      description: Stores only a SHA-256 token hash and returns the raw link once so the admin can copy and send it manually. Invite links expire after seven days and contain the token in the app URL fragment. Guest invites require at least one active project.
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, role]
+              properties:
+                name: { type: string, minLength: 2, maxLength: 120 }
+                email: { type: string, format: email, maxLength: 254 }
+                role: { type: string, enum: [developer, guest] }
+                project_ids: { type: array, items: { type: integer, minimum: 1 }, description: Required for guests and empty for developers. }
+      responses:
+        '201':
+          description: Invite created. The raw link is returned only in this response and is not available from the invite list.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [invite]
+                properties:
+                  invite:
+                    type: object
+                    required: [id, email, name, role, project_ids, expires_at, invite_url]
+                    properties:
+                      id: { type: integer }
+                      email: { type: string, format: email }
+                      name: { type: string }
+                      role: { type: string, enum: [developer, guest] }
+                      project_ids: { type: array, items: { type: integer } }
+                      expires_at: { type: string, format: date-time }
+                      invite_url: { type: string, format: uri }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /users/invites/{id}/link:
+    post:
+      summary: Generate a replacement invite link (admin only)
+      description: The previous token is invalidated. A fresh random token is generated, hashed, and returned once for the admin to copy and send manually, with a new seven-day expiry.
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/CsrfToken'
+      responses:
+        '200':
+          description: New invite link, returned only in this response.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [invite]
+                properties:
+                  invite:
+                    type: object
+                    required: [id, email, name, role, project_ids, expires_at, invite_url]
+                    properties:
+                      id: { type: integer }
+                      email: { type: string, format: email }
+                      name: { type: string }
+                      role: { type: string, enum: [developer, guest] }
+                      project_ids: { type: array, items: { type: integer } }
+                      expires_at: { type: string, format: date-time }
+                      invite_url: { type: string, format: uri }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /users/invites/{id}:
+    delete:
+      summary: Revoke a pending workspace invite (admin only)
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/CsrfToken'
+      responses:
+        '204': { description: Invite revoked. }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /users/{id}/status:
+    patch:
+      summary: Activate or deactivate a workspace membership (admin only)
+      description: Deactivation revokes the member's sessions in this workspace and blocks workspace and project access. The account and memberships in other workspaces remain. At least one active workspace admin must remain.
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [is_active]
+              properties:
+                is_active: { type: boolean }
+      responses:
+        '200':
+          description: Updated workspace membership state.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [user]
+                properties:
+                  user: { $ref: '#/components/schemas/WorkspaceMember' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+  /users/{id}/role:
+    patch:
+      summary: Change a workspace member's role (admin only)
+      description: Updates the member's role in this workspace only. An admin cannot change their own role, and at least one active admin must remain.
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role]
+              properties:
+                role: { type: string, enum: [admin, developer, guest] }
+      responses:
+        '200':
+          description: Updated workspace membership role.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [user]
+                properties:
+                  user: { $ref: '#/components/schemas/WorkspaceMember' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+  /users/{id}/projects:
+    get:
+      summary: List active projects available to a guest member (admin only)
+      description: Returns the guest's active project memberships. Archived project memberships are retained but omitted.
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: The guest member's active project IDs.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [project_ids]
+                properties:
+                  project_ids:
+                    type: array
+                    items: { type: integer }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    put:
+      summary: Replace a guest member's active project access (admin only)
+      description: Updates active project memberships in the current workspace. An empty list removes access to every active project. Archived memberships are preserved.
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [project_ids]
+              properties:
+                project_ids:
+                  type: array
+                  items: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: The guest member's active project IDs after the update.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [project_ids]
+                properties:
+                  project_ids:
+                    type: array
+                    items: { type: integer }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+  /users/{id}/password-reset:
+    post:
+      summary: Generate a one-use password reset link (admin only)
+      description: The link is returned only in this response; copy and send it manually. It expires after one hour. Successful completion changes the account-wide password and revokes active sessions across workspaces.
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/CsrfToken'
+      responses:
+        '200':
+          description: One-hour reset URL; raw token is not stored or returned again.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [reset_url, expires_at]
+                properties:
+                  reset_url: { type: string, format: uri }
+                  expires_at: { type: string, format: date-time }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /tokens:
+    get:
+      summary: List the authenticated user's active API tokens
+      responses:
+        '200':
+          description: Token metadata; secret values are never returned.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tokens:
+                    type: array
+                    items: { $ref: '#/components/schemas/TokenMetadata' }
+    post:
+      summary: Create an API token for the authenticated user
+      description: The raw token is returned only once. Cookie-authenticated requests must include X-CSRF-Token.
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [label]
+              properties:
+                label: { type: string, minLength: 1, maxLength: 100 }
+      responses:
+        '201':
+          description: New API token.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/TokenMetadata'
+                  - type: object
+                    required: [token]
+                    properties:
+                      token: { type: string }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /tokens/{id}:
+    delete:
+      summary: Revoke an API token
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/CsrfToken'
+      responses:
+        '204': { description: Token revoked. }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /events:
+    get:
+      summary: Poll visible project chat messages after an ID
+      description: Returns up to 100 events from projects the user can access. Matching If-None-Match returns 304.
+      parameters:
+        - name: since
+          in: query
+          required: false
+          schema: { type: integer, minimum: 0, default: 0 }
+        - name: If-None-Match
+          in: header
+          required: false
+          schema: { type: string }
+      responses:
+        '200':
+          description: Visible events and the current ETag.
+          headers:
+            ETag: { schema: { type: string } }
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  events:
+                    type: array
+                    items: { $ref: '#/components/schemas/Event' }
+        '304':
+          description: No visible events changed since the supplied ETag.
+          headers:
+            ETag: { schema: { type: string } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+  /projects:
+    get:
+      summary: List projects visible to the authenticated user
+      responses:
+        '200':
+          description: Workspace projects for admins, member projects for developers, and sanitized member projects for guests.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  projects:
+                    type: array
+                    items:
+                      oneOf:
+                        - $ref: '#/components/schemas/Project'
+                        - $ref: '#/components/schemas/GuestProject'
+    post:
+      summary: Create a project (admin only)
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, minLength: 2, maxLength: 120 }
+                description: { type: string, maxLength: 5000 }
+      responses:
+        '201':
+          description: Project created; creator becomes a member.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  project: { $ref: '#/components/schemas/Project' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /projects/{id}/messages:
+    get:
+      summary: Read recent project messages or poll for messages after an ID
+      description: Returns the latest 100 messages when since is omitted. If since is supplied, returns messages with a larger ID. Matching If-None-Match returns 304.
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - name: since
+          in: query
+          required: false
+          schema: { type: integer, minimum: 0 }
+        - name: If-None-Match
+          in: header
+          required: false
+          schema: { type: string }
+      responses:
+        '200':
+          description: Messages and the current channel ETag.
+          headers:
+            ETag: { schema: { type: string } }
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  messages:
+                    type: array
+                    items: { $ref: '#/components/schemas/Message' }
+        '304':
+          description: No messages changed since the supplied ETag.
+          headers:
+            ETag: { schema: { type: string } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+    post:
+      summary: Post to a project channel or reply to a message
+      description: Cookie-authenticated requests must include X-CSRF-Token. Message bodies are plain text.
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [body]
+              properties:
+                body: { type: string, minLength: 1, maxLength: 10000 }
+                parent_id: { type: [integer, 'null'], minimum: 1 }
+      responses:
+        '201':
+          description: Message created.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { $ref: '#/components/schemas/Message' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+  /projects/{id}/messages/{messageId}:
+    get:
+      summary: Read a specific project chat message
+      description: Used to open a notification at its source. Requires project chat access.
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - name: messageId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: The requested message.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { $ref: '#/components/schemas/Message' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /projects/{id}/issues/deleted:
+    get:
+      summary: List deleted issues in a project
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - name: If-None-Match
+          in: header
+          required: false
+          schema: { type: string }
+      responses:
+        '200':
+          description: Soft-deleted issues available for restoration.
+          headers:
+            ETag: { schema: { type: string } }
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  issues:
+                    type: array
+                    items: { $ref: '#/components/schemas/Issue' }
+        '304':
+          description: No deleted issues changed since the supplied ETag.
+          headers:
+            ETag: { schema: { type: string } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /projects/{id}/issues:
+    get:
+      summary: List issues in a project
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - name: If-None-Match
+          in: header
+          required: false
+          schema: { type: string }
+      responses:
+        '200':
+          description: Active issues ordered by status and creation ID. Soft-deleted issues are excluded.
+          headers:
+            ETag: { schema: { type: string } }
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  issues:
+                    type: array
+                    items: { $ref: '#/components/schemas/Issue' }
+        '304':
+          description: No active issues changed since the supplied ETag.
+          headers:
+            ETag: { schema: { type: string } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      summary: Create an issue in a project
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title]
+              properties:
+                title: { type: string, minLength: 1, maxLength: 200 }
+                description: { type: string, maxLength: 10000 }
+                source_message_id: { type: [integer, 'null'], minimum: 1, description: Source message in this project; replies are linked to their thread root. }
+                type: { type: string, enum: [task, bug, feature, research, maintenance], default: task }
+                assignee_id: { type: [integer, 'null'], minimum: 1, description: Project member responsible for the issue; null means unassigned. }
+                milestone_id: { type: [integer, 'null'], minimum: 1, description: Milestone in this project; null means no milestone. Requires issues.share. }
+                is_shared: { type: boolean, default: false, description: Share the issue with project guests. Requires issues.share. }
+                approval_requested: { type: boolean, default: false, description: Request guest approval; requires is_shared to be true. }
+      responses:
+        '201':
+          description: Issue created in Backlog.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  issue: { $ref: '#/components/schemas/Issue' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+  /inbox:
+    get:
+      summary: List open issues assigned to the authenticated user
+      description: Returns active backlog, todo, and doing issues across projects visible to the authenticated user, ordered by most recently updated. Matching If-None-Match returns 304.
+      parameters:
+        - name: If-None-Match
+          in: header
+          required: false
+          schema: { type: string }
+      responses:
+        '200':
+          description: Open assigned issues with project names and slugs.
+          headers:
+            ETag: { schema: { type: string } }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [issues]
+                properties:
+                  issues:
+                    type: array
+                    items: { $ref: '#/components/schemas/InboxIssue' }
+        '304':
+          description: No assigned issues changed since the supplied ETag.
+          headers:
+            ETag: { schema: { type: string } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /inbox/events:
+    get:
+      summary: List inbox events for the authenticated user
+      description: Mentions, assignments, thread replies, status changes and PR events addressed to the user. Includes read and done events; clients filter by tab. Matching If-None-Match returns 304.
+      parameters:
+        - name: If-None-Match
+          in: header
+          required: false
+          schema: { type: string }
+      responses:
+        '200':
+          description: Events, newest first.
+          headers:
+            ETag: { schema: { type: string } }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [events]
+                properties:
+                  events:
+                    type: array
+                    items: { $ref: '#/components/schemas/InboxEvent' }
+        '304':
+          description: No inbox events changed since the supplied ETag.
+          headers:
+            ETag: { schema: { type: string } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /inbox/events/{id}:
+    patch:
+      summary: Mark an inbox event read/unread or done/reopened
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                read: { type: boolean }
+                done: { type: boolean }
+      responses:
+        '200':
+          description: The updated event.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [event]
+                properties:
+                  event: { $ref: '#/components/schemas/InboxEvent' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /inbox/events/read-all:
+    post:
+      summary: Mark all of the user's inbox events read
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+      responses:
+        '204': { description: All events marked read. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /projects/{id}/client-view:
+    get:
+      summary: Client (guest) view of a project
+      description: Progress, milestones, shared items, pending approvals and updates. Visibility is filtered server-side to content marked shared. Requires a guest or project member.
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: The client view.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClientView' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /projects/{id}/client-comments:
+    post:
+      summary: Guest writes to the team (project channel)
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [body]
+              properties:
+                body: { type: string, maxLength: 2000 }
+      responses:
+        '201': { description: Comment created. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+  /projects/{id}/milestones:
+    get:
+      summary: List project milestones
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Milestones ordered by due date.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  milestones:
+                    type: array
+                    items: { $ref: '#/components/schemas/Milestone' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      summary: Create a project milestone
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, minLength: 1, maxLength: 120 }
+                due_date: { type: [string, 'null'], format: date }
+      responses:
+        '201': { description: Milestone created. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+  /projects/{id}/milestones/{milestoneId}:
+    patch:
+      summary: Update a project milestone
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/CsrfToken'
+        - name: milestoneId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              minProperties: 1
+              properties:
+                name: { type: string, minLength: 1, maxLength: 120 }
+                due_date: { type: [string, 'null'], format: date }
+      responses:
+        '200': { description: Milestone updated. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+    delete:
+      summary: Delete a milestone and unlink its issues
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/CsrfToken'
+        - name: milestoneId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '204': { description: Milestone deleted; issue references cleared. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /approvals/{id}/approve:
+    post:
+      summary: Approve a delivery marked for approval (guest)
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/CsrfToken'
+      responses:
+        '200': { description: Approval recorded. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /issues/{id}:
+    patch:
+      summary: Update issue details, status, sharing, milestone, or approval request
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              minProperties: 1
+              properties:
+                title: { type: string, minLength: 1, maxLength: 200 }
+                description: { type: string, maxLength: 10000 }
+                type: { type: string, enum: [task, bug, feature, research, maintenance] }
+                assignee_id: { type: [integer, 'null'], minimum: 1, description: Project member responsible for the issue; null means unassigned. }
+                status: { type: string, enum: [backlog, todo, doing, done, cancelled] }
+                is_shared: { type: boolean, description: Whether this issue appears in the guest client view. }
+                milestone_id: { type: [integer, 'null'], minimum: 1 }
+                approval_requested: { type: boolean }
+      responses:
+        '200':
+          description: Updated issue.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  issue: { $ref: '#/components/schemas/Issue' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+    delete:
+      summary: Move an issue to Deleted issues
+      description: Soft-deletes an issue from any status. It can be restored from the project's deleted issue list.
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/CsrfToken'
+      responses:
+        '204': { description: Issue moved to Deleted issues. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /issues/{id}/history:
+    get:
+      summary: List recent status transitions for an issue
+      description: Returns the latest 20 status changes, newest first. Restricted to project members.
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Recent status transitions.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [transitions]
+                properties:
+                  transitions:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, from_status, to_status, actor_name, created_at]
+                      properties:
+                        id: { type: integer }
+                        from_status: { type: [string, 'null'], enum: [backlog, todo, doing, done, cancelled, null] }
+                        to_status: { type: string, enum: [backlog, todo, doing, done, cancelled] }
+                        actor_name: { type: string }
+                        created_at: { type: string, format: date-time }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /issues/{id}/restore:
+    post:
+      summary: Restore a deleted issue
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/CsrfToken'
+      responses:
+        '200':
+          description: Restored issue with its previous status.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  issue: { $ref: '#/components/schemas/Issue' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /issues/{id}/move:
+    post:
+      summary: Move an open issue earlier or later within its milestone
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [direction]
+              properties:
+                direction: { type: string, enum: [up, down] }
+      responses:
+        '200':
+          description: The reordered issue, including its saved sort_order.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  issue: { $ref: '#/components/schemas/Issue' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+  /messages/{id}/issue:
+    post:
+      summary: Create a project issue from a chat message
+      description: Creates a Backlog issue using the message text as its title. For replies, the issue links to the root message of the thread.
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/CsrfToken'
+      responses:
+        '201':
+          description: Issue created from the message.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  issue: { $ref: '#/components/schemas/Issue' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+  /projects/{id}:
+    get:
+      summary: Read a project and its members
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Project details.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  project: { $ref: '#/components/schemas/Project' }
+                  members:
+                    type: array
+                    items: { $ref: '#/components/schemas/User' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      summary: Update a project (admin only)
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              minProperties: 1
+              properties:
+                name: { type: string, minLength: 2, maxLength: 120 }
+                description: { type: string, maxLength: 5000 }
+                status: { type: string, enum: [active, archived] }
+      responses:
+        '200': { description: Updated project. }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /projects/{id}/members:
+    get:
+      summary: List project members
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Project members.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  members:
+                    type: array
+                    items: { $ref: '#/components/schemas/User' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /projects/{id}/members/{userId}:
+    put:
+      summary: Add a workspace user to a project (admin only)
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/UserId'
+        - $ref: '#/components/parameters/CsrfToken'
+      responses:
+        '200': { description: Member added or already present. }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      summary: Remove a project member (admin only)
+      description: All issues assigned to this member become unassigned.
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/UserId'
+        - $ref: '#/components/parameters/CsrfToken'
+      responses:
+        '204': { description: Member removed. }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+components:
+  securitySchemes:
+    SessionCookie:
+      type: apiKey
+      in: cookie
+      name: tangent_session
+      description: Browser session; the tangent_workspace cookie selects its workspace, and mutating requests also need X-CSRF-Token.
+    BearerToken:
+      type: http
+      scheme: bearer
+      description: Opaque workspace-scoped API token for agents and integrations. Include X-Tangent-Workspace with the workspace ID when the token is for a non-default workspace.
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+    UserId:
+      name: userId
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+    CsrfToken:
+      name: X-CSRF-Token
+      in: header
+      required: false
+      schema: { type: string }
+  schemas:
+    Workspace:
+      type: object
+      required: [id, name, slug, role]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        slug: { type: string }
+        role: { type: string, enum: [admin, developer, guest] }
+    User:
+      type: object
+      required: [id, workspace_id, name, email, role]
+      properties:
+        id: { type: integer }
+        workspace_id: { type: integer }
+        name: { type: string }
+        email: { type: string, format: email }
+        role: { type: string, enum: [admin, developer, guest] }
+    WorkspaceMember:
+      type: object
+      required: [id, workspace_id, name, email, role, is_active, created_at]
+      properties:
+        id: { type: integer }
+        workspace_id: { type: integer }
+        name: { type: string }
+        email: { type: string, format: email }
+        role: { type: string, enum: [admin, developer, guest] }
+        is_active: { type: boolean }
+        created_at: { type: string, format: date-time }
+    Project:
+      type: object
+      required: [id, workspace_id, name, slug, description, status, created_by]
+      properties:
+        id: { type: integer }
+        workspace_id: { type: integer }
+        name: { type: string }
+        slug: { type: string }
+        description: { type: string }
+        status: { type: string, enum: [active, archived] }
+        created_by: { type: integer }
+    GuestProject:
+      type: object
+      required: [id, name, slug]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        slug: { type: string }
+    Message:
+      type: object
+      required: [id, channel_id, author_id, parent_id, author_name, author_role, parent_author_name, parent_body, reply_count, first_reply_id, body, created_at]
+      properties:
+        id: { type: integer }
+        channel_id: { type: integer }
+        author_id: { type: integer }
+        author_name: { type: string }
+        author_role: { type: string, enum: [admin, developer, guest] }
+        parent_id: { type: [integer, 'null'] }
+        parent_author_name: { type: [string, 'null'], description: Author of the replied-to message, or null for a root message. }
+        parent_body: { type: [string, 'null'], description: Body of the replied-to message, or null for a root message. }
+        reply_count: { type: integer, minimum: 0, description: Number of direct replies to this message. }
+        first_reply_id: { type: [integer, 'null'], minimum: 1, description: ID of the earliest direct reply, or null when there are no replies. }
+        body: { type: string }
+        is_client_visible: { type: boolean, description: True when the message is shared directly or belongs to a client-visible conversation thread. }
+        created_at: { type: string, format: date-time }
+    Event:
+      allOf:
+        - $ref: '#/components/schemas/Message'
+        - type: object
+          required: [project_id, type]
+          properties:
+            project_id: { type: integer }
+            type: { type: string, enum: [message] }
+    Issue:
+      type: object
+      required: [id, workspace_id, project_id, title, description, type, assignee_id, status, created_by, source_channel_id, source_message_id, is_shared, milestone_id, sort_order, approval_requested_at, approved_by, approved_at, created_at, updated_at, deleted_at]
+      properties:
+        id: { type: integer }
+        workspace_id: { type: integer }
+        project_id: { type: integer }
+        title: { type: string }
+        description: { type: string }
+        type: { type: string, enum: [task, bug, feature, research, maintenance], default: task }
+        assignee_id: { type: [integer, 'null'], description: Project member responsible for the issue; null means unassigned. }
+        is_shared: { type: boolean, default: false }
+        milestone_id: { type: [integer, 'null'] }
+        sort_order: { type: integer, minimum: 0, description: Saved ordering within the issue's milestone; lower values come first. }
+        approval_requested_at: { type: [string, 'null'], format: date-time }
+        approved_by: { type: [integer, 'null'] }
+        approved_at: { type: [string, 'null'], format: date-time }
+        status: { type: string, enum: [backlog, todo, doing, done, cancelled] }
+        created_by: { type: integer }
+        source_channel_id: { type: [integer, 'null'] }
+        source_message_id: { type: [integer, 'null'] }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        deleted_at: { type: [string, 'null'], format: date-time }
+    InboxIssue:
+      allOf:
+        - $ref: '#/components/schemas/Issue'
+        - type: object
+          required: [project_name, project_slug]
+          properties:
+            project_name: { type: string }
+            project_slug: { type: string }
+    InboxEvent:
+      type: object
+      required: [id, type, actor_name, summary, project_id, project_name, read, done, created_at]
+      properties:
+        id: { type: integer }
+        type: { type: string, enum: [mention, assigned, reply, status, pr] }
+        actor_name: { type: string }
+        summary: { type: string }
+        detail: { type: [string, 'null'] }
+        project_id: { type: integer }
+        project_name: { type: string }
+        issue_id: { type: [integer, 'null'] }
+        message_id: { type: [integer, 'null'] }
+        read: { type: boolean }
+        done: { type: boolean }
+        created_at: { type: string, format: date-time }
+    Milestone:
+      type: object
+      required: [id, workspace_id, project_id, name, due_date, created_at]
+      properties:
+        id: { type: integer }
+        workspace_id: { type: integer }
+        project_id: { type: integer }
+        name: { type: string }
+        due_date: { type: [string, 'null'], format: date }
+        created_at: { type: string, format: date-time }
+    ClientView:
+      type: object
+      required: [project, progress, next_milestone, completed_this_week, approvals, milestones, items, updates, messages]
+      properties:
+        project:
+          type: object
+          properties: { id: { type: integer }, name: { type: string } }
+        progress:
+          type: object
+          properties: { percent: { type: integer }, done: { type: integer }, total: { type: integer } }
+        next_milestone:
+          type: [object, 'null']
+          properties: { name: { type: string }, due_date: { type: [string, 'null'] } }
+        completed_this_week: { type: integer }
+        approvals:
+          type: array
+          items:
+            type: object
+            properties: { id: { type: integer }, title: { type: string }, description: { type: string } }
+        milestones:
+          type: array
+          items:
+            type: object
+            properties: { id: { type: integer }, name: { type: string }, due_date: { type: [string, 'null'] }, done: { type: integer }, total: { type: integer } }
+        items:
+          type: array
+          items:
+            type: object
+            properties: { id: { type: integer }, title: { type: string }, description: { type: string }, status: { type: string, enum: [planned, doing, done] }, milestone_id: { type: [integer, 'null'] }, milestone_name: { type: [string, 'null'] } }
+        updates:
+          type: array
+          items:
+            type: object
+            properties: { id: { type: integer }, text: { type: string }, created_at: { type: string, format: date-time } }
+        messages:
+          type: array
+          description: Latest messages in client-visible conversation threads, in chronological order. Internal threads are excluded.
+          items:
+            type: object
+            required: [id, parent_id, author_id, author_name, body, created_at]
+            properties:
+              id: { type: integer }
+              parent_id: { type: [integer, 'null'] }
+              author_id: { type: integer }
+              author_name: { type: string }
+              body: { type: string }
+              created_at: { type: string, format: date-time }
+    TokenMetadata:
+      type: object
+      required: [id, label]
+      properties:
+        id: { type: integer }
+        label: { type: string }
+        token_type: { type: string, enum: [api] }
+        created_at: { type: string, format: date-time }
+        last_used_at: { type: [string, 'null'], format: date-time }
+        expires_at: { type: [string, 'null'], format: date-time }
+  responses:
+    Unauthorized:
+      description: Authentication is required or credentials are invalid.
+    Forbidden:
+      description: The authenticated user lacks permission.
+    NotFound:
+      description: The resource was not found in the current workspace.
+    Conflict:
+      description: The requested email or project name is already in use.
+    ValidationFailed:
+      description: One or more request values are invalid.
+    CsrfFailed:
+      description: A valid CSRF header is required for cookie-authenticated mutations.
+    RateLimited:
+      description: Too many requests were made in the rate-limit window.
