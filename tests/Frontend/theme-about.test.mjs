@@ -5,10 +5,11 @@ import { THEMES } from '../../public/assets/theme.js';
 import { THEME_MACHINES } from '../../public/assets/theme-machines.js';
 
 const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
+const htaccess = await readFile(new URL('../../public/.htaccess', import.meta.url), 'utf8');
 const appSource = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
 const css = await readFile(new URL('../../public/assets/app.css', import.meta.url), 'utf8');
 
-test('every theme has a sourced computer card with two short facts', () => {
+test('every theme has a locally hosted, credited computer photo and two short facts', async () => {
   assert.deepEqual(Object.keys(THEME_MACHINES).sort(), THEMES.map(({ id }) => id).sort());
   assert.equal(THEME_MACHINES.putty.model, 'Atari 800');
   assert.equal(THEME_MACHINES.putty.year, '1979');
@@ -16,12 +17,14 @@ test('every theme has a sourced computer card with two short facts', () => {
     assert.ok(machine.model, `${id} has a model name`);
     assert.ok(machine.year, `${id} has a year`);
     assert.ok(machine.imageFile, `${id} has a Wikimedia image file`);
-    assert.match(machine.imageUrl, /^https:\/\/thumb\.wikimedia\.org\/wikipedia\/commons\/thumb\//);
+    assert.match(machine.imageUrl, /^\.\/assets\/machines\/[a-z0-9-]+\.jpg$/);
     assert.match(machine.imagePage, /^https:\/\/commons\.wikimedia\.org\/wiki\/File:/);
     assert.ok(machine.photoCredit, `${id} has a photo credit`);
     assert.ok(machine.license, `${id} has a photo license`);
     assert.equal(machine.facts.length, 2, `${id} has two facts`);
     assert.ok(machine.historyUrl.startsWith('https://'), `${id} has a history source`);
+    const image = await readFile(new URL(`../../public/${machine.imageUrl.slice(2)}`, import.meta.url));
+    assert.ok(image.length > 1000, `${id} has a bundled image file`);
   }
 });
 
@@ -36,7 +39,10 @@ test('theme selectors have a silent computer icon that opens the accessible card
   assert.match(html, /<dialog id="theme-about-dialog"[^>]*aria-labelledby="theme-about-heading"/);
   assert.match(html, /id="theme-about-image"[^>]*alt=""/);
   assert.match(html, /id="theme-about-facts"/);
-  assert.match(html, /img-src[^>]*https:\/\/thumb\.wikimedia\.org/);
+  assert.match(html, /img-src 'self' data:/);
+  assert.match(htaccess, /img-src 'self' data:/);
+  assert.doesNotMatch(html, /img-src[^>]*wikimedia\.org/);
+  assert.doesNotMatch(htaccess, /img-src[^\n]*wikimedia\.org/);
   assert.match(appSource, /THEME_MACHINES\[activeTheme\]/);
   assert.match(appSource, /themeAboutDialog\.showModal\(\)/);
   assert.match(appSource, /themeAboutImage\.src\s*=\s*machine\.imageUrl/);

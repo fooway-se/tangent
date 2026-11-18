@@ -1,11 +1,7 @@
-function thumbnailUrl(hashPath, imageFile, width = 960) {
-    const filename = imageFile.replaceAll(' ', '_');
-    return `https://thumb.wikimedia.org/wikipedia/commons/thumb/${hashPath}/${filename}/${width}px-${filename}`;
-}
 export const THEME_MACHINES = {
     putty: {
         model: 'Atari 800', year: '1979', imageFile: 'Atari-800-Computer-FL.jpg',
-        imageUrl: thumbnailUrl('1/10', 'Atari-800-Computer-FL.jpg'),
+        imageUrl: './assets/machines/atari-800.jpg',
         imagePage: 'https://commons.wikimedia.org/wiki/File:Atari-800-Computer-FL.jpg',
         photoCredit: 'Evan-Amos', license: 'Public domain',
         historyUrl: 'https://www.computerhistory.org/timeline/1979/',
@@ -13,7 +9,7 @@ export const THEME_MACHINES = {
     },
     rainbow: {
         model: 'Sinclair ZX Spectrum 48K', year: '1982', imageFile: 'Sinclair ZX Spectrum 48k (7160143184).jpg',
-        imageUrl: thumbnailUrl('9/96', 'Sinclair ZX Spectrum 48k (7160143184).jpg'),
+        imageUrl: './assets/machines/zx-spectrum-48k.jpg',
         imagePage: 'https://commons.wikimedia.org/wiki/File:Sinclair_ZX_Spectrum_48k_(7160143184).jpg',
         photoCredit: 'Nico Kaiser', license: 'CC BY 2.0',
         historyUrl: 'https://www.scienceandindustrymuseum.org.uk/objects-and-stories/sinclair-zx-spectrum',
@@ -21,7 +17,7 @@ export const THEME_MACHINES = {
     },
     breadbin: {
         model: 'Commodore 64', year: '1982', imageFile: 'C64_breadbin.jpg',
-        imageUrl: thumbnailUrl('a/a2', 'C64_breadbin.jpg'),
+        imageUrl: './assets/machines/commodore-64.jpg',
         imagePage: 'https://commons.wikimedia.org/wiki/File:C64_breadbin.jpg',
         photoCredit: 'Fedi', license: 'CC BY-SA 3.0',
         historyUrl: 'https://www.computerhistory.org/revolution/personal-computers/17/298/1181',
@@ -29,7 +25,7 @@ export const THEME_MACHINES = {
     },
     broadcast: {
         model: 'Acorn BBC Micro Model B', year: '1981', imageFile: 'Acorn_BBC_Micro.jpg',
-        imageUrl: thumbnailUrl('e/e7', 'Acorn_BBC_Micro.jpg'),
+        imageUrl: './assets/machines/bbc-micro-model-b.jpg',
         imagePage: 'https://commons.wikimedia.org/wiki/File:Acorn_BBC_Micro.jpg',
         photoCredit: 'simon.inns', license: 'CC BY 2.0',
         historyUrl: 'https://www.computerhistory.org/revolution/personal-computers/17/298/1183',
@@ -37,7 +33,7 @@ export const THEME_MACHINES = {
     },
     cassette: {
         model: 'Amstrad CPC 464', year: '1984', imageFile: 'Amstrad_CPC464.jpg',
-        imageUrl: thumbnailUrl('9/91', 'Amstrad_CPC464.jpg'),
+        imageUrl: './assets/machines/amstrad-cpc-464.jpg',
         imagePage: 'https://commons.wikimedia.org/wiki/File:Amstrad_CPC464.jpg',
         photoCredit: 'Bill Bertram / Pixel8', license: 'CC BY-SA 2.5',
         historyUrl: 'https://www.computerhistory.org/revolution/artifact/298/1167',
@@ -45,7 +41,7 @@ export const THEME_MACHINES = {
     },
     mono: {
         model: 'Sinclair ZX81', year: '1981', imageFile: 'Sinclair-ZX81.jpg',
-        imageUrl: thumbnailUrl('8/8c', 'Sinclair-ZX81.jpg'),
+        imageUrl: './assets/machines/zx81.jpg',
         imagePage: 'https://commons.wikimedia.org/wiki/File:Sinclair-ZX81.jpg',
         photoCredit: 'Evan-Amos', license: 'CC BY-SA 3.0',
         historyUrl: 'https://www.computerhistory.org/revolution/personal-computers/17/298/1174',
@@ -53,7 +49,7 @@ export const THEME_MACHINES = {
     },
     stripe: {
         model: 'Atari 800XL', year: '1983', imageFile: 'Atari-800XL.jpg',
-        imageUrl: thumbnailUrl('b/bf', 'Atari-800XL.jpg'),
+        imageUrl: './assets/machines/atari-800xl.jpg',
         imagePage: 'https://commons.wikimedia.org/wiki/File:Atari-800XL.jpg',
         photoCredit: 'Evan-Amos', license: 'CC BY-SA 3.0',
         historyUrl: 'https://www.computerhistory.org/brochures/doc-4372956e667f1/',
@@ -61,7 +57,7 @@ export const THEME_MACHINES = {
     },
     paper: {
         model: 'Apple IIe', year: '1983', imageFile: 'Apple_iie.jpg',
-        imageUrl: thumbnailUrl('b/b4', 'Apple_iie.jpg', 500),
+        imageUrl: './assets/machines/apple-iie.jpg',
         imagePage: 'https://commons.wikimedia.org/wiki/File:Apple_iie.jpg',
         photoCredit: 'All About Apple Museum', license: 'CC BY-SA 2.5 Italy',
         historyUrl: 'https://www.computerhistory.org/brochures/doc-4372957135ab0/',
@@ -69,7 +65,7 @@ export const THEME_MACHINES = {
     },
     desk: {
         model: 'Radio Shack TRS-80 Model III', year: '1980', imageFile: 'Radio_Shack_TRS-80_Model_III.jpg',
-        imageUrl: thumbnailUrl('9/91', 'Radio_Shack_TRS-80_Model_III.jpg'),
+        imageUrl: './assets/machines/trs-80-model-iii.jpg',
         imagePage: 'https://commons.wikimedia.org/wiki/File:Radio_Shack_TRS-80_Model_III.jpg',
         photoCredit: 'Zalasem1', license: 'CC BY-SA 4.0',
         historyUrl: 'https://archive.computerhistory.org/resources/access/text/finding-aids/102724780-RadioShack/102724780-RadioShack.pdf',
@@ -77,7 +73,7 @@ export const THEME_MACHINES = {
     },
     silver: {
         model: 'Texas Instruments TI-99/4A', year: '1981', imageFile: 'Texas_Instruments_TI-99-4A_Tietokonemuseo.jpg',
-        imageUrl: thumbnailUrl('a/aa', 'Texas_Instruments_TI-99-4A_Tietokonemuseo.jpg'),
+        imageUrl: './assets/machines/ti-99-4a.jpg',
         imagePage: 'https://commons.wikimedia.org/wiki/File:Texas_Instruments_TI-99-4A_Tietokonemuseo.jpg',
         photoCredit: 'MKFI', license: 'Public domain',
         historyUrl: 'https://www.computerhistory.org/revolution/input-output/14/352/1833',
@@ -85,7 +81,7 @@ export const THEME_MACHINES = {
     },
     blue: {
         model: 'Commodore VIC-20', year: '1980', imageFile: 'Commodore-VIC-20-FL.jpg',
-        imageUrl: thumbnailUrl('f/f1', 'Commodore-VIC-20-FL.jpg'),
+        imageUrl: './assets/machines/vic-20.jpg',
         imagePage: 'https://commons.wikimedia.org/wiki/File:Commodore-VIC-20-FL.jpg',
         photoCredit: 'Evan-Amos', license: 'Public domain',
         historyUrl: 'https://www.computerhistory.org/timeline/1980/',
