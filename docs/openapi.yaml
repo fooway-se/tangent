@@ -1251,6 +1251,43 @@ paths:
         '200': { description: Updated project. }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+  /projects/{id}/notes:
+    get:
+      summary: Read internal project notes
+      description: Notes are visible only to admins and project members with internal access. Guests cannot read them.
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Markdown source and last update time; an empty page has a null update time.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [notes, updated_at]
+                properties:
+                  notes: { type: string }
+                  updated_at: { type: string, format: date-time, nullable: true }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      summary: Save internal project notes
+      description: Saves a single Markdown page visible only to admins and project members with internal access.
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [notes]
+              properties:
+                notes: { type: string, maxLength: 50000 }
+      responses:
+        '200': { description: The saved Markdown source and update time. }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
   /projects/{id}/members:
     get:
       summary: List project members
@@ -1404,7 +1441,7 @@ components:
             type: { type: string, enum: [message] }
     Issue:
       type: object
-      required: [id, workspace_id, project_id, title, description, context, expected_outcome, acceptance_criteria, type, assignee_id, status, priority, due_date, created_by, source_channel_id, source_message_id, is_shared, milestone_id, sort_order, approval_requested_at, approved_by, approved_at, created_at, updated_at, deleted_at]
+      required: [id, workspace_id, project_id, title, description, context, expected_outcome, acceptance_criteria, type, assignee_id, status, priority, due_date, created_by, source_channel_id, source_message_id, is_shared, milestone_id, sort_order, discussion_count, approval_requested_at, approved_by, approved_at, created_at, updated_at, deleted_at]
       properties:
         id: { type: integer }
         workspace_id: { type: integer }
@@ -1419,6 +1456,7 @@ components:
         is_shared: { type: boolean, default: false }
         milestone_id: { type: [integer, 'null'] }
         sort_order: { type: integer, minimum: 0, description: Saved ordering within the issue's milestone; lower values come first. }
+        discussion_count: { type: integer, minimum: 0, description: Number of posts and replies in this issue's discussion. }
         approval_requested_at: { type: [string, 'null'], format: date-time }
         approved_by: { type: [integer, 'null'] }
         approved_at: { type: [string, 'null'], format: date-time }

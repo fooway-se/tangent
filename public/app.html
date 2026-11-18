@@ -156,10 +156,11 @@
           </section>
 
           <section id="project-view" class="workspace-view project-view" hidden aria-live="polite">
-            <section class="project-main" aria-label="Project issues and members">
+            <section class="project-main" aria-label="Project issues, members, and notes">
               <nav class="project-tabs" role="tablist" aria-label="Project work">
                 <button id="issues-tab" class="project-tab is-active" type="button" role="tab" aria-selected="true" aria-controls="issues-view issue-detail-view" tabindex="0">Issues</button>
                 <button id="members-tab" class="project-tab" type="button" role="tab" aria-selected="false" aria-controls="members-view" tabindex="-1">Members</button>
+                <button id="notes-tab" class="project-tab" type="button" role="tab" aria-selected="false" aria-controls="project-notes-view" tabindex="-1">Notes</button>
               </nav>
               <p id="project-description" class="project-intro"></p>
               <section class="issue-progress-strip" aria-label="Project issue progress">
@@ -273,6 +274,28 @@
                     <select id="member-select" name="user_id"></select>
                   </label>
                   <button id="add-member-button" class="button button-secondary" type="submit">Add to project</button>
+                </form>
+              </section>
+              <section id="project-notes-view" class="project-tab-view project-notes-view" role="tabpanel" tabindex="-1" hidden aria-labelledby="notes-tab">
+                <header class="project-notes-heading">
+                  <div>
+                    <p class="eyebrow">Internal project notes</p>
+                    <h2>Notes</h2>
+                    <p class="panel-description">A shared Markdown page for project context. Only internal team members and workspace admins can access it.</p>
+                  </div>
+                  <div class="project-notes-modes" role="group" aria-label="Notes view">
+                    <button id="project-notes-write" class="button button-quiet" type="button" aria-pressed="false">Write</button>
+                    <button id="project-notes-preview-toggle" class="button button-quiet is-active" type="button" aria-pressed="true">Preview</button>
+                  </div>
+                </header>
+                <form id="project-notes-form" class="project-notes-form">
+                  <label class="visually-hidden" for="project-notes-input">Project notes in Markdown</label>
+                  <textarea id="project-notes-input" name="notes" rows="20" maxlength="50000" spellcheck="false" placeholder="# Project notes&#10;&#10;Add decisions, setup steps, or useful links…" hidden></textarea>
+                  <article id="project-notes-preview" class="project-notes-preview markdown-content" aria-label="Rendered notes preview"></article>
+                  <footer class="project-notes-footer">
+                    <span id="project-notes-status" role="status" aria-live="polite">Notes are private to the internal team.</span>
+                    <button id="project-notes-save" class="button button-primary" type="submit" disabled>Save notes</button>
+                  </footer>
                 </form>
               </section>
               <section id="issue-detail-view" class="project-tab-view issue-detail-view" role="tabpanel" hidden aria-labelledby="issues-tab issue-detail-title">

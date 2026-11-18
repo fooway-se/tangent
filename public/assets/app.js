@@ -3,9 +3,10 @@ import { diffInboxCollections, nextInboxPollDelay, shouldDeferInboxUpdates, } fr
 import { renderClientEmptyState, renderClientView } from './guest-view.js';
 import { filterMentionMembers, findMentionQuery, mentionEmptyMessage, replaceMentionQuery } from './chat-mentions.js';
 import { resolveShortcut, shouldSubmitOnEnter } from './shortcuts.js';
+import { DEFAULT_PROJECT_NOTES_MODE, renderMarkdown } from './project-notes.js';
 import { parseQuickIssueInput } from './quick-issue.js';
 import { formatIssueMarkdown, formatIssuePrompt } from './issue-export.js';
-import { filterIssues, groupIssues, groupIssuesByMilestone, milestoneProgress, sortIssues, } from './issue-board.js';
+import { filterIssues, groupIssues, groupIssuesByMilestone, discussionIndicatorLabel, milestoneProgress, sortIssues, } from './issue-board.js';
 import { diffIssueCollections, nextIssuePollDelay, shouldDeferIssueUpdates, } from './issue-polling.js';
 const apiBaseUrl = new URL('../api/v1', import.meta.url).pathname.replace(/\/$/, '');
 const ISSUE_STATUS_OPTIONS = [
@@ -177,6 +178,14 @@ const projectMain = document.querySelector('.project-main');
 const projectTabs = document.querySelector('.project-tabs');
 const issuesView = document.querySelector('#issues-view');
 const membersView = document.querySelector('#members-view');
+const projectNotesView = document.querySelector('#project-notes-view');
+const projectNotesForm = document.querySelector('#project-notes-form');
+const projectNotesInput = document.querySelector('#project-notes-input');
+const projectNotesPreview = document.querySelector('#project-notes-preview');
+const projectNotesStatus = document.querySelector('#project-notes-status');
+const projectNotesSave = document.querySelector('#project-notes-save');
+const projectNotesWrite = document.querySelector('#project-notes-write');
+const projectNotesPreviewToggle = document.querySelector('#project-notes-preview-toggle');
 const issueDetailView = document.querySelector('#issue-detail-view');
 const issueDetailDisplay = document.querySelector('#issue-detail-display');
 const issueDetailTitle = document.querySelector('#issue-detail-title');
@@ -239,6 +248,7 @@ const shortcutHelp = document.querySelector('#shortcut-help');
 const shortcutHelpClose = document.querySelector('#shortcut-help-close');
 const membersTabButton = document.querySelector('#members-tab');
 const issuesTabButton = document.querySelector('#issues-tab');
+const notesTabButton = document.querySelector('#notes-tab');
 const issueBackButton = document.querySelector('#issue-back-button');
 const issueDetailCancelButton = document.querySelector('#issue-detail-cancel-button');
 const issueForm = document.querySelector('#issue-form');
@@ -334,6 +344,9 @@ let workspaceMemberRoleChangeTarget = null;
 let workspaceGuestProjectsTarget = null;
 let activeWorkspaces = [];
 let activeProject = null;
+let loadedProjectNotesId = null;
+let savedProjectNotes = '';
+let projectNotesMode = DEFAULT_PROJECT_NOTES_MODE;
 let projectReturnFocusId = null;
 let pendingWorkspaceId = null;
 let workspacePickerOptionIndex = 0;
@@ -1183,7 +1196,7 @@ function currentWorkspaceLocation() {
         return {
             view: 'project',
             projectId: activeProject.id,
-            tab: membersView.hidden ? 'issues' : 'members',
+            tab: !projectNotesView.hidden ? 'notes' : membersView.hidden ? 'issues' : 'members',
         };
     }
     if (!inboxView.hidden)
@@ -1585,6 +1598,12 @@ function goToProjectMembers() {
     switchProjectTab('members');
     membersTabButton.focus();
 }
+function goToProjectNotes() {
+    if (activeProject === null)
+        return;
+    switchProjectTab('notes');
+    notesTabButton.focus();
+}
 function isEditableTarget(target) {
     if (!(target instanceof HTMLElement))
         return false;
@@ -1944,6 +1963,11 @@ function getPaletteCommands() {
             detail: `Focus members in ${activeProject.name}`,
             shortcut: 'g m',
             run: goToProjectMembers,
+        }, {
+            label: 'Project notes',
+            detail: `Open notes for ${activeProject.name}`,
+            shortcut: '',
+            run: goToProjectNotes,
         });
         commands.splice(1, 0, {
             label: 'New issue',
@@ -3143,8 +3167,13 @@ milestoneManagerDialog.addEventListener('close', () => {
 });
 issuesTabButton.addEventListener('click', () => switchProjectTab('issues'));
 membersTabButton.addEventListener('click', () => switchProjectTab('members'));
+notesTabButton.addEventListener('click', () => switchProjectTab('notes'));
+projectNotesWrite.addEventListener('click', () => setProjectNotesMode('write'));
+projectNotesPreviewToggle.addEventListener('click', () => setProjectNotesMode('preview'));
+projectNotesInput.addEventListener('input', updateProjectNotesDirtyState);
+projectNotesForm.addEventListener('submit', (event) => void saveProjectNotes(event));
 projectTabs.addEventListener('keydown', (event) => {
-    const tabs = [issuesTabButton, membersTabButton];
+    const tabs = [issuesTabButton, membersTabButton, notesTabButton];
     const currentIndex = tabs.indexOf(event.target);
     if (currentIndex < 0 || event.altKey || event.ctrlKey || event.metaKey)
         return;
@@ -3729,6 +3758,9 @@ function createInboxIssueRow(issue) {
         dueDate.textContent = `${overdue ? 'Overdue' : 'Due'} ${formatIssueDueDate(issue.due_date)}`;
         metadata.append(dueDate);
     }
+    const discussionIndicator = createDiscussionIndicator(issue.discussion_count ?? 0);
+    if (discussionIndicator !== null)
+        metadata.append(discussionIndicator);
     primary.append(title, metadata);
     mainline.append(key, primary);
     content.append(projectName, mainline);
@@ -4010,6 +4042,12 @@ async function loadProjectDetail(projectId, tab = 'issues', recordHistory = true
         updateIssueQuickAddApproval();
     }
     selectedIssue = null;
+    loadedProjectNotesId = null;
+    savedProjectNotes = '';
+    projectNotesInput.value = '';
+    projectNotesStatus.textContent = 'Notes are private to the internal team.';
+    projectNotesSave.disabled = true;
+    setProjectNotesMode(DEFAULT_PROJECT_NOTES_MODE);
     issueDetailEditForm.hidden = true;
     issueDetailDisplay.hidden = false;
     try {
@@ -4043,7 +4081,7 @@ async function loadProjectDetail(projectId, tab = 'issues', recordHistory = true
         showWorkspaceView('project');
         chatView.replaceChildren(createProjectChat(projectId));
         switchProjectTab(tab);
-        (tab === 'issues' ? issuesTabButton : membersTabButton).focus();
+        (tab === 'issues' ? issuesTabButton : tab === 'members' ? membersTabButton : notesTabButton).focus();
     }
     catch (error) {
         workspaceViewHistory.length = 0;
@@ -4058,12 +4096,16 @@ function switchProjectTab(tab, returnFocusIssueId, loadIssues = true) {
     issuesView.hidden = tab !== 'issues' || showingIssueDetail;
     issueDetailView.hidden = !showingIssueDetail;
     membersView.hidden = tab !== 'members';
+    projectNotesView.hidden = tab !== 'notes';
     issuesTabButton.classList.toggle('is-active', tab === 'issues');
     membersTabButton.classList.toggle('is-active', tab === 'members');
+    notesTabButton.classList.toggle('is-active', tab === 'notes');
     issuesTabButton.setAttribute('aria-selected', String(tab === 'issues'));
     membersTabButton.setAttribute('aria-selected', String(tab === 'members'));
+    notesTabButton.setAttribute('aria-selected', String(tab === 'notes'));
     issuesTabButton.tabIndex = tab === 'issues' ? 0 : -1;
     membersTabButton.tabIndex = tab === 'members' ? 0 : -1;
+    notesTabButton.tabIndex = tab === 'notes' ? 0 : -1;
     if (tab !== 'issues')
         pauseIssuePolling();
     if (tab === 'issues') {
@@ -4084,7 +4126,106 @@ function switchProjectTab(tab, returnFocusIssueId, loadIssues = true) {
         }
         return;
     }
-    void loadProjectMembers(activeProject.id);
+    if (tab === 'members') {
+        void loadProjectMembers(activeProject.id);
+        return;
+    }
+    if (loadedProjectNotesId !== activeProject.id)
+        void loadProjectNotes(activeProject.id);
+}
+function setProjectNotesMode(mode) {
+    projectNotesMode = mode;
+    const isWriting = mode === 'write';
+    projectNotesWrite.classList.toggle('is-active', isWriting);
+    projectNotesPreviewToggle.classList.toggle('is-active', !isWriting);
+    projectNotesWrite.setAttribute('aria-pressed', String(isWriting));
+    projectNotesPreviewToggle.setAttribute('aria-pressed', String(!isWriting));
+    projectNotesInput.hidden = !isWriting;
+    projectNotesPreview.hidden = isWriting;
+    projectNotesSave.hidden = !isWriting;
+    if (!isWriting) {
+        const markdown = projectNotesInput.value;
+        projectNotesPreview.innerHTML = markdown.trim() === ''
+            ? '<p class="markdown-empty">Nothing written yet.</p>'
+            : renderMarkdown(markdown);
+    }
+}
+function updateProjectNotesDirtyState() {
+    const changed = projectNotesInput.value !== savedProjectNotes;
+    projectNotesSave.disabled = !changed || projectNotesInput.disabled;
+    if (loadedProjectNotesId === activeProject?.id) {
+        projectNotesStatus.textContent = changed
+            ? 'Unsaved changes.'
+            : savedProjectNotes === ''
+                ? 'No notes yet. Notes are private to the internal team.'
+                : 'Saved. Notes are private to the internal team.';
+    }
+    if (projectNotesMode === 'preview')
+        setProjectNotesMode('preview');
+}
+async function loadProjectNotes(projectId) {
+    projectNotesStatus.textContent = 'Loading notes…';
+    projectNotesInput.disabled = true;
+    projectNotesSave.disabled = true;
+    try {
+        const result = await api(`/projects/${projectId}/notes`);
+        if (activeProject?.id !== projectId)
+            return;
+        projectNotesInput.value = result.notes;
+        savedProjectNotes = result.notes;
+        loadedProjectNotesId = projectId;
+        projectNotesInput.disabled = false;
+        projectNotesStatus.textContent = result.updated_at === null ? 'No notes yet. Notes are private to the internal team.' : 'Saved. Notes are private to the internal team.';
+        updateProjectNotesDirtyState();
+        setProjectNotesMode(projectNotesMode);
+    }
+    catch (error) {
+        if (error instanceof ApiFailure && error.status === 401) {
+            showSignedOut();
+            return;
+        }
+        if (activeProject?.id === projectId) {
+            projectNotesStatus.textContent = error instanceof Error ? error.message : 'Could not load project notes.';
+            projectNotesInput.disabled = true;
+        }
+    }
+}
+async function saveProjectNotes(event) {
+    event.preventDefault();
+    const projectId = activeProject?.id;
+    if (projectId === undefined || loadedProjectNotesId !== projectId || projectNotesInput.disabled)
+        return;
+    const notes = projectNotesInput.value;
+    projectNotesInput.disabled = true;
+    projectNotesSave.disabled = true;
+    projectNotesStatus.textContent = 'Saving…';
+    try {
+        const result = await api(`/projects/${projectId}/notes`, {
+            method: 'PUT',
+            body: JSON.stringify({ notes }),
+        });
+        if (activeProject?.id !== projectId)
+            return;
+        savedProjectNotes = result.notes;
+        projectNotesInput.value = result.notes;
+        projectNotesStatus.textContent = 'Saved. Notes are private to the internal team.';
+        updateProjectNotesDirtyState();
+    }
+    catch (error) {
+        if (error instanceof ApiFailure && error.status === 401) {
+            showSignedOut();
+            return;
+        }
+        if (activeProject?.id === projectId) {
+            projectNotesStatus.textContent = error instanceof Error ? error.message : 'Could not save project notes.';
+        }
+    }
+    finally {
+        if (activeProject?.id === projectId) {
+            projectNotesInput.disabled = false;
+            projectNotesSave.disabled = projectNotesInput.value === savedProjectNotes;
+        }
+    }
 }
 async function loadProjectIssues(projectId) {
     pauseIssuePolling();
@@ -4292,6 +4433,7 @@ function issueRowSignature(issue, reorder) {
         issue.is_shared,
         reorder?.showMilestoneTag === false ? null : issue.milestone_name ?? null,
         issue.source_message_id !== null,
+        issue.discussion_count ?? 0,
         reorder?.canMoveEarlier,
         reorder?.canMoveLater,
     ]);
@@ -4485,6 +4627,7 @@ async function loadIssueDiscussion(issueId, showLoading = true) {
             });
         issueDiscussionMessages = result.messages;
         issueDiscussionStatus.textContent = '';
+        updateProjectIssueDiscussionCount(issueId, result.messages.length);
         if (changed)
             renderIssueDiscussion();
     }
@@ -4500,6 +4643,22 @@ async function loadIssueDiscussion(issueId, showLoading = true) {
     finally {
         scheduleIssueDiscussionPoll(issueId);
     }
+}
+function updateProjectIssueDiscussionCount(issueId, count) {
+    const current = projectIssues.find((issue) => issue.id === issueId);
+    if (current !== undefined && (current.discussion_count ?? 0) !== count) {
+        projectIssues = projectIssues.map((issue) => issue.id === issueId ? { ...issue, discussion_count: count } : issue);
+        if (!issuesView.hidden)
+            renderProjectIssueBoard();
+    }
+    if (selectedIssue?.id === issueId && (selectedIssue.discussion_count ?? 0) !== count) {
+        selectedIssue = { ...selectedIssue, discussion_count: count };
+    }
+    inboxIssues = inboxIssues.map((issue) => issue.id === issueId && (issue.discussion_count ?? 0) !== count
+        ? { ...issue, discussion_count: count }
+        : issue);
+    if (!inboxView.hidden && inboxTab === 'assigned')
+        renderInboxIssues();
 }
 function renderIssueDiscussion() {
     issueDiscussionCount.textContent = String(issueDiscussionMessages.length);
@@ -4647,6 +4806,7 @@ async function postIssueDiscussionMessage(event) {
         if (selectedIssue?.id !== issueId)
             return;
         issueDiscussionMessages.push(result.message);
+        updateProjectIssueDiscussionCount(issueId, issueDiscussionMessages.length);
         renderIssueDiscussion();
         if (issueDiscussionInput.value.trim() === body)
             issueDiscussionInput.value = '';
@@ -4947,6 +5107,7 @@ function createIssueRow(issue, reorder) {
     title.textContent = issue.title;
     title.addEventListener('click', () => openIssue(issue));
     mainline.append(indicator, key, title);
+    const discussionIndicator = createDiscussionIndicator(issue.discussion_count ?? 0);
     const metadata = document.createElement('div');
     metadata.className = 'issue-metadata';
     if (issue.type !== 'task') {
@@ -4996,6 +5157,8 @@ function createIssueRow(issue, reorder) {
         source.textContent = 'From chat thread';
         metadata.append(source);
     }
+    if (discussionIndicator !== null)
+        metadata.append(discussionIndicator);
     content.append(mainline, metadata);
     if (issue.description !== '') {
         const description = document.createElement('p');
@@ -5027,6 +5190,27 @@ function createIssueRow(issue, reorder) {
         item.append(content, actions);
     }
     return item;
+}
+function createDiscussionIndicator(count) {
+    const label = discussionIndicatorLabel(count);
+    if (label === null)
+        return null;
+    const indicator = document.createElement('span');
+    indicator.className = 'issue-discussion-indicator';
+    indicator.setAttribute('role', 'img');
+    indicator.setAttribute('aria-label', label);
+    indicator.title = label;
+    const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    icon.setAttribute('viewBox', '0 0 16 16');
+    icon.setAttribute('aria-hidden', 'true');
+    const bubble = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    bubble.setAttribute('d', 'M2 3.25A2.25 2.25 0 0 1 4.25 1h7.5A2.25 2.25 0 0 1 14 3.25v5.5A2.25 2.25 0 0 1 11.75 11H7l-3.5 3v-3.15A2.25 2.25 0 0 1 2 8.75z');
+    icon.append(bubble);
+    const value = document.createElement('span');
+    value.setAttribute('aria-hidden', 'true');
+    value.textContent = String(count);
+    indicator.append(icon, value);
+    return indicator;
 }
 async function moveIssue(issue, direction, button) {
     const projectId = activeProject?.id;

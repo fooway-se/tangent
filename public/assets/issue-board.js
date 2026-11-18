@@ -1,3 +1,8 @@
+export function discussionIndicatorLabel(count) {
+    if (!Number.isSafeInteger(count) || count < 1)
+        return null;
+    return `${count} discussion ${count === 1 ? 'message' : 'messages'}`;
+}
 const statusOrder = ['doing', 'testing', 'todo', 'backlog', 'done', 'cancelled'];
 export function milestoneProgress(issues) {
     const cancelled = issues.filter((issue) => issue.status === 'cancelled').length;

@@ -18,7 +18,9 @@ final class IssueRepository
             "SELECT id, workspace_id, project_id, title, description, context, expected_outcome, acceptance_criteria,
                     issue_type AS type, assignee_id, status, priority, due_date, created_by,
                     source_channel_id, source_message_id, is_shared, milestone_id, sort_order, approval_requested_at, approved_by, approved_at,
-                    created_at, updated_at, deleted_at
+                    created_at, updated_at, deleted_at,
+                    (SELECT COUNT(*) FROM issue_discussion_messages discussion
+                     WHERE discussion.workspace_id = issues.workspace_id AND discussion.issue_id = issues.id) AS discussion_count
              FROM issues
              WHERE workspace_id = :workspace_id AND project_id = :project_id AND deleted_at IS NULL
              ORDER BY FIELD(status, 'backlog', 'todo', 'doing', 'testing', 'done', 'cancelled'), id DESC"
@@ -45,7 +47,9 @@ final class IssueRepository
             "SELECT id, workspace_id, project_id, title, description, context, expected_outcome, acceptance_criteria,
                     issue_type AS type, assignee_id, status, priority, due_date, created_by,
                     source_channel_id, source_message_id, is_shared, milestone_id, sort_order, approval_requested_at, approved_by, approved_at,
-                    created_at, updated_at, deleted_at
+                    created_at, updated_at, deleted_at,
+                    (SELECT COUNT(*) FROM issue_discussion_messages discussion
+                     WHERE discussion.workspace_id = issues.workspace_id AND discussion.issue_id = issues.id) AS discussion_count
              FROM issues
              WHERE workspace_id = :workspace_id AND assignee_id = :assignee_id AND deleted_at IS NULL
                AND status IN ('backlog', 'todo', 'doing', 'testing')
@@ -62,7 +66,9 @@ final class IssueRepository
             'SELECT id, workspace_id, project_id, title, description, context, expected_outcome, acceptance_criteria,
                     issue_type AS type, assignee_id, status, priority, due_date, created_by,
                     source_channel_id, source_message_id, is_shared, milestone_id, sort_order, approval_requested_at, approved_by, approved_at,
-                    created_at, updated_at, deleted_at
+                    created_at, updated_at, deleted_at,
+                    (SELECT COUNT(*) FROM issue_discussion_messages discussion
+                     WHERE discussion.workspace_id = issues.workspace_id AND discussion.issue_id = issues.id) AS discussion_count
              FROM issues
              WHERE workspace_id = :workspace_id AND project_id = :project_id AND deleted_at IS NOT NULL
              ORDER BY deleted_at DESC, id DESC'
@@ -137,7 +143,9 @@ final class IssueRepository
             'SELECT id, workspace_id, project_id, title, description, context, expected_outcome, acceptance_criteria,
                     issue_type AS type, assignee_id, status, priority, due_date, created_by,
                     source_channel_id, source_message_id, is_shared, milestone_id, sort_order, approval_requested_at, approved_by, approved_at,
-                    created_at, updated_at, deleted_at
+                    created_at, updated_at, deleted_at,
+                    (SELECT COUNT(*) FROM issue_discussion_messages discussion
+                     WHERE discussion.workspace_id = issues.workspace_id AND discussion.issue_id = issues.id) AS discussion_count
              FROM issues WHERE workspace_id = :workspace_id AND id = :id AND deleted_at IS NULL LIMIT 1'
         );
         $statement->execute(['workspace_id' => $workspaceId, 'id' => $issueId]);
@@ -151,7 +159,9 @@ final class IssueRepository
             'SELECT id, workspace_id, project_id, title, description, context, expected_outcome, acceptance_criteria,
                     issue_type AS type, assignee_id, status, priority, due_date, created_by,
                     source_channel_id, source_message_id, is_shared, milestone_id, sort_order, approval_requested_at, approved_by, approved_at,
-                    created_at, updated_at, deleted_at
+                    created_at, updated_at, deleted_at,
+                    (SELECT COUNT(*) FROM issue_discussion_messages discussion
+                     WHERE discussion.workspace_id = issues.workspace_id AND discussion.issue_id = issues.id) AS discussion_count
              FROM issues WHERE workspace_id = :workspace_id AND id = :id AND deleted_at IS NOT NULL LIMIT 1'
         );
         $statement->execute(['workspace_id' => $workspaceId, 'id' => $issueId]);
@@ -472,7 +482,10 @@ final class IssueRepository
 
     private static function normalize(array $issue): array
     {
-        foreach (['id', 'workspace_id', 'project_id', 'created_by', 'sort_order'] as $field) {
+        foreach (['id', 'workspace_id', 'project_id', 'created_by', 'sort_order', 'discussion_count'] as $field) {
+            if ($field === 'discussion_count' && !array_key_exists($field, $issue)) {
+                $issue[$field] = 0;
+            }
             $issue[$field] = (int) $issue[$field];
         }
         $issue['assignee_id'] = $issue['assignee_id'] === null ? null : (int) $issue['assignee_id'];

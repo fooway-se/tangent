@@ -55,6 +55,25 @@ final class ProjectService
         ];
     }
 
+    public function notes(AuthenticatedUser $user, int $projectId): array
+    {
+        $this->findVisible($user, $projectId);
+        return $this->projects->notes($user->workspaceId, $projectId);
+    }
+
+    public function saveNotes(AuthenticatedUser $user, int $projectId, array $body): array
+    {
+        $this->findVisible($user, $projectId);
+        if (!is_string($body['notes'] ?? null)) {
+            throw new ApiException(422, 'validation_failed', 'Project notes must be text.');
+        }
+        if (mb_strlen($body['notes'], 'UTF-8') > 50_000) {
+            throw new ApiException(422, 'validation_failed', 'Project notes cannot exceed 50000 characters.');
+        }
+
+        return $this->projects->saveNotes($user->workspaceId, $projectId, $user->id, $body['notes']);
+    }
+
     public function create(AuthenticatedUser $user, array $body): array
     {
         if (!Permissions::can($user, 'projects.create')) {

@@ -69,6 +69,14 @@ final class ProjectRoutes
                 'project' => $this->service->update($user, self::positiveId($params['id']), $request->body),
             ]);
         });
+
+        $router->add('GET', '/api/v1/projects/{id}/notes', function (Request $request, array $params, AuthenticatedUser $user): Response {
+            return Response::json(200, $this->service->notes($user, self::positiveId($params['id'])));
+        });
+
+        $router->add('PUT', '/api/v1/projects/{id}/notes', function (Request $request, array $params, AuthenticatedUser $user): Response {
+            return Response::json(200, $this->service->saveNotes($user, self::positiveId($params['id']), $request->body));
+        });
     }
 
     private static function positiveId(string $value): int

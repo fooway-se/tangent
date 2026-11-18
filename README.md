@@ -11,6 +11,7 @@ A keyboard-first, self-hosted workspace for small dev teams and freelancers: pro
 
 - **Keyboard first.** Move, open, change status, create and reply without the mouse. There is a command palette (`Ctrl/Cmd+K`) and a shortcut list (`?`). Statuses are changed with a key or a menu, never by drag and drop.
 - **Chat mentions.** Type `@` to find a project member by their saved name; selecting them inserts an exact mention and sends them an inbox notification.
+- **Project notes.** Each project has one internal Markdown page for durable context, with a safe rendered preview. Guest clients cannot access it.
 - **Issues come out of the conversation.** Turn a chat message into an issue; the issue keeps a link back to its thread. Issues support priorities, due dates, and an optional guided AI prompt builder with copy and Markdown export.
 - **A client portal that is not your internal tracker.** Invited guests see only what you share: progress, milestones and shared items. They can comment and approve requested work. Internal issues stay hidden, and visibility is enforced in the API, not just in the interface.
 - **Built to be installed by uploading files.** Plain PHP JSON API, no framework and no runtime dependencies. The frontend is static HTML, CSS and TypeScript. The release archive needs no Composer or npm on the server.

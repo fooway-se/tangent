@@ -30,6 +30,20 @@ test('issue discussions load for the selected issue and post issue-scoped replie
   assert.match(app, /loadIssueDiscussion\(issue\.id\)/);
 });
 
+test('issue rows show an accessible discussion indicator when messages exist', () => {
+  assert.match(app, /createDiscussionIndicator\(issue\.discussion_count \?\? 0\)/);
+  assert.match(app, /discussionIndicatorLabel\(count\)/);
+  assert.match(app, /issue-discussion-indicator/);
+  assert.match(app, /setAttribute\('aria-label', label\)/);
+  assert.match(css, /\.issue-discussion-indicator/);
+});
+
+test('discussion indicators use a compact outlined pill in the metadata row', () => {
+  assert.match(app, /metadata\.append\(discussionIndicator\)/);
+  assert.doesNotMatch(app, /mainline\.append\(discussionIndicator\)/);
+  assert.match(css, /\.issue-discussion-indicator\s*\{[^}]*border:\s*1px solid var\(--screen-border\)[^}]*border-radius:\s*999px/);
+});
+
 test('issue discussion replies remain within the selected issue and show their parent context', () => {
   assert.match(app, /issueDiscussionParent/);
   assert.match(app, /issue-discussion-reply-context/);

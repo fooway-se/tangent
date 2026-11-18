@@ -80,6 +80,47 @@ final class IssueDiscussionTest extends ApiTestCase
         )->status);
     }
 
+    public function testProjectIssueListIncludesTheCountOfDiscussionPostsAndReplies(): void
+    {
+        $admin = $this->login($this->adminEmail);
+        $projectId = $this->createProject($admin, 'Discussion indicators');
+        $issueId = $this->createIssue($admin, $projectId, 'Issue with discussion');
+        $listPath = "/api/v1/projects/{$projectId}/issues";
+
+        $initial = $this->apiCookieRequest('GET', $listPath, $admin['cookie']);
+        self::assertSame(200, $initial->status);
+        self::assertSame(0, $this->listedIssue($initial->body['issues'], $issueId)['discussion_count']);
+
+        $root = $this->apiCookieRequest(
+            'POST',
+            "/api/v1/issues/{$issueId}/discussion",
+            $admin['cookie'],
+            ['body' => 'First detail'],
+            $admin['csrf'],
+        );
+        self::assertSame(201, $root->status);
+        $reply = $this->apiCookieRequest(
+            'POST',
+            "/api/v1/issues/{$issueId}/discussion",
+            $admin['cookie'],
+            ['body' => 'Follow-up detail', 'parent_id' => $root->body['message']['id']],
+            $admin['csrf'],
+        );
+        self::assertSame(201, $reply->status);
+
+        $updated = $this->apiCookieRequest('GET', $listPath, $admin['cookie']);
+        self::assertSame(200, $updated->status);
+        self::assertSame(2, $this->listedIssue($updated->body['issues'], $issueId)['discussion_count']);
+    }
+
+    private function listedIssue(array $issues, int $issueId): array
+    {
+        foreach ($issues as $issue) {
+            if ($issue['id'] === $issueId) return $issue;
+        }
+        self::fail("Issue {$issueId} is missing from the project list.");
+    }
+
     private function createProject(array $admin, string $name): int
     {
         $response = $this->cookieRequest('POST', '/api/v1/projects', $admin['cookie'], ['name' => $name], $admin['csrf']);

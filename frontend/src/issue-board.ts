@@ -13,6 +13,7 @@ export interface BoardIssue {
   milestone_id?: number | null;
   milestone_name?: string | null;
   milestone_due_date?: string | null;
+  discussion_count?: number;
   sort_order?: number;
   created_at: string;
   updated_at: string;
@@ -29,6 +30,11 @@ export interface MilestoneProgress {
   active: number;
   cancelled: number;
   complete: boolean;
+}
+
+export function discussionIndicatorLabel(count: number): string | null {
+  if (!Number.isSafeInteger(count) || count < 1) return null;
+  return `${count} discussion ${count === 1 ? 'message' : 'messages'}`;
 }
 
 const statusOrder: IssueStatus[] = ['doing', 'testing', 'todo', 'backlog', 'done', 'cancelled'];

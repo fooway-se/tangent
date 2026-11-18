@@ -147,6 +147,39 @@ final class ProjectRepository
         ]);
     }
 
+    public function notes(int $workspaceId, int $projectId): array
+    {
+        $statement = $this->pdo->prepare(
+            'SELECT content, updated_at
+             FROM project_notes
+             WHERE workspace_id = :workspace_id AND project_id = :project_id
+             LIMIT 1'
+        );
+        $statement->execute(['workspace_id' => $workspaceId, 'project_id' => $projectId]);
+        $notes = $statement->fetch(PDO::FETCH_ASSOC);
+        return $notes === false ? ['notes' => '', 'updated_at' => null] : [
+            'notes' => $notes['content'],
+            'updated_at' => $notes['updated_at'],
+        ];
+    }
+
+    public function saveNotes(int $workspaceId, int $projectId, int $userId, string $content): array
+    {
+        $statement = $this->pdo->prepare(
+            'INSERT INTO project_notes (workspace_id, project_id, content, updated_by)
+             VALUES (:workspace_id, :project_id, :content, :updated_by)
+             ON DUPLICATE KEY UPDATE content = VALUES(content), updated_by = VALUES(updated_by),
+                updated_at = CURRENT_TIMESTAMP'
+        );
+        $statement->execute([
+            'workspace_id' => $workspaceId,
+            'project_id' => $projectId,
+            'content' => $content,
+            'updated_by' => $userId,
+        ]);
+        return $this->notes($workspaceId, $projectId);
+    }
+
     public function members(int $workspaceId, int $projectId): array
     {
         $statement = $this->pdo->prepare(

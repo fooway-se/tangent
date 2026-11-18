@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { filterIssues, groupIssues, groupIssuesByMilestone, milestoneProgress, sortIssues } from '../../public/assets/issue-board.js';
+import { discussionIndicatorLabel, filterIssues, groupIssues, groupIssuesByMilestone, milestoneProgress, sortIssues } from '../../public/assets/issue-board.js';
 
 const issues = [
   { id: 12, title: 'Fix login redirect', description: 'After reset', status: 'doing', created_at: '2026-11-01', updated_at: '2026-11-14' },
@@ -9,6 +9,12 @@ const issues = [
   { id: 14, title: 'Export CSV', description: 'Allow downloads', status: 'backlog', created_at: '2026-11-03', updated_at: '2026-11-13' },
   { id: 15, title: 'Update docs', description: '', status: 'done', created_at: '2026-11-04', updated_at: '2026-11-10' },
 ];
+
+test('discussion indicators are omitted for empty discussions and label message counts accessibly', () => {
+  assert.equal(discussionIndicatorLabel(0), null);
+  assert.equal(discussionIndicatorLabel(1), '1 discussion message');
+  assert.equal(discussionIndicatorLabel(4), '4 discussion messages');
+});
 
 test('issues group in the visual status order with accurate counts', () => {
   const groups = groupIssues(issues);
