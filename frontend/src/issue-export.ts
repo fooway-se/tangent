@@ -68,7 +68,17 @@ export function formatIssueMarkdown(issue: IssueExportData): string {
 
 export function formatIssuePrompt(issue: IssueExportData): string {
   return [
-    'Implement this issue in the current codebase. Treat the acceptance criteria as required outcomes. Inspect the relevant implementation and tests, make the necessary changes, and run relevant tests.',
+    [
+      'Implement this issue in the current codebase.',
+      '',
+      '## Working approach',
+      `- Inspect the relevant code and tests, then follow the project's conventions.`,
+      '- Use TDD: add or update a test for the desired behavior, verify it fails when practical, implement the change, and run the relevant tests.',
+      '- Treat the acceptance criteria as required outcomes.',
+      '',
+      '## Completion report',
+      'Summarize the changes and test results.',
+    ].join('\n'),
     formatIssueMarkdown(issue),
   ].join('\n\n');
 }

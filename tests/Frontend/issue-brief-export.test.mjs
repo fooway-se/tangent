@@ -115,7 +115,12 @@ test('prompt export instructs implementation and omits empty brief sections', ()
   });
 
   assert.match(prompt, /Implement this issue in the current codebase/);
+  assert.match(prompt, /Implement this issue in the current codebase\.\n\n## Working approach\n- Inspect the relevant code and tests, then follow the project's conventions\./);
+  assert.match(prompt, /Inspect the relevant code and tests, then follow the project's conventions/);
+  assert.match(prompt, /Use TDD: add or update a test for the desired behavior, verify it fails when practical, implement the change, and run the relevant tests/);
   assert.match(prompt, /Treat the acceptance criteria as required outcomes/);
+  assert.match(prompt, /\n\n## Completion report\nSummarize the changes and test results\./);
+  assert.match(prompt, /Summarize the changes and test results/);
   assert.match(prompt, /# Issue #7: Fix keyboard focus/);
   assert.match(prompt, /## Expected outcome/);
   assert.doesNotMatch(prompt, /## Description|## Context|## Acceptance criteria/);
