@@ -13,6 +13,18 @@ test('every theme has a locally hosted, credited computer photo and two short fa
   assert.deepEqual(Object.keys(THEME_MACHINES).sort(), THEMES.map(({ id }) => id).sort());
   assert.equal(THEME_MACHINES.putty.model, 'Atari 800');
   assert.equal(THEME_MACHINES.putty.year, '1979');
+  assert.equal(THEME_MACHINES.cartridge.model, 'Spectravideo SVI-728');
+  assert.equal(THEME_MACHINES.cartridge.year, '1984');
+  assert.equal(THEME_MACHINES.cartridge.photoCredit, 'MKFI');
+  assert.equal(THEME_MACHINES.nordic.model, 'Luxor ABC 80');
+  assert.equal(THEME_MACHINES.nordic.year, '1978');
+  assert.equal(THEME_MACHINES.nordic.photoCredit, 'Ellinor Algin · Tekniska museet · resized for Tangent');
+  assert.equal(THEME_MACHINES.desktop.model, 'Apple Macintosh 128K');
+  assert.equal(THEME_MACHINES.desktop.year, '1984');
+  assert.equal(THEME_MACHINES.desktop.photoCredit, 'Benoît Prieur');
+  assert.equal(THEME_MACHINES.copper.model, 'Commodore Amiga 500');
+  assert.equal(THEME_MACHINES.copper.year, '1987');
+  assert.equal(THEME_MACHINES.copper.photoCredit, 'Tomasz Sienicki');
   for (const [id, machine] of Object.entries(THEME_MACHINES)) {
     assert.ok(machine.model, `${id} has a model name`);
     assert.ok(machine.year, `${id} has a year`);

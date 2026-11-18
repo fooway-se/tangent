@@ -2,7 +2,7 @@
 (function () {
   try {
     var theme = window.localStorage.getItem('tangent.theme');
-    if (theme === 'rainbow' || theme === 'breadbin' || theme === 'broadcast' || theme === 'cassette' || theme === 'mono' || theme === 'stripe' || theme === 'paper' || theme === 'desk' || theme === 'silver' || theme === 'blue') {
+    if (theme === 'rainbow' || theme === 'breadbin' || theme === 'broadcast' || theme === 'cassette' || theme === 'mono' || theme === 'stripe' || theme === 'paper' || theme === 'desk' || theme === 'silver' || theme === 'blue' || theme === 'cartridge' || theme === 'nordic' || theme === 'desktop' || theme === 'copper') {
       document.documentElement.setAttribute('data-theme', theme);
     }
   } catch (error) {

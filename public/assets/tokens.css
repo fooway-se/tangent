@@ -731,3 +731,255 @@
   --focus-ring: rgba(255, 187, 101, 0.5);
   --signal-stripe: linear-gradient(to bottom, #e45a49 0 25%, #f0b24c 25% 50%, #7bc886 50% 75%, #697ee0 75% 100%);
 }
+
+/* Cartridge & Cobalt: warm SVI-style keys around an MSX blue screen. */
+:root[data-theme="cartridge"] {
+  --night: #07172c;
+  --night-glow: #1b4e7c;
+  --night-muted: #ced9e4;
+
+  --case-top: #d7d2c5;
+  --case-mid: #c8c2b3;
+  --case-bottom: #b9b2a2;
+  --case-shade: #9a9281;
+  --case-edge: #897f6c;
+  --case-light: #eee9dc;
+  --case-ink: #292c31;
+  --case-muted: #41403b;
+  --case-error: #923629;
+  --vent-dark: #a39b89;
+  --vent-light: #e8e2d4;
+  --footer-top: #d0cabb;
+  --footer-bottom: #bdb6a6;
+
+  --key-top: #e7e1d4;
+  --key-bottom: #cbc5b7;
+  --key-highlight: #f8f5eb;
+
+  --cap-top: #415063;
+  --cap-bottom: #263342;
+  --cap-edge: #162231;
+  --plate: #242e3b;
+  --plate-ink: #e9f3ff;
+  --plate-muted: #c2cede;
+
+  --screen: #092b5d;
+  --screen-rim: #071d3f;
+  --screen-glow: rgba(67, 170, 239, 0.12);
+  --screen-vignette: rgba(30, 100, 190, 0.16);
+  --screen-ink: #e3f2ff;
+  --screen-muted: #a9c8e7;
+  --screen-header: rgba(255, 255, 255, 0.04);
+  --screen-highlight: rgba(255, 255, 255, 0.07);
+  --backdrop: rgba(7, 23, 44, 0.7);
+  --screen-panel: #0f3770;
+  --screen-control-top: #17427c;
+  --screen-inset: #061d42;
+  --screen-field: #082451;
+  --screen-border: #285794;
+  --screen-line: #1c4374;
+  --screen-hover: #12417b;
+  --screen-track: #071f46;
+  --screen-group: #0e3466;
+  --screen-group-top: #1c4578;
+  --screen-group-bottom: #123b70;
+
+  --accent: #f6bd48;
+  --accent-edge: #9a6a12;
+  --accent-ink: #242b33;
+  --accent-shine: rgba(255, 255, 255, 0.48);
+  --success: #73d5c7;
+  --danger: #ff8d75;
+  --power-light: #e45c4c;
+  --focus-ring: rgba(246, 189, 72, 0.48);
+  --signal-stripe: linear-gradient(to bottom, #2869d1 0 25%, #33b9b7 25% 50%, #f6bd48 50% 75%, #e96e51 75% 100%);
+}
+
+/* Nordic & Phosphor: pale Swedish casework and a deep green text screen. */
+:root[data-theme="nordic"] {
+  --night: #0b1b13;
+  --night-glow: #315b42;
+  --night-muted: #ceddc4;
+
+  --case-top: #d6d3c6;
+  --case-mid: #c8c4b7;
+  --case-bottom: #b9b5a8;
+  --case-shade: #999586;
+  --case-edge: #8b8878;
+  --case-light: #eeece2;
+  --case-ink: #2c2b27;
+  --case-muted: #45443d;
+  --case-error: #97392c;
+  --vent-dark: #a09c8d;
+  --vent-light: #e8e5d8;
+  --footer-top: #d0ccbe;
+  --footer-bottom: #bdb9ab;
+
+  --key-top: #e4e0d4;
+  --key-bottom: #cbc6b8;
+  --key-highlight: #f7f5ed;
+
+  --cap-top: #43443b;
+  --cap-bottom: #2d312a;
+  --cap-edge: #1d211c;
+  --plate: #272d25;
+  --plate-ink: #e6eddc;
+  --plate-muted: #bbc6b1;
+
+  --screen: #10261d;
+  --screen-rim: #081710;
+  --screen-glow: rgba(158, 211, 105, 0.12);
+  --screen-vignette: rgba(111, 170, 89, 0.12);
+  --screen-ink: #c0e0ad;
+  --screen-muted: #a9c5a2;
+  --screen-header: rgba(255, 255, 255, 0.035);
+  --screen-highlight: rgba(255, 255, 255, 0.06);
+  --backdrop: rgba(11, 27, 19, 0.7);
+  --screen-panel: #1b3628;
+  --screen-control-top: #244231;
+  --screen-inset: #0c1c14;
+  --screen-field: #0d1e15;
+  --screen-border: #365444;
+  --screen-line: #2a4636;
+  --screen-hover: #244231;
+  --screen-track: #0c1c14;
+  --screen-group: #203d2c;
+  --screen-group-top: #365344;
+  --screen-group-bottom: #294535;
+
+  --accent: #b8d36b;
+  --accent-edge: #718637;
+  --accent-ink: #25301d;
+  --accent-shine: rgba(255, 255, 255, 0.46);
+  --success: #95d870;
+  --danger: #ff9c71;
+  --power-light: #e17c42;
+  --focus-ring: rgba(184, 211, 107, 0.48);
+  --signal-stripe: linear-gradient(to bottom, #b8d36b 0 25%, #83b86a 25% 50%, #d49a49 50% 75%, #6f9a70 75% 100%);
+}
+
+/* Icon & Mouse: warm compact-computer plastics and a crisp monochrome desktop. */
+:root[data-theme="desktop"] {
+  --night: #17191c;
+  --night-glow: #555b61;
+  --night-muted: #e4e0d6;
+
+  --case-top: #d8d5ca;
+  --case-mid: #c9c6bb;
+  --case-bottom: #b8b5ab;
+  --case-shade: #98958c;
+  --case-edge: #86847c;
+  --case-light: #f0ede4;
+  --case-ink: #292827;
+  --case-muted: #41413e;
+  --case-error: #913a32;
+  --vent-dark: #a19e94;
+  --vent-light: #e8e5db;
+  --footer-top: #d0cdc2;
+  --footer-bottom: #bdbab0;
+
+  --key-top: #e9e6dd;
+  --key-bottom: #cfccc2;
+  --key-highlight: #f9f8f3;
+
+  --cap-top: #51545a;
+  --cap-bottom: #35383d;
+  --cap-edge: #222428;
+  --plate: #33363b;
+  --plate-ink: #f2f0e9;
+  --plate-muted: #c8c7c1;
+
+  --screen: #17191c;
+  --screen-rim: #101113;
+  --screen-glow: rgba(204, 206, 210, 0.08);
+  --screen-vignette: rgba(236, 232, 217, 0.05);
+  --screen-ink: #f1efe9;
+  --screen-muted: #c4c3bd;
+  --screen-header: rgba(255, 255, 255, 0.035);
+  --screen-highlight: rgba(255, 255, 255, 0.06);
+  --backdrop: rgba(22, 23, 25, 0.72);
+  --screen-panel: #292b30;
+  --screen-control-top: #383a40;
+  --screen-inset: #101114;
+  --screen-field: #1d1f23;
+  --screen-border: #46484e;
+  --screen-line: #34363b;
+  --screen-hover: #35373d;
+  --screen-track: #101114;
+  --screen-group: #2f3136;
+  --screen-group-top: #45474d;
+  --screen-group-bottom: #383a40;
+
+  --accent: #a6c1d1;
+  --accent-edge: #648398;
+  --accent-ink: #252b2f;
+  --accent-shine: rgba(255, 255, 255, 0.48);
+  --success: #8bd0a0;
+  --danger: #ff9a8c;
+  --power-light: #d34f4f;
+  --focus-ring: rgba(166, 193, 209, 0.48);
+  --signal-stripe: linear-gradient(to bottom, #f2f0e9 0 25%, #b9b8b4 25% 50%, #8e9eb0 50% 75%, #d8836c 75% 100%);
+}
+
+/* Copper & Chroma: cool gray hardware with the Amiga's bright 16-bit palette. */
+:root[data-theme="copper"] {
+  --night: #0b1020;
+  --night-glow: #47386f;
+  --night-muted: #d8d2eb;
+
+  --case-top: #d4d0c7;
+  --case-mid: #c3c0ba;
+  --case-bottom: #b1b0ae;
+  --case-shade: #918f92;
+  --case-edge: #7f7e83;
+  --case-light: #ece8e2;
+  --case-ink: #29252f;
+  --case-muted: #403b48;
+  --case-error: #963b38;
+  --vent-dark: #9b969a;
+  --vent-light: #e4e0dc;
+  --footer-top: #ccc8c1;
+  --footer-bottom: #b8b5b4;
+
+  --key-top: #e2dfdc;
+  --key-bottom: #c5c2c4;
+  --key-highlight: #f5f1ed;
+
+  --cap-top: #3e3652;
+  --cap-bottom: #292339;
+  --cap-edge: #171323;
+  --plate: #29243a;
+  --plate-ink: #f0edfb;
+  --plate-muted: #c4bfd7;
+
+  --screen: #17152f;
+  --screen-rim: #0e0c21;
+  --screen-glow: rgba(105, 90, 255, 0.14);
+  --screen-vignette: rgba(235, 70, 194, 0.12);
+  --screen-ink: #f4f0ff;
+  --screen-muted: #c5bedf;
+  --screen-header: rgba(255, 255, 255, 0.04);
+  --screen-highlight: rgba(255, 255, 255, 0.07);
+  --backdrop: rgba(11, 16, 32, 0.74);
+  --screen-panel: #282444;
+  --screen-control-top: #373158;
+  --screen-inset: #0e0d21;
+  --screen-field: #13122a;
+  --screen-border: #4b4670;
+  --screen-line: #383355;
+  --screen-hover: #363158;
+  --screen-track: #0e0d21;
+  --screen-group: #2c2749;
+  --screen-group-top: #464068;
+  --screen-group-bottom: #39345c;
+
+  --accent: #65d3cc;
+  --accent-edge: #298f90;
+  --accent-ink: #15282d;
+  --accent-shine: rgba(255, 255, 255, 0.48);
+  --success: #8ada83;
+  --danger: #ff927c;
+  --power-light: #ff834f;
+  --focus-ring: rgba(101, 211, 204, 0.5);
+  --signal-stripe: linear-gradient(to bottom, #65d3cc 0 25%, #8975ff 25% 50%, #ed69c3 50% 75%, #f7a64a 75% 100%);
+}

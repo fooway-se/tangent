@@ -24,7 +24,7 @@ themes.putty = base;
 
 test('classic computer themes use the chosen indirect names', () => {
   assert.deepEqual(
-    THEMES.filter(({ id }) => ['broadcast', 'cassette', 'mono', 'stripe', 'paper', 'desk', 'silver', 'blue'].includes(id)).map(({ id, label }) => [id, label]),
+    THEMES.filter(({ id }) => ['broadcast', 'cassette', 'mono', 'stripe', 'paper', 'desk', 'silver', 'blue', 'cartridge', 'nordic', 'desktop', 'copper'].includes(id)).map(({ id, label }) => [id, label]),
     [
       ['broadcast', 'Broadcast & Beige'],
       ['cassette', 'Cassette & Colour'],
@@ -34,6 +34,10 @@ test('classic computer themes use the chosen indirect names', () => {
       ['desk', 'Desk & Phosphor'],
       ['silver', 'Silver & Speech'],
       ['blue', 'Blue & Byte'],
+      ['cartridge', 'Cartridge & Cobalt'],
+      ['nordic', 'Nordic & Phosphor'],
+      ['desktop', 'Icon & Mouse'],
+      ['copper', 'Copper & Chroma'],
     ],
   );
 });
@@ -48,12 +52,19 @@ test('theme helpers normalise and cycle', () => {
   assert.equal(normalizeTheme('desk'), 'desk');
   assert.equal(normalizeTheme('silver'), 'silver');
   assert.equal(normalizeTheme('blue'), 'blue');
+  assert.equal(normalizeTheme('cartridge'), 'cartridge');
+  assert.equal(normalizeTheme('nordic'), 'nordic');
+  assert.equal(normalizeTheme('desktop'), 'desktop');
+  assert.equal(normalizeTheme('copper'), 'copper');
   assert.equal(normalizeTheme('unknown'), 'putty');
   assert.equal(normalizeTheme(null), 'putty');
   assert.equal(nextTheme('putty'), 'rainbow');
   assert.equal(nextTheme('breadbin'), 'broadcast');
   assert.equal(nextTheme('mono'), 'stripe');
-  assert.equal(nextTheme('blue'), 'putty');
+  assert.equal(nextTheme('blue'), 'cartridge');
+  assert.equal(nextTheme('nordic'), 'desktop');
+  assert.equal(nextTheme('desktop'), 'copper');
+  assert.equal(nextTheme('copper'), 'putty');
 });
 
 test('every theme defines every colour token of the default theme', () => {
