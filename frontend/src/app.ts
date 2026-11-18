@@ -10,6 +10,7 @@ import { renderClientEmptyState, renderClientView, type ClientView } from './gue
 import { filterMentionMembers, findMentionQuery, mentionEmptyMessage, replaceMentionQuery, type MentionQuery } from './chat-mentions.js';
 import { resolveShortcut, shouldSubmitOnEnter, type ShortcutAction } from './shortcuts.js';
 import { THEMES, applyTheme, loadTheme, nextTheme, themeLabel, type ThemeId } from './theme.js';
+import { THEME_MACHINES } from './theme-machines.js';
 import { DEFAULT_PROJECT_NOTES_MODE, renderMarkdown } from './project-notes.js';
 import { parseQuickIssueInput } from './quick-issue.js';
 import { formatIssueMarkdown, formatIssuePrompt } from './issue-export.js';
@@ -308,6 +309,44 @@ for (const select of themeSelects) {
   select.value = activeTheme;
   select.addEventListener('change', () => setTheme(select.value as ThemeId));
 }
+
+const themeAboutDialog = document.querySelector<HTMLDialogElement>('#theme-about-dialog')!;
+const themeAboutHeading = document.querySelector<HTMLElement>('#theme-about-heading')!;
+const themeAboutEra = document.querySelector<HTMLElement>('#theme-about-era')!;
+const themeAboutImage = document.querySelector<HTMLImageElement>('#theme-about-image')!;
+const themeAboutImageFallback = document.querySelector<HTMLElement>('#theme-about-image-fallback')!;
+const themeAboutFacts = document.querySelector<HTMLUListElement>('#theme-about-facts')!;
+const themeAboutImageCredit = document.querySelector<HTMLAnchorElement>('#theme-about-image-credit')!;
+const themeAboutHistorySource = document.querySelector<HTMLAnchorElement>('#theme-about-history-source')!;
+
+function openThemeAbout(): void {
+  const machine = THEME_MACHINES[activeTheme];
+  themeAboutHeading.textContent = machine.model;
+  themeAboutEra.textContent = machine.year;
+  themeAboutFacts.replaceChildren(...machine.facts.map((fact) => {
+    const item = document.createElement('li');
+    item.textContent = fact;
+    return item;
+  }));
+  themeAboutImage.hidden = false;
+  themeAboutImageFallback.hidden = true;
+  themeAboutImage.alt = `Photograph of the ${machine.model}`;
+  themeAboutImage.loading = 'eager';
+  themeAboutImage.src = machine.imageUrl;
+  themeAboutImageCredit.href = machine.imagePage;
+  themeAboutImageCredit.textContent = `Photo: ${machine.photoCredit} · ${machine.license}`;
+  themeAboutHistorySource.href = machine.historyUrl;
+  themeAboutDialog.showModal();
+}
+
+document.querySelectorAll<HTMLButtonElement>('[data-theme-about]').forEach((button) => {
+  button.addEventListener('click', openThemeAbout);
+});
+themeAboutImage.addEventListener('error', () => {
+  themeAboutImage.hidden = true;
+  themeAboutImageFallback.hidden = false;
+});
+document.querySelector<HTMLButtonElement>('#theme-about-close')!.addEventListener('click', () => themeAboutDialog.close());
 
 const loginPanel = document.querySelector<HTMLElement>('#login-panel')!;
 const loginShell = document.querySelector<HTMLElement>('#login-shell')!;

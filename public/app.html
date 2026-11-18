@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data: https://thumb.wikimedia.org; object-src 'none'; base-uri 'self'; form-action 'self'">
     <title>Tangent · Projects</title>
     <link rel="stylesheet" href="./assets/tokens.css">
     <link rel="stylesheet" href="./assets/app.css">
@@ -69,7 +69,12 @@
         </label>
         <span class="guest-cap">Read-only · guest</span>
         <span id="guest-user" class="guest-user"></span>
-        <select class="theme-select" aria-label="Theme"></select>
+        <div class="theme-picker-controls">
+          <select class="theme-select" aria-label="Theme"></select>
+          <button class="theme-about-button" type="button" data-theme-about aria-label="About this computer" aria-haspopup="dialog">
+            <span class="retro-computer-icon" aria-hidden="true"><span></span></span>
+          </button>
+        </div>
         <button id="guest-logout-button" class="button button-quiet" type="button">Sign out</button>
       </header>
       <p id="guest-status" class="guest-status-line" role="status"></p>
@@ -96,7 +101,12 @@
         </section>
         <div id="account-bar" class="account-bar sidebar-account" hidden>
           <span id="current-user"></span>
-          <select class="theme-select" aria-label="Theme"></select>
+          <div class="theme-picker-controls">
+            <select class="theme-select" aria-label="Theme"></select>
+            <button class="theme-about-button" type="button" data-theme-about aria-label="About this computer" aria-haspopup="dialog">
+              <span class="retro-computer-icon" aria-hidden="true"><span></span></span>
+            </button>
+          </div>
           <button id="logout-button" class="button button-quiet" type="button">Sign out</button>
         </div>
       </aside>
@@ -569,6 +579,25 @@
         </label>
         <ul id="command-results" class="command-results" role="listbox" aria-label="Commands"></ul>
         <p class="command-palette-help"><kbd>↑</kbd>/<kbd>↓</kbd> Move · <kbd>Enter</kbd> Run · <kbd>Esc</kbd> Close</p>
+      </section>
+    </dialog>
+
+    <dialog id="theme-about-dialog" class="theme-about-dialog" aria-labelledby="theme-about-heading">
+      <section class="theme-about-content">
+        <header class="dialog-heading">
+          <h2 id="theme-about-heading"></h2>
+          <button id="theme-about-close" class="button button-quiet" type="button" aria-label="Close computer history card">Close</button>
+        </header>
+        <p id="theme-about-era" class="theme-about-era"></p>
+        <div class="theme-about-machine">
+          <img id="theme-about-image" alt="" loading="lazy" hidden>
+          <p id="theme-about-image-fallback" class="theme-about-image-fallback" hidden>Photo unavailable. Open the photo source to view it.</p>
+          <ul id="theme-about-facts" class="theme-about-facts"></ul>
+        </div>
+        <footer class="theme-about-sources">
+          <a id="theme-about-image-credit" target="_blank" rel="noopener noreferrer">Photo and license</a>
+          <a id="theme-about-history-source" target="_blank" rel="noopener noreferrer">History source</a>
+        </footer>
       </section>
     </dialog>
 
