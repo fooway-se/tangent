@@ -1,51 +1,128 @@
+/*
+ * Installer and upgrade pages: "Putty & Screen".
+ * The CSP for these pages is `style-src 'self'`, so they load the shared
+ * design tokens from ./assets/tokens.css; no colour is defined here.
+ */
 :root {
-    color-scheme: light;
-    font-family: system-ui, sans-serif;
-    color: #1e252b;
-    background: #f5f1ea;
+    color-scheme: dark;
 }
 
 body {
+    position: relative;
+    min-height: 100vh;
     margin: 0;
-    padding: 2rem 1rem;
+    padding: 56px 16px 48px;
+    box-sizing: border-box;
+    color: var(--case-ink);
+    background: linear-gradient(180deg, var(--case-top) 0%, var(--case-mid) 60%, var(--case-bottom) 100%);
+    font: 13px/1.5 var(--font-mono);
+}
+
+body::before {
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    height: 8px;
+    background: var(--signal-stripe);
+    content: "";
 }
 
 .installer {
     max-width: 42rem;
     margin: 0 auto;
-    padding: 2rem;
-    background: #fff;
-    border: 1px solid #d8d0c5;
-    border-radius: 0.75rem;
+    padding: 0 26px 26px;
+    overflow: hidden;
+    border-radius: var(--radius-screen);
+    color: var(--screen-ink);
+    background: radial-gradient(ellipse at 15% 0%, var(--screen-glow), rgba(0, 0, 0, 0) 55%), var(--screen);
+    box-shadow: 0 0 0 3px var(--screen-rim), 0 0 0 5px var(--vent-dark), 0 2px 0 5px var(--case-light), inset 0 0 70px var(--screen-vignette);
+}
+
+.installer::before {
+    display: block;
+    height: 8px;
+    margin: 0 -26px 22px;
+    background: var(--signal-stripe);
+    content: "";
 }
 
 h1,
 h2,
 legend {
-    color: #26343d;
+    color: var(--screen-ink);
+    font-family: var(--font-display);
+    font-weight: 800;
+}
+
+h1 {
+    margin: 0 0 8px;
+    font-size: 1.9rem;
+    line-height: 1.2;
+}
+
+h2 {
+    margin: 0 0 8px;
+    font-size: 1rem;
+}
+
+p {
+    margin-top: 0;
+    color: var(--screen-muted);
+}
+
+a {
+    color: var(--accent);
+}
+
+code {
+    padding: 1px 5px;
+    border: 1px solid var(--screen-border);
+    border-radius: var(--radius-cap);
+    background: var(--screen-inset);
+    color: var(--screen-ink);
 }
 
 fieldset {
     margin: 1.5rem 0;
     padding: 1rem;
-    border: 1px solid #d8d0c5;
-    border-radius: 0.5rem;
+    border: 1px solid var(--screen-border);
+    border-radius: var(--radius-panel);
+    background: var(--screen-panel);
+}
+
+legend {
+    padding: 0 6px;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--screen-muted);
 }
 
 label {
     display: grid;
-    gap: 0.4rem;
+    gap: 4px;
     margin: 1rem 0;
-    font-weight: 600;
+    color: var(--screen-muted);
+    font-size: 12px;
 }
 
 input {
     box-sizing: border-box;
     width: 100%;
-    padding: 0.7rem;
-    border: 1px solid #8d969c;
-    border-radius: 0.3rem;
+    padding: 9px 10px;
+    border: 1px solid var(--screen-border);
+    border-radius: var(--radius-panel);
+    outline: none;
+    color: var(--screen-ink);
+    background: var(--screen-inset);
+    box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.7);
     font: inherit;
+}
+
+input:focus {
+    border-color: var(--accent);
+    box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.7), 0 0 0 2px var(--focus-ring);
 }
 
 label.check {
@@ -56,32 +133,56 @@ label.check {
 
 label.check input {
     width: auto;
+    accent-color: var(--accent);
 }
 
 button {
-    padding: 0.8rem 1.2rem;
-    color: #fff;
-    background: #b84f26;
-    border: 0;
-    border-radius: 0.35rem;
-    font: inherit;
-    font-weight: 700;
+    padding: 10px 18px;
+    border: 1px solid var(--accent-edge);
+    border-bottom-width: 4px;
+    border-radius: var(--radius-key);
+    color: var(--accent-ink);
+    background: var(--accent);
+    box-shadow: inset 0 1px 0 var(--accent-shine);
+    font: 800 14px var(--font-display);
     cursor: pointer;
 }
 
+button:hover {
+    filter: brightness(1.06);
+}
+
+button:active {
+    transform: translateY(2px);
+}
+
+button:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+}
+
 .notice {
-    padding: 1rem;
-    background: #f5f1ea;
-    border-radius: 0.4rem;
+    margin: 0 0 12px;
+    padding: 10px 12px;
+    border: 1px solid var(--screen-border);
+    border-radius: var(--radius-panel);
+    color: var(--screen-ink);
+    background: var(--screen-inset);
+    box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.7);
+}
+
+.notice ul {
+    margin: 0;
+    padding-left: 1.2rem;
 }
 
 .error {
-    color: #761f1f;
-    background: #fbe9e7;
+    border-color: var(--danger);
+    color: var(--danger);
 }
 
 .help {
     margin: -0.4rem 0 1rem;
-    color: #5f6a70;
-    font-size: 0.9rem;
+    color: var(--screen-muted);
+    font-size: 11px;
 }

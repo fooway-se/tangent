@@ -99,6 +99,7 @@ function upgradeEscape(string $value): string
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Upgrade Tangent</title>
+    <link rel="stylesheet" href="./assets/tokens.css">
     <link rel="stylesheet" href="./install.css">
 </head>
 <body>

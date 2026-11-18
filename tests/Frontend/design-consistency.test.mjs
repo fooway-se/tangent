@@ -93,3 +93,13 @@ test('shortcut keys are black keycaps on the case and beige keys elsewhere', () 
   assert.match(rule(css, '.keyboard-hints kbd'), /var\(--cap-top\)/);
   assert.match(rule(css, 'kbd'), /var\(--key-top\)/);
 });
+
+test('app.css uses the shape tokens instead of hard-coded corner radii', () => {
+  assert.deepEqual(css.match(/border-radius:\s*(?:4|5|6|7|18)px/g) ?? [], [], 'use --radius-cap/-panel/-key/-screen');
+  assert.deepEqual(css.match(/rgba\(239,\s*153,\s*39/g) ?? [], [], 'accent tints derive from --accent');
+});
+
+test('stacked admin panels are spaced and quiet row actions are visible', () => {
+  assert.match(css, /\.workspace-admin-tab-panel > \.panel \+ \.panel \{[^}]*margin-top:/);
+  assert.match(css, /\.member-list \.button-quiet \{[^}]*border-color:\s*var\(--screen-border\)/);
+});
