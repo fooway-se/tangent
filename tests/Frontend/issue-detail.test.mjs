@@ -18,10 +18,14 @@ test('issue detail editor sits in the center pane beside project chat', () => {
     'issue-back-button',
     'issue-detail-title',
     'issue-detail-description',
+    'issue-detail-priority',
+    'issue-detail-due-date',
     'issue-detail-status',
     'issue-detail-edit-form',
     'issue-detail-title-input',
     'issue-detail-description-input',
+    'issue-detail-priority-input',
+    'issue-detail-due-date-input',
     'issue-source-link',
     'issue-status-history',
     'issue-status-history-list',
@@ -35,6 +39,17 @@ test('issue detail can save existing editable fields and jump to its source mess
   assert.match(app, /method:\s*'PATCH'/);
   assert.match(app, /source_message_id/);
   assert.match(app, /scrollIntoView/);
+  assert.match(app, /priority:\s*issueDetailPriorityInput\.value/);
+  assert.match(app, /due_date:\s*issueDetailDueDateInput\.value === '' \? null : issueDetailDueDateInput\.value/);
+  assert.match(app, /issueDetailPriority\.textContent = issuePriorityLabel\(selectedIssue\.priority\)/);
+  assert.match(app, /issueDetailDueDate\.textContent = selectedIssue\.due_date/);
+});
+
+test('issue quick add exposes priority and due date syntax', () => {
+  assert.match(html, /priority:high/);
+  assert.match(html, /due:YYYY-MM-DD/);
+  assert.match(app, /priority:\s*parsedIssue\.priority/);
+  assert.match(app, /due_date:\s*parsedIssue\.dueDate/);
 });
 
 test('issue detail loads a compact status history with actor and time', () => {

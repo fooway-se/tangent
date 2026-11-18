@@ -35,6 +35,8 @@ final class IssuesTest extends ApiTestCase
         self::assertSame(201, $created->status, json_encode($created->body));
         self::assertSame('backlog', $created->body['issue']['status']);
         self::assertSame('Add empty state', $created->body['issue']['title']);
+        self::assertSame('medium', $created->body['issue']['priority']);
+        self::assertNull($created->body['issue']['due_date']);
 
         $listed = $this->apiCookieRequest(
             'GET',
@@ -209,6 +211,53 @@ final class IssuesTest extends ApiTestCase
             $admin['csrf'],
         );
         self::assertSame(422, $approvalWithoutSharing->status);
+    }
+
+    public function testIssuePriorityAndDueDateCanBeCreatedUpdatedAndCleared(): void
+    {
+        $admin = $this->login($this->adminEmail);
+        $projectId = $this->createProject($admin, 'Issue planning fields');
+        $created = $this->apiCookieRequest(
+            'POST',
+            "/api/v1/projects/{$projectId}/issues",
+            $admin['cookie'],
+            ['title' => 'Prepare launch notes', 'priority' => 'high', 'due_date' => '2026-11-30'],
+            $admin['csrf'],
+        );
+
+        self::assertSame(201, $created->status, json_encode($created->body));
+        self::assertSame('high', $created->body['issue']['priority']);
+        self::assertSame('2026-11-30', $created->body['issue']['due_date']);
+        $issueId = (int) $created->body['issue']['id'];
+
+        $updated = $this->apiCookieRequest(
+            'PATCH',
+            "/api/v1/issues/{$issueId}",
+            $admin['cookie'],
+            ['priority' => 'low', 'due_date' => null],
+            $admin['csrf'],
+        );
+        self::assertSame(200, $updated->status, json_encode($updated->body));
+        self::assertSame('low', $updated->body['issue']['priority']);
+        self::assertNull($updated->body['issue']['due_date']);
+
+        $invalidPriority = $this->apiCookieRequest(
+            'PATCH',
+            "/api/v1/issues/{$issueId}",
+            $admin['cookie'],
+            ['priority' => 'critical'],
+            $admin['csrf'],
+        );
+        self::assertSame(422, $invalidPriority->status);
+
+        $invalidDueDate = $this->apiCookieRequest(
+            'PATCH',
+            "/api/v1/issues/{$issueId}",
+            $admin['cookie'],
+            ['due_date' => '2026-02-30'],
+            $admin['csrf'],
+        );
+        self::assertSame(422, $invalidDueDate->status);
     }
 
     public function testNonMemberCannotReadOrCreateProjectIssues(): void

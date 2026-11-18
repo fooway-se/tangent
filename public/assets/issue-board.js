@@ -9,7 +9,7 @@ export function filterIssues(issues, query) {
     const normalized = query.trim().toLocaleLowerCase();
     if (normalized === '')
         return [...issues];
-    return issues.filter((issue) => `#${issue.id} ${issue.title} ${issue.description} ${issue.status} ${issue.type ?? ''} ${issue.assignee_name ?? ''} ${issue.milestone_name ?? ''}`
+    return issues.filter((issue) => `#${issue.id} ${issue.title} ${issue.description} ${issue.status} ${issue.type ?? ''} ${issue.priority ?? ''} ${issue.due_date ?? ''} ${issue.assignee_name ?? ''} ${issue.milestone_name ?? ''}`
         .toLocaleLowerCase()
         .includes(normalized));
 }
@@ -59,6 +59,9 @@ export function sortIssues(issues, order) {
             return compareNextUp(a, b);
         if (order === 'title')
             return a.title.localeCompare(b.title, undefined, { sensitivity: 'base' });
+        if (order === 'priority')
+            return priorityRank(a.priority) - priorityRank(b.priority)
+                || dateValue(b.updated_at) - dateValue(a.updated_at);
         if (order === 'oldest')
             return dateValue(a.created_at) - dateValue(b.created_at);
         if (order === 'newest')
@@ -66,16 +69,29 @@ export function sortIssues(issues, order) {
         return dateValue(b.updated_at) - dateValue(a.updated_at);
     });
 }
+function priorityRank(priority) {
+    switch (priority) {
+        case 'urgent': return 0;
+        case 'high': return 1;
+        case 'medium': return 2;
+        case 'low': return 3;
+        default: return 4;
+    }
+}
 function compareNextUp(a, b) {
+    const aDueDate = a.due_date ?? a.milestone_due_date ?? null;
+    const bDueDate = b.due_date ?? b.milestone_due_date ?? null;
+    if (aDueDate === null && bDueDate !== null)
+        return 1;
+    if (aDueDate !== null && bDueDate === null)
+        return -1;
+    if (aDueDate !== null && bDueDate !== null && aDueDate !== bDueDate)
+        return aDueDate.localeCompare(bDueDate);
     const aHasMilestone = a.milestone_id !== null && a.milestone_id !== undefined;
     const bHasMilestone = b.milestone_id !== null && b.milestone_id !== undefined;
     if (aHasMilestone !== bHasMilestone)
         return aHasMilestone ? -1 : 1;
     if (aHasMilestone && bHasMilestone) {
-        const aDue = a.milestone_due_date ?? '9999-12-31';
-        const bDue = b.milestone_due_date ?? '9999-12-31';
-        if (aDue !== bDue)
-            return aDue.localeCompare(bDue);
         if (a.milestone_id !== b.milestone_id)
             return (a.milestone_id ?? 0) - (b.milestone_id ?? 0);
     }

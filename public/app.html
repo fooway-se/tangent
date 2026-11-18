@@ -179,13 +179,24 @@
                 <form id="issue-form" class="issue-quick-add">
                   <span class="issue-quick-add-plus" aria-hidden="true">+</span>
                   <label class="visually-hidden" for="issue-quick-add-title">New issue title</label>
-                  <input id="issue-quick-add-title" name="title" maxlength="200" placeholder="Add an issue…" autocomplete="off" required>
+                  <input id="issue-quick-add-title" name="title" maxlength="200" placeholder="Add an issue… priority:high due:YYYY-MM-DD" autocomplete="off" required>
                   <details id="issue-description-details" class="issue-description-details">
                     <summary>Details</summary>
                     <label>Issue description
                       <textarea name="description" rows="2" maxlength="10000"></textarea>
                     </label>
                     <div class="issue-quick-add-fields">
+                      <label>Priority
+                        <select id="issue-quick-add-priority" name="priority">
+                          <option value="low">Low</option>
+                          <option value="medium" selected>Medium</option>
+                          <option value="high">High</option>
+                          <option value="urgent">Urgent</option>
+                        </select>
+                      </label>
+                      <label>Due date
+                        <input id="issue-quick-add-due-date" name="due_date" type="date">
+                      </label>
                       <label>Type
                         <select id="issue-quick-add-type" name="type">
                           <option value="task">Task</option>
@@ -228,7 +239,7 @@
                   <div class="issue-board-controls">
                     <label class="issue-filter-control">
                       <span>Filter</span>
-                      <input id="issue-filter" type="search" placeholder="Title, ID, description, type, assignee" aria-label="Filter issues by title, type, or assignee">
+                      <input id="issue-filter" type="search" placeholder="Title, ID, description, priority, due date, type, assignee" aria-label="Filter issues by title, priority, due date, type, or assignee">
                     </label>
                     <label class="visually-hidden" for="issue-grouping">Group issues</label>
                     <select id="issue-grouping" class="issue-order-select" aria-label="Group issues">
@@ -241,6 +252,7 @@
                       <option value="newest">Order: Newest</option>
                       <option value="oldest">Order: Oldest</option>
                       <option value="title">Order: Title</option>
+                      <option value="priority">Order: Priority</option>
                       <option value="next_up">Order: Next up</option>
                     </select>
                   </div>
@@ -281,6 +293,8 @@
                   <h2 id="issue-detail-title" class="issue-detail-title"></h2>
                   <div class="issue-detail-metadata">
                     <span>Type: <strong id="issue-detail-type"></strong></span>
+                    <span>Priority: <strong id="issue-detail-priority"></strong></span>
+                    <span>Due date: <strong id="issue-detail-due-date"></strong></span>
                     <span>Assignee: <strong id="issue-detail-assignee"></strong></span>
                     <span>Milestone: <strong id="issue-detail-milestone"></strong></span>
                     <span id="issue-detail-sharing"></span>
@@ -303,6 +317,17 @@
                   </label>
                   <label>Description
                     <textarea id="issue-detail-description-input" name="description" rows="8" maxlength="10000"></textarea>
+                  </label>
+                  <label>Priority
+                    <select id="issue-detail-priority-input" name="priority">
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                      <option value="urgent">Urgent</option>
+                    </select>
+                  </label>
+                  <label>Due date
+                    <input id="issue-detail-due-date-input" name="due_date" type="date">
                   </label>
                   <label>Type
                     <select id="issue-detail-type-input" name="type">

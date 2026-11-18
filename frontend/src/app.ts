@@ -29,6 +29,7 @@ const apiBaseUrl = new URL('../api/v1', import.meta.url).pathname.replace(/\/$/,
 
 type Role = 'admin' | 'developer' | 'guest';
 type IssueType = 'task' | 'bug' | 'feature' | 'research' | 'maintenance';
+type IssuePriority = 'low' | 'medium' | 'high' | 'urgent';
 type IssueGrouping = 'status' | 'milestone';
 
 type WorkspaceLocation =
@@ -95,6 +96,8 @@ interface GuestProject {
 
 interface Issue extends BoardIssue {
   type: IssueType;
+  priority: IssuePriority;
+  due_date: string | null;
   assignee_id: number | null;
   workspace_id: number;
   project_id: number;
@@ -171,6 +174,25 @@ function issueStatusLabel(status: IssueStatus): string {
 
 function issueTypeLabel(type: IssueType): string {
   return ISSUE_TYPE_OPTIONS.find((option) => option.value === type)?.label ?? type;
+}
+
+function issuePriorityLabel(priority: IssuePriority): string {
+  return priority[0]!.toUpperCase() + priority.slice(1);
+}
+
+function formatIssueDueDate(dueDate: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dueDate)) return dueDate;
+  const date = new Date(`${dueDate}T12:00:00Z`);
+  return new Intl.DateTimeFormat(undefined, {
+    month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC',
+  }).format(date);
+}
+
+function isIssueOverdue(issue: Pick<Issue, 'due_date' | 'status'>): boolean {
+  if (issue.due_date === null || issue.status === 'done' || issue.status === 'cancelled') return false;
+  const today = new Date();
+  const todayDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  return issue.due_date < todayDate;
 }
 
 function issueAssigneeLabel(assigneeId: number | null): string {
@@ -344,6 +366,8 @@ const membersView = document.querySelector<HTMLElement>('#members-view')!;
 const issueDetailView = document.querySelector<HTMLElement>('#issue-detail-view')!;
 const issueDetailDisplay = document.querySelector<HTMLElement>('#issue-detail-display')!;
 const issueDetailTitle = document.querySelector<HTMLElement>('#issue-detail-title')!;
+const issueDetailPriority = document.querySelector<HTMLElement>('#issue-detail-priority')!;
+const issueDetailDueDate = document.querySelector<HTMLElement>('#issue-detail-due-date')!;
 const issueDetailDescription = document.querySelector<HTMLElement>('#issue-detail-description')!;
 const issueDetailStatus = document.querySelector<HTMLButtonElement>('#issue-detail-status')!;
 const issueDetailStatusLabel = document.querySelector<HTMLElement>('#issue-detail-status-label')!;
@@ -351,6 +375,8 @@ const issueSourceLink = document.querySelector<HTMLAnchorElement>('#issue-source
 const issueDetailEditForm = document.querySelector<HTMLFormElement>('#issue-detail-edit-form')!;
 const issueDetailTitleInput = document.querySelector<HTMLInputElement>('#issue-detail-title-input')!;
 const issueDetailDescriptionInput = document.querySelector<HTMLTextAreaElement>('#issue-detail-description-input')!;
+const issueDetailPriorityInput = document.querySelector<HTMLSelectElement>('#issue-detail-priority-input')!;
+const issueDetailDueDateInput = document.querySelector<HTMLInputElement>('#issue-detail-due-date-input')!;
 const issueDetailEditButton = document.querySelector<HTMLButtonElement>('#issue-detail-edit-button')!;
 const issueDetailDeleteButton = document.querySelector<HTMLButtonElement>('#issue-detail-delete-button')!;
 const issueDetailSaveButton = document.querySelector<HTMLButtonElement>('#issue-detail-save-button')!;
@@ -369,6 +395,8 @@ const issueBackButton = document.querySelector<HTMLButtonElement>('#issue-back-b
 const issueDetailCancelButton = document.querySelector<HTMLButtonElement>('#issue-detail-cancel-button')!;
 const issueForm = document.querySelector<HTMLFormElement>('#issue-form')!;
 const issueQuickAddTitle = document.querySelector<HTMLInputElement>('#issue-quick-add-title')!;
+const issueQuickAddPriority = document.querySelector<HTMLSelectElement>('#issue-quick-add-priority')!;
+const issueQuickAddDueDate = document.querySelector<HTMLInputElement>('#issue-quick-add-due-date')!;
 const issueQuickAddAssignee = document.querySelector<HTMLSelectElement>('#issue-quick-add-assignee')!;
 const issueQuickAddMilestone = document.querySelector<HTMLSelectElement>('#issue-quick-add-milestone')!;
 const issueQuickAddShared = document.querySelector<HTMLInputElement>('#issue-quick-add-shared')!;
@@ -2992,10 +3020,13 @@ issueForm.addEventListener('submit', async (event) => {
   issueQuickAddTitle.setCustomValidity('');
   const assigneeValue = values.get('assignee_id');
   const milestoneValue = values.get('milestone_id');
+  const dueDateValue = values.get('due_date');
   const issueInput: Record<string, unknown> = {
     title: parsedIssue.title,
     description: values.get('description'),
     type: parsedIssue.type ?? values.get('type'),
+    priority: parsedIssue.priority ?? values.get('priority'),
+    due_date: parsedIssue.dueDate ?? (typeof dueDateValue === 'string' && dueDateValue !== '' ? dueDateValue : null),
     assignee_id: parsedIssue.assigneeId
       ?? (typeof assigneeValue === 'string' && assigneeValue !== '' ? Number(assigneeValue) : null),
   };
@@ -3442,10 +3473,20 @@ function createInboxIssueRow(issue: InboxIssue): HTMLLIElement {
   const type = document.createElement('span');
   type.className = 'issue-type-tag';
   type.textContent = issueTypeLabel(issue.type);
+  const priority = document.createElement('span');
+  priority.className = `issue-priority-tag is-${issue.priority}`;
+  priority.textContent = issuePriorityLabel(issue.priority);
   const status = document.createElement('span');
   status.className = `inbox-issue-status is-${issue.status}`;
   status.textContent = issueStatusLabel(issue.status);
-  metadata.append(type, status);
+  metadata.append(type, priority, status);
+  if (issue.due_date !== null) {
+    const dueDate = document.createElement('span');
+    const overdue = isIssueOverdue(issue);
+    dueDate.className = `issue-due-date-tag${overdue ? ' is-overdue' : ''}`;
+    dueDate.textContent = `${overdue ? 'Overdue' : 'Due'} ${formatIssueDueDate(issue.due_date)}`;
+    metadata.append(dueDate);
+  }
   primary.append(title, metadata);
   mainline.append(key, primary);
   content.append(projectName, mainline);
@@ -3997,6 +4038,12 @@ function renderIssueDetail(): void {
   if (selectedIssue === null) return;
   issueDetailTitle.textContent = selectedIssue.title;
   issueDetailType.textContent = issueTypeLabel(selectedIssue.type);
+  issueDetailPriority.textContent = issuePriorityLabel(selectedIssue.priority);
+  const overdue = isIssueOverdue(selectedIssue);
+  issueDetailDueDate.textContent = selectedIssue.due_date === null
+    ? 'None'
+    : `${overdue ? 'Overdue · ' : ''}${formatIssueDueDate(selectedIssue.due_date)}`;
+  issueDetailDueDate.classList.toggle('is-overdue', overdue);
   issueDetailAssignee.textContent = issueAssigneeLabel(selectedIssue.assignee_id);
   issueDetailMilestone.textContent = projectMilestones.find((milestone) => milestone.id === selectedIssue?.milestone_id)?.name ?? 'None';
   issueDetailSharing.textContent = selectedIssue.is_shared ? 'Shared with guest' : 'Internal';
@@ -4321,6 +4368,19 @@ function createIssueRow(
   assignee.className = 'issue-assignee-label';
   assignee.textContent = `Assignee: ${issueAssigneeLabel(issue.assignee_id)}`;
   metadata.append(type);
+  const priority = document.createElement('span');
+  priority.className = `issue-priority-tag is-${issue.priority}`;
+  priority.textContent = issuePriorityLabel(issue.priority);
+  priority.title = `Priority: ${issuePriorityLabel(issue.priority)}`;
+  metadata.append(priority);
+  if (issue.due_date !== null) {
+    const dueDate = document.createElement('span');
+    const overdue = isIssueOverdue(issue);
+    dueDate.className = `issue-due-date-tag${overdue ? ' is-overdue' : ''}`;
+    dueDate.textContent = `${overdue ? 'Overdue' : 'Due'} ${formatIssueDueDate(issue.due_date)}`;
+    dueDate.title = `${overdue ? 'Overdue' : 'Due'} ${issue.due_date}`;
+    metadata.append(dueDate);
+  }
   if (issue.is_shared) {
     const shared = document.createElement('span');
     shared.className = 'issue-shared-tag';
@@ -4407,6 +4467,8 @@ issueDetailEditButton.addEventListener('click', () => {
   if (selectedIssue === null) return;
   issueDetailTitleInput.value = selectedIssue.title;
   issueDetailDescriptionInput.value = selectedIssue.description;
+  issueDetailPriorityInput.value = selectedIssue.priority;
+  issueDetailDueDateInput.value = selectedIssue.due_date ?? '';
   issueDetailTypeInput.value = selectedIssue.type;
   populateIssueAssigneeSelect(issueDetailAssigneeInput, selectedIssue.assignee_id);
   populateIssueMilestoneSelect(issueDetailMilestoneInput, selectedIssue.milestone_id);
@@ -4446,6 +4508,8 @@ issueDetailEditForm.addEventListener('submit', async (event) => {
       body: JSON.stringify({
         title: issueDetailTitleInput.value,
         description: issueDetailDescriptionInput.value,
+        priority: issueDetailPriorityInput.value,
+        due_date: issueDetailDueDateInput.value === '' ? null : issueDetailDueDateInput.value,
         type: issueDetailTypeInput.value,
         assignee_id: issueDetailAssigneeInput.value === '' ? null : Number(issueDetailAssigneeInput.value),
         milestone_id: issueDetailMilestoneInput.value === '' ? null : Number(issueDetailMilestoneInput.value),

@@ -40,10 +40,29 @@ test('issue filter matches title, description, status, and identifier', () => {
   assert.deepEqual(filterIssues(issues, 'doing').map((issue) => issue.id), [12]);
 });
 
+test('issue filter matches priority and issue due date', () => {
+  const planned = [
+    { ...issues[0], priority: 'urgent', due_date: '2026-11-30' },
+    { ...issues[1], priority: 'low', due_date: null },
+  ];
+  assert.deepEqual(filterIssues(planned, 'urgent').map((issue) => issue.id), [12]);
+  assert.deepEqual(filterIssues(planned, '2026-11-30').map((issue) => issue.id), [12]);
+});
+
 test('issue order choices sort copies without mutating the input', () => {
   assert.deepEqual(sortIssues(issues, 'updated').map((issue) => issue.id), [12, 14, 13, 15]);
   assert.deepEqual(sortIssues(issues, 'title').map((issue) => issue.id), [13, 14, 12, 15]);
   assert.equal(issues[0].id, 12);
+});
+
+test('priority order puts urgent issues before lower priority issues', () => {
+  const planned = [
+    { ...issues[0], id: 21, priority: 'low' },
+    { ...issues[1], id: 22, priority: 'urgent' },
+    { ...issues[2], id: 23, priority: 'high' },
+    { ...issues[3], id: 24, priority: 'medium' },
+  ];
+  assert.deepEqual(sortIssues(planned, 'priority').map((issue) => issue.id), [22, 23, 24, 21]);
 });
 
 test('next-up order uses milestone due dates, then the saved issue sequence', () => {
@@ -55,6 +74,14 @@ test('next-up order uses milestone due dates, then the saved issue sequence', ()
     { ...issues[0], id: 25, milestone_id: null, milestone_due_date: null, sort_order: 1 },
   ];
   assert.deepEqual(sortIssues(planned, 'next_up').map((issue) => issue.id), [23, 22, 21, 24, 25]);
+});
+
+test('next-up order uses an issue due date ahead of its milestone date', () => {
+  const planned = [
+    { ...issues[0], id: 31, milestone_id: 3, milestone_due_date: '2027-01-10', due_date: '2027-02-10' },
+    { ...issues[1], id: 32, milestone_id: null, due_date: '2026-12-01' },
+  ];
+  assert.deepEqual(sortIssues(planned, 'next_up').map((issue) => issue.id), [32, 31]);
 });
 
 test('milestone progress ignores cancelled issues and completes only when active work exists and is done', () => {

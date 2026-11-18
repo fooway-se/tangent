@@ -212,7 +212,7 @@ label { display: grid; gap: 4px; color: var(--screen-muted); font-size: 12px; }
 .form-check-label { display: flex; align-items: center; gap: 8px; min-height: 24px; cursor: pointer; }
 .form-check-label input[type="checkbox"] { flex: 0 0 16px; width: 16px; height: 16px; margin: 0; padding: 0; accent-color: var(--accent); box-shadow: none; cursor: inherit; }
 input, textarea, select { width: 100%; border: 1px solid var(--screen-border); border-radius: var(--radius-panel); padding: 8px 10px; outline: none; color: var(--screen-ink); background: var(--screen-inset); box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.7); }
-input::placeholder, textarea::placeholder { color: var(--screen-muted); opacity: 1; }
+input::placeholder, textarea::placeholder { color: var(--screen-muted); font-size: 11px; opacity: 0.8; }
 input:focus, textarea:focus, select:focus { border-color: var(--accent); box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.7), 0 0 0 2px var(--focus-ring); }
 textarea { resize: vertical; }
 select { padding-right: 28px; background: var(--screen-inset) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath d='M2 3.5l3 3 3-3' fill='none' stroke='%23efe6cf' stroke-width='1.5'/%3E%3C/svg%3E") right 10px center / 10px no-repeat; appearance: none; cursor: pointer; }
@@ -297,7 +297,7 @@ select { padding-right: 28px; background: var(--screen-inset) url("data:image/sv
 .issue-description-details[open] { z-index: 1; grid-column: 2 / 4; align-self: start; padding: 6px 0; }
 .issue-description-details[open] label { margin-top: 6px; }
 .issue-description-details textarea { min-height: 32px; padding: 6px 8px; font-size: 12px; }
-.issue-quick-add-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
+.issue-quick-add-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin-top: 8px; }
 .issue-quick-add-fields label { display: grid; gap: 4px; color: var(--screen-muted); font-size: 11px; }
 .issue-quick-add-fields select { width: 100%; }
 .issue-quick-add-sharing { display: flex; flex-wrap: wrap; gap: 4px 18px; margin-top: 8px; }
@@ -360,6 +360,11 @@ select { padding-right: 28px; background: var(--screen-inset) url("data:image/sv
 .issue-metadata { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin: 4px 0 0 4.75rem; color: var(--screen-muted); font-size: 10px; }
 .issue-metadata > * { font: 400 10px/1.4 var(--font-mono); }
 .issue-milestone-tag { max-width: 220px; overflow: hidden; border: 1px solid var(--screen-border); border-radius: var(--radius-cap); padding: 2px 5px; color: var(--screen-muted); text-overflow: ellipsis; white-space: nowrap; }
+.issue-priority-tag, .issue-due-date-tag { border: 1px solid var(--screen-border); border-radius: var(--radius-cap); padding: 2px 5px; color: var(--screen-muted); white-space: nowrap; }
+.issue-priority-tag.is-urgent { border-color: var(--danger); color: var(--danger); }
+.issue-priority-tag.is-high { border-color: var(--accent); color: var(--accent); }
+.issue-priority-tag.is-low { color: var(--screen-muted); }
+.issue-due-date-tag.is-overdue { border-color: var(--danger); color: var(--danger); }
 .inbox-issue-card .inbox-issue-metadata { margin: 4px 0 0; }
 .issue-type-tag { border: 1px solid var(--screen-border); border-radius: var(--radius-cap); padding: 2px 5px; color: var(--screen-ink); }
 .issue-shared-tag { border: 1px solid var(--accent-edge); border-radius: var(--radius-cap); padding: 2px 5px; color: var(--accent); }
@@ -406,6 +411,7 @@ select { padding-right: 28px; background: var(--screen-inset) url("data:image/sv
 .issue-detail-title { margin-bottom: 12px; font-size: clamp(1.25rem, 2vw, 1.7rem); overflow-wrap: anywhere; }
 .issue-detail-metadata { display: flex; flex-wrap: wrap; gap: 14px; margin: -4px 0 12px; color: var(--screen-muted); font-size: 12px; }
 .issue-detail-metadata strong { color: var(--screen-ink); font-weight: 600; }
+.issue-detail-metadata strong.is-overdue { color: var(--danger); }
 .issue-detail-description { min-height: 56px; margin: 0 0 16px; color: var(--screen-ink); font-size: 14px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
 .issue-detail-description.is-empty { color: var(--screen-muted); font-style: italic; }
 .issue-source-link { display: inline-block; border: 1px solid var(--screen-border); border-bottom-width: 2px; border-radius: var(--radius-panel); padding: 7px 10px; color: var(--accent); background: linear-gradient(180deg, var(--screen-control-top), var(--screen-panel)); text-decoration: none; }

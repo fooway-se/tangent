@@ -1,4 +1,5 @@
 export type QuickIssueType = 'task' | 'bug' | 'feature' | 'research' | 'maintenance';
+export type QuickIssuePriority = 'low' | 'medium' | 'high' | 'urgent';
 
 export interface QuickIssueMember {
   id: number;
@@ -16,6 +17,8 @@ export interface ParsedQuickIssue {
   assigneeId?: number;
   type?: QuickIssueType;
   milestoneId?: number;
+  priority?: QuickIssuePriority;
+  dueDate?: string;
 }
 
 export function parseQuickIssueInput(
@@ -53,6 +56,21 @@ export function parseQuickIssueInput(
     }
   }
 
+  const priorityToken = extractToken(title, /(^|\s)priority:([^\s]+)/i);
+  if (priorityToken !== null) {
+    const priority = resolveIssuePriority(priorityToken.value);
+    if (priority !== null) {
+      parsed.priority = priority;
+      title = priorityToken.remaining;
+    }
+  }
+
+  const dueDateToken = extractToken(title, /(^|\s)due:([^\s]+)/i);
+  if (dueDateToken !== null && isValidDate(dueDateToken.value)) {
+    parsed.dueDate = dueDateToken.value;
+    title = dueDateToken.remaining;
+  }
+
   parsed.title = title.replace(/\s+/g, ' ').trim();
   return parsed;
 }
@@ -88,6 +106,30 @@ function resolveIssueType(token: string): QuickIssueType | null {
     default:
       return null;
   }
+}
+
+function resolveIssuePriority(token: string): QuickIssuePriority | null {
+  const normalized = token.toLocaleLowerCase();
+  switch (normalized) {
+    case 'low':
+    case 'medium':
+    case 'high':
+    case 'urgent':
+      return normalized;
+    default:
+      return null;
+  }
+}
+
+function isValidDate(value: string): boolean {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (match === null) return false;
+  const year = Number(match[1]);
+  if (year < 1000) return false;
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
 }
 
 function resolveMilestoneId(token: string, milestones: readonly QuickIssueMilestone[]): number | null {

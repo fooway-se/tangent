@@ -780,6 +780,8 @@ paths:
                 description: { type: string, maxLength: 10000 }
                 source_message_id: { type: [integer, 'null'], minimum: 1, description: Source message in this project; replies are linked to their thread root. }
                 type: { type: string, enum: [task, bug, feature, research, maintenance], default: task }
+                priority: { type: string, enum: [low, medium, high, urgent], default: medium }
+                due_date: { type: [string, 'null'], format: date, description: Issue due date in YYYY-MM-DD format; null means no due date. }
                 assignee_id: { type: [integer, 'null'], minimum: 1, description: Project member responsible for the issue; null means unassigned. }
                 milestone_id: { type: [integer, 'null'], minimum: 1, description: Milestone in this project; null means no milestone. Requires issues.share. }
                 is_shared: { type: boolean, default: false, description: Share the issue with project guests. Requires issues.share. }
@@ -1019,7 +1021,7 @@ paths:
         '409': { $ref: '#/components/responses/Conflict' }
   /issues/{id}:
     patch:
-      summary: Update issue details, status, sharing, milestone, or approval request
+      summary: Update issue details, priority, due date, status, sharing, milestone, or approval request
       parameters:
         - $ref: '#/components/parameters/Id'
         - $ref: '#/components/parameters/CsrfToken'
@@ -1034,6 +1036,8 @@ paths:
                 title: { type: string, minLength: 1, maxLength: 200 }
                 description: { type: string, maxLength: 10000 }
                 type: { type: string, enum: [task, bug, feature, research, maintenance] }
+                priority: { type: string, enum: [low, medium, high, urgent] }
+                due_date: { type: [string, 'null'], format: date, description: Issue due date in YYYY-MM-DD format; null clears the due date. }
                 assignee_id: { type: [integer, 'null'], minimum: 1, description: Project member responsible for the issue; null means unassigned. }
                 status: { type: string, enum: [backlog, todo, doing, done, cancelled] }
                 is_shared: { type: boolean, description: Whether this issue appears in the guest client view. }
@@ -1332,7 +1336,7 @@ components:
             type: { type: string, enum: [message] }
     Issue:
       type: object
-      required: [id, workspace_id, project_id, title, description, type, assignee_id, status, created_by, source_channel_id, source_message_id, is_shared, milestone_id, sort_order, approval_requested_at, approved_by, approved_at, created_at, updated_at, deleted_at]
+      required: [id, workspace_id, project_id, title, description, type, assignee_id, status, priority, due_date, created_by, source_channel_id, source_message_id, is_shared, milestone_id, sort_order, approval_requested_at, approved_by, approved_at, created_at, updated_at, deleted_at]
       properties:
         id: { type: integer }
         workspace_id: { type: integer }
@@ -1348,6 +1352,8 @@ components:
         approved_by: { type: [integer, 'null'] }
         approved_at: { type: [string, 'null'], format: date-time }
         status: { type: string, enum: [backlog, todo, doing, done, cancelled] }
+        priority: { type: string, enum: [low, medium, high, urgent], default: medium }
+        due_date: { type: [string, 'null'], format: date, description: Issue due date in YYYY-MM-DD format. }
         created_by: { type: integer }
         source_channel_id: { type: [integer, 'null'] }
         source_message_id: { type: [integer, 'null'] }

@@ -9,7 +9,6 @@ Planned work, in no fixed order. Tangent is pre-alpha, so this list will change.
 
 ## Issues
 
-- Add issue priorities and issue-level due dates, including quick-add syntax for both.
 - Add dedicated discussion threads to issues.
 - Consider structured context, expected outcomes and acceptance criteria, with an option to copy or export an issue as a prompt or Markdown.
 - Add milestone deletion to the interface; the API already supports it.

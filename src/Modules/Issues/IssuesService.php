@@ -17,6 +17,7 @@ use Throwable;
 final class IssuesService
 {
     private const ISSUE_TYPES = ['task', 'bug', 'feature', 'research', 'maintenance'];
+    private const ISSUE_PRIORITIES = ['low', 'medium', 'high', 'urgent'];
 
     public function __construct(
         private readonly IssueRepository $issues,
@@ -66,6 +67,8 @@ final class IssuesService
             throw new ApiException(422, 'validation_failed', 'Issue description cannot exceed 10000 characters.');
         }
         $type = self::issueType($input['type'] ?? 'task');
+        $priority = self::issuePriority($input['priority'] ?? 'medium');
+        $dueDate = self::issueDueDate($input['due_date'] ?? null);
         $assigneeId = self::assigneeId($input['assignee_id'] ?? null);
         $this->requireProjectMemberAssignee($user->workspaceId, $projectId, $assigneeId);
         $milestoneId = $input['milestone_id'] ?? null;
@@ -115,6 +118,8 @@ final class IssuesService
                 $milestoneId,
                 $isShared,
                 $approvalRequested,
+                $priority,
+                $dueDate,
             );
             $this->inboxEvents->recordAssigned($user->workspaceId, $projectId, $user->id, $assigneeId, (int) $issue['id'], $title);
             if ($ownsTransaction) $this->pdo->commit();
@@ -152,7 +157,7 @@ final class IssuesService
             throw new ApiException(404, 'not_found', 'The issue was not found.');
         }
         $shareFields = ['is_shared', 'milestone_id', 'approval_requested'];
-        $issueFields = ['title', 'description', 'status', 'type', 'assignee_id'];
+        $issueFields = ['title', 'description', 'status', 'type', 'assignee_id', 'priority', 'due_date'];
         $hasShareFields = array_intersect($shareFields, array_keys($input)) !== [];
         $hasIssueFields = array_intersect($issueFields, array_keys($input)) !== [];
         if (!$hasShareFields && !$hasIssueFields) {
@@ -167,6 +172,8 @@ final class IssuesService
             'type' => $issue['type'],
             'assignee_id' => $issue['assignee_id'],
             'status' => $issue['status'],
+            'priority' => $issue['priority'],
+            'due_date' => $issue['due_date'],
             'is_shared' => $issue['is_shared'],
             'milestone_id' => $issue['milestone_id'],
             'sort_order' => $issue['sort_order'],
@@ -198,6 +205,12 @@ final class IssuesService
         if (array_key_exists('assignee_id', $input)) {
             $updated['assignee_id'] = self::assigneeId($input['assignee_id']);
             $this->requireProjectMemberAssignee($user->workspaceId, $issue['project_id'], $updated['assignee_id']);
+        }
+        if (array_key_exists('priority', $input)) {
+            $updated['priority'] = self::issuePriority($input['priority']);
+        }
+        if (array_key_exists('due_date', $input)) {
+            $updated['due_date'] = self::issueDueDate($input['due_date']);
         }
         if (array_key_exists('status', $input)) {
             if (!is_string($input['status']) || !in_array($input['status'], ['backlog', 'todo', 'doing', 'done', 'cancelled'], true)) {
@@ -382,6 +395,25 @@ final class IssuesService
     {
         if (!is_string($value) || !in_array($value, self::ISSUE_TYPES, true)) {
             throw new ApiException(422, 'validation_failed', 'Issue type must be task, bug, feature, research, or maintenance.');
+        }
+        return $value;
+    }
+
+    private static function issuePriority(mixed $value): string
+    {
+        if (!is_string($value) || !in_array($value, self::ISSUE_PRIORITIES, true)) {
+            throw new ApiException(422, 'validation_failed', 'Issue priority must be low, medium, high, or urgent.');
+        }
+        return $value;
+    }
+
+    private static function issueDueDate(mixed $value): ?string
+    {
+        if ($value === null) return null;
+        if (!is_string($value) || !preg_match('/^(\d{4})-(\d{2})-(\d{2})$/D', $value, $matches)
+            || (int) $matches[1] < 1000
+            || !checkdate((int) $matches[2], (int) $matches[3], (int) $matches[1])) {
+            throw new ApiException(422, 'validation_failed', 'Issue due date must be a valid YYYY-MM-DD date or null.');
         }
         return $value;
     }

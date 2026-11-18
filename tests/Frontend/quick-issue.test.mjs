@@ -23,6 +23,18 @@ test('quick issue parsing accepts a title with optional assignee, type, and mile
   });
 });
 
+test('quick issue parsing accepts priority and an ISO due date', () => {
+  assert.deepEqual(parseQuickIssueInput(
+    'Ship account export priority:urgent due:2026-11-30',
+    members,
+    milestones,
+  ), {
+    title: 'Ship account export',
+    priority: 'urgent',
+    dueDate: '2026-11-30',
+  });
+});
+
 test('quick issue parsing supports quoted member names and leaves ordinary titles alone', () => {
   assert.deepEqual(parseQuickIssueInput('Fix it asap', members, milestones), { title: 'Fix it asap' });
   assert.deepEqual(parseQuickIssueInput('Review the access flow @"Review Admin"', members, milestones), {
@@ -37,6 +49,14 @@ test('unknown or ambiguous tokens remain part of the issue title', () => {
     members,
     milestones,
   ), { title: 'Check with @alex type:urgent milestone:Future !high due:fri' });
+});
+
+test('invalid priority and calendar dates stay in the title', () => {
+  assert.deepEqual(parseQuickIssueInput(
+    'Check deploy priority:critical due:2026-02-30',
+    members,
+    milestones,
+  ), { title: 'Check deploy priority:critical due:2026-02-30' });
 });
 
 test('each metadata token is optional', () => {
