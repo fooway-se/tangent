@@ -1,6 +1,7 @@
 export type ShortcutAction =
   | 'command-palette'
   | 'shortcut-help'
+  | 'theme-selector'
   | 'await-projects-key'
   | 'projects'
   | 'inbox'
@@ -103,6 +104,7 @@ export function resolveShortcut(event: ShortcutEvent, context: ShortcutContext):
     if (key === 'k' || key === 'arrowup') return 'previous';
   }
   if (context.targetIsEditable) return null;
+  if (key === 't') return 'theme-selector';
 
   if (context.goPrefixPending) {
     if (key === 'p' && context.hasWorkspace) return 'projects';

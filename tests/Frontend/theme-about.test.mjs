@@ -61,3 +61,14 @@ test('theme selectors have a silent computer icon that opens the accessible card
   assert.match(css, /\.theme-about-button/);
   assert.match(css, /\.retro-computer-icon/);
 });
+
+test('computer card handles Escape before workspace navigation', () => {
+  const shortcutContext = appSource.slice(appSource.indexOf('function shortcutContext'), appSource.indexOf('function clearGoPrefix'));
+  const keyboardHandler = appSource.slice(appSource.indexOf('function handleKeyboardShortcut'), appSource.indexOf('function movePaletteCommandSelection'));
+  const commandPaletteHandler = appSource.slice(appSource.indexOf('function openCommandPalette'), appSource.indexOf('function showShortcutHelp'));
+  const dismissHandler = appSource.slice(appSource.indexOf('function dismissCurrentView'), appSource.indexOf('function focusIssueQuickAddReturnTarget'));
+  assert.match(shortcutContext, /modalOpen:[\s\S]*themeAboutDialog\.open/);
+  assert.match(keyboardHandler, /themeAboutDialog\.open/);
+  assert.match(commandPaletteHandler, /if \(themeAboutDialog\.open\) themeAboutDialog\.close\(\);/);
+  assert.match(dismissHandler, /if \(themeAboutDialog\.open\)\s*\{\s*themeAboutDialog\.close\(\);/);
+});

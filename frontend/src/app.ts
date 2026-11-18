@@ -298,6 +298,13 @@ interface PaletteCommand {
 let activeTheme: ThemeId = loadTheme();
 const themeSelects = document.querySelectorAll<HTMLSelectElement>('.theme-select');
 
+function focusThemeSelector(): void {
+  const selector = Array.from(themeSelects).find((select) =>
+    select.closest('[hidden]') === null && select.getClientRects().length > 0,
+  );
+  selector?.focus();
+}
+
 function setTheme(id: ThemeId): void {
   activeTheme = id;
   applyTheme(id);
@@ -1918,7 +1925,7 @@ function shortcutContext(target: EventTarget | null) {
     issueGroupFocused: target instanceof HTMLElement && target.closest('.issue-group > summary') !== null,
     statusHistoryFocused: issueStatusHistory.open && issueStatusHistory.contains(document.activeElement),
     textInputFocused: shouldBlurOnEscape(target),
-    modalOpen: commandPalette.open || shortcutHelp.open || issueAiPromptDialog.open || issueStatusPicker.open || issueDeleteConfirmation.open
+    modalOpen: commandPalette.open || shortcutHelp.open || issueAiPromptDialog.open || issueStatusPicker.open || issueDeleteConfirmation.open || themeAboutDialog.open
       || memberRemovalConfirmation.open || workspaceMemberDeactivationDialog.open || workspaceMemberRoleDialog.open
       || workspaceGuestProjectsDialog.open || milestoneDeleteConfirmation.open || milestoneManagerDialog.open
       || workspacePicker.open,
@@ -2373,6 +2380,7 @@ function runPaletteCommand(index: number): void {
 
 function openCommandPalette(): void {
   if (activeUser === null || milestoneDeleteConfirm.disabled) return;
+  if (themeAboutDialog.open) themeAboutDialog.close();
   if (workspacePicker.open) resetPendingWorkspaceSwitch();
   if (issueAiPromptDialog.open) issueAiPromptDialog.close();
   if (milestoneDeleteConfirmation.open) closeMilestoneDeleteConfirmation();
@@ -2419,7 +2427,9 @@ function showShortcutHelp(): void {
 
 function dismissCurrentView(): void {
   if (milestoneDeleteConfirm.disabled) return;
-  if (workspacePicker.open) {
+  if (themeAboutDialog.open) {
+    themeAboutDialog.close();
+  } else if (workspacePicker.open) {
     resetPendingWorkspaceSwitch();
   } else if (issueAiPromptDialog.open) {
     issueAiPromptDialog.close();
@@ -2568,6 +2578,7 @@ function executeShortcut(action: ShortcutAction): void {
   switch (action) {
     case 'command-palette': openCommandPalette(); break;
     case 'shortcut-help': showShortcutHelp(); break;
+    case 'theme-selector': focusThemeSelector(); break;
     case 'await-projects-key': startGoPrefix(); break;
     case 'projects': clearGoPrefix(); goToProjects(); break;
     case 'inbox': goToInbox(); break;
@@ -2616,7 +2627,7 @@ function executeShortcut(action: ShortcutAction): void {
 }
 
 function handleKeyboardShortcut(event: KeyboardEvent): void {
-  if ((commandPalette.open || shortcutHelp.open || issueAiPromptDialog.open || issueStatusPicker.open || issueDeleteConfirmation.open || memberRemovalConfirmation.open || workspaceMemberDeactivationDialog.open || workspaceMemberRoleDialog.open || workspaceGuestProjectsDialog.open || milestoneDeleteConfirmation.open || milestoneManagerDialog.open || workspacePicker.open)
+  if ((commandPalette.open || shortcutHelp.open || issueAiPromptDialog.open || issueStatusPicker.open || issueDeleteConfirmation.open || memberRemovalConfirmation.open || workspaceMemberDeactivationDialog.open || workspaceMemberRoleDialog.open || workspaceGuestProjectsDialog.open || milestoneDeleteConfirmation.open || milestoneManagerDialog.open || workspacePicker.open || themeAboutDialog.open)
     && event.key !== 'Escape'
     && !((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k')) return;
   const context = shortcutContext(event.target);

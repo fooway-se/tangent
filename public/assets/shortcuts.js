@@ -32,6 +32,8 @@ export function resolveShortcut(event, context) {
     }
     if (context.targetIsEditable)
         return null;
+    if (key === 't')
+        return 'theme-selector';
     if (context.goPrefixPending) {
         if (key === 'p' && context.hasWorkspace)
             return 'projects';

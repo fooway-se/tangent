@@ -14,7 +14,7 @@
     <section id="login-shell" class="login-shell">
       <header class="topbar login-topbar">
         <a class="brand" href="./app.html" aria-label="Tangent home"><span class="brand-mark" aria-hidden="true">T</span><span>Tangent</span></a>
-        <select class="theme-select" aria-label="Theme"></select>
+        <select class="theme-select" aria-label="Theme" aria-keyshortcuts="t"></select>
       </header>
       <main class="login-main">
         <section id="login-panel" class="panel login-panel" aria-labelledby="login-heading">
@@ -55,7 +55,7 @@
         </section>
         <footer class="login-keyboard-hints" aria-label="Sign-in keyboard hints">
           <span class="login-power-indicator"><span class="login-power-light" aria-hidden="true"></span>Power</span>
-          <span class="login-keyboard-actions"><kbd>Tab</kbd> Next field <kbd>Enter</kbd> Sign in</span>
+          <span class="login-keyboard-actions"><kbd>Tab</kbd> Next field <kbd>Enter</kbd> Sign in · <kbd>t</kbd> Theme</span>
         </footer>
       </main>
     </section>
@@ -70,7 +70,7 @@
         <span class="guest-cap">Read-only · guest</span>
         <span id="guest-user" class="guest-user"></span>
         <div class="theme-picker-controls">
-          <select class="theme-select" aria-label="Theme"></select>
+          <select class="theme-select" aria-label="Theme" aria-keyshortcuts="t"></select>
           <button class="theme-about-button" type="button" data-theme-about aria-label="About this computer" aria-haspopup="dialog">
             <span class="retro-computer-icon" aria-hidden="true"><span></span></span>
           </button>
@@ -102,7 +102,7 @@
         <div id="account-bar" class="account-bar sidebar-account" hidden>
           <span id="current-user"></span>
           <div class="theme-picker-controls">
-            <select class="theme-select" aria-label="Theme"></select>
+            <select class="theme-select" aria-label="Theme" aria-keyshortcuts="t"></select>
             <button class="theme-about-button" type="button" data-theme-about aria-label="About this computer" aria-haspopup="dialog">
               <span class="retro-computer-icon" aria-hidden="true"><span></span></span>
             </button>
@@ -564,6 +564,7 @@
           <span id="go-prefix-hint" class="go-prefix-hint" hidden><kbd>p</kbd> Projects · <kbd>n</kbd> Inbox<span id="go-prefix-workspace-option" hidden> · <kbd>w</kbd> Workspace</span><span id="go-prefix-project-options" hidden> · <kbd>i</kbd> Issues · <kbd>c</kbd> Chat · <kbd>m</kbd> Members</span><span id="admin-go-prefix-option" hidden> · <kbd>a</kbd> Administration</span></span>
           <span id="project-keyboard-hints" hidden><kbd>g</kbd> <kbd>i</kbd> Issues <kbd>g</kbd> <kbd>c</kbd> Chat <kbd>g</kbd> <kbd>m</kbd> Members · <kbd>c</kbd> Create <kbd>e</kbd> Edit <kbd>s</kbd> Status · Chat: <kbd>j</kbd>/<kbd>k</kbd> Move <kbd>r</kbd> Reply <kbd>i</kbd> Issue · <kbd>Enter</kbd> Send <kbd>Shift</kbd>+<kbd>Enter</kbd> New line</span>
           <span><kbd>Ctrl/Cmd</kbd>+<kbd>K</kbd> Commands</span>
+          <span><kbd>t</kbd> Theme</span>
           <span><kbd>?</kbd> Shortcuts</span>
       </footer>
     </section>
@@ -753,6 +754,7 @@
         </header>
         <dl class="shortcut-list">
           <div><dt><kbd>Ctrl/Cmd</kbd>+<kbd>K</kbd></dt><dd>Open command palette</dd></div>
+          <div><dt><kbd>t</kbd></dt><dd>Focus the theme selector</dd></div>
           <div><dt><kbd>?</kbd></dt><dd>Show keyboard shortcuts</dd></div>
           <div><dt><kbd>↑</kbd>/<kbd>↓</kbd> or <kbd>j</kbd>/<kbd>k</kbd></dt><dd>Move through project and issue lists; when a chat or discussion message is focused, move between messages. In the issue filter, Down/Up jumps to the first/last match</dd></div>
           <div><dt><kbd>Home</kbd>/<kbd>End</kbd></dt><dd>In a project, Inbox filter, or Workspace Administration tab list, jump to the first or last tab; in lists, jump to the first or last project or issue; from a focused chat or discussion message, jump to the oldest or newest loaded message</dd></div>

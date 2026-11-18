@@ -43,6 +43,17 @@ test('command palette works with Control or Meta even in an editable field', () 
   assert.equal(resolve('k', editable, { metaKey: true }), 'command-palette');
 });
 
+test('t focuses the theme selector from any view and stays inactive while typing', () => {
+  assert.equal(resolve('t', { hasWorkspace: false }), 'theme-selector');
+  assert.equal(resolve('T', { hasWorkspace: true, projectListVisible: true }), 'theme-selector');
+  assert.equal(resolve('t', { hasWorkspace: false, targetIsEditable: true }), null);
+  assert.match(app, /case 'theme-selector':\s*focusThemeSelector\(\);/);
+  assert.match(app, /function focusThemeSelector\(\)[\s\S]*closest\('\[hidden\]'\)[\s\S]*getClientRects\(\)\.length/);
+  assert.equal((html.match(/class="theme-select" aria-label="Theme" aria-keyshortcuts="t"/g) ?? []).length, 3);
+  assert.match(html, /<dt><kbd>t<\/kbd><\/dt><dd>Focus the theme selector<\/dd>/);
+  assert.ok((html.match(/<kbd>t<\/kbd> Theme/g) ?? []).length >= 2);
+});
+
 test('workspace shortcuts are unavailable on the sign-in screen', () => {
   assert.equal(resolve('k', { hasWorkspace: false }, { ctrlKey: true }), null);
   assert.equal(resolve('?', { hasWorkspace: false }), null);
