@@ -67,23 +67,110 @@ final class IssuesService
         if ($issue === null) throw new ApiException(404, 'not_found', 'The issue was not found.');
         $this->requireProjectAccess($user, $issue['project_id'], 'issues.update');
 
-        $body = is_string($input['body'] ?? null) ? trim($input['body']) : '';
-        if ($body === '' || mb_strlen($body, 'UTF-8') > 10_000) {
-            throw new ApiException(422, 'validation_failed', 'Discussion message must be between 1 and 10000 characters.');
-        }
-
+        $body = self::discussionBody($input['body'] ?? null);
         $parentId = null;
         if (array_key_exists('parent_id', $input) && $input['parent_id'] !== null) {
             if (!is_int($input['parent_id']) || $input['parent_id'] < 1) {
                 throw new ApiException(422, 'validation_failed', 'parent_id must be a positive integer or null.');
             }
-            if ($this->discussion->find($user->workspaceId, $issueId, $input['parent_id']) === null) {
-                throw new ApiException(404, 'not_found', 'The discussion message was not found.');
-            }
             $parentId = $input['parent_id'];
         }
 
-        return $this->discussion->create($user->workspaceId, $issueId, $user->id, $parentId, $body);
+        $ownsTransaction = !$this->pdo->inTransaction();
+        if ($ownsTransaction) $this->pdo->beginTransaction();
+        try {
+            if (!$this->discussion->lockIssue($user->workspaceId, $issueId)) {
+                throw new ApiException(404, 'not_found', 'The issue was not found.');
+            }
+            if ($parentId !== null && $this->discussion->find($user->workspaceId, $issueId, $parentId) === null) {
+                throw new ApiException(404, 'not_found', 'The discussion message was not found.');
+            }
+            $message = $this->discussion->create($user->workspaceId, $issueId, $user->id, $parentId, $body);
+            if ($ownsTransaction) $this->pdo->commit();
+            return $message;
+        } catch (Throwable $exception) {
+            if ($ownsTransaction && $this->pdo->inTransaction()) $this->pdo->rollBack();
+            throw $exception;
+        }
+    }
+
+    public function editDiscussionMessage(
+        AuthenticatedUser $user,
+        int $issueId,
+        int $messageId,
+        array $input,
+    ): array {
+        $issue = $this->issues->find($user->workspaceId, $issueId);
+        if ($issue === null) throw new ApiException(404, 'not_found', 'The issue was not found.');
+        $this->requireProjectAccess($user, $issue['project_id'], 'issues.update');
+        $body = self::discussionBody($input['body'] ?? null);
+
+        $ownsTransaction = !$this->pdo->inTransaction();
+        if ($ownsTransaction) $this->pdo->beginTransaction();
+        try {
+            if (!$this->discussion->lockIssue($user->workspaceId, $issueId)) {
+                throw new ApiException(404, 'not_found', 'The issue was not found.');
+            }
+            $message = $this->discussion->find($user->workspaceId, $issueId, $messageId);
+            if ($message === null) throw new ApiException(404, 'not_found', 'The discussion message was not found.');
+            $this->requireDiscussionMessageAuthor($message, $user);
+            $this->requireLastDiscussionMessage($user->workspaceId, $issueId, $messageId);
+
+            $updated = $this->discussion->updateBody($user->workspaceId, $issueId, $messageId, $body);
+            if ($ownsTransaction) $this->pdo->commit();
+            return $updated;
+        } catch (Throwable $exception) {
+            if ($ownsTransaction && $this->pdo->inTransaction()) $this->pdo->rollBack();
+            throw $exception;
+        }
+    }
+
+    public function deleteDiscussionMessage(AuthenticatedUser $user, int $issueId, int $messageId): void
+    {
+        $issue = $this->issues->find($user->workspaceId, $issueId);
+        if ($issue === null) throw new ApiException(404, 'not_found', 'The issue was not found.');
+        $this->requireProjectAccess($user, $issue['project_id'], 'issues.update');
+
+        $ownsTransaction = !$this->pdo->inTransaction();
+        if ($ownsTransaction) $this->pdo->beginTransaction();
+        try {
+            if (!$this->discussion->lockIssue($user->workspaceId, $issueId)) {
+                throw new ApiException(404, 'not_found', 'The issue was not found.');
+            }
+            $message = $this->discussion->find($user->workspaceId, $issueId, $messageId);
+            if ($message === null) throw new ApiException(404, 'not_found', 'The discussion message was not found.');
+            $this->requireDiscussionMessageAuthor($message, $user);
+            $this->requireLastDiscussionMessage($user->workspaceId, $issueId, $messageId);
+
+            $this->discussion->delete($user->workspaceId, $issueId, $messageId);
+            if ($ownsTransaction) $this->pdo->commit();
+        } catch (Throwable $exception) {
+            if ($ownsTransaction && $this->pdo->inTransaction()) $this->pdo->rollBack();
+            throw $exception;
+        }
+    }
+
+    private static function discussionBody(mixed $value): string
+    {
+        $body = is_string($value) ? trim($value) : '';
+        if ($body === '' || mb_strlen($body, 'UTF-8') > 10_000) {
+            throw new ApiException(422, 'validation_failed', 'Discussion message must be between 1 and 10000 characters.');
+        }
+        return $body;
+    }
+
+    private function requireDiscussionMessageAuthor(array $message, AuthenticatedUser $user): void
+    {
+        if ($message['author_id'] !== $user->id) {
+            throw new ApiException(403, 'forbidden', 'Only the message author can edit or delete it.');
+        }
+    }
+
+    private function requireLastDiscussionMessage(int $workspaceId, int $issueId, int $messageId): void
+    {
+        if ($this->discussion->hasRepliesOrLaterMessages($workspaceId, $issueId, $messageId)) {
+            throw new ApiException(409, 'discussion_message_not_last', 'Only the last discussion message without replies can be changed.');
+        }
     }
 
     public function create(AuthenticatedUser $user, int $projectId, array $input): array

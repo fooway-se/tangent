@@ -1295,6 +1295,57 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
         '422': { $ref: '#/components/responses/ValidationFailed' }
+  /issues/{id}/discussion/{messageId}:
+    patch:
+      summary: Edit the author's last issue discussion message
+      description: Only the message author can edit a message with no replies or later discussion messages. Restricted to users who can update the issue's project.
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - name: messageId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+        - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [body]
+              properties:
+                body: { type: string, minLength: 1, maxLength: 10000 }
+      responses:
+        '200':
+          description: Updated discussion message.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [message]
+                properties:
+                  message: { $ref: '#/components/schemas/IssueDiscussionMessage' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+    delete:
+      summary: Delete the author's last issue discussion message
+      description: Only the message author can delete a message with no replies or later discussion messages. Restricted to users who can update the issue's project.
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - name: messageId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+        - $ref: '#/components/parameters/CsrfToken'
+      responses:
+        '204': { description: Discussion message deleted. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
   /issues/{id}/restore:
     post:
       summary: Restore a deleted issue

@@ -498,6 +498,10 @@ select { padding-right: 28px; background: var(--screen-inset) url("data:image/sv
 .issue-discussion-message:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .issue-discussion-message.is-keyboard-selected { border-left-color: var(--accent); background: var(--screen-hover); }
 .issue-discussion-message-heading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin-bottom: 4px; }
+.issue-discussion-actions { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 2px; margin-left: auto; }
+.issue-discussion-actions button { padding: 2px 6px; font-size: 11px; }
+.issue-discussion-delete-prompt { color: var(--screen-muted); font-size: 11px; }
+.issue-discussion-delete-confirm { color: var(--danger); }
 .issue-discussion-author { color: var(--screen-ink); font: 700 12px var(--font-display); }
 .issue-discussion-message time { color: var(--screen-muted); font-size: 11px; }
 .issue-discussion-body { margin: 0 0 4px; color: var(--screen-ink); font-size: 13px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -508,6 +512,10 @@ select { padding-right: 28px; background: var(--screen-inset) url("data:image/sv
 .issue-discussion-form > label { color: var(--screen-muted); font-size: 11px; }
 .issue-discussion-form textarea { width: 100%; min-height: 66px; resize: vertical; }
 .issue-discussion-form .form-actions { justify-content: flex-end; margin-top: 0; }
+.issue-discussion-edit-form { display: grid; gap: 7px; margin-top: 4px; }
+.issue-discussion-edit-form > label { color: var(--screen-muted); font-size: 11px; }
+.issue-discussion-edit-form textarea { width: 100%; min-height: 66px; resize: vertical; }
+.issue-discussion-edit-form .form-actions { justify-content: flex-end; margin-top: 0; }
 
 /* Chat screen */
 .project-chat-host { display: flex; flex: 1; min-width: 0; min-height: 0; }

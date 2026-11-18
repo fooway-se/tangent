@@ -80,6 +80,124 @@ final class IssueDiscussionTest extends ApiTestCase
         )->status);
     }
 
+    public function testAuthorCanEditAndDeleteTheirLastDiscussionMessage(): void
+    {
+        $admin = $this->login($this->adminEmail);
+        $projectId = $this->createProject($admin, 'Editable issue discussion');
+        $this->addDeveloper($admin, $projectId);
+        $developer = $this->login($this->developerEmail);
+        $issueId = $this->createIssue($admin, $projectId, 'Editable discussion');
+
+        $created = $this->postDiscussionMessage($developer, $issueId, ['body' => 'Initial note.']);
+        self::assertSame(201, $created->status, json_encode($created->body));
+        $messageId = (int) $created->body['message']['id'];
+
+        $edited = $this->apiCookieRequest(
+            'PATCH',
+            "/api/v1/issues/{$issueId}/discussion/{$messageId}",
+            $developer['cookie'],
+            ['body' => 'Corrected note.'],
+            $developer['csrf'],
+        );
+        self::assertSame(200, $edited->status, json_encode($edited->body));
+        self::assertSame('Corrected note.', $edited->body['message']['body']);
+
+        $deleted = $this->apiCookieRequest(
+            'DELETE',
+            "/api/v1/issues/{$issueId}/discussion/{$messageId}",
+            $developer['cookie'],
+            [],
+            $developer['csrf'],
+        );
+        self::assertSame(204, $deleted->status);
+        $discussion = $this->apiCookieRequest('GET', "/api/v1/issues/{$issueId}/discussion", $admin['cookie']);
+        self::assertSame([], $discussion->body['messages']);
+    }
+
+    public function testOnlyTheAuthorCanEditOrDeleteTheirLastDiscussionMessage(): void
+    {
+        $admin = $this->login($this->adminEmail);
+        $projectId = $this->createProject($admin, 'Author-only discussion actions');
+        $this->addDeveloper($admin, $projectId);
+        $developer = $this->login($this->developerEmail);
+        $issueId = $this->createIssue($admin, $projectId, 'Author-only discussion');
+        $created = $this->postDiscussionMessage($developer, $issueId, ['body' => 'Developer note.']);
+        self::assertSame(201, $created->status, json_encode($created->body));
+        $messageId = (int) $created->body['message']['id'];
+
+        $edit = $this->apiCookieRequest(
+            'PATCH',
+            "/api/v1/issues/{$issueId}/discussion/{$messageId}",
+            $admin['cookie'],
+            ['body' => 'Admin edit.'],
+            $admin['csrf'],
+        );
+        self::assertSame(403, $edit->status);
+        $delete = $this->apiCookieRequest(
+            'DELETE',
+            "/api/v1/issues/{$issueId}/discussion/{$messageId}",
+            $admin['cookie'],
+            [],
+            $admin['csrf'],
+        );
+        self::assertSame(403, $delete->status);
+    }
+
+    public function testDiscussionMessagesCannotBeEditedOrDeletedAfterRepliesOrLaterMessages(): void
+    {
+        $admin = $this->login($this->adminEmail);
+        $projectId = $this->createProject($admin, 'Ordered discussion actions');
+        $this->addDeveloper($admin, $projectId);
+        $developer = $this->login($this->developerEmail);
+        $issueId = $this->createIssue($admin, $projectId, 'Ordered discussion');
+
+        $parent = $this->postDiscussionMessage($developer, $issueId, ['body' => 'Parent note.']);
+        self::assertSame(201, $parent->status);
+        $parentId = (int) $parent->body['message']['id'];
+        $reply = $this->postDiscussionMessage($admin, $issueId, ['body' => 'Reply.', 'parent_id' => $parentId]);
+        self::assertSame(201, $reply->status);
+
+        $blockedEdit = $this->apiCookieRequest(
+            'PATCH',
+            "/api/v1/issues/{$issueId}/discussion/{$parentId}",
+            $developer['cookie'],
+            ['body' => 'Changed parent.'],
+            $developer['csrf'],
+        );
+        self::assertSame(409, $blockedEdit->status);
+        $blockedDelete = $this->apiCookieRequest(
+            'DELETE',
+            "/api/v1/issues/{$issueId}/discussion/{$parentId}",
+            $developer['cookie'],
+            [],
+            $developer['csrf'],
+        );
+        self::assertSame(409, $blockedDelete->status);
+
+        $earlier = $this->postDiscussionMessage($developer, $issueId, ['body' => 'Earlier standalone note.']);
+        self::assertSame(201, $earlier->status);
+        $earlierId = (int) $earlier->body['message']['id'];
+        $later = $this->postDiscussionMessage($admin, $issueId, ['body' => 'Later standalone note.']);
+        self::assertSame(201, $later->status);
+
+        $blockedLaterEdit = $this->apiCookieRequest(
+            'PATCH',
+            "/api/v1/issues/{$issueId}/discussion/{$earlierId}",
+            $developer['cookie'],
+            ['body' => 'Changed earlier note.'],
+            $developer['csrf'],
+        );
+        self::assertSame(409, $blockedLaterEdit->status);
+        $blockedLaterDelete = $this->apiCookieRequest(
+            'DELETE',
+            "/api/v1/issues/{$issueId}/discussion/{$earlierId}",
+            $developer['cookie'],
+            [],
+            $developer['csrf'],
+        );
+        self::assertSame(409, $blockedLaterDelete->status);
+    }
+
     public function testProjectIssueListIncludesTheCountOfDiscussionPostsAndReplies(): void
     {
         $admin = $this->login($this->adminEmail);
@@ -144,6 +262,17 @@ final class IssueDiscussionTest extends ApiTestCase
         );
         self::assertSame(201, $response->status, json_encode($response->body));
         return (int) $response->body['issue']['id'];
+    }
+
+    private function postDiscussionMessage(array $user, int $issueId, array $input): Response
+    {
+        return $this->apiCookieRequest(
+            'POST',
+            "/api/v1/issues/{$issueId}/discussion",
+            $user['cookie'],
+            $input,
+            $user['csrf'],
+        );
     }
 
     private function apiCookieRequest(

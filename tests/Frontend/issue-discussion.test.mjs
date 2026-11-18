@@ -30,6 +30,17 @@ test('issue discussions load for the selected issue and post issue-scoped replie
   assert.match(app, /loadIssueDiscussion\(issue\.id\)/);
 });
 
+test('only the author of the final issue discussion message gets edit and delete actions', () => {
+  assert.match(app, /function canEditIssueDiscussionMessage\(/);
+  assert.match(app, /activeUser !== null\s*&&\s*message\.author_id === activeUser\.id/);
+  assert.match(app, /issueDiscussionMessages\.at\(-1\)\?\.id === message\.id/);
+  assert.match(app, /data-discussion-edit/);
+  assert.match(app, /data-discussion-delete/);
+  assert.match(app, /`\/issues\/\$\{issueId\}\/discussion\/\$\{messageId\}`/);
+  assert.match(app, /method: 'PATCH'/);
+  assert.match(app, /method: 'DELETE'/);
+});
+
 test('issue rows show an accessible discussion indicator when messages exist', () => {
   assert.match(app, /createDiscussionIndicator\(issue\.discussion_count \?\? 0\)/);
   assert.match(app, /discussionIndicatorLabel\(count\)/);

@@ -93,6 +93,34 @@ final class IssuesRoutes
             ]);
         });
 
+        $router->add('PATCH', '/api/v1/issues/{id}/discussion/{messageId}', function (
+            Request $request,
+            array $params,
+            AuthenticatedUser $user,
+        ): Response {
+            return Response::json(200, [
+                'message' => $this->service->editDiscussionMessage(
+                    $user,
+                    self::positiveId($params['id']),
+                    self::positiveId($params['messageId']),
+                    $request->body,
+                ),
+            ]);
+        });
+
+        $router->add('DELETE', '/api/v1/issues/{id}/discussion/{messageId}', function (
+            Request $request,
+            array $params,
+            AuthenticatedUser $user,
+        ): Response {
+            $this->service->deleteDiscussionMessage(
+                $user,
+                self::positiveId($params['id']),
+                self::positiveId($params['messageId']),
+            );
+            return Response::json(204);
+        });
+
         $router->add('POST', '/api/v1/projects/{id}/issues', function (
             Request $request,
             array $params,

@@ -55,6 +55,62 @@ final class IssueDiscussionRepository
         return $message === false ? null : self::normalize($message);
     }
 
+    public function lockIssue(int $workspaceId, int $issueId): bool
+    {
+        $statement = $this->pdo->prepare(
+            'SELECT id FROM issues WHERE workspace_id = :workspace_id AND id = :issue_id FOR UPDATE'
+        );
+        $statement->execute(['workspace_id' => $workspaceId, 'issue_id' => $issueId]);
+        return $statement->fetchColumn() !== false;
+    }
+
+    public function hasRepliesOrLaterMessages(int $workspaceId, int $issueId, int $messageId): bool
+    {
+        $statement = $this->pdo->prepare(
+            'SELECT EXISTS (
+                SELECT 1 FROM issue_discussion_messages
+                WHERE workspace_id = :workspace_id AND issue_id = :issue_id AND id > :later_than_id
+             ) OR EXISTS (
+                SELECT 1 FROM issue_discussion_messages
+                WHERE workspace_id = :reply_workspace_id AND issue_id = :reply_issue_id AND parent_id = :parent_id
+             )'
+        );
+        $statement->execute([
+            'workspace_id' => $workspaceId,
+            'issue_id' => $issueId,
+            'later_than_id' => $messageId,
+            'reply_workspace_id' => $workspaceId,
+            'reply_issue_id' => $issueId,
+            'parent_id' => $messageId,
+        ]);
+        return (bool) $statement->fetchColumn();
+    }
+
+    public function updateBody(int $workspaceId, int $issueId, int $messageId, string $body): array
+    {
+        $statement = $this->pdo->prepare(
+            'UPDATE issue_discussion_messages
+             SET body = :body
+             WHERE workspace_id = :workspace_id AND issue_id = :issue_id AND id = :id'
+        );
+        $statement->execute([
+            'body' => $body,
+            'workspace_id' => $workspaceId,
+            'issue_id' => $issueId,
+            'id' => $messageId,
+        ]);
+        return $this->find($workspaceId, $issueId, $messageId) ?? [];
+    }
+
+    public function delete(int $workspaceId, int $issueId, int $messageId): void
+    {
+        $statement = $this->pdo->prepare(
+            'DELETE FROM issue_discussion_messages
+             WHERE workspace_id = :workspace_id AND issue_id = :issue_id AND id = :id'
+        );
+        $statement->execute(['workspace_id' => $workspaceId, 'issue_id' => $issueId, 'id' => $messageId]);
+    }
+
     public function create(
         int $workspaceId,
         int $issueId,

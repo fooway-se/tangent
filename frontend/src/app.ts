@@ -754,6 +754,8 @@ let issueDiscussionPollTimer: number | null = null;
 let issueDiscussionMessages: IssueDiscussionMessage[] = [];
 let selectedIssueDiscussionMessageId: number | null = null;
 let issueDiscussionParent: IssueDiscussionMessage | null = null;
+let editingIssueDiscussionMessageId: number | null = null;
+let confirmingIssueDiscussionDeleteId: number | null = null;
 const issueRowRenderSignatures = new WeakMap<HTMLLIElement, string>();
 const deletedIssueRowRenderSignatures = new WeakMap<HTMLLIElement, string>();
 let chatPollTimer: number | null = null;
@@ -2774,7 +2776,10 @@ async function saveProjectEdit(event: SubmitEvent): Promise<void> {
     projectState.classList.toggle('is-paused', result.project.status === 'paused');
     projectState.classList.toggle('is-read-only', result.project.status === 'completed' || result.project.status === 'archived');
     updateProjectReadOnlyNotice(result.project.status);
-    if (selectedIssue !== null) renderIssueDetail();
+    if (selectedIssue !== null) {
+      renderIssueDetail();
+      renderIssueDiscussion();
+    }
     breadcrumbCurrent.textContent = result.project.name;
     report('Project updated.');
     projectEditDialog.close();
@@ -5174,6 +5179,8 @@ function clearIssueDiscussion(): void {
   stopIssueDiscussionPolling();
   issueDiscussionMessages = [];
   selectedIssueDiscussionMessageId = null;
+  editingIssueDiscussionMessageId = null;
+  confirmingIssueDiscussionDeleteId = null;
   issueDiscussionList.replaceChildren();
   issueDiscussionInput.value = '';
   issueDiscussionStatus.textContent = '';
@@ -5237,14 +5244,42 @@ function updateProjectIssueDiscussionCount(issueId: number, count: number): void
 function renderIssueDiscussion(): void {
   issueDiscussionCount.textContent = String(issueDiscussionMessages.length);
   issueDiscussionEmpty.hidden = issueDiscussionMessages.length > 0;
-  const existingIds = new Set(
-    Array.from(issueDiscussionList.querySelectorAll<HTMLElement>('.issue-discussion-message'))
-      .map((message) => Number(message.dataset.messageId)),
+  const existing = new Map(
+    Array.from(issueDiscussionList.querySelectorAll<HTMLLIElement>('.issue-discussion-message'))
+      .map((item) => [Number(item.dataset.messageId), item] as const),
   );
   for (const message of issueDiscussionMessages) {
-    if (existingIds.has(message.id)) continue;
-    issueDiscussionList.append(createIssueDiscussionMessage(message));
+    const canEdit = canEditIssueDiscussionMessage(message);
+    const isEditing = canEdit && editingIssueDiscussionMessageId === message.id;
+    const isConfirmingDelete = canEdit && confirmingIssueDiscussionDeleteId === message.id;
+    const signature = JSON.stringify([message, canEdit, isEditing, isConfirmingDelete]);
+    const current = existing.get(message.id);
+    if (current?.dataset.renderSignature === signature) {
+      existing.delete(message.id);
+      continue;
+    }
+
+    const item = createIssueDiscussionMessage(message, canEdit, isEditing, isConfirmingDelete);
+    item.dataset.renderSignature = signature;
+    if (current !== undefined) {
+      const oldEditInput = current.querySelector<HTMLTextAreaElement>('[data-discussion-edit-input]');
+      const newEditInput = item.querySelector<HTMLTextAreaElement>('[data-discussion-edit-input]');
+      if (oldEditInput !== null && newEditInput !== null && isEditing) newEditInput.value = oldEditInput.value;
+      current.replaceWith(item);
+      existing.delete(message.id);
+    } else {
+      issueDiscussionList.append(item);
+    }
   }
+  existing.forEach((item) => item.remove());
+}
+
+function canEditIssueDiscussionMessage(message: IssueDiscussionMessage): boolean {
+  return activeUser !== null
+    && message.author_id === activeUser.id
+    && issueDiscussionMessages.at(-1)?.id === message.id
+    && activeProject !== null
+    && !projectStatusIsReadOnly(activeProject.status);
 }
 
 function issueDiscussionMessageElements(): HTMLElement[] {
@@ -5303,7 +5338,12 @@ function replyToSelectedIssueDiscussionMessage(): void {
   if (message !== undefined) setIssueDiscussionReply(message);
 }
 
-function createIssueDiscussionMessage(message: IssueDiscussionMessage): HTMLLIElement {
+function createIssueDiscussionMessage(
+  message: IssueDiscussionMessage,
+  canEdit: boolean,
+  isEditing: boolean,
+  isConfirmingDelete: boolean,
+): HTMLLIElement {
   const item = document.createElement('li');
   item.className = `issue-discussion-message${message.parent_id === null ? '' : ' is-reply'}`;
   item.dataset.messageId = String(message.id);
@@ -5347,13 +5387,147 @@ function createIssueDiscussionMessage(message: IssueDiscussionMessage): HTMLLIEl
   reply.disabled = activeProject !== null && projectStatusIsReadOnly(activeProject.status);
   reply.setAttribute('aria-label', `Reply to ${message.author_name}`);
   reply.addEventListener('click', () => setIssueDiscussionReply(message));
-  heading.append(author, time, reply);
+  const actions = document.createElement('div');
+  actions.className = 'issue-discussion-actions';
+  actions.append(reply);
+  if (canEdit && isEditing) {
+    reply.hidden = true;
+  } else if (canEdit && isConfirmingDelete) {
+    const prompt = document.createElement('span');
+    prompt.className = 'issue-discussion-delete-prompt';
+    prompt.textContent = 'Delete this message?';
+    const confirm = document.createElement('button');
+    confirm.type = 'button';
+    confirm.className = 'button button-quiet issue-discussion-delete-confirm';
+    confirm.textContent = 'Delete';
+    confirm.dataset.discussionDelete = '';
+    confirm.addEventListener('click', () => void deleteIssueDiscussionMessage(message.id, confirm));
+    const cancel = document.createElement('button');
+    cancel.type = 'button';
+    cancel.className = 'button button-quiet issue-discussion-action';
+    cancel.textContent = 'Cancel';
+    cancel.addEventListener('click', () => {
+      confirmingIssueDiscussionDeleteId = null;
+      renderIssueDiscussion();
+      issueDiscussionList.querySelector<HTMLButtonElement>(`[data-message-id="${message.id}"] [data-discussion-delete-begin]`)?.focus();
+    });
+    actions.append(prompt, confirm, cancel);
+  } else if (canEdit) {
+    const edit = document.createElement('button');
+    edit.type = 'button';
+    edit.className = 'button button-quiet issue-discussion-action';
+    edit.textContent = 'Edit';
+    edit.dataset.discussionEdit = '';
+    edit.setAttribute('aria-label', `Edit your message from ${message.author_name}`);
+    edit.addEventListener('click', () => {
+      editingIssueDiscussionMessageId = message.id;
+      confirmingIssueDiscussionDeleteId = null;
+      renderIssueDiscussion();
+      issueDiscussionList.querySelector<HTMLTextAreaElement>(`[data-message-id="${message.id}"] [data-discussion-edit-input]`)?.focus();
+    });
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'button button-quiet issue-discussion-action';
+    remove.textContent = 'Delete';
+    remove.dataset.discussionDeleteBegin = '';
+    remove.setAttribute('aria-label', `Delete your message from ${message.author_name}`);
+    remove.addEventListener('click', () => {
+      confirmingIssueDiscussionDeleteId = message.id;
+      editingIssueDiscussionMessageId = null;
+      renderIssueDiscussion();
+      issueDiscussionList.querySelector<HTMLButtonElement>(`[data-message-id="${message.id}"] [data-discussion-delete]`)?.focus();
+    });
+    actions.append(edit, remove);
+  }
+  heading.append(author, time, actions);
 
-  const body = document.createElement('p');
-  body.className = 'issue-discussion-body';
-  body.textContent = message.body;
-  item.append(heading, body);
+  if (canEdit && isEditing) {
+    const form = document.createElement('form');
+    form.className = 'issue-discussion-edit-form';
+    const label = document.createElement('label');
+    const inputId = `issue-discussion-edit-input-${message.id}`;
+    label.htmlFor = inputId;
+    label.textContent = 'Edit message';
+    const input = document.createElement('textarea');
+    input.id = inputId;
+    input.rows = 3;
+    input.maxLength = 10_000;
+    input.required = true;
+    input.value = message.body;
+    input.dataset.discussionEditInput = '';
+    const formActions = document.createElement('div');
+    formActions.className = 'form-actions';
+    const cancel = document.createElement('button');
+    cancel.type = 'button';
+    cancel.className = 'button button-quiet';
+    cancel.textContent = 'Cancel';
+    cancel.addEventListener('click', () => {
+      editingIssueDiscussionMessageId = null;
+      renderIssueDiscussion();
+      issueDiscussionList.querySelector<HTMLButtonElement>(`[data-message-id="${message.id}"] [data-discussion-edit]`)?.focus();
+    });
+    const save = document.createElement('button');
+    save.type = 'submit';
+    save.className = 'button button-primary';
+    save.textContent = 'Save';
+    formActions.append(cancel, save);
+    form.append(label, input, formActions);
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      void saveIssueDiscussionMessage(message.id, input.value, save);
+    });
+    item.append(heading, form);
+  } else {
+    const body = document.createElement('p');
+    body.className = 'issue-discussion-body';
+    body.textContent = message.body;
+    item.append(heading, body);
+  }
   return item;
+}
+
+async function saveIssueDiscussionMessage(messageId: number, body: string, button: HTMLButtonElement): Promise<void> {
+  const issueId = selectedIssue?.id;
+  if (issueId === undefined || body.trim() === '') return;
+  button.disabled = true;
+  try {
+    const result = await api<{ message: IssueDiscussionMessage }>(`/issues/${issueId}/discussion/${messageId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ body }),
+    });
+    if (selectedIssue?.id !== issueId) return;
+    issueDiscussionMessages = issueDiscussionMessages.map((message) => message.id === messageId ? result.message : message);
+    editingIssueDiscussionMessageId = null;
+    issueDiscussionStatus.textContent = 'Message updated.';
+    renderIssueDiscussion();
+    issueDiscussionList.querySelector<HTMLButtonElement>(`[data-message-id="${messageId}"] [data-discussion-edit]`)?.focus();
+  } catch (error) {
+    issueDiscussionStatus.textContent = error instanceof Error ? error.message : 'Could not update the message.';
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function deleteIssueDiscussionMessage(messageId: number, button: HTMLButtonElement): Promise<void> {
+  const issueId = selectedIssue?.id;
+  if (issueId === undefined) return;
+  button.disabled = true;
+  try {
+    await api(`/issues/${issueId}/discussion/${messageId}`, { method: 'DELETE' });
+    if (selectedIssue?.id !== issueId) return;
+    issueDiscussionMessages = issueDiscussionMessages.filter((message) => message.id !== messageId);
+    confirmingIssueDiscussionDeleteId = null;
+    updateProjectIssueDiscussionCount(issueId, issueDiscussionMessages.length);
+    issueDiscussionStatus.textContent = 'Message deleted.';
+    renderIssueDiscussion();
+    const latest = issueDiscussionMessages.at(-1);
+    if (latest === undefined) issueDiscussionHeading.focus();
+    else selectIssueDiscussionMessage(latest.id);
+  } catch (error) {
+    issueDiscussionStatus.textContent = error instanceof Error ? error.message : 'Could not delete the message.';
+  } finally {
+    button.disabled = false;
+  }
 }
 
 function setIssueDiscussionReply(message: IssueDiscussionMessage): void {
@@ -5386,6 +5560,8 @@ async function postIssueDiscussionMessage(event: SubmitEvent): Promise<void> {
     });
     if (selectedIssue?.id !== issueId) return;
     issueDiscussionMessages.push(result.message);
+    editingIssueDiscussionMessageId = null;
+    confirmingIssueDiscussionDeleteId = null;
     updateProjectIssueDiscussionCount(issueId, issueDiscussionMessages.length);
     renderIssueDiscussion();
     if (issueDiscussionInput.value.trim() === body) issueDiscussionInput.value = '';
