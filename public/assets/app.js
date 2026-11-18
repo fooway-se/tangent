@@ -11,6 +11,24 @@ import { formatIssueMarkdown, formatIssuePrompt } from './issue-export.js';
 import { filterIssues, groupIssues, groupIssuesByMilestone, discussionIndicatorLabel, milestoneProgress, sortIssues, } from './issue-board.js';
 import { diffIssueCollections, nextIssuePollDelay, shouldDeferIssueUpdates, } from './issue-polling.js';
 const apiBaseUrl = new URL('../api/v1', import.meta.url).pathname.replace(/\/$/, '');
+const PROJECT_STATUS_LABELS = {
+    active: 'Active',
+    paused: 'Paused',
+    completed: 'Completed',
+    archived: 'Archived',
+};
+const PROJECT_STATUS_HINTS = {
+    active: 'Normal work.',
+    paused: 'Temporarily on hold; it can be resumed. The project and its history remain available.',
+    completed: 'Finished and read-only. An admin can reopen it. Small follow-up work can stay in this project; a distinct engagement can start a new one.',
+    archived: 'A housekeeping state that moves the project out of the active list while keeping its history. Existing members and guests can still view it read-only.',
+};
+const PROJECT_STATUS_ORDER = {
+    active: 0,
+    paused: 1,
+    completed: 2,
+    archived: 3,
+};
 const ISSUE_STATUS_OPTIONS = [
     { value: 'backlog', label: 'Backlog' },
     { value: 'todo', label: 'Todo' },
@@ -114,6 +132,19 @@ const themeAboutImageFallback = document.querySelector('#theme-about-image-fallb
 const themeAboutFacts = document.querySelector('#theme-about-facts');
 const themeAboutImageCredit = document.querySelector('#theme-about-image-credit');
 const themeAboutHistorySource = document.querySelector('#theme-about-history-source');
+const projectHeading = document.querySelector('#project-heading');
+const projectEditDialog = document.querySelector('#project-edit-dialog');
+const projectEditForm = document.querySelector('#project-edit-form');
+const projectEditClose = document.querySelector('#project-edit-close');
+const projectEditCancel = document.querySelector('#project-edit-cancel');
+const projectEditName = document.querySelector('#project-edit-name');
+const projectEditDescription = document.querySelector('#project-edit-description-input');
+const projectEditStatus = document.querySelector('#project-edit-status');
+const projectEditStatusHelp = document.querySelector('#project-edit-status-help');
+const projectReadOnlyNotice = document.querySelector('#project-read-only-notice');
+const projectEditMessage = document.querySelector('#project-edit-message');
+const projectEditSave = document.querySelector('#project-edit-save');
+const editProjectButton = document.querySelector('#edit-project-button');
 function openThemeAbout() {
     const machine = THEME_MACHINES[activeTheme];
     themeAboutHeading.textContent = machine.model;
@@ -602,6 +633,9 @@ function showSignedOut() {
     resetPendingWorkspaceSwitch();
     stopChatPolling();
     activeUser = null;
+    editProjectButton.hidden = true;
+    if (projectEditDialog.open)
+        projectEditDialog.close();
     activeProject = null;
     activeProjectMembers = [];
     selectedIssue = null;
@@ -635,6 +669,7 @@ function showSignedIn(user) {
     projectReturnFocusId = null;
     activeProject = null;
     activeUser = user;
+    editProjectButton.hidden = user.role !== 'admin';
     resetPendingWorkspaceSwitch();
     if (user.role === 'guest') {
         showGuestShell(user);
@@ -877,7 +912,7 @@ async function loadWorkspaceAdmin() {
         ]);
         if (adminView.hidden)
             return;
-        adminProjects = projects.projects.filter((project) => project.status === 'active');
+        adminProjects = projects.projects.filter((project) => project.status === 'active' || project.status === 'paused');
         renderWorkspaceMembers(members.users);
         renderWorkspaceInvites(invites.invites);
         renderInviteProjectOptions();
@@ -1061,7 +1096,7 @@ async function setWorkspaceMemberRole(member, role, select) {
 }
 async function openWorkspaceGuestProjectAccess(member, button) {
     workspaceGuestProjectsTarget = { member, button };
-    workspaceGuestProjectsDescription.textContent = `Choose the active projects ${member.name} can access. An empty selection removes access to every active project.`;
+    workspaceGuestProjectsDescription.textContent = `Choose the active or paused projects ${member.name} can access. An empty selection removes access to every available project.`;
     workspaceGuestProjectOptions.replaceChildren();
     workspaceGuestProjectsEmpty.hidden = true;
     workspaceGuestProjectsStatus.textContent = 'Loading project access…';
@@ -1076,7 +1111,7 @@ async function openWorkspaceGuestProjectAccess(member, button) {
         workspaceGuestProjectsStatus.textContent = '';
         workspaceGuestProjectsEmpty.hidden = adminProjects.length > 0;
         if (adminProjects.length === 0) {
-            workspaceGuestProjectsEmpty.textContent = 'There are no active projects. This guest will have no project access.';
+            workspaceGuestProjectsEmpty.textContent = 'There are no active or paused projects. This guest will have no project access.';
         }
         for (const project of adminProjects) {
             const label = document.createElement('label');
@@ -1707,7 +1742,7 @@ function shortcutContext(target) {
         issueGroupFocused: target instanceof HTMLElement && target.closest('.issue-group > summary') !== null,
         statusHistoryFocused: issueStatusHistory.open && issueStatusHistory.contains(document.activeElement),
         textInputFocused: shouldBlurOnEscape(target),
-        modalOpen: commandPalette.open || shortcutHelp.open || issueAiPromptDialog.open || issueStatusPicker.open || issueDeleteConfirmation.open || themeAboutDialog.open
+        modalOpen: commandPalette.open || shortcutHelp.open || issueAiPromptDialog.open || issueStatusPicker.open || issueDeleteConfirmation.open || themeAboutDialog.open || projectEditDialog.open
             || memberRemovalConfirmation.open || workspaceMemberDeactivationDialog.open || workspaceMemberRoleDialog.open
             || workspaceGuestProjectsDialog.open || milestoneDeleteConfirmation.open || milestoneManagerDialog.open
             || workspacePicker.open,
@@ -2142,6 +2177,8 @@ function openCommandPalette() {
         return;
     if (themeAboutDialog.open)
         themeAboutDialog.close();
+    if (projectEditDialog.open)
+        projectEditDialog.close();
     if (workspacePicker.open)
         resetPendingWorkspaceSwitch();
     if (issueAiPromptDialog.open)
@@ -2212,6 +2249,9 @@ function dismissCurrentView() {
         return;
     if (themeAboutDialog.open) {
         themeAboutDialog.close();
+    }
+    else if (projectEditDialog.open) {
+        projectEditDialog.close();
     }
     else if (workspacePicker.open) {
         resetPendingWorkspaceSwitch();
@@ -2319,6 +2359,135 @@ function closeProjectForm() {
     projectFormPanel.hidden = true;
     toggleProjectFormButton.focus();
 }
+function openProjectEditDialog() {
+    if (activeUser?.role !== 'admin' || activeProject === null)
+        return;
+    projectEditName.value = activeProject.name;
+    projectEditDescription.value = activeProject.description;
+    projectEditStatus.value = activeProject.status;
+    updateProjectStatusHint();
+    projectEditMessage.textContent = '';
+    projectEditMessage.classList.remove('is-error');
+    projectEditDialog.showModal();
+    projectEditName.focus();
+}
+function projectStatusHint(status) {
+    return PROJECT_STATUS_HINTS[status];
+}
+function projectStatusIsReadOnly(status) {
+    return status === 'completed' || status === 'archived';
+}
+function updateProjectReadOnlyNotice(status) {
+    const readOnly = projectStatusIsReadOnly(status);
+    projectReadOnlyNotice.hidden = !readOnly;
+    issueForm.hidden = readOnly;
+    manageMilestonesButton.disabled = readOnly;
+    issueDetailStatus.disabled = readOnly;
+    issueDetailEditButton.disabled = readOnly;
+    issueDetailDeleteButton.disabled = readOnly;
+    issueDiscussionInput.disabled = readOnly;
+    issueDiscussionSubmit.disabled = readOnly;
+    issueDiscussionReplyCancel.disabled = readOnly;
+    projectNotesInput.disabled = readOnly;
+    projectNotesWrite.disabled = readOnly;
+    projectNotesSave.disabled = readOnly || projectNotesInput.value === savedProjectNotes;
+    memberForm.hidden = activeUser?.role !== 'admin' || readOnly;
+    if (readOnly) {
+        issueDetailEditForm.hidden = true;
+        issueDetailDisplay.hidden = false;
+        setProjectNotesMode('preview');
+    }
+    if (chatInput !== null)
+        chatInput.disabled = readOnly;
+    const chatSend = chatView.querySelector('.chat-composer button[type="submit"]');
+    if (chatSend !== null)
+        chatSend.disabled = readOnly;
+    if (status === 'completed') {
+        projectReadOnlyNotice.textContent = 'This project is completed and read-only. An admin can reopen it from Edit project.';
+    }
+    else if (status === 'archived') {
+        projectReadOnlyNotice.textContent = 'This project is archived and read-only. An admin can restore its previous work state from Edit project.';
+    }
+    else {
+        projectReadOnlyNotice.textContent = '';
+    }
+}
+function updateProjectStatusHint() {
+    const status = projectEditStatus.value;
+    let hint = projectStatusHint(status);
+    const completedLocked = activeProject?.status === 'completed' && !['active', 'paused'].includes(status);
+    const archivedLocked = activeProject?.status === 'archived' && status === 'archived';
+    projectEditName.disabled = completedLocked || archivedLocked;
+    projectEditDescription.disabled = completedLocked || archivedLocked;
+    const archivedFromStatus = activeProject?.status === 'archived' ? activeProject.archived_from_status : null;
+    if (activeProject?.status === 'archived' && archivedFromStatus !== null && status === 'archived') {
+        const previousState = PROJECT_STATUS_LABELS[archivedFromStatus];
+        hint += ` This project was ${previousState.toLowerCase()} before archiving; select ${previousState} to restore it.`;
+    }
+    else if (activeProject?.status === 'archived' && status !== 'archived') {
+        hint += status === archivedFromStatus
+            ? ' Saving will restore the previous work state.'
+            : ` Saving will unarchive the project as ${PROJECT_STATUS_LABELS[status].toLowerCase()}.`;
+    }
+    projectEditStatusHelp.textContent = hint;
+}
+async function saveProjectEdit(event) {
+    event.preventDefault();
+    if (activeUser?.role !== 'admin' || activeProject === null)
+        return;
+    const projectId = activeProject.id;
+    projectEditSave.disabled = true;
+    projectEditMessage.textContent = '';
+    projectEditMessage.classList.remove('is-error');
+    try {
+        const result = await api(`/projects/${projectId}`, {
+            method: 'PATCH',
+            body: JSON.stringify({
+                name: projectEditName.value,
+                description: projectEditDescription.value,
+                status: projectEditStatus.value,
+            }),
+        });
+        if (activeProject?.id !== projectId)
+            return;
+        activeProject = result.project;
+        projectHeading.textContent = result.project.name;
+        projectDescription.textContent = result.project.description;
+        projectDescription.hidden = result.project.description.trim() === '';
+        projectState.textContent = projectStatusLabel(result.project.status);
+        projectState.classList.toggle('is-paused', result.project.status === 'paused');
+        projectState.classList.toggle('is-read-only', result.project.status === 'completed' || result.project.status === 'archived');
+        updateProjectReadOnlyNotice(result.project.status);
+        breadcrumbCurrent.textContent = result.project.name;
+        report('Project updated.');
+        projectEditDialog.close();
+        try {
+            await loadProjects();
+        }
+        catch (error) {
+            report(error instanceof Error ? error.message : 'Project updated, but the project list could not be refreshed.', true);
+        }
+    }
+    catch (error) {
+        projectEditMessage.textContent = error instanceof Error ? error.message : 'Could not update the project.';
+        projectEditMessage.classList.add('is-error');
+        projectEditName.focus();
+    }
+    finally {
+        projectEditSave.disabled = false;
+    }
+}
+projectEditClose.addEventListener('click', () => projectEditDialog.close());
+projectEditCancel.addEventListener('click', () => projectEditDialog.close());
+projectEditForm.addEventListener('submit', (event) => void saveProjectEdit(event));
+projectEditDialog.addEventListener('close', () => {
+    projectEditForm.reset();
+    projectEditMessage.textContent = '';
+    projectEditMessage.classList.remove('is-error');
+    projectEditSave.disabled = false;
+    if (activeUser?.role === 'admin' && !projectView.hidden)
+        editProjectButton.focus();
+});
 function submitFormOnEnter(event, form) {
     if (!shouldSubmitOnEnter(event.key, event.shiftKey, event.isComposing))
         return;
@@ -2517,7 +2686,7 @@ function executeShortcut(action) {
     }
 }
 function handleKeyboardShortcut(event) {
-    if ((commandPalette.open || shortcutHelp.open || issueAiPromptDialog.open || issueStatusPicker.open || issueDeleteConfirmation.open || memberRemovalConfirmation.open || workspaceMemberDeactivationDialog.open || workspaceMemberRoleDialog.open || workspaceGuestProjectsDialog.open || milestoneDeleteConfirmation.open || milestoneManagerDialog.open || workspacePicker.open || themeAboutDialog.open)
+    if ((commandPalette.open || shortcutHelp.open || issueAiPromptDialog.open || issueStatusPicker.open || issueDeleteConfirmation.open || memberRemovalConfirmation.open || workspaceMemberDeactivationDialog.open || workspaceMemberRoleDialog.open || workspaceGuestProjectsDialog.open || milestoneDeleteConfirmation.open || milestoneManagerDialog.open || workspacePicker.open || themeAboutDialog.open || projectEditDialog.open)
         && event.key !== 'Escape'
         && !((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k'))
         return;
@@ -2720,6 +2889,7 @@ function appendChatMessage(message, scrollToBottom = false) {
     reply.className = 'button button-quiet chat-reply-button';
     reply.type = 'button';
     reply.textContent = 'Reply';
+    reply.disabled = activeProject !== null && projectStatusIsReadOnly(activeProject.status);
     reply.addEventListener('click', () => {
         selectChatMessage(message.id, false);
         setChatReplyParent(message);
@@ -2728,6 +2898,7 @@ function appendChatMessage(message, scrollToBottom = false) {
     createIssue.className = 'button button-quiet chat-create-issue-button';
     createIssue.type = 'button';
     createIssue.textContent = 'Create issue';
+    createIssue.disabled = activeProject !== null && projectStatusIsReadOnly(activeProject.status);
     createIssue.addEventListener('click', () => {
         selectChatMessage(message.id, false);
         const projectId = activeProject?.id;
@@ -3059,6 +3230,7 @@ function createProjectChat(projectId) {
     chatInput.rows = 2;
     chatInput.maxLength = 10_000;
     chatInput.required = true;
+    chatInput.disabled = activeProject !== null && projectStatusIsReadOnly(activeProject.status);
     chatInput.placeholder = `Message #${activeProject?.slug ?? 'project'}…`;
     chatInput.setAttribute('aria-label', 'Message');
     chatInput.setAttribute('aria-autocomplete', 'list');
@@ -3092,6 +3264,7 @@ function createProjectChat(projectId) {
     send.className = 'button button-primary';
     send.type = 'submit';
     send.textContent = 'Send';
+    send.disabled = activeProject !== null && projectStatusIsReadOnly(activeProject.status);
     actions.append(chatCancelReply, send);
     form.append(chatMentionList, label, chatReplyHint, actions);
     form.addEventListener('submit', async (event) => {
@@ -3314,6 +3487,8 @@ toggleProjectFormButton.addEventListener('click', () => {
     projectFormPanel.hidden = false;
     projectForm.querySelector('input[name="name"]')?.focus();
 });
+editProjectButton.addEventListener('click', openProjectEditDialog);
+projectEditStatus.addEventListener('change', updateProjectStatusHint);
 cancelProjectFormButton.addEventListener('click', closeProjectForm);
 issueForm.addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -3388,12 +3563,17 @@ memberForm.addEventListener('submit', async (event) => {
         report(error instanceof Error ? error.message : 'Could not add member.', true);
     }
 });
+function projectStatusLabel(status) {
+    return PROJECT_STATUS_LABELS[status];
+}
 async function loadProjects() {
     const result = await api('/projects');
+    const projects = [...result.projects].sort((left, right) => (PROJECT_STATUS_ORDER[left.status] - PROJECT_STATUS_ORDER[right.status]
+        || left.name.localeCompare(right.name)));
     projectList.replaceChildren();
-    emptyProjects.hidden = result.projects.length > 0;
+    emptyProjects.hidden = projects.length > 0;
     projectSidebarList.replaceChildren();
-    for (const project of result.projects) {
+    for (const project of projects) {
         const item = document.createElement('li');
         item.className = 'project-card';
         item.dataset.projectId = String(project.id);
@@ -3408,7 +3588,9 @@ async function loadProjects() {
         const actions = document.createElement('div');
         const state = document.createElement('span');
         state.className = 'project-status';
-        state.textContent = project.status;
+        state.textContent = projectStatusLabel(project.status);
+        state.classList.toggle('is-paused', project.status === 'paused');
+        state.classList.toggle('is-read-only', project.status === 'completed' || project.status === 'archived');
         const open = document.createElement('button');
         open.className = 'button button-quiet';
         open.type = 'button';
@@ -3424,6 +3606,7 @@ async function loadProjects() {
         sidebarButton.dataset.projectId = String(project.id);
         sidebarButton.classList.toggle('is-active', activeProject?.id === project.id);
         sidebarButton.textContent = project.name;
+        sidebarButton.setAttribute('aria-label', `${project.name}, ${projectStatusLabel(project.status)}`);
         sidebarButton.addEventListener('click', () => void loadProjectDetail(project.id));
         sidebarItem.append(sidebarButton);
         projectSidebarList.append(sidebarItem);
@@ -4130,6 +4313,7 @@ async function loadProjectDetail(projectId, tab = 'issues', recordHistory = true
         }
         activeProject = result.project;
         activeProjectMembers = result.members;
+        projectHeading.textContent = result.project.name;
         projectMilestones = milestoneResult.milestones;
         populateIssueAssigneeSelect(issueQuickAddAssignee, null);
         populateIssueMilestoneSelect(issueQuickAddMilestone, null);
@@ -4139,7 +4323,10 @@ async function loadProjectDetail(projectId, tab = 'issues', recordHistory = true
         });
         projectDescription.textContent = result.project.description;
         projectDescription.hidden = result.project.description.trim() === '';
-        projectState.textContent = result.project.status;
+        projectState.textContent = projectStatusLabel(result.project.status);
+        projectState.classList.toggle('is-paused', result.project.status === 'paused');
+        projectState.classList.toggle('is-read-only', result.project.status === 'completed' || result.project.status === 'archived');
+        updateProjectReadOnlyNotice(result.project.status);
         projectIssues = [];
         deletedProjectIssues = [];
         issueFilter.value = '';
@@ -4243,7 +4430,7 @@ async function loadProjectNotes(projectId) {
         projectNotesInput.value = result.notes;
         savedProjectNotes = result.notes;
         loadedProjectNotesId = projectId;
-        projectNotesInput.disabled = false;
+        projectNotesInput.disabled = activeProject.status === 'completed' || activeProject.status === 'archived';
         projectNotesStatus.textContent = result.updated_at === null ? 'No notes yet. Notes are private to the internal team.' : 'Saved. Notes are private to the internal team.';
         updateProjectNotesDirtyState();
         setProjectNotesMode(projectNotesMode);
@@ -4291,8 +4478,8 @@ async function saveProjectNotes(event) {
     }
     finally {
         if (activeProject?.id === projectId) {
-            projectNotesInput.disabled = false;
-            projectNotesSave.disabled = projectNotesInput.value === savedProjectNotes;
+            projectNotesInput.disabled = activeProject.status === 'completed' || activeProject.status === 'archived';
+            projectNotesSave.disabled = projectNotesInput.disabled || projectNotesInput.value === savedProjectNotes;
         }
     }
 }
@@ -4578,6 +4765,7 @@ function createDeletedIssueRow(issue) {
     restoreButton.type = 'button';
     restoreButton.className = 'button button-secondary';
     restoreButton.textContent = 'Restore';
+    restoreButton.disabled = activeProject !== null && projectStatusIsReadOnly(activeProject.status);
     restoreButton.dataset.issueId = String(issue.id);
     restoreButton.setAttribute('aria-label', `Restore ${issue.title}`);
     restoreButton.addEventListener('click', () => void restoreIssue(issue, restoreButton));
@@ -4836,6 +5024,7 @@ function createIssueDiscussionMessage(message) {
     reply.type = 'button';
     reply.className = 'button button-quiet issue-discussion-reply-button';
     reply.textContent = 'Reply';
+    reply.disabled = activeProject !== null && projectStatusIsReadOnly(activeProject.status);
     reply.setAttribute('aria-label', `Reply to ${message.author_name}`);
     reply.addEventListener('click', () => setIssueDiscussionReply(message));
     heading.append(author, time, reply);
@@ -5119,6 +5308,7 @@ function createIssueStatusButton(issue) {
     const button = document.createElement('button');
     button.className = 'button issue-status-button';
     button.type = 'button';
+    button.disabled = activeProject !== null && projectStatusIsReadOnly(activeProject.status);
     button.setAttribute('aria-haspopup', 'dialog');
     button.setAttribute('aria-label', `Change status for ${issue.title}. Current status: ${issueStatusLabel(issue.status)}.`);
     const label = document.createElement('span');
@@ -5247,9 +5437,10 @@ function createIssueRow(issue, reorder) {
             button.type = 'button';
             button.className = 'button button-quiet issue-order-button';
             button.dataset.moveDirection = direction;
-            button.disabled = direction === 'up'
+            button.disabled = (direction === 'up'
                 ? reorder?.canMoveEarlier !== true
-                : reorder?.canMoveLater !== true;
+                : reorder?.canMoveLater !== true)
+                || (activeProject !== null && projectStatusIsReadOnly(activeProject.status));
             button.textContent = direction === 'up' ? '↑' : '↓';
             button.setAttribute('aria-label', `Move ${issue.title} ${direction === 'up' ? 'earlier' : 'later'}`);
             button.addEventListener('click', () => void moveIssue(issue, direction, button));
@@ -5607,7 +5798,7 @@ async function loadProjectMembers(projectId) {
         }
         memberList.append(item);
     }
-    memberForm.hidden = activeUser?.role !== 'admin';
+    memberForm.hidden = activeUser?.role !== 'admin' || (activeProject !== null && projectStatusIsReadOnly(activeProject.status));
     updateMembersPanelTabIndex();
     if (memberForm.hidden)
         return;

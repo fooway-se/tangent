@@ -8,6 +8,7 @@ use Tangent\Core\ApiException;
 use Tangent\Core\AuthenticatedUser;
 use Tangent\Core\Permissions;
 use Tangent\Modules\Inbox\InboxEvents;
+use Tangent\Modules\Projects\ProjectLifecycle;
 use Tangent\Modules\Projects\ProjectRepository;
 use PDO;
 use Throwable;
@@ -171,6 +172,9 @@ final class ChatService
         $isMember = $project !== null && $this->projects->isMember($user->workspaceId, $projectId, $user->id);
         if ($project === null || !Permissions::can($user, $action, ['is_member' => $isMember])) {
             throw new ApiException(404, 'not_found', 'The project was not found.');
+        }
+        if (in_array($action, ['chat.send', 'client_comments.create'], true)) {
+            ProjectLifecycle::requireWritable($project['status']);
         }
 
         $channelId = $this->chat->findProjectChannel($user->workspaceId, $projectId);

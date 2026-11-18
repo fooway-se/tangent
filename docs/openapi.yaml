@@ -427,13 +427,13 @@ paths:
         '422': { $ref: '#/components/responses/ValidationFailed' }
   /users/{id}/projects:
     get:
-      summary: List active projects available to a guest member (admin only)
-      description: Returns the guest's active project memberships. Archived project memberships are retained but omitted.
+      summary: List assignable projects available to a guest member (admin only)
+      description: Returns the guest's memberships in active and paused projects. Completed and archived project memberships are retained but omitted.
       parameters:
         - $ref: '#/components/parameters/Id'
       responses:
         '200':
-          description: The guest member's active project IDs.
+          description: The guest member's assignable project IDs.
           content:
             application/json:
               schema:
@@ -447,8 +447,8 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
     put:
-      summary: Replace a guest member's active project access (admin only)
-      description: Updates active project memberships in the current workspace. An empty list removes access to every active project. Archived memberships are preserved.
+      summary: Replace a guest member's assignable project access (admin only)
+      description: Updates memberships for active and paused projects in the current workspace. An empty list removes access to every assignable project. Completed and archived memberships are preserved.
       parameters:
         - $ref: '#/components/parameters/Id'
         - $ref: '#/components/parameters/CsrfToken'
@@ -465,7 +465,7 @@ paths:
                   items: { type: integer, minimum: 1 }
       responses:
         '200':
-          description: The guest member's active project IDs after the update.
+          description: The guest member's assignable project IDs after the update.
           content:
             application/json:
               schema:
@@ -685,6 +685,7 @@ paths:
                   message: { $ref: '#/components/schemas/Message' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
         '422': { $ref: '#/components/responses/ValidationFailed' }
   /projects/{id}/messages/{messageId}:
     get:
@@ -800,6 +801,7 @@ paths:
                   issue: { $ref: '#/components/schemas/Issue' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
         '422': { $ref: '#/components/responses/ValidationFailed' }
   /inbox:
     get:
@@ -897,7 +899,7 @@ paths:
   /projects/{id}/client-view:
     get:
       summary: Client (guest) view of a project
-      description: Progress, milestones, shared items, pending approvals and updates. Visibility is filtered server-side to content marked shared. Requires a guest or project member.
+      description: Progress, milestones, shared items, pending approvals and updates. Visibility is filtered server-side to content marked shared. Completed and archived projects remain readable but do not accept writes.
       parameters:
         - $ref: '#/components/parameters/Id'
       responses:
@@ -929,6 +931,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
         '422': { $ref: '#/components/responses/ValidationFailed' }
   /projects/{id}/milestones:
     get:
@@ -969,6 +972,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
         '422': { $ref: '#/components/responses/ValidationFailed' }
   /projects/{id}/milestones/{milestoneId}:
     patch:
@@ -995,6 +999,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
         '422': { $ref: '#/components/responses/ValidationFailed' }
     delete:
       summary: Delete a milestone and unlink its issues
@@ -1010,6 +1015,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
   /approvals/{id}/approve:
     post:
       summary: Approve a delivery marked for approval (guest)
@@ -1061,6 +1067,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
         '422': { $ref: '#/components/responses/ValidationFailed' }
     delete:
       summary: Move an issue to Deleted issues
@@ -1072,6 +1079,7 @@ paths:
         '204': { description: Issue moved to Deleted issues. }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
   /issues/{id}/history:
     get:
       summary: List recent status transitions for an issue
@@ -1148,6 +1156,7 @@ paths:
                   message: { $ref: '#/components/schemas/IssueDiscussionMessage' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
         '422': { $ref: '#/components/responses/ValidationFailed' }
   /issues/{id}/restore:
     post:
@@ -1166,6 +1175,7 @@ paths:
                   issue: { $ref: '#/components/schemas/Issue' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
   /issues/{id}/move:
     post:
       summary: Move an open issue earlier or later within its milestone
@@ -1193,6 +1203,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
         '422': { $ref: '#/components/responses/ValidationFailed' }
   /messages/{id}/issue:
     post:
@@ -1212,6 +1223,7 @@ paths:
                   issue: { $ref: '#/components/schemas/Issue' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
         '422': { $ref: '#/components/responses/ValidationFailed' }
   /projects/{id}:
     get:
@@ -1246,11 +1258,12 @@ paths:
               properties:
                 name: { type: string, minLength: 2, maxLength: 120 }
                 description: { type: string, maxLength: 5000 }
-                status: { type: string, enum: [active, archived] }
+                status: { type: string, enum: [active, paused, completed, archived] }
       responses:
         '200': { description: Updated project. }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
   /projects/{id}/notes:
     get:
       summary: Read internal project notes
@@ -1287,6 +1300,7 @@ paths:
       responses:
         '200': { description: The saved Markdown source and update time. }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
         '422': { $ref: '#/components/responses/ValidationFailed' }
   /projects/{id}/members:
     get:
@@ -1316,6 +1330,7 @@ paths:
         '200': { description: Member added or already present. }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
     delete:
       summary: Remove a project member (admin only)
       description: All issues assigned to this member become unassigned.
@@ -1392,7 +1407,8 @@ components:
         name: { type: string }
         slug: { type: string }
         description: { type: string }
-        status: { type: string, enum: [active, archived] }
+        status: { type: string, enum: [active, paused, completed, archived] }
+        archived_from_status: { type: string, enum: [active, paused, completed], nullable: true }
         created_by: { type: integer }
     GuestProject:
       type: object
@@ -1509,7 +1525,10 @@ components:
       properties:
         project:
           type: object
-          properties: { id: { type: integer }, name: { type: string } }
+          properties:
+            id: { type: integer }
+            name: { type: string }
+            status: { type: string, enum: [active, paused, completed, archived] }
         progress:
           type: object
           properties: { percent: { type: integer }, done: { type: integer }, total: { type: integer } }

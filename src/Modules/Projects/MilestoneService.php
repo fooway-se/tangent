@@ -30,14 +30,16 @@ final class MilestoneService
 
     public function create(AuthenticatedUser $user, int $projectId, array $input): array
     {
-        $this->requireManage($user, $projectId);
+        $project = $this->requireManage($user, $projectId);
+        ProjectLifecycle::requireWritable($project['status']);
         [$name, $dueDate] = self::fields($input, null, null, false);
         return $this->milestones->create($user->workspaceId, $projectId, $name, $dueDate);
     }
 
     public function update(AuthenticatedUser $user, int $projectId, int $milestoneId, array $input): array
     {
-        $this->requireManage($user, $projectId);
+        $project = $this->requireManage($user, $projectId);
+        ProjectLifecycle::requireWritable($project['status']);
         $current = $this->milestones->find($user->workspaceId, $projectId, $milestoneId);
         if ($current === null) throw new ApiException(404, 'not_found', 'The milestone was not found.');
         [$name, $dueDate] = self::fields($input, $current['name'], $current['due_date'], true);
@@ -47,7 +49,8 @@ final class MilestoneService
 
     public function delete(AuthenticatedUser $user, int $projectId, int $milestoneId): void
     {
-        $this->requireManage($user, $projectId);
+        $project = $this->requireManage($user, $projectId);
+        ProjectLifecycle::requireWritable($project['status']);
         if ($this->milestones->find($user->workspaceId, $projectId, $milestoneId) === null) {
             throw new ApiException(404, 'not_found', 'The milestone was not found.');
         }
@@ -87,7 +90,7 @@ final class MilestoneService
         return $date !== false && $date->format('Y-m-d') === $value;
     }
 
-    private function requireManage(AuthenticatedUser $user, int $projectId): void
+    private function requireManage(AuthenticatedUser $user, int $projectId): array
     {
         $project = $this->projects->find($user->workspaceId, $projectId);
         if ($project === null) throw new ApiException(404, 'not_found', 'The project was not found.');
@@ -95,5 +98,6 @@ final class MilestoneService
         if (!Permissions::can($user, 'milestones.manage', ['is_member' => $isMember])) {
             throw new ApiException(403, 'forbidden', 'You cannot manage milestones.');
         }
+        return $project;
     }
 }

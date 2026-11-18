@@ -17,7 +17,7 @@ final class ProjectRepository
     public function listForWorkspace(int $workspaceId): array
     {
         $statement = $this->pdo->prepare(
-            'SELECT id, workspace_id, name, slug, description, status, created_by, created_at, updated_at
+            'SELECT id, workspace_id, name, slug, description, status, archived_from_status, created_by, created_at, updated_at
              FROM projects
              WHERE workspace_id = :workspace_id
              ORDER BY name, id'
@@ -29,7 +29,7 @@ final class ProjectRepository
     public function find(int $workspaceId, int $projectId): ?array
     {
         $statement = $this->pdo->prepare(
-            'SELECT id, workspace_id, name, slug, description, status, created_by, created_at, updated_at
+            'SELECT id, workspace_id, name, slug, description, status, archived_from_status, created_by, created_at, updated_at
              FROM projects
              WHERE workspace_id = :workspace_id AND id = :id
              LIMIT 1'
@@ -54,20 +54,16 @@ final class ProjectRepository
         return $statement->fetchColumn() !== false;
     }
 
-    public function activeProjectIdsForMember(int $workspaceId, int $userId): array
+    public function assignableProjectIdsForMember(int $workspaceId, int $userId): array
     {
         $statement = $this->pdo->prepare(
             'SELECT pm.project_id
              FROM project_memberships pm
              INNER JOIN projects p ON p.workspace_id = pm.workspace_id AND p.id = pm.project_id
-             WHERE pm.workspace_id = :workspace_id AND pm.user_id = :user_id AND p.status = :status
+             WHERE pm.workspace_id = :workspace_id AND pm.user_id = :user_id AND p.status IN (\'active\', \'paused\')
              ORDER BY p.name, p.id'
         );
-        $statement->execute([
-            'workspace_id' => $workspaceId,
-            'user_id' => $userId,
-            'status' => 'active',
-        ]);
+        $statement->execute(['workspace_id' => $workspaceId, 'user_id' => $userId]);
         return array_map('intval', $statement->fetchAll(PDO::FETCH_COLUMN));
     }
 
@@ -135,7 +131,8 @@ final class ProjectRepository
     {
         $statement = $this->pdo->prepare(
             'UPDATE projects
-             SET name = :name, description = :description, status = :status
+             SET name = :name, description = :description, status = :status,
+                 archived_from_status = :archived_from_status
              WHERE workspace_id = :workspace_id AND id = :id'
         );
         $statement->execute([
@@ -144,6 +141,7 @@ final class ProjectRepository
             'name' => $project['name'],
             'description' => $project['description'],
             'status' => $project['status'],
+            'archived_from_status' => $project['archived_from_status'],
         ]);
     }
 

@@ -130,7 +130,7 @@ test('guest project checkboxes have compact layout and visible keyboard focus', 
   assert.match(css, /\.admin-project-option input\[type="checkbox"\]\s*\{[^}]*width:\s*16px[^}]*height:\s*16px/s);
   assert.match(css, /\.admin-project-option:focus-within\s*\{[^}]*outline:/s);
   assert.match(app, /firstProjectCheckbox\.focus\(\)/);
-  assert.match(app, /workspaceGuestProjectsDialog\.open[\s\S]{0,150}event\.key !== 'Escape'/);
+  assert.match(app, /if \(\(commandPalette\.open.*workspaceGuestProjectsDialog\.open.*\)\s*\n\s*&& event\.key !== 'Escape'/);
 });
 
 test('workspace member rows give identity its own line and group role/actions below', () => {

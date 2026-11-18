@@ -28,7 +28,7 @@ export interface ClientMessage {
 }
 
 export interface ClientView {
-  project: { id: number; name: string };
+  project: { id: number; name: string; status: 'active' | 'paused' | 'completed' | 'archived' };
   progress: { percent: number; done: number; total: number };
   next_milestone: { name: string; due_date: string | null } | null;
   completed_this_week: number;
@@ -207,6 +207,7 @@ export function renderClientEmptyState(container: HTMLElement, message: string):
 }
 
 export function renderClientView(container: HTMLElement, view: ClientView, handlers: GuestHandlers): void {
+  const readOnly = view.project.status === 'completed' || view.project.status === 'archived';
   const screenHeading = el('div', 'guest-screen-heading');
   const breadcrumb = el('div', 'guest-project-breadcrumb');
   breadcrumb.append(
@@ -236,12 +237,20 @@ export function renderClientView(container: HTMLElement, view: ClientView, handl
     stat('This week', `${view.completed_this_week} done · ${inProgress} in progress`, `of ${view.progress.total} planned items`, undefined, true),
   );
 
-  page.append(overview, stats);
+  page.append(overview);
+  if (readOnly) {
+    page.append(el(
+      'p',
+      'guest-project-read-only',
+      `This project is read-only while it is ${view.project.status}. You can still review project history.`,
+    ));
+  }
+  page.append(stats);
 
   if (view.approvals.length > 0) {
     const approvals = el('section', 'guest-approval-banner');
     approvals.setAttribute('aria-label', 'Waiting for your approval');
-    approvals.append(el('h2', 'guest-approval-heading', 'Waiting for your approval'));
+    approvals.append(el('h2', 'guest-approval-heading', readOnly ? 'Pending approvals' : 'Waiting for your approval'));
     const approvalList = el('div', 'guest-approval-list');
     for (const approval of view.approvals) {
       const card = el('article', 'guest-approval');
@@ -249,13 +258,17 @@ export function renderClientView(container: HTMLElement, view: ClientView, handl
       const title = el('div', 'guest-approval-title');
       title.append(el('strong', undefined, approval.title), el('span', 'guest-approval-key', `#${approval.id}`));
       copy.append(title, el('p', 'guest-muted', approval.description));
-      const button = el('button', 'button button-primary guest-approve-button', 'Approve');
-      button.type = 'button';
-      button.addEventListener('click', () => {
-        button.disabled = true;
-        handlers.approve(approval.id).catch(() => { button.disabled = false; });
-      });
-      card.append(copy, button);
+      if (readOnly) {
+        copy.append(el('p', 'guest-muted', 'Approval is unavailable while this project is read-only.'));
+      } else {
+        const button = el('button', 'button button-primary guest-approve-button', 'Approve');
+        button.type = 'button';
+        button.addEventListener('click', () => {
+          button.disabled = true;
+          handlers.approve(approval.id).catch(() => { button.disabled = false; });
+        });
+        card.append(copy, button);
+      }
       approvalList.append(card);
     }
     approvals.append(approvalList);
@@ -358,29 +371,31 @@ export function renderClientView(container: HTMLElement, view: ClientView, handl
   }
   page.append(conversation);
 
-  const write = el('form', 'guest-write');
-  write.setAttribute('aria-label', 'Write to the team');
-  const textarea = el('textarea');
-  textarea.setAttribute('aria-label', 'Write to the team');
-  textarea.placeholder = 'Write to the team…';
-  textarea.rows = 3;
-  textarea.maxLength = 2000;
-  const footer = el('div', 'guest-composer-footer');
-  footer.append(
-    el('span', 'guest-composer-note', 'Goes to the team’s project channel'),
-  );
-  const send = el('button', 'button button-primary', 'Send');
-  send.type = 'submit';
-  footer.append(send);
-  write.append(textarea, footer);
-  write.addEventListener('submit', (submitEvent) => {
-    submitEvent.preventDefault();
-    const body = textarea.value.trim();
-    if (body === '') return;
-    send.disabled = true;
-    handlers.comment(body).then(() => { textarea.value = ''; }).catch(() => undefined).finally(() => { send.disabled = false; });
-  });
-  page.append(write);
+  if (!readOnly) {
+    const write = el('form', 'guest-write');
+    write.setAttribute('aria-label', 'Write to the team');
+    const textarea = el('textarea');
+    textarea.setAttribute('aria-label', 'Write to the team');
+    textarea.placeholder = 'Write to the team…';
+    textarea.rows = 3;
+    textarea.maxLength = 2000;
+    const footer = el('div', 'guest-composer-footer');
+    footer.append(
+      el('span', 'guest-composer-note', 'Goes to the team’s project channel'),
+    );
+    const send = el('button', 'button button-primary', 'Send');
+    send.type = 'submit';
+    footer.append(send);
+    write.append(textarea, footer);
+    write.addEventListener('submit', (submitEvent) => {
+      submitEvent.preventDefault();
+      const body = textarea.value.trim();
+      if (body === '') return;
+      send.disabled = true;
+      handlers.comment(body).then(() => { textarea.value = ''; }).catch(() => undefined).finally(() => { send.disabled = false; });
+    });
+    page.append(write);
+  }
 
   container.replaceChildren(screenHeading, page);
 }

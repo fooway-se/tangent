@@ -10,6 +10,7 @@ use Tangent\Core\Permissions;
 use Tangent\Modules\Chat\ChatService;
 use Tangent\Modules\Inbox\InboxEvents;
 use Tangent\Modules\Projects\MilestoneRepository;
+use Tangent\Modules\Projects\ProjectLifecycle;
 use Tangent\Modules\Projects\ProjectRepository;
 use PDO;
 use Throwable;
@@ -339,6 +340,9 @@ final class IssuesService
         if (!Permissions::can($user, 'approvals.approve', ['is_member' => $isMember])) {
             throw new ApiException(403, 'forbidden', 'You cannot approve this issue.');
         }
+        $project = $this->projects->find($user->workspaceId, $issue['project_id']);
+        if ($project === null) throw new ApiException(404, 'not_found', 'The project was not found.');
+        ProjectLifecycle::requireWritable($project['status']);
         if (!$issue['is_shared'] || $issue['approval_requested_at'] === null || $issue['status'] === 'cancelled') {
             throw new ApiException(404, 'not_found', 'The approval was not found.');
         }
@@ -429,7 +433,7 @@ final class IssuesService
         if (!Permissions::can($user, 'projects.manage_members')) {
             throw new ApiException(403, 'forbidden', 'You cannot manage project members.');
         }
-        $this->requireProjectAccess($user, $projectId, 'issues.update');
+        $this->requireProjectAccess($user, $projectId, 'issues.update', false);
         $this->issues->unassignMember($user->workspaceId, $projectId, $userId);
     }
 
@@ -489,12 +493,20 @@ final class IssuesService
         return $value;
     }
 
-    private function requireProjectAccess(AuthenticatedUser $user, int $projectId, string $action): void
+    private function requireProjectAccess(
+        AuthenticatedUser $user,
+        int $projectId,
+        string $action,
+        bool $requireWritable = true,
+    ): void
     {
         $project = $this->projects->find($user->workspaceId, $projectId);
         $isMember = $project !== null && $this->projects->isMember($user->workspaceId, $projectId, $user->id);
         if ($project === null || !Permissions::can($user, $action, ['is_member' => $isMember])) {
             throw new ApiException(404, 'not_found', 'The project was not found.');
+        }
+        if ($requireWritable && in_array($action, ['issues.create', 'issues.update', 'issues.share'], true)) {
+            ProjectLifecycle::requireWritable($project['status']);
         }
     }
 }

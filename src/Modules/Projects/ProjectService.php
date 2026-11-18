@@ -63,7 +63,8 @@ final class ProjectService
 
     public function saveNotes(AuthenticatedUser $user, int $projectId, array $body): array
     {
-        $this->findVisible($user, $projectId);
+        $project = $this->findVisible($user, $projectId);
+        ProjectLifecycle::requireWritable($project['status']);
         if (!is_string($body['notes'] ?? null)) {
             throw new ApiException(422, 'validation_failed', 'Project notes must be text.');
         }
@@ -124,6 +125,7 @@ final class ProjectService
             'name' => $project['name'],
             'description' => $project['description'],
             'status' => $project['status'],
+            'archived_from_status' => $project['archived_from_status'],
         ];
         if (array_key_exists('name', $body)) {
             if (!is_string($body['name'])) {
@@ -144,13 +146,26 @@ final class ProjectService
             throw new ApiException(422, 'validation_failed', 'Project description cannot exceed 5000 characters.');
         }
         if (array_key_exists('status', $body)) {
-            if (!is_string($body['status']) || !in_array($body['status'], ['active', 'archived'], true)) {
-                throw new ApiException(422, 'validation_failed', 'Project status must be active or archived.');
+            if (!is_string($body['status']) || !in_array($body['status'], ProjectLifecycle::STATUSES, true)) {
+                throw new ApiException(422, 'validation_failed', 'Project status must be active, paused, completed, or archived.');
             }
             $updated['status'] = $body['status'];
         }
         if (!array_intersect(['name', 'description', 'status'], array_keys($body))) {
             throw new ApiException(422, 'validation_failed', 'At least one project field must be supplied.');
+        }
+
+        $metadataChanged = $updated['name'] !== $project['name'] || $updated['description'] !== $project['description'];
+        $staysReadOnly = ($project['status'] === 'completed'
+                && !in_array($updated['status'], ['active', 'paused'], true))
+            || ($project['status'] === 'archived' && $updated['status'] === 'archived');
+        if ($staysReadOnly && $metadataChanged) {
+            ProjectLifecycle::requireWritable($project['status']);
+        }
+        if ($updated['status'] === 'archived' && $project['status'] !== 'archived') {
+            $updated['archived_from_status'] = $project['status'];
+        } elseif ($project['status'] === 'archived' && $updated['status'] !== 'archived') {
+            $updated['archived_from_status'] = null;
         }
 
         $this->projects->update($user->workspaceId, $projectId, $updated);
@@ -166,6 +181,8 @@ final class ProjectService
     public function addMember(AuthenticatedUser $user, int $projectId, int $userId): array
     {
         $this->requireMemberManagement($user, $projectId);
+        $project = $this->projects->find($user->workspaceId, $projectId);
+        ProjectLifecycle::requireWritable($project['status'] ?? 'archived');
         $member = $this->users->findById($user->workspaceId, $userId);
         if ($member === null || !(bool) $member['is_active']) {
             throw new ApiException(404, 'not_found', 'The user was not found.');
@@ -214,7 +231,7 @@ final class ProjectService
             throw new ApiException(409, 'not_guest', 'Project access can only be managed for guest members.');
         }
 
-        return ['project_ids' => $this->projects->activeProjectIdsForMember($actor->workspaceId, $memberId)];
+        return ['project_ids' => $this->projects->assignableProjectIdsForMember($actor->workspaceId, $memberId)];
     }
 
     public function updateGuestProjectAccess(AuthenticatedUser $actor, int $memberId, array $body): array
@@ -250,18 +267,18 @@ final class ProjectService
                 throw new ApiException(409, 'not_guest', 'Project access can only be managed for guest members.');
             }
 
-            $activeProjects = array_values(array_filter(
+            $assignableProjects = array_values(array_filter(
                 $this->projects->listForWorkspace($actor->workspaceId),
-                static fn (array $project): bool => $project['status'] === 'active',
+                static fn (array $project): bool => in_array($project['status'], ['active', 'paused'], true),
             ));
-            $activeProjectIds = array_column($activeProjects, 'id');
+            $assignableProjectIds = array_column($assignableProjects, 'id');
             foreach ($projectIds as $projectId) {
-                if (!in_array($projectId, $activeProjectIds, true)) {
-                    throw new ApiException(422, 'validation_failed', 'Choose active projects in this workspace.');
+                if (!in_array($projectId, $assignableProjectIds, true)) {
+                    throw new ApiException(422, 'validation_failed', 'Choose active or paused projects in this workspace.');
                 }
             }
 
-            $currentProjectIds = $this->projects->activeProjectIdsForMember($actor->workspaceId, $memberId);
+            $currentProjectIds = $this->projects->assignableProjectIdsForMember($actor->workspaceId, $memberId);
             foreach (array_diff($currentProjectIds, $projectIds) as $projectId) {
                 if ($this->projects->removeMember($actor->workspaceId, (int) $projectId, $memberId)) {
                     $this->issues->unassignRemovedMember($actor, (int) $projectId, $memberId);
@@ -272,7 +289,7 @@ final class ProjectService
             }
 
             if ($ownsTransaction) $this->pdo->commit();
-            return ['project_ids' => $this->projects->activeProjectIdsForMember($actor->workspaceId, $memberId)];
+            return ['project_ids' => $this->projects->assignableProjectIdsForMember($actor->workspaceId, $memberId)];
         } catch (Throwable $exception) {
             if ($ownsTransaction && $this->pdo->inTransaction()) $this->pdo->rollBack();
             throw $exception;

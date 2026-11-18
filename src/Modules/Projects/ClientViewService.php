@@ -64,7 +64,7 @@ final class ClientViewService
         }, $this->issues->sharedItems($user->workspaceId, $projectId));
 
         return [
-            'project' => ['id' => $project['id'], 'name' => $project['name']],
+            'project' => ['id' => $project['id'], 'name' => $project['name'], 'status' => $project['status']],
             'progress' => ['percent' => $percent, 'done' => $progress['done'], 'total' => $progress['total']],
             'next_milestone' => $nextMilestone,
             'completed_this_week' => $this->issues->completedSharedThisWeek($user->workspaceId, $projectId),

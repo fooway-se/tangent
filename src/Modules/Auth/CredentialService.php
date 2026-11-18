@@ -292,8 +292,8 @@ final class CredentialService
                 throw new ApiException(422, 'validation_failed', 'Each selected project must be valid.');
             }
             $project = $this->projects->find($workspaceId, $projectId);
-            if ($project === null || $project['status'] !== 'active') {
-                throw new ApiException(422, 'validation_failed', 'Choose active projects in this workspace.');
+            if ($project === null || !in_array($project['status'], ['active', 'paused'], true)) {
+                throw new ApiException(422, 'validation_failed', 'Choose active or paused projects in this workspace.');
             }
             $projectIds[] = $projectId;
         }
