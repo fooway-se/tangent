@@ -25,6 +25,11 @@ services:
       TANGENT_TEST_DB_NAME: tangent_test
       TANGENT_TEST_DB_USER: tangent
       TANGENT_TEST_DB_PASSWORD: tangent_dev_password
+      TANGENT_INSTALL_TEST_DB_HOST: mysql
+      TANGENT_INSTALL_TEST_DB_PORT: "3306"
+      TANGENT_INSTALL_TEST_DB_NAME: tangent_installer_test
+      TANGENT_INSTALL_TEST_DB_USER: tangent
+      TANGENT_INSTALL_TEST_DB_PASSWORD: tangent_dev_password
     depends_on:
       mysql:
         condition: service_healthy
@@ -48,6 +53,7 @@ services:
       start_period: 10s
     volumes:
       - mysql_data:/var/lib/mysql
+      - ./tests/Fixtures/create-installer-test-db.sql:/docker-entrypoint-initdb.d/20-installer-test-db.sql:ro
 
   frontend:
     image: node:22-alpine

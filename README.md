@@ -8,7 +8,9 @@ Tangent is aimed at freelancers, small remote development teams, and studios or 
 
 ## Installation
 
-Tangent is designed for a shared PHP and MySQL/MariaDB server. **A production release and shared-server installer are not ready yet**, so it cannot currently be installed for production use. The planned host requirements are PHP 8.5.12 or later with `pdo_mysql`, `mbstring`, `iconv`, and `intl`, plus Argon2id support.
+Tangent targets shared PHP and MySQL/MariaDB hosting. The one-time installer and update page are implemented and ready for hosting-provider testing; Tangent is still pre-alpha and has no production release. The server needs PHP 8.5.12 or later with `pdo_mysql`, `mbstring`, `iconv`, and `intl`, plus Argon2id support.
+
+See [INSTALL.md](INSTALL.md) for the shared-host layout, setup-key steps, and update procedure. To build a release archive, run `php bin/build-release.php` on a machine with the PHP `zip` extension. The archive includes prebuilt assets and needs no Composer or npm on the server.
 
 To try the pre-alpha locally, use Docker Compose:
 
@@ -22,7 +24,7 @@ Open [http://localhost:8081](http://localhost:8081). The seed command prompts yo
 
 ## Project status
 
-Tangent is pre-alpha. Authentication, workspaces, project chat, issue tracking, inbox events, and the restricted client guest view are implemented. Remaining planned work is listed below.
+Tangent is pre-alpha. Authentication, workspaces, project chat, issue tracking, inbox events, the restricted client guest view, and the shared-host installer are implemented. Remaining planned work is listed below.
 
 ## TODO
 
@@ -57,7 +59,7 @@ Tangent is pre-alpha. Authentication, workspaces, project chat, issue tracking, 
 
 ### Installation and hosting
 
-- Create a production release archive and shared-server installation guide and wizard, including environment checks, database setup, migrations, and initial admin creation.
+- Test the installer, upgrade flow, and release archive on common shared-host providers, then publish versioned downloads.
 - Decide whether to support Docker as a production option and whether to offer Tangent as a hosted service.
 
 ## License

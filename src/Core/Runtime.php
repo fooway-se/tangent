@@ -43,6 +43,28 @@ final class Runtime
         );
     }
 
+    public static function configPath(): string
+    {
+        return dirname(__DIR__, 2) . '/config.php';
+    }
+
+    public static function isConfigured(): bool
+    {
+        $database = self::fileConfig()['database'] ?? null;
+        if (is_array($database)
+            && !empty($database['host'])
+            && !empty($database['name'])
+            && !empty($database['user'])
+        ) {
+            return true;
+        }
+
+        return getenv('TANGENT_DB_NAME') !== false
+            && getenv('TANGENT_DB_NAME') !== ''
+            && getenv('TANGENT_DB_USER') !== false
+            && getenv('TANGENT_DB_USER') !== '';
+    }
+
     private static function environment(string $key, mixed $fallback): string
     {
         $value = getenv($key);
@@ -55,7 +77,7 @@ final class Runtime
             return self::$fileConfig;
         }
 
-        $path = dirname(__DIR__, 2) . '/config.php';
+        $path = self::configPath();
         if (!is_file($path)) {
             self::$fileConfig = [];
             return self::$fileConfig;

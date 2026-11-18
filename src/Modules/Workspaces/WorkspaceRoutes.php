@@ -16,6 +16,8 @@ final class WorkspaceRoutes
         private readonly WorkspaceService $service,
         private readonly bool $cookieSecure,
         private readonly int $sessionLifetimeSeconds,
+        private readonly string $apiCookiePath = '/api/v1',
+        private readonly string $csrfCookiePath = '/',
     ) {
     }
 
@@ -41,11 +43,11 @@ final class WorkspaceRoutes
             ], [
                 'set-cookie' => [
                     'tangent_session=' . $switched['session_token']
-                        . '; Path=/api/v1; Max-Age=' . $maxAge . '; HttpOnly; SameSite=Lax' . $secure,
+                        . '; Path=' . $this->apiCookiePath . '; Max-Age=' . $maxAge . '; HttpOnly; SameSite=Lax' . $secure,
                     'tangent_csrf=' . $switched['csrf_token']
-                        . '; Path=/; Max-Age=' . $maxAge . '; SameSite=Lax' . $secure,
+                        . '; Path=' . $this->csrfCookiePath . '; Max-Age=' . $maxAge . '; SameSite=Lax' . $secure,
                     'tangent_workspace=' . $switched['workspace']['id']
-                        . '; Path=/api/v1; Max-Age=' . $maxAge . '; HttpOnly; SameSite=Lax' . $secure,
+                        . '; Path=' . $this->apiCookiePath . '; Max-Age=' . $maxAge . '; HttpOnly; SameSite=Lax' . $secure,
                 ],
                 'cache-control' => 'no-store',
             ]);

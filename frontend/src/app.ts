@@ -25,6 +25,8 @@ import {
   shouldDeferIssueUpdates,
 } from './issue-polling.js';
 
+const apiBaseUrl = new URL('../api/v1', import.meta.url).pathname.replace(/\/$/, '');
+
 type Role = 'admin' | 'developer' | 'guest';
 type IssueType = 'task' | 'bug' | 'feature' | 'research' | 'maintenance';
 type IssueGrouping = 'status' | 'milestone';
@@ -532,7 +534,7 @@ async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
     if (csrf !== null) headers.set('X-CSRF-Token', csrf);
   }
 
-  const response = await fetch(`/api/v1${path}`, {
+  const response = await fetch(`${apiBaseUrl}${path}`, {
     ...init,
     method,
     headers,
@@ -1399,7 +1401,7 @@ async function fetchConditionalIssueList(
   const headers = new Headers();
   if (etag !== null) headers.set('If-None-Match', etag);
   const suffix = deleted ? '/deleted' : '';
-  const response = await fetch(`/api/v1/projects/${projectId}/issues${suffix}`, {
+  const response = await fetch(`${apiBaseUrl}/projects/${projectId}/issues${suffix}`, {
     headers,
     credentials: 'same-origin',
   });
@@ -2440,7 +2442,7 @@ async function pollProjectChat(projectId: number): Promise<void> {
   if (chatEtag !== null) headers.set('If-None-Match', chatEtag);
   const cursor = `?since=${chatCursor}`;
   try {
-    const response = await fetch(`/api/v1/events${cursor}`, {
+    const response = await fetch(`${apiBaseUrl}/events${cursor}`, {
       headers,
       credentials: 'same-origin',
     });
@@ -3099,7 +3101,7 @@ async function fetchConditionalInboxCollection<T extends { id: number }>(
 ): Promise<ConditionalInboxCollection<T>> {
   const headers = new Headers();
   if (etag !== null) headers.set('If-None-Match', etag);
-  const response = await fetch(`/api/v1${path}`, {
+  const response = await fetch(`${apiBaseUrl}${path}`, {
     headers,
     credentials: 'same-origin',
   });

@@ -5,6 +5,7 @@ import { resolveShortcut, shouldSubmitOnEnter } from './shortcuts.js';
 import { parseQuickIssueInput } from './quick-issue.js';
 import { filterIssues, groupIssues, groupIssuesByMilestone, milestoneProgress, sortIssues, } from './issue-board.js';
 import { diffIssueCollections, nextIssuePollDelay, shouldDeferIssueUpdates, } from './issue-polling.js';
+const apiBaseUrl = new URL('../api/v1', import.meta.url).pathname.replace(/\/$/, '');
 const ISSUE_STATUS_OPTIONS = [
     { value: 'backlog', label: 'Backlog' },
     { value: 'todo', label: 'Todo' },
@@ -339,7 +340,7 @@ async function api(path, init = {}) {
         if (csrf !== null)
             headers.set('X-CSRF-Token', csrf);
     }
-    const response = await fetch(`/api/v1${path}`, {
+    const response = await fetch(`${apiBaseUrl}${path}`, {
         ...init,
         method,
         headers,
@@ -1208,7 +1209,7 @@ async function fetchConditionalIssueList(projectId, deleted, etag) {
     if (etag !== null)
         headers.set('If-None-Match', etag);
     const suffix = deleted ? '/deleted' : '';
-    const response = await fetch(`/api/v1/projects/${projectId}/issues${suffix}`, {
+    const response = await fetch(`${apiBaseUrl}/projects/${projectId}/issues${suffix}`, {
         headers,
         credentials: 'same-origin',
     });
@@ -2338,7 +2339,7 @@ async function pollProjectChat(projectId) {
         headers.set('If-None-Match', chatEtag);
     const cursor = `?since=${chatCursor}`;
     try {
-        const response = await fetch(`/api/v1/events${cursor}`, {
+        const response = await fetch(`${apiBaseUrl}/events${cursor}`, {
             headers,
             credentials: 'same-origin',
         });
@@ -3010,7 +3011,7 @@ async function fetchConditionalInboxCollection(path, key, etag) {
     const headers = new Headers();
     if (etag !== null)
         headers.set('If-None-Match', etag);
-    const response = await fetch(`/api/v1${path}`, {
+    const response = await fetch(`${apiBaseUrl}${path}`, {
         headers,
         credentials: 'same-origin',
     });

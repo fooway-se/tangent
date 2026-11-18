@@ -40,6 +40,9 @@ final class Application
 {
     public static function create(PDO $pdo, AppConfig $config): Gateway
     {
+        $basePath = AppBasePath::fromPublicUrl($config->publicAppUrl);
+        $apiCookiePath = AppBasePath::apiCookiePath($basePath);
+        $csrfCookiePath = AppBasePath::csrfCookiePath($basePath);
         $passwords = new PasswordSecurity($config->hibpEnabled);
         $users = new UserRepository($pdo, $passwords);
         $tokens = new TokenRepository($pdo);
@@ -76,11 +79,15 @@ final class Application
             $config->cookieSecure,
             $config->workspaceId,
             $config->sessionLifetimeSeconds,
+            $apiCookiePath,
+            $csrfCookiePath,
         ))->register($router);
         (new WorkspaceRoutes(
             new WorkspaceService($pdo, $workspaceRepository, $users, $tokens, $config),
             $config->cookieSecure,
             $config->sessionLifetimeSeconds,
+            $apiCookiePath,
+            $csrfCookiePath,
         ))->register($router);
         (new ProjectRoutes($projects))->register($router);
         (new ClientViewRoutes($clientView, $chat))->register($router);

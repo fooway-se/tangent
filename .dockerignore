@@ -2,5 +2,12 @@
 .phpunit.cache
 .env
 config.php
+.install-key
+.upgrade-key
+.install.lock
+.upgrade.lock
+config.php.lock
+.tangent-app-root
 node_modules
 vendor
+dist

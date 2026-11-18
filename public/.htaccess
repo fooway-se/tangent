@@ -1,6 +1,10 @@
 Options -Indexes
 DirectoryIndex app.html
 
+<FilesMatch "^(app-root\.php|\.tangent-app-root)$">
+    Require all denied
+</FilesMatch>
+
 <IfModule mod_headers.c>
     Header always set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
     Header always set X-Content-Type-Options "nosniff"

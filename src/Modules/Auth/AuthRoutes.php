@@ -17,6 +17,8 @@ final class AuthRoutes
         private readonly bool $cookieSecure,
         private readonly int $defaultWorkspaceId,
         private readonly int $sessionLifetimeSeconds,
+        private readonly string $apiCookiePath = '/api/v1',
+        private readonly string $csrfCookiePath = '/',
     )
     {
     }
@@ -51,9 +53,9 @@ final class AuthRoutes
             $secure = $this->cookieSecure ? '; Secure' : '';
             return new Response(204, [], [
                 'set-cookie' => [
-                    'tangent_session=; Path=/api/v1; Max-Age=0; HttpOnly; SameSite=Lax' . $secure,
-                    'tangent_csrf=; Path=/; Max-Age=0; SameSite=Lax' . $secure,
-                    'tangent_workspace=; Path=/api/v1; Max-Age=0; HttpOnly; SameSite=Lax' . $secure,
+                    'tangent_session=; Path=' . $this->apiCookiePath . '; Max-Age=0; HttpOnly; SameSite=Lax' . $secure,
+                    'tangent_csrf=; Path=' . $this->csrfCookiePath . '; Max-Age=0; SameSite=Lax' . $secure,
+                    'tangent_workspace=; Path=' . $this->apiCookiePath . '; Max-Age=0; HttpOnly; SameSite=Lax' . $secure,
                 ],
                 'cache-control' => 'no-store',
             ]);
@@ -146,11 +148,11 @@ final class AuthRoutes
         ], [
             'set-cookie' => [
                 'tangent_session=' . $session['session_token']
-                    . '; Path=/api/v1; Max-Age=' . $maxAge . '; HttpOnly; SameSite=Lax' . $secure,
+                    . '; Path=' . $this->apiCookiePath . '; Max-Age=' . $maxAge . '; HttpOnly; SameSite=Lax' . $secure,
                 'tangent_csrf=' . $session['csrf_token']
-                    . '; Path=/; Max-Age=' . $maxAge . '; SameSite=Lax' . $secure,
+                    . '; Path=' . $this->csrfCookiePath . '; Max-Age=' . $maxAge . '; SameSite=Lax' . $secure,
                 'tangent_workspace=' . $workspaceId
-                    . '; Path=/api/v1; Max-Age=' . $maxAge . '; HttpOnly; SameSite=Lax' . $secure,
+                    . '; Path=' . $this->apiCookiePath . '; Max-Age=' . $maxAge . '; HttpOnly; SameSite=Lax' . $secure,
             ],
             'cache-control' => 'no-store',
         ]);

@@ -212,7 +212,7 @@ final class AuthAndProjectsTest extends ApiTestCase
         $bucket = hash('sha256', 'expired-test-bucket');
         $insert = $this->pdo->prepare(
             'INSERT INTO rate_limits (workspace_id, bucket_key, window_started_at, attempt_count)
-             VALUES (:workspace_id, :bucket_key, DATE_SUB(UTC_TIMESTAMP(), INTERVAL 2 HOUR), 1)'
+             VALUES (:workspace_id, :bucket_key, DATE_SUB(UTC_TIMESTAMP(), INTERVAL 2 DAY), 1)'
         );
         $insert->execute(['workspace_id' => $this->workspaceId, 'bucket_key' => $bucket]);
 

@@ -1,5 +1,13 @@
 /config.php
+/.install-key
+/.upgrade-key
+/.install.lock
+/.upgrade.lock
+/config.php.lock
+/.env
+.tangent-app-root
 /node_modules/
 /vendor/
 /.phpunit.cache/
 /docs/
+/dist/

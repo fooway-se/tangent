@@ -4,10 +4,45 @@ declare(strict_types=1);
 
 namespace Tangent\Tests\Integration;
 
+use Tangent\Core\AppConfig;
+use Tangent\Core\Application;
+use Tangent\Core\Request;
 use Tangent\Tests\Support\ApiTestCase;
 
 final class AuthLifecycleTest extends ApiTestCase
 {
+    public function testSessionCookiesAreScopedToTheConfiguredAppSubdirectory(): void
+    {
+        $application = Application::create(
+            $this->pdo,
+            new AppConfig($this->workspaceId, false, 43200, 'https://fooway.se/tangent'),
+        );
+        $response = $application->handle(Request::json('POST', '/api/v1/auth/login', [
+            'email' => $this->adminEmail,
+            'password' => $this->password,
+        ]));
+
+        self::assertSame(200, $response->status);
+        $cookies = (array) ($response->headers['set-cookie'] ?? []);
+        self::assertStringContainsString('Path=/tangent/api/v1', $cookies[0]);
+        self::assertStringContainsString('Path=/tangent/', $cookies[1]);
+        self::assertStringContainsString('Path=/tangent/api/v1', $cookies[2]);
+
+        self::assertSame(1, preg_match('/(?:^|;\s*)tangent_session=([^;]+)/', $cookies[0], $matches));
+        $invite = $application->handle(Request::json(
+            'POST',
+            '/api/v1/users/invites',
+            ['name' => 'Subdirectory invite', 'email' => 'subdirectory-invite@example.test', 'role' => 'developer'],
+            ['X-CSRF-Token' => $response->body['csrf_token']],
+            ['tangent_session' => rawurldecode($matches[1])],
+        ));
+        self::assertSame(201, $invite->status, json_encode($invite->body));
+        self::assertStringStartsWith(
+            'https://fooway.se/tangent/app.html#invite=',
+            $invite->body['invite']['invite_url'],
+        );
+    }
+
     public function testAdminInvitesGuestWithProjectAccessAndAcceptanceCreatesSessionOnce(): void
     {
         $admin = $this->login($this->adminEmail);
