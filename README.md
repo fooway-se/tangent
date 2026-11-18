@@ -19,7 +19,7 @@ Aimed at freelancers, small remote teams and studios that coordinate client work
 
 ![Client portal, guest view](assets/screenshots/guest-portal.webp)
 
-*Screenshots use sample data.*
+*Screenshots use fictional sample data.*
 
 ## Install on shared hosting
 
