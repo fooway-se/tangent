@@ -9,6 +9,7 @@ import {
 import { renderClientEmptyState, renderClientView, type ClientView } from './guest-view.js';
 import { filterMentionMembers, findMentionQuery, mentionEmptyMessage, replaceMentionQuery, type MentionQuery } from './chat-mentions.js';
 import { resolveShortcut, shouldSubmitOnEnter, type ShortcutAction } from './shortcuts.js';
+import { THEMES, applyTheme, loadTheme, nextTheme, themeLabel, type ThemeId } from './theme.js';
 import { DEFAULT_PROJECT_NOTES_MODE, renderMarkdown } from './project-notes.js';
 import { parseQuickIssueInput } from './quick-issue.js';
 import { formatIssueMarkdown, formatIssuePrompt } from './issue-export.js';
@@ -291,6 +292,21 @@ interface PaletteCommand {
   detail: string;
   shortcut: string;
   run: () => void;
+}
+
+let activeTheme: ThemeId = loadTheme();
+const themeSelects = document.querySelectorAll<HTMLSelectElement>('.theme-select');
+
+function setTheme(id: ThemeId): void {
+  activeTheme = id;
+  applyTheme(id);
+  for (const select of themeSelects) select.value = id;
+}
+
+for (const select of themeSelects) {
+  for (const theme of THEMES) select.append(new Option(theme.label, theme.id));
+  select.value = activeTheme;
+  select.addEventListener('change', () => setTheme(select.value as ThemeId));
 }
 
 const loginPanel = document.querySelector<HTMLElement>('#login-panel')!;
@@ -2250,6 +2266,12 @@ function getPaletteCommands(): PaletteCommand[] {
       }
     }
   }
+  commands.push({
+    label: 'Switch theme',
+    detail: `Now ${themeLabel(activeTheme)}; next ${themeLabel(nextTheme(activeTheme))}`,
+    shortcut: '',
+    run: () => setTheme(nextTheme(activeTheme)),
+  });
   commands.push({
     label: 'Sign out',
     detail: 'Sign out of Tangent',

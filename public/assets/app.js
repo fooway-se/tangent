@@ -3,6 +3,7 @@ import { diffInboxCollections, nextInboxPollDelay, shouldDeferInboxUpdates, } fr
 import { renderClientEmptyState, renderClientView } from './guest-view.js';
 import { filterMentionMembers, findMentionQuery, mentionEmptyMessage, replaceMentionQuery } from './chat-mentions.js';
 import { resolveShortcut, shouldSubmitOnEnter } from './shortcuts.js';
+import { THEMES, applyTheme, loadTheme, nextTheme, themeLabel } from './theme.js';
 import { DEFAULT_PROJECT_NOTES_MODE, renderMarkdown } from './project-notes.js';
 import { parseQuickIssueInput } from './quick-issue.js';
 import { formatIssueMarkdown, formatIssuePrompt } from './issue-export.js';
@@ -85,6 +86,20 @@ class ApiFailure extends Error {
         super(message);
         this.status = status;
     }
+}
+let activeTheme = loadTheme();
+const themeSelects = document.querySelectorAll('.theme-select');
+function setTheme(id) {
+    activeTheme = id;
+    applyTheme(id);
+    for (const select of themeSelects)
+        select.value = id;
+}
+for (const select of themeSelects) {
+    for (const theme of THEMES)
+        select.append(new Option(theme.label, theme.id));
+    select.value = activeTheme;
+    select.addEventListener('change', () => setTheme(select.value));
 }
 const loginPanel = document.querySelector('#login-panel');
 const loginShell = document.querySelector('#login-shell');
@@ -2021,6 +2036,12 @@ function getPaletteCommands() {
             }
         }
     }
+    commands.push({
+        label: 'Switch theme',
+        detail: `Now ${themeLabel(activeTheme)}; next ${themeLabel(nextTheme(activeTheme))}`,
+        shortcut: '',
+        run: () => setTheme(nextTheme(activeTheme)),
+    });
     commands.push({
         label: 'Sign out',
         detail: 'Sign out of Tangent',

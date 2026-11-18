@@ -1,0 +1,72 @@
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import test from 'node:test';
+import { THEMES, nextTheme, normalizeTheme } from '../../public/assets/theme.js';
+
+const tokens = await readFile(new URL('../../public/assets/tokens.css', import.meta.url), 'utf8');
+const init = await readFile(new URL('../../public/assets/theme-init.js', import.meta.url), 'utf8');
+const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
+
+function block(selector) {
+  const start = tokens.indexOf(`${selector} {`);
+  assert.notEqual(start, -1, `${selector} block exists`);
+  return tokens.slice(start, tokens.indexOf('\n}', start));
+}
+
+function declarations(text) {
+  return Object.fromEntries([...text.matchAll(/(--[\w-]+):\s*([^;]+);/g)].map((m) => [m[1], m[2].trim()]));
+}
+
+const base = declarations(block(':root'));
+const themeIds = THEMES.map((theme) => theme.id).filter((id) => id !== 'putty');
+const themes = Object.fromEntries(themeIds.map((id) => [id, { ...base, ...declarations(block(`:root[data-theme="${id}"]`)) }]));
+themes.putty = base;
+
+test('theme helpers normalise and cycle', () => {
+  assert.equal(normalizeTheme('breadbin'), 'breadbin');
+  assert.equal(normalizeTheme('unknown'), 'putty');
+  assert.equal(normalizeTheme(null), 'putty');
+  assert.equal(nextTheme('putty'), 'rainbow');
+  assert.equal(nextTheme('breadbin'), 'putty');
+});
+
+test('every theme defines every colour token of the default theme', () => {
+  const colourTokens = Object.keys(base).filter((name) => /^#|^rgba?\(|^linear-gradient/.test(base[name]));
+  for (const id of themeIds) {
+    const own = declarations(block(`:root[data-theme="${id}"]`));
+    for (const name of colourTokens) assert.ok(name in own, `${id} defines ${name}`);
+  }
+});
+
+test('early theme script and the picker cover all themes', () => {
+  for (const id of themeIds) assert.ok(init.includes(`'${id}'`), `theme-init knows ${id}`);
+  assert.match(html, /<script src="\.\/assets\/theme-init\.js"><\/script>/);
+  assert.ok((html.match(/class="theme-select"/g) ?? []).length >= 3);
+});
+
+function luminance(hex) {
+  const channels = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
+    .map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+  return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+}
+function contrast(a, b) {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+const pairs = [
+  ['--screen-ink', '--screen'], ['--screen-ink', '--screen-panel'], ['--screen-ink', '--screen-field'],
+  ['--screen-muted', '--screen'], ['--screen-muted', '--screen-panel'], ['--screen-muted', '--screen-group'],
+  ['--accent', '--screen'], ['--accent', '--screen-panel'], ['--danger', '--screen'], ['--danger', '--screen-panel'], ['--success', '--screen'],
+  ['--accent-ink', '--accent'], ['--case-ink', '--case-mid'], ['--case-muted', '--case-mid'], ['--case-muted', '--case-bottom'],
+  ['--case-ink', '--key-top'], ['--case-ink', '--key-bottom'], ['--plate-ink', '--plate'], ['--night-muted', '--night'],
+];
+
+for (const [id, values] of Object.entries(themes)) {
+  test(`${id}: text contrast is at least 4.5:1`, () => {
+    for (const [fg, bg] of pairs) {
+      const ratio = contrast(values[fg], values[bg]);
+      assert.ok(ratio >= 4.5, `${id} ${fg} on ${bg} is ${ratio.toFixed(2)}:1`);
+    }
+  });
+}

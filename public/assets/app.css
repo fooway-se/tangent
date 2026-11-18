@@ -809,3 +809,11 @@ dialog::backdrop { background: var(--backdrop); }
 .workspace-admin-tab-panel > .panel + .panel { margin-top: 14px; }
 .workspace-admin-member-actions .button-quiet, .inbox-event-actions .button-quiet, .member-list .button-quiet { border-color: var(--screen-border); }
 .workspace-admin-member-actions .button-quiet:hover:not(:disabled), .inbox-event-actions .button-quiet:hover, .member-list .button-quiet:hover:not(:disabled) { color: var(--screen-ink); background: var(--screen-hover); }
+
+/* Theme picker: a small key on case surfaces. */
+.theme-select { max-width: 160px; border: 1px solid var(--case-edge); border-bottom-width: 2px; border-radius: var(--radius-key); padding: 4px 8px; background: linear-gradient(180deg, var(--key-top), var(--key-bottom)); color: var(--case-ink); font: 600 12px var(--font-display); cursor: pointer; }
+.theme-select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.login-topbar { justify-content: space-between; }
+.sidebar-account { flex-wrap: wrap; }
+.sidebar-account .theme-select { order: 3; flex: 1 1 100%; max-width: none; }
+.guest-header .theme-select { margin-left: 0; }

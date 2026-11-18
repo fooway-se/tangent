@@ -7,12 +7,14 @@
     <title>Tangent · Projects</title>
     <link rel="stylesheet" href="./assets/tokens.css">
     <link rel="stylesheet" href="./assets/app.css">
+    <script src="./assets/theme-init.js"></script>
     <script type="module" src="./assets/app.js"></script>
   </head>
   <body>
     <section id="login-shell" class="login-shell">
       <header class="topbar login-topbar">
         <a class="brand" href="./app.html" aria-label="Tangent home"><span class="brand-mark" aria-hidden="true">T</span><span>Tangent</span></a>
+        <select class="theme-select" aria-label="Theme"></select>
       </header>
       <main class="login-main">
         <section id="login-panel" class="panel login-panel" aria-labelledby="login-heading">
@@ -67,6 +69,7 @@
         </label>
         <span class="guest-cap">Read-only · guest</span>
         <span id="guest-user" class="guest-user"></span>
+        <select class="theme-select" aria-label="Theme"></select>
         <button id="guest-logout-button" class="button button-quiet" type="button">Sign out</button>
       </header>
       <p id="guest-status" class="guest-status-line" role="status"></p>
@@ -93,6 +96,7 @@
         </section>
         <div id="account-bar" class="account-bar sidebar-account" hidden>
           <span id="current-user"></span>
+          <select class="theme-select" aria-label="Theme"></select>
           <button id="logout-button" class="button button-quiet" type="button">Sign out</button>
         </div>
       </aside>

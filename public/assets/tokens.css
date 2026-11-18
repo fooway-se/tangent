@@ -93,3 +93,137 @@
   --sidebar-width: 256px;
   --chat-width: 400px;
 }
+
+/*
+ * Themes. The default above is "Putty & Screen". A theme only overrides
+ * tokens; the data-theme attribute is set on <html> by theme-init.js before
+ * first paint. Every colour token must be defined in every theme (a test
+ * checks this, and checks text contrast).
+ *
+ * "Rubber & Rainbow": black rubber-key case, black screen, bright signal stripe.
+ * "Breadbin": warm tan case, blue screen. Both are inspired by the look of
+ * 1980s home computers, not copies of any brand's palette or artwork.
+ */
+:root[data-theme="rainbow"] {
+  --night: #05060a;
+  --night-glow: #1c2f4f;
+  --night-muted: #d3d4dc;
+
+  --case-top: #2f2f33;
+  --case-mid: #27272b;
+  --case-bottom: #1f1f23;
+  --case-shade: #141417;
+  --case-edge: #0b0b0d;
+  --case-light: #44444a;
+  --case-ink: #f3f3ee;
+  --case-muted: #b8b8b0;
+  --case-error: #ff8a73;
+  --vent-dark: #151518;
+  --vent-light: #3a3a40;
+  --footer-top: #26262a;
+  --footer-bottom: #1c1c20;
+
+  --key-top: #4a4a50;
+  --key-bottom: #35353a;
+  --key-highlight: #66666e;
+
+  --cap-top: #101012;
+  --cap-bottom: #000000;
+  --cap-edge: #000000;
+  --plate: #000000;
+  --plate-ink: #f3f3ee;
+  --plate-muted: #c3c3bb;
+
+  --screen: #060608;
+  --screen-rim: #000000;
+  --screen-glow: rgba(255, 255, 255, 0.05);
+  --screen-vignette: rgba(20, 190, 210, 0.08);
+  --screen-ink: #f6f6f1;
+  --screen-muted: #a9a9b4;
+  --screen-header: rgba(255, 255, 255, 0.03);
+  --screen-highlight: rgba(255, 255, 255, 0.06);
+  --backdrop: rgba(0, 0, 0, 0.65);
+  --screen-panel: #111115;
+  --screen-control-top: #1c1c22;
+  --screen-inset: #030304;
+  --screen-field: #000000;
+  --screen-border: #3a3a44;
+  --screen-line: #2a2a32;
+  --screen-hover: #1c1c23;
+  --screen-track: #0c0c10;
+  --screen-group: #101014;
+  --screen-group-top: #26262e;
+  --screen-group-bottom: #1b1b22;
+
+  --accent: #ffd60a;
+  --accent-edge: #9a7f00;
+  --accent-ink: #0b0b0c;
+  --accent-shine: rgba(255, 255, 255, 0.5);
+  --success: #38d94a;
+  --danger: #ff7b6b;
+  --power-light: #ff3b30;
+  --focus-ring: rgba(255, 214, 10, 0.45);
+  --signal-stripe: linear-gradient(to bottom, #e8271a 0 25%, #f7d417 25% 50%, #29c42f 50% 75%, #17c9d6 75% 100%);
+}
+
+:root[data-theme="breadbin"] {
+  --night: #1a1448;
+  --night-glow: #4b3fa3;
+  --night-muted: #d4d0f7;
+
+  --case-top: #d0c4ac;
+  --case-mid: #c3b79d;
+  --case-bottom: #b7aa90;
+  --case-shade: #9d9078;
+  --case-edge: #8f836c;
+  --case-light: #e6dcc8;
+  --case-ink: #2a241b;
+  --case-muted: #3f372a;
+  --case-error: #9e2418;
+  --vent-dark: #9a8d74;
+  --vent-light: #ddd3be;
+  --footer-top: #c6b9a0;
+  --footer-bottom: #bbae94;
+
+  --key-top: #e9e2d2;
+  --key-bottom: #c9bea6;
+  --key-highlight: #fbf6ea;
+
+  --cap-top: #4a443c;
+  --cap-bottom: #2a251f;
+  --cap-edge: #14110d;
+  --plate: #2a251f;
+  --plate-ink: #efe8d6;
+  --plate-muted: #d1c8b0;
+
+  --screen: #2b2170;
+  --screen-rim: #1a1448;
+  --screen-glow: rgba(165, 156, 242, 0.14);
+  --screen-vignette: rgba(120, 108, 220, 0.16);
+  --screen-ink: #efecff;
+  --screen-muted: #b5aef0;
+  --screen-header: rgba(255, 255, 255, 0.04);
+  --screen-highlight: rgba(255, 255, 255, 0.07);
+  --backdrop: rgba(26, 20, 72, 0.7);
+  --screen-panel: #352b82;
+  --screen-control-top: #4337a0;
+  --screen-inset: #211958;
+  --screen-field: #1c1550;
+  --screen-border: #5c50b5;
+  --screen-line: #4a3f9a;
+  --screen-hover: #4337a0;
+  --screen-track: #211958;
+  --screen-group: #30277a;
+  --screen-group-top: #4a3fa3;
+  --screen-group-bottom: #3d3391;
+
+  --accent: #efe07a;
+  --accent-edge: #8f8420;
+  --accent-ink: #2a2300;
+  --accent-shine: rgba(255, 255, 255, 0.5);
+  --success: #88e07a;
+  --danger: #ffa08f;
+  --power-light: #ff6f5e;
+  --focus-ring: rgba(239, 224, 122, 0.5);
+  --signal-stripe: linear-gradient(to bottom, #e0605a 0 25%, #f0b040 25% 50%, #7fdc70 50% 75%, #7f76e8 75% 100%);
+}
