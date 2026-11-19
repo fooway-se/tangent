@@ -23,25 +23,39 @@ final class InboxEventRepository
         string $summary,
         ?string $detail,
     ): void {
-        $statement = $this->pdo->prepare(
-            'INSERT INTO inbox_events
-                (workspace_id, recipient_id, actor_id, event_type, project_id, issue_id, message_id, summary, detail)
-             VALUES
-                (:workspace_id, :recipient_id, :actor_id, :event_type, :project_id, :issue_id, :message_id, :summary, :detail)'
-        );
-        foreach (array_unique($recipientIds) as $recipientId) {
-            if ($recipientId === $actorId) continue;
-            $statement->execute([
-                'workspace_id' => $workspaceId,
-                'recipient_id' => $recipientId,
-                'actor_id' => $actorId,
-                'event_type' => $type,
-                'project_id' => $projectId,
-                'issue_id' => $issueId,
-                'message_id' => $messageId,
-                'summary' => mb_substr($summary, 0, 200, 'UTF-8'),
-                'detail' => $detail === null ? null : mb_substr($detail, 0, 500, 'UTF-8'),
-            ]);
+        $recipients = array_values(array_filter(
+            array_unique(array_map('intval', $recipientIds)),
+            static fn (int $recipientId): bool => $recipientId !== $actorId,
+        ));
+        if ($recipients === []) return;
+
+        $summary = mb_substr($summary, 0, 200, 'UTF-8');
+        $detail = $detail === null ? null : mb_substr($detail, 0, 500, 'UTF-8');
+        foreach (array_chunk($recipients, 200) as $chunkIndex => $chunk) {
+            $rows = [];
+            $parameters = [];
+            foreach ($chunk as $index => $recipientId) {
+                $rowIndex = $chunkIndex * 200 + $index;
+                $rows[] = '(:workspace_id_' . $rowIndex . ', :recipient_id_' . $rowIndex . ', :actor_id_' . $rowIndex
+                    . ', :event_type_' . $rowIndex . ', :project_id_' . $rowIndex . ', :issue_id_' . $rowIndex
+                    . ', :message_id_' . $rowIndex . ', :summary_' . $rowIndex . ', :detail_' . $rowIndex . ')';
+                $parameters['workspace_id_' . $rowIndex] = $workspaceId;
+                $parameters['recipient_id_' . $rowIndex] = $recipientId;
+                $parameters['actor_id_' . $rowIndex] = $actorId;
+                $parameters['event_type_' . $rowIndex] = $type;
+                $parameters['project_id_' . $rowIndex] = $projectId;
+                $parameters['issue_id_' . $rowIndex] = $issueId;
+                $parameters['message_id_' . $rowIndex] = $messageId;
+                $parameters['summary_' . $rowIndex] = $summary;
+                $parameters['detail_' . $rowIndex] = $detail;
+            }
+
+            $statement = $this->pdo->prepare(
+                'INSERT INTO inbox_events
+                    (workspace_id, recipient_id, actor_id, event_type, project_id, issue_id, message_id, summary, detail)
+                 VALUES ' . implode(', ', $rows)
+            );
+            $statement->execute($parameters);
         }
     }
 
