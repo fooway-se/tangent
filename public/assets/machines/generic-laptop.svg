@@ -2,7 +2,7 @@
   <rect width="400" height="260" fill="#e3e6eb"/>
   <path d="M96 30 H304 Q312 30 312 38 V160 H88 V38 Q88 30 96 30 Z" fill="#7d838d"/>
   <rect x="98" y="40" width="204" height="110" rx="2" fill="#cfd4db"/>
-  <text x="200" y="102" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="19" fill="#434b5a">It's laptop...</text>
+  <text x="200" y="102" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="19" fill="#434b5a">It's a laptop...</text>
   <path d="M88 160 H312 L352 214 H48 Z" fill="#a4a9b2"/>
   <path d="M48 214 H352 V222 Q352 228 346 228 H54 Q48 228 48 222 Z" fill="#8a909a"/>
   <g stroke="#7d838d" stroke-width="2.5" stroke-linecap="round">
