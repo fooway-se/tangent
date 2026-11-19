@@ -410,7 +410,7 @@ final class IssueRepository
     {
         $statement = $this->pdo->prepare(
             "SELECT h.id, h.from_status, h.to_status, h.created_at, i.title
-             FROM issue_status_history h
+             FROM issue_status_history h FORCE INDEX (ix_issue_status_history_workspace_recent)
              INNER JOIN issues i ON i.workspace_id = h.workspace_id AND i.id = h.issue_id
              WHERE h.workspace_id = :workspace_id AND i.project_id = :project_id AND i.is_shared = 1
                AND i.deleted_at IS NULL AND i.status <> 'cancelled'
