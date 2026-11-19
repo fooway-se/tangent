@@ -80,11 +80,7 @@ final class InboxEventRepository
         if (array_key_exists('read', $changes)) $values['read_value'] = $changes['read'] ? 1 : 0;
         if (array_key_exists('done', $changes)) $values['done_value'] = $changes['done'] ? 1 : 0;
         $statement->execute($values);
-        if ($statement->rowCount() === 0 && !$this->existsForUser($workspaceId, $userId, $eventId, $projectIds)) return null;
-        foreach ($this->listForUser($workspaceId, $userId, $projectIds) as $event) {
-            if ($event['id'] === $eventId) return $event;
-        }
-        return null;
+        return $this->findForUser($workspaceId, $userId, $eventId, $projectIds);
     }
 
     public function markAllRead(int $workspaceId, int $userId, array $projectIds): void
@@ -99,15 +95,23 @@ final class InboxEventRepository
         $statement->execute(['workspace_id' => $workspaceId, 'recipient_id' => $userId, ...$parameters]);
     }
 
-    private function existsForUser(int $workspaceId, int $userId, int $eventId, array $projectIds): bool
+    private function findForUser(int $workspaceId, int $userId, int $eventId, array $projectIds): ?array
     {
         [$filter, $parameters] = self::idFilter($projectIds, 'project');
         $statement = $this->pdo->prepare(
-            'SELECT 1 FROM inbox_events WHERE workspace_id = :workspace_id AND recipient_id = :recipient_id
-             AND id = :id AND project_id IN (' . $filter . ') LIMIT 1'
+            'SELECT e.id, e.event_type AS type, COALESCE(actor.name, \'\') AS actor_name,
+                    e.summary, e.detail, e.project_id, p.name AS project_name, e.issue_id, e.message_id,
+                    e.read_at IS NOT NULL AS `read`, e.done_at IS NOT NULL AS done, e.created_at
+             FROM inbox_events e
+             INNER JOIN projects p ON p.workspace_id = e.workspace_id AND p.id = e.project_id
+             LEFT JOIN users actor ON actor.workspace_id = e.workspace_id AND actor.id = e.actor_id
+             WHERE e.workspace_id = :workspace_id AND e.recipient_id = :recipient_id AND e.id = :id
+               AND e.project_id IN (' . $filter . ')
+             LIMIT 1'
         );
         $statement->execute(['workspace_id' => $workspaceId, 'recipient_id' => $userId, 'id' => $eventId, ...$parameters]);
-        return $statement->fetchColumn() !== false;
+        $event = $statement->fetch(PDO::FETCH_ASSOC);
+        return $event === false ? null : self::normalize($event);
     }
 
     private static function idFilter(array $ids, string $prefix): array

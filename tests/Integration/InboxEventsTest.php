@@ -236,6 +236,43 @@ final class InboxEventsTest extends ApiTestCase
         self::assertSame(401, $noSession->status);
     }
 
+    public function testUpdatingAnOlderEventReturnsTheUpdatedEvent(): void
+    {
+        $admin = $this->login($this->adminEmail);
+        $projectId = $this->createProject($admin, 'Older inbox event');
+        $this->addMember($admin, $projectId, $this->developerId);
+        $developer = $this->login($this->developerEmail);
+
+        $insert = $this->pdo->prepare(
+            "INSERT INTO inbox_events
+                (workspace_id, recipient_id, actor_id, event_type, project_id, summary)
+             VALUES (:workspace_id, :recipient_id, :actor_id, 'assigned', :project_id, :summary)"
+        );
+        $oldestEventId = null;
+        for ($index = 1; $index <= 205; $index++) {
+            $insert->execute([
+                'workspace_id' => $this->workspaceId,
+                'recipient_id' => $this->developerId,
+                'actor_id' => $this->adminId,
+                'project_id' => $projectId,
+                'summary' => 'Seed event ' . $index,
+            ]);
+            if ($index === 1) $oldestEventId = (int) $this->pdo->lastInsertId();
+        }
+
+        $updated = $this->cookieRequest(
+            'PATCH',
+            '/api/v1/inbox/events/' . $oldestEventId,
+            $developer['cookie'],
+            ['read' => true],
+            $developer['csrf'],
+        );
+
+        self::assertSame(200, $updated->status, json_encode($updated->body));
+        self::assertSame($oldestEventId, $updated->body['event']['id']);
+        self::assertTrue($updated->body['event']['read']);
+    }
+
     public function testEventsFromProjectsTheRecipientLeftAreHidden(): void
     {
         $admin = $this->login($this->adminEmail);
