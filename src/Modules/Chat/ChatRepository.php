@@ -123,8 +123,8 @@ final class ChatRepository
             'WITH RECURSIVE event_messages AS (
                 SELECT m.id, c.project_id, m.channel_id, m.parent_id, m.author_id, m.body,
                        m.is_client_visible AS message_client_visible, m.created_at
-                FROM messages m
-                INNER JOIN channels c ON c.workspace_id = m.workspace_id AND c.id = m.channel_id
+                FROM messages m FORCE INDEX (ix_messages_workspace_recent)
+                STRAIGHT_JOIN channels c ON c.workspace_id = m.workspace_id AND c.id = m.channel_id
                 WHERE m.workspace_id = :workspace_id AND c.channel_type = :channel_type
                   AND c.project_id IN (' . $projectFilter . ') AND m.id > :since_id
                 ORDER BY m.id ASC
