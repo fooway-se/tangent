@@ -30,22 +30,28 @@ final class ProjectService
 
     public function list(AuthenticatedUser $user): array
     {
+        $projects = $this->projects->listForWorkspace($user->workspaceId, $user->id);
         if ($user->role === 'guest') {
-            $projects = [];
-            foreach ($this->projects->listForWorkspace($user->workspaceId) as $project) {
-                $isMember = $this->projects->isMember($user->workspaceId, $project['id'], $user->id);
+            $visibleProjects = [];
+            foreach ($projects as $project) {
+                $isMember = $project['is_member'];
+                unset($project['is_member']);
                 if (Permissions::can($user, 'client_view.read', ['is_member' => $isMember])) {
-                    $projects[] = ['id' => $project['id'], 'name' => $project['name'], 'slug' => $project['slug']];
+                    $visibleProjects[] = ['id' => $project['id'], 'name' => $project['name'], 'slug' => $project['slug']];
                 }
             }
-            return $projects;
+            return $visibleProjects;
         }
-        return array_values(array_filter(
-            $this->projects->listForWorkspace($user->workspaceId),
-            fn (array $project): bool => Permissions::can($user, 'projects.view', [
-                'is_member' => $this->projects->isMember($user->workspaceId, $project['id'], $user->id),
-            ]),
-        ));
+
+        $visibleProjects = [];
+        foreach ($projects as $project) {
+            $isMember = $project['is_member'];
+            unset($project['is_member']);
+            if (Permissions::can($user, 'projects.view', ['is_member' => $isMember])) {
+                $visibleProjects[] = $project;
+            }
+        }
+        return $visibleProjects;
     }
 
     public function get(AuthenticatedUser $user, int $projectId): array

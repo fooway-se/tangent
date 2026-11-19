@@ -14,18 +14,29 @@ final class ProjectRepository
     {
     }
 
-    public function listForWorkspace(int $workspaceId): array
+    public function listForWorkspace(int $workspaceId, ?int $membershipUserId = null): array
     {
+        $membership = $membershipUserId === null ? '' : ', pm.user_id IS NOT NULL AS is_member';
+        $membershipJoin = $membershipUserId === null
+            ? ''
+            : ' LEFT JOIN project_memberships pm
+                  ON pm.workspace_id = p.workspace_id AND pm.project_id = p.id AND pm.user_id = :user_id';
         $statement = $this->pdo->prepare(
-            'SELECT id, workspace_id, name, slug, description, status, archived_from_status,
-                    github_installation_id, github_repository_id, github_repository_owner, github_repository_name,
-                    github_repository_full_name, github_repository_url, created_by, created_at, updated_at
-             FROM projects
-             WHERE workspace_id = :workspace_id
-             ORDER BY name, id'
+            'SELECT p.id, p.workspace_id, p.name, p.slug, p.description, p.status, p.archived_from_status,
+                    p.github_installation_id, p.github_repository_id, p.github_repository_owner, p.github_repository_name,
+                    p.github_repository_full_name, p.github_repository_url, p.created_by, p.created_at, p.updated_at'
+            . $membership . '
+             FROM projects p' . $membershipJoin . '
+             WHERE p.workspace_id = :workspace_id
+             ORDER BY p.name, p.id'
         );
-        $statement->execute(['workspace_id' => $workspaceId]);
-        return array_map(self::normalize(...), $statement->fetchAll(PDO::FETCH_ASSOC));
+        $parameters = ['workspace_id' => $workspaceId];
+        if ($membershipUserId !== null) $parameters['user_id'] = $membershipUserId;
+        $statement->execute($parameters);
+        return array_map(static function (array $project) use ($membershipUserId): array {
+            if ($membershipUserId !== null) $project['is_member'] = (bool) $project['is_member'];
+            return self::normalize($project);
+        }, $statement->fetchAll(PDO::FETCH_ASSOC));
     }
 
     public function find(int $workspaceId, int $projectId): ?array
