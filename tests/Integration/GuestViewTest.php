@@ -109,6 +109,15 @@ final class GuestViewTest extends ApiTestCase
             'UPDATE messages SET is_client_visible = 0 WHERE workspace_id = :workspace_id AND id = :id'
         );
         $legacyReply->execute(['workspace_id' => $this->workspaceId, 'id' => $reply->body['message']['id']]);
+        $nestedReply = $this->cookieRequest(
+            'POST',
+            "/api/v1/projects/{$projectId}/messages",
+            $admin['cookie'],
+            ['body' => 'The nested answer is still public.', 'parent_id' => $reply->body['message']['id']],
+            $admin['csrf'],
+        );
+        self::assertSame(201, $nestedReply->status, json_encode($nestedReply->body));
+        self::assertTrue($nestedReply->body['message']['is_client_visible']);
         $internal = $this->cookieRequest(
             'POST',
             "/api/v1/projects/{$projectId}/messages",
@@ -121,7 +130,7 @@ final class GuestViewTest extends ApiTestCase
         $clientView = $this->cookieRequest('GET', "/api/v1/projects/{$projectId}/client-view", $guest['cookie']);
         self::assertSame(200, $clientView->status, json_encode($clientView->body));
         self::assertSame(
-            ['Please include the due date.', 'We will add it today.'],
+            ['Please include the due date.', 'We will add it today.', 'The nested answer is still public.'],
             array_column($clientView->body['messages'], 'body'),
         );
         self::assertNotContains('SECRET INTERNAL DISCUSSION', array_column($clientView->body['messages'], 'body'));

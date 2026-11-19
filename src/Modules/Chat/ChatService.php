@@ -109,18 +109,17 @@ final class ChatService
         $parentId = null;
         if (array_key_exists('parent_id', $input) && $input['parent_id'] !== null) {
             $parentId = self::positiveInteger($input['parent_id']);
-            if (!$this->chat->messageExists($user->workspaceId, $channelId, $parentId)) {
-                throw new ApiException(404, 'not_found', 'The parent message was not found.');
-            }
         }
 
         $threadParticipants = [];
         $clientVisible = false;
         if ($parentId !== null) {
-            $rootId = $this->chat->threadRootId($user->workspaceId, $channelId, $parentId);
-            $threadParticipants = $this->chat->threadParticipantIds($user->workspaceId, $channelId, $rootId);
-            $rootMessage = $this->chat->getMessage($user->workspaceId, $channelId, $rootId);
-            $clientVisible = ($rootMessage['is_client_visible'] ?? false) === true;
+            $root = $this->chat->threadRoot($user->workspaceId, $channelId, $parentId);
+            if ($root === null) {
+                throw new ApiException(404, 'not_found', 'The parent message was not found.');
+            }
+            $threadParticipants = $this->chat->threadParticipantIds($user->workspaceId, $channelId, $root['id']);
+            $clientVisible = $root['is_client_visible'];
         }
         $ownsTransaction = !$this->pdo->inTransaction();
         if ($ownsTransaction) $this->pdo->beginTransaction();
@@ -163,14 +162,14 @@ final class ChatService
         }
 
         $this->visibleProjectChannel($user, $message['project_id']);
+        $root = $this->chat->threadRoot($user->workspaceId, $message['channel_id'], $message['id']);
+        if ($root === null) {
+            throw new ApiException(404, 'not_found', 'The message was not found.');
+        }
         return [
             'project_id' => $message['project_id'],
             'channel_id' => $message['channel_id'],
-            'root_message_id' => $this->chat->threadRootId(
-                $user->workspaceId,
-                $message['channel_id'],
-                $message['id'],
-            ),
+            'root_message_id' => $root['id'],
             'title' => $message['body'],
         ];
     }

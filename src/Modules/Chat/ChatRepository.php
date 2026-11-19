@@ -283,21 +283,6 @@ final class ChatRepository
         }, $statement->fetchAll(PDO::FETCH_ASSOC));
     }
 
-    public function messageExists(int $workspaceId, int $channelId, int $messageId): bool
-    {
-        $statement = $this->pdo->prepare(
-            'SELECT 1 FROM messages
-             WHERE workspace_id = :workspace_id AND channel_id = :channel_id AND id = :id
-             LIMIT 1'
-        );
-        $statement->execute([
-            'workspace_id' => $workspaceId,
-            'channel_id' => $channelId,
-            'id' => $messageId,
-        ]);
-        return $statement->fetchColumn() !== false;
-    }
-
     public function getMessage(int $workspaceId, int $channelId, int $messageId): ?array
     {
         return $this->findMessage($workspaceId, $channelId, $messageId);
@@ -325,27 +310,36 @@ final class ChatRepository
         return $message;
     }
 
-    public function threadRootId(int $workspaceId, int $channelId, int $messageId): int
+    public function threadRoot(int $workspaceId, int $channelId, int $messageId): ?array
     {
-        $currentId = $messageId;
         $statement = $this->pdo->prepare(
-            'SELECT parent_id FROM messages
-             WHERE workspace_id = :workspace_id AND channel_id = :channel_id AND id = :id
-             LIMIT 1'
+            'WITH RECURSIVE thread_ancestors (id, parent_id, is_client_visible) AS (
+                SELECT id, parent_id, is_client_visible FROM messages
+                WHERE workspace_id = :workspace_id AND channel_id = :channel_id AND id = :message_id
+                UNION ALL
+                SELECT parent.id, parent.parent_id, parent.is_client_visible FROM messages parent
+                INNER JOIN thread_ancestors child ON parent.id = child.parent_id
+                WHERE parent.workspace_id = :parent_workspace_id AND parent.channel_id = :parent_channel_id
+            )
+            SELECT id, is_client_visible FROM thread_ancestors
+            WHERE parent_id IS NULL
+            LIMIT 1'
         );
-
-        while (true) {
-            $statement->execute([
-                'workspace_id' => $workspaceId,
-                'channel_id' => $channelId,
-                'id' => $currentId,
-            ]);
-            $parentId = $statement->fetchColumn();
-            if ($parentId === false || $parentId === null) {
-                return $currentId;
-            }
-            $currentId = (int) $parentId;
+        $statement->execute([
+            'workspace_id' => $workspaceId,
+            'channel_id' => $channelId,
+            'message_id' => $messageId,
+            'parent_workspace_id' => $workspaceId,
+            'parent_channel_id' => $channelId,
+        ]);
+        $root = $statement->fetch(PDO::FETCH_ASSOC);
+        if ($root === false) {
+            return null;
         }
+        return [
+            'id' => (int) $root['id'],
+            'is_client_visible' => (bool) $root['is_client_visible'],
+        ];
     }
 
     public function threadParticipantIds(int $workspaceId, int $channelId, int $rootMessageId): array
