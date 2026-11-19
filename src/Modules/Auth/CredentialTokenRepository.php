@@ -47,7 +47,7 @@ final class CredentialTokenRepository
     {
         $statement = $this->pdo->prepare(
             'SELECT id, email, name, role, expires_at, created_at
-             FROM credential_tokens
+             FROM credential_tokens FORCE INDEX (ix_credential_tokens_active_invites)
              WHERE workspace_id = :workspace_id AND token_type = :token_type
                AND used_at IS NULL AND revoked_at IS NULL
              ORDER BY created_at DESC, id DESC'
