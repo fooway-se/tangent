@@ -11,6 +11,10 @@ DirectoryIndex app.html
     Header always set Referrer-Policy "no-referrer"
 </IfModule>
 
+<IfModule mod_mime.c>
+    AddType application/manifest+json .webmanifest
+</IfModule>
+
 <IfModule mod_rewrite.c>
     RewriteEngine On
     RewriteRule ^api/v1(?:/.*)?$ index.php [QSA,L]

@@ -626,10 +626,15 @@ dialog::backdrop { background: var(--backdrop); }
   .workspace-admin-member-tools { align-items: flex-start; flex-direction: column; }
   .workspace-admin-member-actions { justify-content: flex-start; }
   .project-chat-column { flex: none; min-width: 0; min-height: 420px; }
+  .keyboard-hints, .login-keyboard-hints { display: none !important; }
   .keyboard-hints { grid-row: 3; }
   .issue-board-toolbar { align-items: flex-start; flex-direction: column; }
   .issue-board-controls { width: 100%; }
   .issue-count-summary { margin-left: 0; }
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .keyboard-hints, .login-keyboard-hints { display: none !important; }
 }
 
 @media (max-width: 520px) {
