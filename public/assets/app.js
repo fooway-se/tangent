@@ -4050,8 +4050,17 @@ inboxTabsElement.addEventListener('keydown', (event) => {
     inboxTabsElement.querySelector(`#inbox-tab-${nextTab.id}`)?.focus();
 });
 function reconcileInboxRows(list, items, dataKey, signatures, create) {
-    const existingRows = new Map(Array.from(list.querySelectorAll(':scope > .inbox-issue-card'))
-        .map((row) => [Number(row.dataset[dataKey]), row]));
+    const existingRows = new Map();
+    const rowsFromOtherCollections = [];
+    for (const row of Array.from(list.querySelectorAll(':scope > .inbox-issue-card'))) {
+        const rowId = row.dataset[dataKey];
+        if (rowId === undefined || !Number.isSafeInteger(Number(rowId))) {
+            rowsFromOtherCollections.push(row);
+        }
+        else {
+            existingRows.set(Number(rowId), row);
+        }
+    }
     const focused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const focusedRow = focused?.closest('.inbox-issue-card') ?? null;
     const focusedRowId = focusedRow === null ? null : Number(focusedRow.dataset[dataKey]);
@@ -4061,6 +4070,7 @@ function reconcileInboxRows(list, items, dataKey, signatures, create) {
             : focused?.matches('.inbox-event-done') ? '.inbox-event-done'
                 : null;
     const expectedIds = new Set();
+    rowsFromOtherCollections.forEach((row) => row.remove());
     for (const [index, item] of items.entries()) {
         expectedIds.add(item.id);
         const existingRow = existingRows.get(item.id);

@@ -4147,10 +4147,16 @@ function reconcileInboxRows<T extends { id: number }>(
   signatures: WeakMap<HTMLLIElement, string>,
   create: (item: T) => HTMLLIElement,
 ): void {
-  const existingRows = new Map(
-    Array.from(list.querySelectorAll<HTMLLIElement>(':scope > .inbox-issue-card'))
-      .map((row) => [Number(row.dataset[dataKey]), row]),
-  );
+  const existingRows = new Map<number, HTMLLIElement>();
+  const rowsFromOtherCollections: HTMLLIElement[] = [];
+  for (const row of Array.from(list.querySelectorAll<HTMLLIElement>(':scope > .inbox-issue-card'))) {
+    const rowId = row.dataset[dataKey];
+    if (rowId === undefined || !Number.isSafeInteger(Number(rowId))) {
+      rowsFromOtherCollections.push(row);
+    } else {
+      existingRows.set(Number(rowId), row);
+    }
+  }
   const focused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
   const focusedRow = focused?.closest<HTMLLIElement>('.inbox-issue-card') ?? null;
   const focusedRowId = focusedRow === null ? null : Number(focusedRow.dataset[dataKey]);
@@ -4160,6 +4166,8 @@ function reconcileInboxRows<T extends { id: number }>(
     : focused?.matches('.inbox-event-done') ? '.inbox-event-done'
     : null;
   const expectedIds = new Set<number>();
+
+  rowsFromOtherCollections.forEach((row) => row.remove());
 
   for (const [index, item] of items.entries()) {
     expectedIds.add(item.id);
