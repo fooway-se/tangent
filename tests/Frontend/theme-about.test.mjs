@@ -24,7 +24,10 @@ test('every theme has a locally hosted, credited computer photo and two short fa
   assert.equal(THEME_MACHINES.desktop.photoCredit, 'Benoît Prieur');
   assert.equal(THEME_MACHINES.copper.model, 'Commodore Amiga 500');
   assert.equal(THEME_MACHINES.copper.year, '1987');
-  assert.equal(THEME_MACHINES.copper.photoCredit, 'Tomasz Sienicki');
+  assert.equal(THEME_MACHINES.copper.imageFile, 'Amiga500 system.jpg');
+  assert.equal(THEME_MACHINES.copper.imagePage, 'https://commons.wikimedia.org/wiki/File:Amiga500_system.jpg');
+  assert.equal(THEME_MACHINES.copper.photoCredit, 'Bill Bertram');
+  assert.equal(THEME_MACHINES.copper.license, 'CC BY-SA 2.5');
   for (const [id, machine] of Object.entries(THEME_MACHINES)) {
     assert.ok(machine.model, `${id} has a model name`);
     assert.ok(machine.year, `${id} has a year`);
@@ -41,7 +44,12 @@ test('every theme has a locally hosted, credited computer photo and two short fa
     assert.equal(machine.facts.length, 2, `${id} has two facts`);
     assert.ok(machine.historyUrl.startsWith('https://'), `${id} has a history source`);
     const image = await readFile(new URL(`../../public/${machine.imageUrl.slice(2)}`, import.meta.url));
-    assert.ok(image.length > 1000, `${id} has a bundled image file`);
+    if (machine.illustration) {
+      assert.ok(image.length > 100, `${id} has a bundled illustration`);
+      assert.match(image.toString('utf8'), /<svg\b/, `${id} illustration is SVG`);
+    } else {
+      assert.ok(image.length > 1000, `${id} has a bundled photo`);
+    }
   }
 });
 

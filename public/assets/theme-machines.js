@@ -115,7 +115,7 @@ export const THEME_MACHINES = {
         model: 'Commodore Amiga 500', year: '1987', imageFile: 'Amiga500 system.jpg',
         imageUrl: './assets/machines/amiga-500.jpg',
         imagePage: 'https://commons.wikimedia.org/wiki/File:Amiga500_system.jpg',
-        photoCredit: 'Bill Bertram', license: 'CC BY 2.5',
+        photoCredit: 'Bill Bertram', license: 'CC BY-SA 2.5',
         historyUrl: 'https://americanhistory.si.edu/collections/object/nmah_834010',
         facts: ['Introduced in 1987 as an affordable 16-bit home computer.', 'Its graphics and sound helped make it a favourite for games and multimedia.'],
     },
