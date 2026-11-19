@@ -86,10 +86,10 @@ final class ChatService
 
         $latestId = $this->chat->latestEventId($user->workspaceId, $projectIds);
         $etag = '"events-' . $user->workspaceId . '-' . $latestId . '"';
-        $events = $this->chat->listEvents($user->workspaceId, $projectIds, $sinceId);
         $notModified = $ifNoneMatch !== null
             && hash_equals($etag, trim($ifNoneMatch))
-            && $events === [];
+            && $sinceId >= $latestId;
+        $events = $notModified ? [] : $this->chat->listEvents($user->workspaceId, $projectIds, $sinceId);
 
         return [
             'events' => $events,
