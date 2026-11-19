@@ -28,9 +28,10 @@ final class ClientViewService
             throw new ApiException(404, 'not_found', 'The project was not found.');
         }
 
-        $progress = $this->issues->sharedProgress($user->workspaceId, $projectId);
+        $issueProgress = $this->issues->sharedProgressSummary($user->workspaceId, $projectId);
+        $progress = $issueProgress['progress'];
         $percent = $progress['total'] === 0 ? 0 : (int) round($progress['done'] / $progress['total'] * 100);
-        $milestoneProgress = $this->issues->sharedMilestoneProgress($user->workspaceId, $projectId);
+        $milestoneProgress = $issueProgress['milestones'];
         $milestones = [];
         $nextMilestone = null;
         $today = gmdate('Y-m-d');

@@ -345,32 +345,36 @@ final class IssueRepository
         return $rows;
     }
 
-    public function sharedProgress(int $workspaceId, int $projectId): array
+    public function sharedProgressSummary(int $workspaceId, int $projectId): array
     {
         $statement = $this->pdo->prepare(
-            "SELECT COUNT(*) AS total, SUM(status = 'done') AS done FROM issues
+            "SELECT milestone_id, COUNT(*) AS total, SUM(status = 'done') AS done,
+                    SUM(COUNT(*)) OVER () AS overall_total,
+                    SUM(SUM(status = 'done')) OVER () AS overall_done
+             FROM issues
              WHERE workspace_id = :workspace_id AND project_id = :project_id AND is_shared = 1
-               AND deleted_at IS NULL AND status <> 'cancelled'"
-        );
-        $statement->execute(['workspace_id' => $workspaceId, 'project_id' => $projectId]);
-        $row = $statement->fetch(PDO::FETCH_ASSOC) ?: ['total' => 0, 'done' => 0];
-        return ['done' => (int) ($row['done'] ?? 0), 'total' => (int) $row['total']];
-    }
-
-    public function sharedMilestoneProgress(int $workspaceId, int $projectId): array
-    {
-        $statement = $this->pdo->prepare(
-            "SELECT milestone_id, COUNT(*) AS total, SUM(status = 'done') AS done FROM issues
-             WHERE workspace_id = :workspace_id AND project_id = :project_id AND is_shared = 1
-               AND deleted_at IS NULL AND status <> 'cancelled' AND milestone_id IS NOT NULL
+               AND deleted_at IS NULL AND status <> 'cancelled'
              GROUP BY milestone_id"
         );
         $statement->execute(['workspace_id' => $workspaceId, 'project_id' => $projectId]);
-        $progress = [];
+        $overallProgress = null;
+        $milestoneProgress = [];
         foreach ($statement->fetchAll(PDO::FETCH_ASSOC) as $row) {
-            $progress[(int) $row['milestone_id']] = ['done' => (int) ($row['done'] ?? 0), 'total' => (int) $row['total']];
+            $overallProgress = [
+                'done' => (int) ($row['overall_done'] ?? 0),
+                'total' => (int) ($row['overall_total'] ?? 0),
+            ];
+            if ($row['milestone_id'] !== null) {
+                $milestoneProgress[(int) $row['milestone_id']] = [
+                    'done' => (int) ($row['done'] ?? 0),
+                    'total' => (int) $row['total'],
+                ];
+            }
         }
-        return $progress;
+        return [
+            'progress' => $overallProgress ?? ['done' => 0, 'total' => 0],
+            'milestones' => $milestoneProgress,
+        ];
     }
 
     public function pendingSharedApprovals(int $workspaceId, int $projectId): array
