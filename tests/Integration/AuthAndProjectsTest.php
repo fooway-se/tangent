@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tangent\Tests\Integration;
 
+use PDO;
 use Tangent\Tests\Support\ApiTestCase;
 
 final class AuthAndProjectsTest extends ApiTestCase
@@ -157,6 +158,100 @@ final class AuthAndProjectsTest extends ApiTestCase
         );
         self::assertSame(200, $authenticated->status);
         self::assertSame($this->adminEmail, $authenticated->body['user']['email']);
+    }
+
+    public function testAuthenticationAvoidsSessionTouchesAndThrottlesApiTokenTouches(): void
+    {
+        $admin = $this->login($this->adminEmail);
+        $session = $this->pdo->prepare(
+            'SELECT id, last_used_at FROM api_tokens
+             WHERE workspace_id = :workspace_id AND token_hash = :token_hash AND token_type = :token_type'
+        );
+        $session->execute([
+            'workspace_id' => $this->workspaceId,
+            'token_hash' => hash('sha256', $admin['cookie']),
+            'token_type' => 'session',
+        ]);
+        $sessionToken = $session->fetch(PDO::FETCH_ASSOC);
+        self::assertIsArray($sessionToken);
+        self::assertNull($sessionToken['last_used_at']);
+
+        self::assertSame(200, $this->cookieRequest('GET', '/api/v1/auth/me', $admin['cookie'])->status);
+        $session->execute([
+            'workspace_id' => $this->workspaceId,
+            'token_hash' => hash('sha256', $admin['cookie']),
+            'token_type' => 'session',
+        ]);
+        self::assertNull($session->fetch(PDO::FETCH_ASSOC)['last_used_at']);
+
+        $created = $this->cookieRequest(
+            'POST',
+            '/api/v1/tokens',
+            $admin['cookie'],
+            ['label' => 'usage tracking'],
+            $admin['csrf'],
+        );
+        self::assertSame(201, $created->status);
+        $apiTokenHash = hash('sha256', $created->body['token']);
+        $apiToken = $this->pdo->prepare(
+            'SELECT id, last_used_at FROM api_tokens
+             WHERE workspace_id = :workspace_id AND token_hash = :token_hash AND token_type = :token_type'
+        );
+        $apiToken->execute([
+            'workspace_id' => $this->workspaceId,
+            'token_hash' => $apiTokenHash,
+            'token_type' => 'api',
+        ]);
+        $apiTokenRow = $apiToken->fetch(PDO::FETCH_ASSOC);
+        self::assertIsArray($apiTokenRow);
+        self::assertNull($apiTokenRow['last_used_at']);
+
+        $authenticateApiToken = fn () => $this->request(
+            'GET',
+            '/api/v1/auth/me',
+            headers: ['Authorization' => 'Bearer ' . $created->body['token']],
+        );
+        self::assertSame(200, $authenticateApiToken()->status);
+        $apiToken->execute([
+            'workspace_id' => $this->workspaceId,
+            'token_hash' => $apiTokenHash,
+            'token_type' => 'api',
+        ]);
+        self::assertNotNull($apiToken->fetch(PDO::FETCH_ASSOC)['last_used_at']);
+
+        $setLastUsed = $this->pdo->prepare(
+            'UPDATE api_tokens SET last_used_at = UTC_TIMESTAMP() - INTERVAL :age SECOND
+             WHERE workspace_id = :workspace_id AND token_hash = :token_hash'
+        );
+        $setLastUsed->execute(['age' => 30, 'workspace_id' => $this->workspaceId, 'token_hash' => $apiTokenHash]);
+        $apiToken->execute([
+            'workspace_id' => $this->workspaceId,
+            'token_hash' => $apiTokenHash,
+            'token_type' => 'api',
+        ]);
+        $recentTouch = $apiToken->fetch(PDO::FETCH_ASSOC)['last_used_at'];
+        self::assertSame(200, $authenticateApiToken()->status);
+        $apiToken->execute([
+            'workspace_id' => $this->workspaceId,
+            'token_hash' => $apiTokenHash,
+            'token_type' => 'api',
+        ]);
+        self::assertSame($recentTouch, $apiToken->fetch(PDO::FETCH_ASSOC)['last_used_at']);
+
+        $setLastUsed->execute(['age' => 120, 'workspace_id' => $this->workspaceId, 'token_hash' => $apiTokenHash]);
+        $apiToken->execute([
+            'workspace_id' => $this->workspaceId,
+            'token_hash' => $apiTokenHash,
+            'token_type' => 'api',
+        ]);
+        $oldTouch = $apiToken->fetch(PDO::FETCH_ASSOC)['last_used_at'];
+        self::assertSame(200, $authenticateApiToken()->status);
+        $apiToken->execute([
+            'workspace_id' => $this->workspaceId,
+            'token_hash' => $apiTokenHash,
+            'token_type' => 'api',
+        ]);
+        self::assertNotSame($oldTouch, $apiToken->fetch(PDO::FETCH_ASSOC)['last_used_at']);
     }
 
     public function testLoginIsRateLimitedByWorkspaceIpAndEmail(): void

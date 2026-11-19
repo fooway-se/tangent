@@ -43,7 +43,8 @@ final class TokenRepository
     {
         $statement = $this->pdo->prepare(
             'SELECT u.id, u.workspace_id, u.account_id, u.name, u.email, u.role,
-                    t.id AS token_id, t.csrf_hash
+                    t.id AS token_id, t.csrf_hash,
+                    (t.last_used_at IS NULL OR t.last_used_at < UTC_TIMESTAMP() - INTERVAL 1 MINUTE) AS should_touch_last_used
              FROM api_tokens t
              INNER JOIN users u ON u.workspace_id = t.workspace_id AND u.id = t.user_id
              WHERE t.workspace_id = :workspace_id
@@ -64,11 +65,18 @@ final class TokenRepository
             return null;
         }
 
-        $touch = $this->pdo->prepare(
-            'UPDATE api_tokens SET last_used_at = UTC_TIMESTAMP()
-             WHERE workspace_id = :workspace_id AND id = :id'
-        );
-        $touch->execute(['workspace_id' => $workspaceId, 'id' => $row['token_id']]);
+        if ($type === 'api' && (bool) $row['should_touch_last_used']) {
+            $touch = $this->pdo->prepare(
+                'UPDATE api_tokens SET last_used_at = UTC_TIMESTAMP()
+                 WHERE workspace_id = :workspace_id AND id = :id AND token_type = :token_type
+                   AND (last_used_at IS NULL OR last_used_at < UTC_TIMESTAMP() - INTERVAL 1 MINUTE)'
+            );
+            $touch->execute([
+                'workspace_id' => $workspaceId,
+                'id' => $row['token_id'],
+                'token_type' => 'api',
+            ]);
+        }
 
         return new AuthenticatedUser(
             (int) $row['id'],
