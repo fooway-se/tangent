@@ -37,10 +37,13 @@ final class ChatService
         $channelId = $this->visibleProjectChannel($user, $projectId);
         $latestId = $this->chat->latestMessageId($user->workspaceId, $channelId);
         $etag = '"chat-' . $channelId . '-' . $latestId . '"';
-        $messages = $this->chat->listMessages($user->workspaceId, $channelId, $sinceId);
+        $noNewMessages = $sinceId !== null && $sinceId >= $latestId;
         $notModified = $ifNoneMatch !== null
             && hash_equals($etag, trim($ifNoneMatch))
-            && ($sinceId === null || $messages === []);
+            && ($sinceId === null || $noNewMessages);
+        $messages = $noNewMessages || $notModified
+            ? []
+            : $this->chat->listMessages($user->workspaceId, $channelId, $sinceId);
 
         return [
             'messages' => $messages,

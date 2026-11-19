@@ -164,6 +164,14 @@ final class ProjectChatTest extends ApiTestCase
         $etag = $initial->headers['etag'] ?? null;
         self::assertIsString($etag);
 
+        $unchangedInitial = $this->getMessages(
+            $projectId,
+            $admin['cookie'],
+            [],
+            ['If-None-Match' => $etag],
+        );
+        self::assertSame(304, $unchangedInitial->status);
+
         $unchanged = $this->getMessages(
             $projectId,
             $admin['cookie'],
