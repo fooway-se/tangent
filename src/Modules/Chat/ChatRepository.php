@@ -97,18 +97,20 @@ final class ChatRepository
         }
         [$projectFilter, $projectParameters] = self::projectFilter($projectIds);
         $statement = $this->pdo->prepare(
-            'SELECT COALESCE(MAX(m.id), 0)
-             FROM messages m
+            'SELECT m.id
+             FROM messages m FORCE INDEX (ix_messages_workspace_recent)
              INNER JOIN channels c ON c.workspace_id = m.workspace_id AND c.id = m.channel_id
              WHERE m.workspace_id = :workspace_id AND c.channel_type = :channel_type
-               AND c.project_id IN (' . $projectFilter . ')'
+               AND c.project_id IN (' . $projectFilter . ')
+             ORDER BY m.id DESC LIMIT 1'
         );
         $statement->execute([
             'workspace_id' => $workspaceId,
             'channel_type' => 'project',
             ...$projectParameters,
         ]);
-        return (int) $statement->fetchColumn();
+        $latestId = $statement->fetchColumn();
+        return $latestId === false ? 0 : (int) $latestId;
     }
 
     public function listEvents(int $workspaceId, array $projectIds, int $sinceId): array
