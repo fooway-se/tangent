@@ -305,10 +305,13 @@
                 <h2 class="section-title">Project members</h2>
                 <ul id="member-list" class="member-list"></ul>
                 <form id="member-form" class="member-form" hidden>
-                  <label>Add a project member
-                    <select id="member-select" name="user_id"></select>
-                  </label>
-                  <button id="add-member-button" class="button button-secondary" type="submit">Add to project</button>
+                  <div id="member-add-controls" class="form-stack" hidden>
+                    <label>Add a project member
+                      <select id="member-select" name="user_id"></select>
+                    </label>
+                    <button id="add-member-button" class="button button-secondary" type="submit">Add to project</button>
+                  </div>
+                  <p id="member-add-status" class="member-add-status" role="status" aria-live="polite" hidden></p>
                 </form>
               </section>
               <section id="project-notes-view" class="project-tab-view project-notes-view" role="tabpanel" tabindex="-1" hidden aria-labelledby="notes-tab">

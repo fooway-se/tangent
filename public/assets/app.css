@@ -238,6 +238,7 @@ select { padding-right: 28px; background: var(--screen-inset) url("data:image/sv
 .project-status.is-paused::before, .project-status.is-read-only::before { background: var(--screen-muted); }
 .project-status.is-read-only { color: var(--screen-muted); }
 .project-read-only-notice { margin: 0 0 12px; border-left: 3px solid var(--screen-muted); padding: 7px 10px; color: var(--screen-muted); background: var(--screen-inset); font-size: 12px; line-height: 1.5; }
+.member-add-status { margin: 0; color: var(--screen-muted); font-size: 12px; line-height: 1.5; }
 .detail-description { margin-bottom: 0; color: var(--screen-muted); white-space: pre-wrap; }
 .member-list { display: grid; gap: 6px; max-width: 680px; margin: 4px 0 20px; padding: 0; list-style: none; color: var(--screen-ink); }
 .member-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid var(--screen-border); border-radius: var(--radius-panel); padding: 9px 12px; background: var(--screen-panel); }
@@ -624,7 +625,8 @@ dialog::backdrop { background: var(--backdrop); }
   .project-main { overflow: visible; padding: 12px 14px 18px; }
   .projects-view, .inbox-view, .admin-view { padding: 12px 14px 18px; }
   .workspace-admin-member-tools { align-items: flex-start; flex-direction: column; }
-  .workspace-admin-member-actions { justify-content: flex-start; }
+  .workspace-admin-member-actions { width: 100%; flex: 0 0 auto; align-content: flex-start; justify-content: flex-start; }
+  .workspace-admin-member-actions .button { min-height: 44px; white-space: nowrap; }
   .project-chat-column { flex: none; min-width: 0; min-height: 420px; }
   .keyboard-hints, .login-keyboard-hints { display: none !important; }
   .keyboard-hints { grid-row: 3; }

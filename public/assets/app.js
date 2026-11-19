@@ -428,6 +428,8 @@ const issueDeleteConfirm = document.querySelector('#issue-delete-confirm');
 const emptyIssues = document.querySelector('#empty-issues');
 const memberList = document.querySelector('#member-list');
 const memberForm = document.querySelector('#member-form');
+const memberAddControls = document.querySelector('#member-add-controls');
+const memberAddStatus = document.querySelector('#member-add-status');
 const memberSelect = document.querySelector('#member-select');
 const addMemberButton = document.querySelector('#add-member-button');
 const memberRemovalConfirmation = document.querySelector('#member-removal-confirmation');
@@ -6302,23 +6304,46 @@ async function loadProjectMembers(projectId) {
     }
     memberForm.hidden = activeUser?.role !== 'admin' || (activeProject !== null && projectStatusIsReadOnly(activeProject.status));
     updateMembersPanelTabIndex();
-    if (memberForm.hidden)
+    if (memberForm.hidden) {
+        memberAddControls.hidden = true;
+        memberAddStatus.hidden = true;
         return;
+    }
+    memberAddControls.hidden = true;
+    memberAddStatus.textContent = 'Loading available members…';
+    memberAddStatus.hidden = false;
+    memberSelect.replaceChildren();
+    memberSelect.disabled = true;
+    addMemberButton.disabled = true;
     try {
         const result = await api('/users');
         if (activeProject?.id !== projectId || membersView.hidden)
             return;
         memberSelect.replaceChildren();
-        for (const candidate of result.users.filter((user) => !activeProjectMembers.some((member) => member.id === user.id))) {
+        const availableMembers = result.users.filter((user) => !activeProjectMembers.some((member) => member.id === user.id));
+        if (availableMembers.length === 0) {
+            memberAddStatus.textContent = 'There are no other workspace members available to add.';
+            memberAddStatus.hidden = false;
+            updateMembersPanelTabIndex();
+            return;
+        }
+        for (const candidate of availableMembers) {
             const option = document.createElement('option');
             option.value = String(candidate.id);
             option.textContent = `${candidate.name} · ${candidate.email}`;
             memberSelect.append(option);
         }
-        addMemberButton.disabled = memberSelect.options.length === 0;
+        memberSelect.disabled = false;
+        addMemberButton.disabled = false;
+        memberAddStatus.hidden = true;
+        memberAddControls.hidden = false;
         updateMembersPanelTabIndex();
     }
     catch (error) {
+        if (activeProject?.id === projectId && !membersView.hidden) {
+            memberAddStatus.textContent = 'Could not load available members.';
+            memberAddStatus.hidden = false;
+        }
         report(error instanceof Error ? error.message : 'Could not load workspace users.', true);
     }
 }
