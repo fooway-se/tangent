@@ -15,6 +15,7 @@ export const THEMES = [
     { id: 'nordic', label: 'Nordic & Phosphor' },
     { id: 'desktop', label: 'Icon & Mouse' },
     { id: 'copper', label: 'Copper & Chroma' },
+    { id: 'clean', label: 'Clean' },
 ];
 export function normalizeTheme(value) {
     return THEMES.some((theme) => theme.id === value) ? value : 'putty';

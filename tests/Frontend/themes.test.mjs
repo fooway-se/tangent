@@ -64,11 +64,15 @@ test('theme helpers normalise and cycle', () => {
   assert.equal(nextTheme('blue'), 'cartridge');
   assert.equal(nextTheme('nordic'), 'desktop');
   assert.equal(nextTheme('desktop'), 'copper');
-  assert.equal(nextTheme('copper'), 'putty');
+  assert.equal(nextTheme('copper'), 'clean');
+  assert.equal(nextTheme('clean'), 'putty');
+  assert.equal(normalizeTheme('clean'), 'clean');
 });
 
 test('every theme defines every colour token of the default theme', () => {
-  const colourTokens = Object.keys(base).filter((name) => /^#|^rgba?\(|^linear-gradient/.test(base[name]));
+  /* Scanline and inset shading are shared by the dark-screen themes; only light themes override them. */
+  const sharedShading = /^--(scanline|inset-)/;
+  const colourTokens = Object.keys(base).filter((name) => /^#|^rgba?\(|^linear-gradient/.test(base[name]) && !sharedShading.test(name));
   for (const id of themeIds) {
     const own = declarations(block(`:root[data-theme="${id}"]`));
     for (const name of colourTokens) assert.ok(name in own, `${id} defines ${name}`);
@@ -107,3 +111,17 @@ for (const [id, values] of Object.entries(themes)) {
     }
   });
 }
+
+test('clean theme is a light, flat theme that keeps code monospaced', () => {
+  const clean = themes.clean;
+  assert.ok(clean, 'clean theme exists');
+  assert.match(block(':root[data-theme="clean"]'), /color-scheme:\s*light/);
+  assert.match(clean['--font-mono'], /system-ui/, 'interface text uses a sans font');
+  assert.match(base['--font-code'], /ui-monospace/, 'code keeps a monospace font');
+  assert.equal(clean['--key-depth'], '1px');
+  assert.match(clean['--inset-shade'], /, 0\)$/, 'recessed fields have no dark inset shadow');
+  for (const [top, bottom] of [['--case-top', '--case-bottom'], ['--key-top', '--key-bottom'], ['--cap-top', '--cap-bottom']]) {
+    assert.equal(clean[top], clean[bottom], `${top} and ${bottom} match, so the surface is flat`);
+  }
+  assert.ok(luminance(clean['--screen']) > 0.8, 'the screen area is light');
+});

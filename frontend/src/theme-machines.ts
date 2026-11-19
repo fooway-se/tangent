@@ -10,6 +10,7 @@ export interface ThemeMachineInfo {
   license: string;
   historyUrl: string;
   facts: readonly [string, string];
+  illustration?: boolean;
 }
 
 export const THEME_MACHINES: Record<ThemeId, ThemeMachineInfo> = {
@@ -132,5 +133,13 @@ export const THEME_MACHINES: Record<ThemeId, ThemeMachineInfo> = {
     photoCredit: 'Bill Bertram', license: 'CC BY 2.5',
     historyUrl: 'https://americanhistory.si.edu/collections/object/nmah_834010',
     facts: ['Introduced in 1987 as an affordable 16-bit home computer.', 'Its graphics and sound helped make it a favourite for games and multimedia.'],
+  },
+  clean: {
+    model: 'Generic laptop', year: 'Any year', imageFile: 'generic-laptop.svg',
+    imageUrl: './assets/machines/generic-laptop.svg',
+    imagePage: 'https://fooway.se/tangent',
+    photoCredit: 'Drawn for Tangent', license: 'MIT', illustration: true,
+    historyUrl: 'https://www.computerhistory.org/revolution/mobile-computing/18/',
+    facts: ['A screen, a keyboard and a battery in one case.', 'It runs a browser, and Tangent runs in the browser.'],
   },
 };

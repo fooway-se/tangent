@@ -28,9 +28,14 @@ test('every theme has a locally hosted, credited computer photo and two short fa
   for (const [id, machine] of Object.entries(THEME_MACHINES)) {
     assert.ok(machine.model, `${id} has a model name`);
     assert.ok(machine.year, `${id} has a year`);
-    assert.ok(machine.imageFile, `${id} has a Wikimedia image file`);
-    assert.match(machine.imageUrl, /^\.\/assets\/machines\/[a-z0-9-]+\.jpg$/);
-    assert.match(machine.imagePage, /^https:\/\/commons\.wikimedia\.org\/wiki\/File:/);
+    assert.ok(machine.imageFile, `${id} has an image file`);
+    if (machine.illustration) {
+      assert.match(machine.imageUrl, /^\.\/assets\/machines\/[a-z0-9-]+\.svg$/);
+      assert.match(machine.imagePage, /^https:\/\//);
+    } else {
+      assert.match(machine.imageUrl, /^\.\/assets\/machines\/[a-z0-9-]+\.jpg$/);
+      assert.match(machine.imagePage, /^https:\/\/commons\.wikimedia\.org\/wiki\/File:/);
+    }
     assert.ok(machine.photoCredit, `${id} has a photo credit`);
     assert.ok(machine.license, `${id} has a photo license`);
     assert.equal(machine.facts.length, 2, `${id} has two facts`);

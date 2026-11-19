@@ -18,6 +18,7 @@
   --night-muted: #c9c1ac;
   /* Type */
   --font-display: "Archivo", "Helvetica Neue", Helvetica, Arial, "Liberation Sans", system-ui, sans-serif;
+  --font-code: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
   --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
 
   /* The case: beige plastic */
@@ -80,6 +81,17 @@
   --power-light: #d6402b;
   --focus-ring: rgba(240, 160, 44, 0.4);
   --signal-stripe: linear-gradient(to bottom, #d6402b 0 25%, #f08a24 25% 50%, #f3c231 50% 75%, #5fae4e 75% 100%);
+
+  /* Shading that the dark screens use for depth (scanlines, recessed fields) */
+  --scanline: rgba(0, 0, 0, 0.28);
+  --inset-shade: rgba(0, 0, 0, 0.7);
+  --inset-shade-soft: rgba(0, 0, 0, 0.6);
+  --inset-wash: rgba(0, 0, 0, 0.25);
+  --inset-wash-strong: rgba(0, 0, 0, 0.35);
+
+  /* Key edge depth (the lower border of keys and buttons) */
+  --key-depth: 3px;
+  --key-depth-lg: 4px;
 
   /* Shape */
   --radius-screen: 18px;
@@ -982,4 +994,89 @@
   --power-light: #ff834f;
   --focus-ring: rgba(101, 211, 204, 0.5);
   --signal-stripe: linear-gradient(to bottom, #65d3cc 0 25%, #8975ff 25% 50%, #ed69c3 50% 75%, #f7a64a 75% 100%);
+}
+
+/*
+ * Clean: a neutral, modern light theme for people who would rather not use a
+ * retro computer. Same layout as every other theme; it only flattens the
+ * gradients, thins the key edges (--key-depth*), softens the corners and
+ * switches the interface text to a sans font. Code keeps its monospace font
+ * through --font-code.
+ */
+:root[data-theme="clean"] {
+  color-scheme: light;
+  --font-mono: "Inter", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, "Liberation Sans", sans-serif;
+  --key-depth: 1px;
+  --key-depth-lg: 1px;
+
+  --night: #dfe2e8;
+  --night-glow: #eceef2;
+  --night-muted: #3f4756;
+
+  --case-top: #d9dce3;
+  --case-mid: #d9dce3;
+  --case-bottom: #d9dce3;
+  --case-shade: #c3c8d1;
+  --case-edge: #b2b8c3;
+  --case-light: #e8eaee;
+  --case-ink: #1f2430;
+  --case-muted: #3f4757;
+  --case-error: #a8231b;
+  --vent-dark: #bcc2cc;
+  --vent-light: #e8eaee;
+  --footer-top: #d2d6de;
+  --footer-bottom: #d2d6de;
+
+  --key-top: #e6e8ed;
+  --key-bottom: #e6e8ed;
+  --key-highlight: #eff1f4;
+
+  --cap-top: #2b3140;
+  --cap-bottom: #2b3140;
+  --cap-edge: #1b202b;
+  --plate: #1f2430;
+  --plate-ink: #ffffff;
+  --plate-muted: #d4d9e3;
+
+  --screen: #e6e9ee;
+  --screen-rim: #bcc2cc;
+  --screen-glow: rgba(255, 255, 255, 0);
+  --screen-vignette: rgba(255, 255, 255, 0);
+  --screen-ink: #1b2130;
+  --screen-muted: #465064;
+  --screen-header: rgba(20, 30, 60, 0.04);
+  --screen-highlight: rgba(255, 255, 255, 0.35);
+  --backdrop: rgba(20, 25, 40, 0.45);
+  --screen-panel: #dde1e8;
+  --screen-control-top: #d6dbe3;
+  --screen-inset: #dfe3e9;
+  --screen-field: #eef0f3;
+  --screen-border: #b9c0cb;
+  --screen-line: #cdd3dc;
+  --screen-hover: #d6dbe4;
+  --screen-track: #cbd1da;
+  --screen-group: #dde1e8;
+  --screen-group-top: #d3d8e0;
+  --screen-group-bottom: #d3d8e0;
+
+  --accent: #1f4fc4;
+  --accent-edge: #173d9a;
+  --accent-ink: #ffffff;
+  --accent-shine: rgba(255, 255, 255, 0);
+  --success: #17692f;
+  --danger: #a8231b;
+  --power-light: #2a8f48;
+  --focus-ring: rgba(31, 79, 196, 0.35);
+  --signal-stripe: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0 100%);
+
+  --scanline: rgba(255, 255, 255, 0);
+  --inset-shade: rgba(255, 255, 255, 0);
+  --inset-shade-soft: rgba(255, 255, 255, 0);
+  --inset-wash: rgba(255, 255, 255, 0);
+  --inset-wash-strong: rgba(255, 255, 255, 0);
+
+  --radius-screen: 10px;
+  --radius-panel: 6px;
+  --radius-key: 6px;
+  --radius-cap: 4px;
 }

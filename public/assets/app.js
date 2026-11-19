@@ -162,11 +162,11 @@ function openThemeAbout() {
     }));
     themeAboutImage.hidden = false;
     themeAboutImageFallback.hidden = true;
-    themeAboutImage.alt = `Photograph of the ${machine.model}`;
+    themeAboutImage.alt = `${machine.illustration ? 'Illustration' : 'Photograph'} of the ${machine.model}`;
     themeAboutImage.loading = 'eager';
     themeAboutImage.src = machine.imageUrl;
     themeAboutImageCredit.href = machine.imagePage;
-    themeAboutImageCredit.textContent = `Photo: ${machine.photoCredit} · ${machine.license}`;
+    themeAboutImageCredit.textContent = `${machine.illustration ? 'Illustration' : 'Photo'}: ${machine.photoCredit} · ${machine.license}`;
     themeAboutHistorySource.href = machine.historyUrl;
     themeAboutDialog.showModal();
 }
