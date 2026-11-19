@@ -127,6 +127,14 @@ final class ChatRepository
                   AND c.project_id IN (' . $projectFilter . ') AND m.id > :since_id
                 ORDER BY m.id ASC
                 LIMIT 100
+            ), reply_stats AS (
+                SELECT replies.channel_id, replies.parent_id, COUNT(*) AS reply_count,
+                       MIN(replies.id) AS first_reply_id
+                FROM event_messages parents
+                INNER JOIN messages replies
+                  ON replies.workspace_id = :reply_stats_workspace_id
+                 AND replies.channel_id = parents.channel_id AND replies.parent_id = parents.id
+                GROUP BY replies.channel_id, replies.parent_id
             ), message_roots AS (
                 SELECT messages.id AS event_id, messages.channel_id, messages.parent_id,
                        messages.message_client_visible AS ancestor_client_visible
@@ -142,16 +150,13 @@ final class ChatRepository
             SELECT messages.id, messages.project_id, messages.channel_id, messages.parent_id, messages.author_id,
                    users.name AS author_name, users.role AS author_role, messages.body,
                    parent_users.name AS parent_author_name, parent_message.body AS parent_body,
-                   (SELECT COUNT(*) FROM messages reply
-                    WHERE reply.workspace_id = :reply_count_workspace_id
-                      AND reply.channel_id = messages.channel_id AND reply.parent_id = messages.id) AS reply_count,
-                   (SELECT MIN(reply.id) FROM messages reply
-                    WHERE reply.workspace_id = :first_reply_workspace_id
-                      AND reply.channel_id = messages.channel_id AND reply.parent_id = messages.id) AS first_reply_id,
+                   COALESCE(reply_stats.reply_count, 0) AS reply_count, reply_stats.first_reply_id,
                    (messages.message_client_visible OR roots.ancestor_client_visible) AS is_client_visible,
                    messages.created_at
             FROM event_messages messages
             INNER JOIN message_roots roots ON roots.event_id = messages.id AND roots.parent_id IS NULL
+            LEFT JOIN reply_stats
+              ON reply_stats.channel_id = messages.channel_id AND reply_stats.parent_id = messages.id
             INNER JOIN users ON users.workspace_id = :author_workspace_id AND users.id = messages.author_id
             LEFT JOIN messages parent_message
               ON parent_message.workspace_id = :parent_workspace_id
@@ -164,12 +169,11 @@ final class ChatRepository
             'workspace_id' => $workspaceId,
             'channel_type' => 'project',
             'since_id' => $sinceId,
+            'reply_stats_workspace_id' => $workspaceId,
             'root_workspace_id' => $workspaceId,
             'author_workspace_id' => $workspaceId,
             'parent_workspace_id' => $workspaceId,
             'parent_author_workspace_id' => $workspaceId,
-            'reply_count_workspace_id' => $workspaceId,
-            'first_reply_workspace_id' => $workspaceId,
             ...$projectParameters,
         ]);
         return array_map(static function (array $event): array {
@@ -194,6 +198,14 @@ final class ChatRepository
                ORDER BY m.id ASC LIMIT 100';
         $statement = $this->pdo->prepare(
             'WITH RECURSIVE selected_messages AS (' . $selectedMessages . '
+            ), reply_stats AS (
+                SELECT replies.channel_id, replies.parent_id, COUNT(*) AS reply_count,
+                       MIN(replies.id) AS first_reply_id
+                FROM selected_messages parents
+                INNER JOIN messages replies
+                  ON replies.workspace_id = :reply_stats_workspace_id
+                 AND replies.channel_id = parents.channel_id AND replies.parent_id = parents.id
+                GROUP BY replies.channel_id, replies.parent_id
             ), message_roots AS (
                 SELECT messages.id AS event_id, messages.channel_id, messages.parent_id,
                        messages.message_client_visible AS ancestor_client_visible
@@ -209,16 +221,13 @@ final class ChatRepository
             SELECT messages.id, messages.channel_id, messages.parent_id, messages.author_id,
                    users.name AS author_name, users.role AS author_role, messages.body,
                    parent_users.name AS parent_author_name, parent_message.body AS parent_body,
-                   (SELECT COUNT(*) FROM messages reply
-                    WHERE reply.workspace_id = :reply_count_workspace_id
-                      AND reply.channel_id = messages.channel_id AND reply.parent_id = messages.id) AS reply_count,
-                   (SELECT MIN(reply.id) FROM messages reply
-                    WHERE reply.workspace_id = :first_reply_workspace_id
-                      AND reply.channel_id = messages.channel_id AND reply.parent_id = messages.id) AS first_reply_id,
+                   COALESCE(reply_stats.reply_count, 0) AS reply_count, reply_stats.first_reply_id,
                    (messages.message_client_visible OR roots.ancestor_client_visible) AS is_client_visible,
                    messages.created_at
             FROM selected_messages messages
             INNER JOIN message_roots roots ON roots.event_id = messages.id AND roots.parent_id IS NULL
+            LEFT JOIN reply_stats
+              ON reply_stats.channel_id = messages.channel_id AND reply_stats.parent_id = messages.id
             INNER JOIN users ON users.workspace_id = :author_workspace_id AND users.id = messages.author_id
             LEFT JOIN messages parent_message
               ON parent_message.workspace_id = :parent_workspace_id
@@ -230,12 +239,11 @@ final class ChatRepository
         $parameters = [
             'selected_workspace_id' => $workspaceId,
             'selected_channel_id' => $channelId,
+            'reply_stats_workspace_id' => $workspaceId,
             'root_workspace_id' => $workspaceId,
             'author_workspace_id' => $workspaceId,
             'parent_workspace_id' => $workspaceId,
             'parent_author_workspace_id' => $workspaceId,
-            'reply_count_workspace_id' => $workspaceId,
-            'first_reply_workspace_id' => $workspaceId,
         ];
         if ($sinceId !== null) $parameters['since_id'] = $sinceId;
         $statement->execute($parameters);
