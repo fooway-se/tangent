@@ -4,7 +4,7 @@ This document is for contributors and AI agents. Follow it unless there is a goo
 
 ## Hard constraints (and why)
 
-- **PHP 8.5.12 or later, no framework, no runtime dependencies.** The tool must install on a plain PHP + MySQL webhost by uploading files. No Composer in production. PHPUnit is a dev-only dependency.
+- **PHP 8.4.27 or later within PHP 8, with PHP 8.5.0 through 8.5.11 excluded; no framework or runtime dependencies.** The tool must install on a plain PHP + MySQL or MariaDB webhost by uploading files. No Composer in production. PHPUnit is a dev-only dependency.
 - **The backend is a REST API only.** It serves JSON, never HTML.
 - **Frontend is plain HTML, CSS and TypeScript** (ES modules). No React or other framework. `tsc` is a dev tool; the release ships compiled JavaScript.
 - **Authentication uses opaque tokens.** API and session tokens, invite links, and password-reset links are generated with `random_bytes`; only hashes are stored. Browser credential tokens are carried in the URL fragment, then sent in request bodies. Passwords are account-level credentials in `user_accounts`, normalized to NFC and hashed with Argon2id. A single policy covers seed, direct API creation, invite acceptance, and reset. Login upgrades older password hashes.

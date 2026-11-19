@@ -2,7 +2,7 @@
 
 Tangent is designed to support different shared-hosting directory layouts. Its public files and private application files can live in separate locations. The installer also stores the public URL independently, so the URL path does not have to match a server filesystem path.
 
-Tangent requires PHP 8.5.12 or later with `pdo_mysql`, `mbstring`, `iconv`, and `intl`, Argon2id password hashing, and an empty MySQL or MariaDB database. Enable HTTPS for the site before installation.
+Tangent requires PHP 8.4.27 or later within PHP 8, with `pdo_mysql`, `mbstring`, `iconv`, and `intl`, Argon2id password hashing, and an empty MySQL or MariaDB database. PHP 8.5.0 through 8.5.11 and PHP 9 are not supported; use PHP 8.5.12 or later on that branch. Enable HTTPS for the site before installation.
 
 ## First installation
 

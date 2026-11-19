@@ -19,8 +19,15 @@ final class InstallRequirements
         $passwordAlgorithms ??= password_algos();
 
         $problems = [];
-        if (version_compare($phpVersion, '8.5.12', '<')) {
-            $problems[] = 'PHP 8.5.12 or later is required.';
+        $supportedPhpVersion = (
+            version_compare($phpVersion, '8.4.27', '>=')
+            && version_compare($phpVersion, '8.5.0', '<')
+        ) || (
+            version_compare($phpVersion, '8.5.12', '>=')
+            && version_compare($phpVersion, '9.0.0', '<')
+        );
+        if (!$supportedPhpVersion) {
+            $problems[] = 'PHP 8.4.27 or later within PHP 8 is required; PHP 8.5.0 through 8.5.11 and PHP 9 are unsupported.';
         }
 
         foreach (self::REQUIRED_EXTENSIONS as $extension) {

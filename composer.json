@@ -4,7 +4,7 @@
   "type": "project",
   "license": "Apache-2.0",
   "require": {
-    "php": ">=8.5.12",
+    "php": ">=8.4.27 <8.5.0 || >=8.5.12 <9.0",
     "ext-iconv": "*",
     "ext-intl": "*",
     "ext-mbstring": "*",

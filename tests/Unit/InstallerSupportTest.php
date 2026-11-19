@@ -16,13 +16,29 @@ use Tangent\Modules\Installer\UpgradeService;
 
 final class InstallerSupportTest extends TestCase
 {
-    public function testRequirementsAcceptTheSupportedRuntime(): void
+    public function testRequirementsAcceptSupportedPhpBranches(): void
     {
-        self::assertSame([], InstallRequirements::check(
-            '8.5.12',
-            ['pdo_mysql', 'mbstring', 'iconv', 'intl'],
-            ['argon2id'],
-        ));
+        foreach (['8.4.27', '8.4.99', '8.5.12', '8.6.0'] as $version) {
+            self::assertSame([], InstallRequirements::check(
+                $version,
+                ['pdo_mysql', 'mbstring', 'iconv', 'intl'],
+                ['argon2id'],
+            ), "PHP {$version} should be accepted.");
+        }
+    }
+
+    public function testRequirementsRejectUnpatchedPhpBranchesAndPhpNine(): void
+    {
+        foreach (['8.4.26', '8.5.0', '8.5.11', '9.0.0'] as $version) {
+            $problems = InstallRequirements::check(
+                $version,
+                ['pdo_mysql', 'mbstring', 'iconv', 'intl'],
+                ['argon2id'],
+            );
+
+            self::assertCount(1, $problems, "PHP {$version} should be rejected.");
+            self::assertStringContainsString('PHP 8.4.27', $problems[0]);
+        }
     }
 
     public function testRequirementsReportMissingRuntimeFeatures(): void
@@ -30,7 +46,7 @@ final class InstallerSupportTest extends TestCase
         $problems = InstallRequirements::check('8.5.11', ['pdo_mysql'], ['bcrypt']);
 
         self::assertCount(5, $problems);
-        self::assertStringContainsString('PHP 8.5.12', $problems[0]);
+        self::assertStringContainsString('PHP 8.4.27', $problems[0]);
         self::assertStringContainsString('mbstring', $problems[1]);
         self::assertStringContainsString('iconv', $problems[2]);
         self::assertStringContainsString('intl', $problems[3]);

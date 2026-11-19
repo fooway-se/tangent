@@ -1,6 +1,6 @@
 # Development
 
-Local backend development and integration tests use Docker Compose. The stack provides PHP 8.5.12 CLI and a real MySQL 8.4 test database. Production installation remains a PHP and MySQL upload for ordinary shared hosting; Composer is only used in the development container.
+Local backend development and integration tests use Docker Compose. The default stack provides PHP 8.4.27 CLI and a real MySQL 8.4 test database. The same stack can be configured for PHP 8.5.12 or MariaDB 11.4. Production installation remains a PHP and MySQL or MariaDB upload for ordinary shared hosting; Composer is only used in the development container.
 
 ## Start the environment
 
@@ -14,6 +14,26 @@ docker compose exec -it php php bin/seed-admin.php
 Composer installs PHPUnit from the `require-dev` section of `composer.json`. It does not add a runtime dependency to the release.
 The seed command is enabled only when `TANGENT_ENV=development`; enter an admin name, email, and password when prompted. Then open [http://localhost:8080](http://localhost:8080) to sign in. The first admin seed is for local development; production account bootstrap will be part of the later installer.
 If port 8080 is already in use, start the stack with `TANGENT_HTTP_PORT=8081 docker compose up -d --build` and open [http://localhost:8081](http://localhost:8081).
+
+To test the PHP 8.5 baseline, rebuild and run the suite with:
+
+```sh
+TANGENT_PHP_VERSION=8.5.12 docker compose up -d --build
+docker compose exec php composer install
+docker compose exec php composer test
+```
+
+To run the database integration suite on MariaDB 11.4 instead of MySQL, use a separate volume so the engines never share database files:
+
+```sh
+export TANGENT_DB_IMAGE=mariadb
+export TANGENT_DB_VERSION=11.4
+export TANGENT_DB_VOLUME=mariadb_data
+docker compose up -d --build
+docker compose exec php composer test
+```
+
+Unset those three variables and run `docker compose up -d --build` to switch back to MySQL 8.4. MariaDB 11.4 is an LTS series maintained through May 2029.
 
 Migration 011 stops before applying if one normalized email belongs to multiple legacy accounts. Reconcile those accounts explicitly before retrying; the migration will not silently combine their credentials.
 
@@ -59,7 +79,7 @@ Write a failing test before implementing behavior, then make the smallest change
 docker compose exec php composer test
 ```
 
-Tests use the MySQL service configured by Compose. The test database connection is provided through `TANGENT_TEST_DB_HOST`, `TANGENT_TEST_DB_PORT`, `TANGENT_TEST_DB_NAME`, `TANGENT_TEST_DB_USER`, and `TANGENT_TEST_DB_PASSWORD`. Tests must not mock database access; migrations run in setup and each test rolls back its transaction.
+Tests use the MySQL or MariaDB service configured by Compose. The test database connection is provided through `TANGENT_TEST_DB_HOST`, `TANGENT_TEST_DB_PORT`, `TANGENT_TEST_DB_NAME`, `TANGENT_TEST_DB_USER`, and `TANGENT_TEST_DB_PASSWORD`. Tests must not mock database access; migrations run in setup and each test rolls back its transaction.
 
 Open a shell in the PHP container with:
 

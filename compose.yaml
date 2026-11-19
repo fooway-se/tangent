@@ -3,6 +3,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.dev
+      args:
+        PHP_VERSION: ${TANGENT_PHP_VERSION:-8.4.27}
     working_dir: /workspace
     command: ["php", "-S", "0.0.0.0:8080", "-t", "public", "public/index.php"]
     ports:
@@ -39,24 +41,28 @@ services:
         condition: service_healthy
 
   mysql:
-    image: mysql:8.4
+    image: ${TANGENT_DB_IMAGE:-mysql}:${TANGENT_DB_VERSION:-8.4}
     environment:
       MYSQL_DATABASE: tangent_test
       MYSQL_USER: tangent
       MYSQL_PASSWORD: tangent_dev_password
       MYSQL_ROOT_PASSWORD: tangent_root_password
+      MARIADB_DATABASE: tangent_test
+      MARIADB_USER: tangent
+      MARIADB_PASSWORD: tangent_dev_password
+      MARIADB_ROOT_PASSWORD: tangent_root_password
     healthcheck:
       test:
         [
           "CMD-SHELL",
-          "mysqladmin ping --host=127.0.0.1 --user=root --password=\"$${MYSQL_ROOT_PASSWORD}\" --silent",
+          "if command -v healthcheck.sh >/dev/null 2>&1; then healthcheck.sh --connect --innodb_initialized; else mysqladmin ping --host=127.0.0.1 --user=root --password=\"$${MYSQL_ROOT_PASSWORD}\" --silent; fi",
         ]
       interval: 3s
       timeout: 3s
       retries: 30
       start_period: 10s
     volumes:
-      - mysql_data:/var/lib/mysql
+      - ${TANGENT_DB_VOLUME:-mysql_data}:/var/lib/mysql
       - ./tests/Fixtures/create-installer-test-db.sql:/docker-entrypoint-initdb.d/20-installer-test-db.sql:ro
 
   frontend:
@@ -72,3 +78,4 @@ volumes:
   composer_vendor:
   frontend_node_modules:
   mysql_data:
+  mariadb_data:

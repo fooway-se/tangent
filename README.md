@@ -1,6 +1,6 @@
 # Tangent
 
-A keyboard-first, self-hosted workspace for small dev teams and freelancers: project chat, issues and a client portal in one place. It runs on ordinary PHP and MySQL hosting.
+A keyboard-first, self-hosted workspace for small dev teams and freelancers: project chat, issues and a client portal in one place. It runs on ordinary PHP with MySQL or MariaDB.
 
 ![Project view with issues and chat](assets/screenshots/project-issues.webp)
 
@@ -30,7 +30,7 @@ Aimed at freelancers, small remote teams and studios that coordinate client work
 
 ## Install on shared hosting
 
-**Requirements: PHP 8.5.12 or later.** Many shared hosts do not offer PHP 8.5 yet, so check your host's PHP versions before downloading. You also need:
+**Requirements: PHP 8.4.27 or later within PHP 8.** PHP 8.5.0 through 8.5.11 and PHP 9 are not supported; use PHP 8.5.12 or later on that branch. Check your host's patch level before downloading. You also need:
 
 - PHP extensions `pdo_mysql`, `mbstring`, `iconv` and `intl`, plus Argon2id password hashing
 - an empty MySQL or MariaDB database
