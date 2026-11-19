@@ -458,6 +458,55 @@ final class IssuesTest extends ApiTestCase
         self::assertSame(422, $invalidDirection->status);
     }
 
+    public function testDeletingMilestoneAppendsItsIssuesInTheirExistingOrder(): void
+    {
+        $admin = $this->login($this->adminEmail);
+        $projectId = $this->createProject($admin, 'Delete milestone order');
+        $createIssue = function (string $title, ?int $milestoneId = null) use ($admin, $projectId): int {
+            $body = ['title' => $title];
+            if ($milestoneId !== null) $body['milestone_id'] = $milestoneId;
+            $created = $this->apiCookieRequest(
+                'POST',
+                "/api/v1/projects/{$projectId}/issues",
+                $admin['cookie'],
+                $body,
+                $admin['csrf'],
+            );
+            self::assertSame(201, $created->status, json_encode($created->body));
+            return (int) $created->body['issue']['id'];
+        };
+        $existingUnlinked = $createIssue('Already unlinked');
+        $milestone = $this->apiCookieRequest(
+            'POST',
+            "/api/v1/projects/{$projectId}/milestones",
+            $admin['cookie'],
+            ['name' => 'To remove'],
+            $admin['csrf'],
+        );
+        self::assertSame(201, $milestone->status, json_encode($milestone->body));
+        $milestoneId = (int) $milestone->body['milestone']['id'];
+        $movedIssues = [
+            $createIssue('First moved issue', $milestoneId),
+            $createIssue('Second moved issue', $milestoneId),
+            $createIssue('Third moved issue', $milestoneId),
+        ];
+
+        $deleted = $this->apiCookieRequest(
+            'DELETE',
+            "/api/v1/projects/{$projectId}/milestones/{$milestoneId}",
+            $admin['cookie'],
+            [],
+            $admin['csrf'],
+        );
+        self::assertSame(204, $deleted->status, json_encode($deleted->body));
+
+        $listed = $this->apiCookieRequest('GET', "/api/v1/projects/{$projectId}/issues", $admin['cookie']);
+        self::assertSame(200, $listed->status, json_encode($listed->body));
+        $sortOrders = array_column($listed->body['issues'], 'sort_order', 'id');
+        self::assertSame(1, $sortOrders[$existingUnlinked]);
+        self::assertSame([2, 3, 4], array_map(static fn (int $issueId): int => $sortOrders[$issueId], $movedIssues));
+    }
+
     private function createProject(array $admin, string $name): int
     {
         $response = $this->cookieRequest(

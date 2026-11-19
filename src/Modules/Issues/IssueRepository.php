@@ -294,27 +294,35 @@ final class IssueRepository
 
     public function unlinkMilestone(int $workspaceId, int $projectId, int $milestoneId): void
     {
-        $select = $this->pdo->prepare(
-            'SELECT id FROM issues WHERE workspace_id = :workspace_id AND project_id = :project_id AND milestone_id = :milestone_id
-             ORDER BY sort_order, id'
+        $statement = $this->pdo->prepare(
+            'UPDATE issues target
+             INNER JOIN (
+                SELECT moving.id,
+                       baseline.max_sort_order
+                           + ROW_NUMBER() OVER (ORDER BY moving.sort_order, moving.id) AS new_sort_order
+                FROM issues moving
+                CROSS JOIN (
+                    SELECT COALESCE(MAX(sort_order), 0) AS max_sort_order FROM issues
+                    WHERE workspace_id = :base_workspace_id AND project_id = :base_project_id
+                      AND milestone_id IS NULL
+                ) baseline
+                WHERE moving.workspace_id = :moving_workspace_id
+                  AND moving.project_id = :moving_project_id AND moving.milestone_id = :moving_milestone_id
+             ) ranked ON ranked.id = target.id
+             SET target.milestone_id = NULL, target.sort_order = ranked.new_sort_order
+             WHERE target.workspace_id = :target_workspace_id AND target.project_id = :target_project_id
+               AND target.milestone_id = :target_milestone_id'
         );
-        $select->execute(['workspace_id' => $workspaceId, 'project_id' => $projectId, 'milestone_id' => $milestoneId]);
-        $issueIds = array_map('intval', $select->fetchAll(PDO::FETCH_COLUMN));
-        if ($issueIds === []) return;
-
-        $sortOrder = $this->maxSortOrder($workspaceId, $projectId, null);
-        $update = $this->pdo->prepare(
-            'UPDATE issues SET milestone_id = NULL, sort_order = :sort_order
-             WHERE workspace_id = :workspace_id AND project_id = :project_id AND id = :id'
-        );
-        foreach ($issueIds as $issueId) {
-            $update->execute([
-                'workspace_id' => $workspaceId,
-                'project_id' => $projectId,
-                'id' => $issueId,
-                'sort_order' => ++$sortOrder,
-            ]);
-        }
+        $statement->execute([
+            'base_workspace_id' => $workspaceId,
+            'base_project_id' => $projectId,
+            'moving_workspace_id' => $workspaceId,
+            'moving_project_id' => $projectId,
+            'moving_milestone_id' => $milestoneId,
+            'target_workspace_id' => $workspaceId,
+            'target_project_id' => $projectId,
+            'target_milestone_id' => $milestoneId,
+        ]);
     }
 
     public function sharedItems(int $workspaceId, int $projectId): array
