@@ -396,7 +396,7 @@ final class IssueRepository
     public function completedSharedThisWeek(int $workspaceId, int $projectId): int
     {
         $statement = $this->pdo->prepare(
-            "SELECT COUNT(DISTINCT h.issue_id) FROM issue_status_history h
+            "SELECT COUNT(DISTINCT h.issue_id) FROM issue_status_history h FORCE INDEX (ix_issue_status_history_done_created)
              INNER JOIN issues i ON i.workspace_id = h.workspace_id AND i.id = h.issue_id
              WHERE h.workspace_id = :workspace_id AND i.project_id = :project_id AND i.is_shared = 1
                AND i.deleted_at IS NULL AND i.status <> 'cancelled' AND h.to_status = 'done'
