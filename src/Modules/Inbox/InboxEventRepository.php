@@ -102,7 +102,7 @@ final class InboxEventRepository
         if ($projectIds === []) return;
         [$filter, $parameters] = self::idFilter($projectIds, 'project');
         $statement = $this->pdo->prepare(
-            'UPDATE inbox_events SET read_at = CURRENT_TIMESTAMP
+            'UPDATE inbox_events FORCE INDEX (ix_inbox_unread_by_project) SET read_at = CURRENT_TIMESTAMP
              WHERE workspace_id = :workspace_id AND recipient_id = :recipient_id AND read_at IS NULL
                AND project_id IN (' . $filter . ')'
         );
