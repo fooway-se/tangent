@@ -6795,6 +6795,11 @@ async function signOut() {
 logoutButton.addEventListener('click', () => { void signOut(); });
 async function start() {
     const url = new URL(window.location.href);
+    if (url.searchParams.has('password')) {
+        url.searchParams.delete('password');
+        url.searchParams.delete('email');
+        history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+    }
     const githubConnected = url.searchParams.get('github') === 'connected';
     if (githubConnected) {
         url.searchParams.delete('github');

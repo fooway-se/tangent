@@ -4,16 +4,17 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#0e1119">
+    <meta name="referrer" content="no-referrer">
     <meta name="robots" content="noindex">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'">
     <title>Tangent · Projects</title>
+    <script src="./assets/theme-init.js"></script>
     <link rel="manifest" href="./manifest.webmanifest">
     <link rel="icon" href="./favicon.ico" type="image/x-icon">
     <link rel="icon" href="./assets/icons/tangent-icon.svg" type="image/svg+xml">
     <link rel="icon" href="./assets/icons/tangent-32.png" sizes="32x32" type="image/png">
     <link rel="stylesheet" href="./assets/tokens.css">
     <link rel="stylesheet" href="./assets/app.css">
-    <script src="./assets/theme-init.js"></script>
     <script type="module" src="./assets/app.js"></script>
   </head>
   <body>
@@ -26,7 +27,7 @@
         <section id="login-panel" class="panel login-panel" aria-labelledby="login-heading">
           <p class="eyebrow">Your workspace</p>
           <h1 id="login-heading">Sign in to Tangent</h1>
-          <form id="login-form" class="form-stack">
+          <form id="login-form" class="form-stack" method="post">
             <label>Email
               <input name="email" type="email" autocomplete="username" required>
             </label>
@@ -40,7 +41,7 @@
             <h2 id="credential-flow-heading"></h2>
             <p id="credential-flow-description" class="panel-description"></p>
             <p id="credential-flow-error" class="form-error" role="alert" hidden></p>
-            <form id="credential-form" class="form-stack">
+            <form id="credential-form" class="form-stack" method="post">
               <div id="credential-password-fields" class="form-stack" hidden>
                 <label>New password
                   <input name="password" type="password" autocomplete="new-password" required>
