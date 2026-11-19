@@ -109,6 +109,11 @@ final class GuestViewTest extends ApiTestCase
             'UPDATE messages SET is_client_visible = 0 WHERE workspace_id = :workspace_id AND id = :id'
         );
         $legacyReply->execute(['workspace_id' => $this->workspaceId, 'id' => $reply->body['message']['id']]);
+        $visibilityMigration = file_get_contents(
+            dirname(__DIR__, 2) . '/migrations/023_index_client_conversation_visibility.sql'
+        );
+        self::assertIsString($visibilityMigration);
+        $this->pdo->exec(trim(explode(';', $visibilityMigration, 2)[0]));
         $nestedReply = $this->cookieRequest(
             'POST',
             "/api/v1/projects/{$projectId}/messages",
