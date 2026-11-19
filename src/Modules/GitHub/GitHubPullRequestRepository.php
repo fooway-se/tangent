@@ -113,6 +113,13 @@ final class GitHubPullRequestRepository
 
     public function recordDelivery(string $deliveryId, string $eventType): bool
     {
+        $cleanup = $this->pdo->prepare(
+            'DELETE FROM github_webhook_deliveries
+             WHERE received_at < CURRENT_TIMESTAMP - INTERVAL 30 DAY
+             ORDER BY received_at LIMIT 1000'
+        );
+        $cleanup->execute();
+
         $statement = $this->pdo->prepare(
             'INSERT IGNORE INTO github_webhook_deliveries (delivery_id, event_type) VALUES (:delivery_id, :event_type)'
         );

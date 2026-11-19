@@ -28,4 +28,4 @@ Set these variables in the PHP process environment. In Docker Compose, they can 
 
 Restart the PHP service after changing its environment. GitHub connection is workspace-scoped: a workspace admin starts the connection from a project's create or edit form, completes the GitHub installation flow, then selects a repository. Project developers can link and unlink pull requests on issues after a repository is selected.
 
-The webhook endpoint is public and verifies every request against the raw body using `X-Hub-Signature-256`. GitHub delivery IDs are stored to ignore retries. If an issue is unlinked from a pull request, later webhook events no longer update that link.
+The webhook endpoint is public and verifies every request against the raw body using `X-Hub-Signature-256`. GitHub delivery IDs are stored for 30 days to ignore retries. If an issue is unlinked from a pull request, later webhook events no longer update that link.

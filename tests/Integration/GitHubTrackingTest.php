@@ -213,6 +213,36 @@ final class GitHubTrackingTest extends ApiTestCase
         self::assertSame(401, $invalid->status);
     }
 
+    public function testWebhookDeliveryRecordsOlderThanThirtyDaysArePruned(): void
+    {
+        $secret = 'test-webhook-secret';
+        $this->application = Application::create(
+            $this->pdo,
+            new AppConfig($this->workspaceId, false, 43200, 'http://localhost:8080', false, '', '', '', $secret),
+        );
+        $expired = $this->pdo->prepare(
+            "INSERT INTO github_webhook_deliveries (delivery_id, event_type, received_at)
+             VALUES ('delivery-expired', 'pull_request', CURRENT_TIMESTAMP - INTERVAL 31 DAY)"
+        );
+        $expired->execute();
+
+        $rawBody = '{"action":"ignored"}';
+        $body = json_decode($rawBody, true, flags: JSON_THROW_ON_ERROR);
+        $response = $this->webhookRequest($rawBody, $body, [
+            'X-Hub-Signature-256' => 'sha256=' . hash_hmac('sha256', $rawBody, $secret),
+            'X-GitHub-Delivery' => 'delivery-current',
+            'X-GitHub-Event' => 'ping',
+        ]);
+
+        self::assertSame(202, $response->status, json_encode($response->body));
+        self::assertFalse($response->body['duplicate']);
+        $count = $this->pdo->prepare(
+            'SELECT COUNT(*) FROM github_webhook_deliveries WHERE delivery_id = :delivery_id'
+        );
+        $count->execute(['delivery_id' => 'delivery-expired']);
+        self::assertSame(0, (int) $count->fetchColumn());
+    }
+
     private function webhookRequest(string $rawBody, array $body, array $headers): Response
     {
         return $this->application->handle(Request::json(
