@@ -761,6 +761,66 @@ paths:
                   project: { $ref: '#/components/schemas/Project' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '409': { $ref: '#/components/responses/Conflict' }
+  /lounge/messages:
+    get:
+      summary: Read or poll the workspace Lounge
+      description: Returns the latest 100 messages when since is omitted, or messages after the supplied ID. Available to workspace admins and developers, not guests. Matching If-None-Match returns 304.
+      parameters:
+        - name: since
+          in: query
+          required: false
+          schema: { type: integer, minimum: 0 }
+        - name: If-None-Match
+          in: header
+          required: false
+          schema: { type: string }
+      responses:
+        '200':
+          description: Lounge messages and the current channel ETag.
+          headers:
+            ETag: { schema: { type: string } }
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  messages:
+                    type: array
+                    items: { $ref: '#/components/schemas/Message' }
+        '304':
+          description: No Lounge messages changed since the supplied ETag.
+          headers:
+            ETag: { schema: { type: string } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      summary: Post to the workspace Lounge
+      description: Cookie-authenticated requests must include X-CSRF-Token. The Lounge is internal to the workspace and does not create project inbox events.
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [body]
+              properties:
+                body: { type: string, minLength: 1, maxLength: 10000 }
+                parent_id: { type: [integer, 'null'], minimum: 1 }
+      responses:
+        '201':
+          description: Lounge message created.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { $ref: '#/components/schemas/Message' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
   /projects/{id}/presence:
     post:
       summary: Update viewer presence for a project

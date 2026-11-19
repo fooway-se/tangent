@@ -5,6 +5,7 @@ export type ShortcutAction =
   | 'await-projects-key'
   | 'projects'
   | 'inbox'
+  | 'lounge'
   | 'workspace-switcher'
   | 'issues'
   | 'chat'
@@ -109,6 +110,7 @@ export function resolveShortcut(event: ShortcutEvent, context: ShortcutContext):
   if (context.goPrefixPending) {
     if (key === 'p' && context.hasWorkspace) return 'projects';
     if (key === 'n' && context.hasWorkspace) return 'inbox';
+    if (key === 'l' && context.hasWorkspace) return 'lounge';
     if (key === 'w' && context.canSwitchWorkspace) return 'workspace-switcher';
     if (key === 'i' && context.hasProject) return 'issues';
     if (key === 'c' && context.hasProject) return 'chat';

@@ -41,6 +41,7 @@ type IssueGrouping = 'status' | 'milestone';
 type WorkspaceLocation =
   | { view: 'projects'; focusedProjectId?: number }
   | { view: 'inbox' }
+  | { view: 'lounge' }
   | { view: 'admin' }
   | { view: 'project'; projectId: number; tab: 'issues' | 'members' | 'notes' };
 
@@ -439,10 +440,17 @@ const breadcrumbDivider = document.querySelector<HTMLElement>('#breadcrumb-divid
 const breadcrumbCurrent = document.querySelector<HTMLElement>('#breadcrumb-current')!;
 const projectsNavButton = document.querySelector<HTMLButtonElement>('#projects-nav')!;
 const inboxNavButton = document.querySelector<HTMLButtonElement>('#inbox-nav')!;
+const loungeNavButton = document.querySelector<HTMLButtonElement>('#lounge-nav')!;
 const adminNavButton = document.querySelector<HTMLButtonElement>('#admin-nav')!;
 const projectsView = document.querySelector<HTMLElement>('#projects-view')!;
 const inboxView = document.querySelector<HTMLElement>('#inbox-view')!;
+const loungeView = document.querySelector<HTMLElement>('#lounge-view')!;
 const inboxHeading = document.querySelector<HTMLHeadingElement>('#inbox-heading')!;
+const loungeHeading = document.querySelector<HTMLHeadingElement>('#lounge-heading')!;
+const loungeMessageList = document.querySelector<HTMLElement>('#lounge-message-list')!;
+const loungeEmptyState = document.querySelector<HTMLElement>('#lounge-empty-state')!;
+const loungeForm = document.querySelector<HTMLFormElement>('#lounge-form')!;
+const loungeInput = document.querySelector<HTMLTextAreaElement>('#lounge-input')!;
 const inboxSummary = document.querySelector<HTMLElement>('#inbox-summary')!;
 const inboxIssueList = document.querySelector<HTMLUListElement>('#inbox-issue-list')!;
 const inboxEmptyState = document.querySelector<HTMLElement>('#inbox-empty-state')!;
@@ -743,6 +751,12 @@ let githubRepositories: GitHubRepository[] = [];
 let issueAiPromptStepIndex = 0;
 let issueAiPromptReturnFocus: HTMLElement | null = null;
 let activeChatProjectId: number | null = null;
+let loungeActive = false;
+let loungePollTimer: number | null = null;
+let loungeCursor = 0;
+let loungeEtag: string | null = null;
+let loungePollDelay = 1000;
+let loungeFollowLatest = true;
 let issuePollTimer: number | null = null;
 let issuePollDelay = 1000;
 let activeIssuesEtag: string | null = null;
@@ -909,6 +923,7 @@ function showSignedOut(): void {
   stopInboxPolling();
   resetPendingWorkspaceSwitch();
   stopChatPolling();
+  stopLoungePolling();
   activeUser = null;
   githubRepositories = [];
   projectGithubRepository.replaceChildren(new Option('No repository connected', ''));
@@ -952,6 +967,7 @@ function showSignedIn(user: User): void {
   workspaceViewHistory.length = 0;
   projectReturnFocusId = null;
   activeProject = null;
+  stopLoungePolling();
   activeUser = user;
   editProjectButton.hidden = user.role !== 'admin';
   resetPendingWorkspaceSwitch();
@@ -1084,12 +1100,13 @@ function commitPendingWorkspaceSwitch(): void {
   void switchWorkspace(workspaceId, true);
 }
 
-function showWorkspaceView(view: 'projects' | 'inbox' | 'admin' | 'project'): void {
+function showWorkspaceView(view: 'projects' | 'inbox' | 'lounge' | 'admin' | 'project'): void {
   if (view !== 'inbox') {
     stopInboxPolling();
     inboxIssues = [];
     inboxEvents = [];
   }
+  if (view !== 'lounge') stopLoungePolling();
   if (view !== 'project') {
     if (activeProject !== null) projectReturnFocusId = activeProject.id;
     stopChatPolling();
@@ -1103,6 +1120,7 @@ function showWorkspaceView(view: 'projects' | 'inbox' | 'admin' | 'project'): vo
   }
   projectsView.hidden = view !== 'projects';
   inboxView.hidden = view !== 'inbox';
+  loungeView.hidden = view !== 'lounge';
   adminView.hidden = view !== 'admin';
   projectView.hidden = view !== 'project';
   projectChatColumn.hidden = view !== 'project';
@@ -1113,10 +1131,11 @@ function showWorkspaceView(view: 'projects' | 'inbox' | 'admin' | 'project'): vo
   breadcrumbDivider.hidden = view === 'projects';
   breadcrumbCurrent.textContent = view === 'project'
     ? activeProject?.name ?? 'Project'
-    : view === 'admin' ? 'Administration' : view === 'inbox' ? 'Inbox' : 'Projects';
+    : view === 'admin' ? 'Administration' : view === 'inbox' ? 'Inbox' : view === 'lounge' ? 'Lounge' : 'Projects';
   document.body.classList.toggle('is-project-view', view === 'project');
   projectsNavButton.classList.toggle('is-active', view === 'projects');
   inboxNavButton.classList.toggle('is-active', view === 'inbox');
+  loungeNavButton.classList.toggle('is-active', view === 'lounge');
   adminNavButton.classList.toggle('is-active', view === 'admin');
   projectSidebarList.querySelectorAll<HTMLButtonElement>('.project-sidebar-link').forEach((button) => {
     button.classList.toggle('is-active', view === 'project' && button.dataset.projectId === String(activeProject?.id));
@@ -1124,18 +1143,27 @@ function showWorkspaceView(view: 'projects' | 'inbox' | 'admin' | 'project'): vo
   if (view === 'projects') {
     projectsNavButton.setAttribute('aria-current', 'page');
     inboxNavButton.removeAttribute('aria-current');
+    loungeNavButton.removeAttribute('aria-current');
     adminNavButton.removeAttribute('aria-current');
   } else if (view === 'inbox') {
     inboxNavButton.setAttribute('aria-current', 'page');
     projectsNavButton.removeAttribute('aria-current');
+    loungeNavButton.removeAttribute('aria-current');
+    adminNavButton.removeAttribute('aria-current');
+  } else if (view === 'lounge') {
+    loungeNavButton.setAttribute('aria-current', 'page');
+    projectsNavButton.removeAttribute('aria-current');
+    inboxNavButton.removeAttribute('aria-current');
     adminNavButton.removeAttribute('aria-current');
   } else if (view === 'admin') {
     adminNavButton.setAttribute('aria-current', 'page');
     projectsNavButton.removeAttribute('aria-current');
     inboxNavButton.removeAttribute('aria-current');
+    loungeNavButton.removeAttribute('aria-current');
   } else {
     projectsNavButton.removeAttribute('aria-current');
     inboxNavButton.removeAttribute('aria-current');
+    loungeNavButton.removeAttribute('aria-current');
     adminNavButton.removeAttribute('aria-current');
   }
   if (view === 'projects' && projectReturnFocusId !== null) {
@@ -1571,6 +1599,7 @@ function currentWorkspaceLocation(): WorkspaceLocation {
     };
   }
   if (!inboxView.hidden) return { view: 'inbox' };
+  if (!loungeView.hidden) return { view: 'lounge' };
   if (!adminView.hidden) return { view: 'admin' };
   const focused = document.activeElement;
   const projectCard = focused instanceof HTMLElement ? focused.closest<HTMLElement>('.project-card') : null;
@@ -1589,6 +1618,7 @@ function sameWorkspaceLocation(left: WorkspaceLocation, right: WorkspaceLocation
   if (left.view === 'projects' && right.view === 'projects') {
     return left.focusedProjectId === right.focusedProjectId;
   }
+  if (left.view === 'lounge' && right.view === 'lounge') return true;
   return left.view === right.view;
 }
 
@@ -1605,6 +1635,14 @@ function goToInbox(): void {
   void loadInboxIssues();
 }
 
+function goToLounge(): void {
+  const currentLocation = currentWorkspaceLocation();
+  if (currentLocation.view !== 'lounge') workspaceViewHistory.push(currentLocation);
+  showWorkspaceView('lounge');
+  loungeHeading.focus();
+  loadLoungeChat();
+}
+
 function goBackWorkspaceView(): void {
   const currentLocation = currentWorkspaceLocation();
   if (currentLocation.view === 'projects') return;
@@ -1615,6 +1653,10 @@ function goBackWorkspaceView(): void {
     showWorkspaceView('inbox');
     inboxHeading.focus();
     void loadInboxIssues();
+  } else if (previousLocation?.view === 'lounge') {
+    showWorkspaceView('lounge');
+    loungeHeading.focus();
+    void loadLoungeChat();
   } else if (previousLocation?.view === 'admin') {
     showWorkspaceView('admin');
     adminHeading.focus();
@@ -1645,6 +1687,163 @@ function stopChatPolling(): void {
   selectedChatMessageId = null;
   chatFollowLatest = true;
   chatMessagesById.clear();
+}
+
+function stopLoungePolling(): void {
+  loungeActive = false;
+  if (loungePollTimer !== null) window.clearTimeout(loungePollTimer);
+  loungePollTimer = null;
+  loungeMessageList.replaceChildren(loungeEmptyState);
+  loungeEmptyState.hidden = false;
+}
+
+function scheduleLoungePoll(delay = loungePollDelay): void {
+  if (!loungeActive) return;
+  if (loungePollTimer !== null) window.clearTimeout(loungePollTimer);
+  loungePollTimer = window.setTimeout(() => {
+    loungePollTimer = null;
+    if (loungeActive) void pollLoungeChat();
+  }, delay);
+}
+
+function appendLoungeMessage(message: ChatMessage, scrollToBottom = false): void {
+  if (loungeMessageList.querySelector(`[data-message-id="${message.id}"]`) !== null) return;
+
+  const item = document.createElement('article');
+  item.className = 'chat-message';
+  item.dataset.messageId = String(message.id);
+
+  const heading = document.createElement('div');
+  heading.className = 'chat-message-heading';
+  const avatar = document.createElement('span');
+  avatar.className = 'chat-message-avatar';
+  avatar.setAttribute('aria-hidden', 'true');
+  avatar.textContent = avatarInitials(message.author_name);
+  const authorDetails = document.createElement('span');
+  authorDetails.className = 'chat-message-author';
+  const author = document.createElement('strong');
+  author.textContent = message.author_name;
+  const time = document.createElement('time');
+  time.className = 'chat-message-time';
+  time.dateTime = message.created_at;
+  const parsedDate = new Date(message.created_at);
+  time.textContent = Number.isNaN(parsedDate.getTime())
+    ? ''
+    : new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' }).format(parsedDate);
+  authorDetails.append(author, time);
+  heading.append(avatar, authorDetails);
+
+  const body = document.createElement('p');
+  body.className = 'chat-message-body';
+  body.textContent = message.body;
+  item.append(heading, body);
+  loungeMessageList.append(item);
+  loungeEmptyState.hidden = true;
+  if (scrollToBottom) loungeMessageList.scrollTop = loungeMessageList.scrollHeight;
+}
+
+async function loadLoungeChat(): Promise<void> {
+  stopLoungePolling();
+  loungeActive = true;
+  loungeCursor = 0;
+  loungeEtag = null;
+  loungePollDelay = 1000;
+  loungeFollowLatest = true;
+  loungeMessageList.replaceChildren(loungeEmptyState);
+  loungeEmptyState.hidden = false;
+
+  try {
+    const result = await api<{ messages: ChatMessage[] }>('/lounge/messages');
+    if (!loungeActive || loungeView.hidden) return;
+    for (const message of result.messages) {
+      loungeCursor = Math.max(loungeCursor, message.id);
+      appendLoungeMessage(message);
+    }
+    loungeMessageList.scrollTop = loungeMessageList.scrollHeight;
+    void pollLoungeChat();
+  } catch (error) {
+    if (!loungeActive) return;
+    if (error instanceof ApiFailure && error.status === 401) {
+      showSignedOut();
+      return;
+    }
+    report(error instanceof Error ? error.message : 'Could not load the Lounge.', true);
+    scheduleLoungePoll(5000);
+  }
+}
+
+async function pollLoungeChat(): Promise<void> {
+  if (!loungeActive || loungeView.hidden) return;
+  if (loungePollTimer !== null) window.clearTimeout(loungePollTimer);
+  loungePollTimer = null;
+  if (document.hidden) {
+    loungePollDelay = Math.min(10_000, Math.max(5_000, loungePollDelay * 1.5));
+    scheduleLoungePoll();
+    return;
+  }
+
+  const headers = new Headers();
+  if (loungeEtag !== null) headers.set('If-None-Match', loungeEtag);
+  try {
+    const response = await fetch(`${apiBaseUrl}/lounge/messages?since=${loungeCursor}`, {
+      headers,
+      credentials: 'same-origin',
+    });
+    if (!loungeActive) return;
+    if (response.status === 304) {
+      loungePollDelay = Math.min(10_000, loungePollDelay * 1.5);
+    } else {
+      const payload = await response.json() as { messages?: ChatMessage[]; error?: { message?: string } };
+      if (!loungeActive) return;
+      if (!response.ok) throw new ApiFailure(payload.error?.message ?? 'Could not load the Lounge.', response.status);
+      loungeEtag = response.headers.get('ETag');
+      const received = payload.messages ?? [];
+      for (const message of received) {
+        loungeCursor = Math.max(loungeCursor, message.id);
+        appendLoungeMessage(message, loungeFollowLatest);
+      }
+      loungePollDelay = received.length > 0 ? 1000 : Math.min(10_000, loungePollDelay * 1.5);
+    }
+  } catch (error) {
+    if (!loungeActive) return;
+    if (error instanceof ApiFailure && error.status === 401) {
+      showSignedOut();
+      return;
+    }
+    report(error instanceof Error ? error.message : 'Could not load the Lounge.', true);
+    loungePollDelay = Math.min(10_000, loungePollDelay * 1.5);
+  }
+
+  if (loungeActive) scheduleLoungePoll();
+}
+
+async function sendLoungeMessage(event: SubmitEvent): Promise<void> {
+  event.preventDefault();
+  const body = loungeInput.value.trim();
+  if (body === '') return;
+  const sendButton = loungeForm.querySelector<HTMLButtonElement>('button[type="submit"]');
+  if (sendButton !== null) sendButton.disabled = true;
+  try {
+    const result = await api<{ message: ChatMessage }>('/lounge/messages', {
+      method: 'POST',
+      body: JSON.stringify({ body }),
+    });
+    if (!loungeActive) return;
+    loungeCursor = Math.max(loungeCursor, result.message.id);
+    appendLoungeMessage(result.message, true);
+    loungeInput.value = '';
+    loungeEtag = null;
+    loungePollDelay = 1000;
+    scheduleLoungePoll(0);
+  } catch (error) {
+    if (error instanceof ApiFailure && error.status === 401) {
+      showSignedOut();
+      return;
+    }
+    report(error instanceof Error ? error.message : 'Could not send the Lounge message.', true);
+  } finally {
+    if (sendButton !== null) sendButton.disabled = false;
+  }
 }
 
 function pauseIssuePolling(): void {
@@ -2033,7 +2232,7 @@ function shortcutContext(target: EventTarget | null) {
       || (!projectView.hidden && (!issueDetailView.hidden || !issueDetailEditForm.hidden
         || issueQuickAddEscapePending || chatReplyParent !== null))
       || (!projectsView.hidden && !projectFormPanel.hidden)
-      || !projectView.hidden || !inboxView.hidden || !adminView.hidden
+      || !projectView.hidden || !inboxView.hidden || !loungeView.hidden || !adminView.hidden
     )),
   };
 }
@@ -2284,6 +2483,7 @@ function getPaletteCommands(): PaletteCommand[] {
   const commands: PaletteCommand[] = [
     { label: 'Go to Projects', detail: 'Open the project list', shortcut: 'g p', run: goToProjects },
     { label: 'Open Inbox', detail: 'Review open issues assigned to you', shortcut: 'g n', run: goToInbox },
+    { label: 'Open Lounge', detail: 'Open the workspace-wide Lounge chat', shortcut: 'g l', run: goToLounge },
     { label: 'Show keyboard shortcuts', detail: 'View key bindings', shortcut: '?', run: showShortcutHelp },
   ];
   if (activeWorkspaces.length > 1) {
@@ -2874,6 +3074,7 @@ function executeShortcut(action: ShortcutAction): void {
     case 'await-projects-key': startGoPrefix(); break;
     case 'projects': clearGoPrefix(); goToProjects(); break;
     case 'inbox': goToInbox(); break;
+    case 'lounge': goToLounge(); break;
     case 'workspace-switcher': openWorkspacePicker(); break;
     case 'issues': goToProjectIssues(); break;
     case 'chat': focusProjectChat(); break;
@@ -3636,6 +3837,10 @@ document.addEventListener('visibilitychange', () => {
     scheduleChatPoll(0);
     void pollProjectPresence(activeChatProjectId);
   }
+  if (!document.hidden && loungeActive) {
+    loungePollDelay = 1000;
+    scheduleLoungePoll(0);
+  }
   if (!document.hidden && activeProject !== null && issuePollingIsActive(activeProject.id)) {
     issuePollDelay = 1000;
     scheduleIssuePoll(0);
@@ -3652,7 +3857,14 @@ document.addEventListener('focusout', () => {
 
 projectsNavButton.addEventListener('click', goToProjects);
 inboxNavButton.addEventListener('click', goToInbox);
+loungeNavButton.addEventListener('click', goToLounge);
 adminNavButton.addEventListener('click', openWorkspaceAdmin);
+loungeMessageList.addEventListener('scroll', () => {
+  loungeFollowLatest = loungeMessageList.scrollHeight - loungeMessageList.scrollTop
+    - loungeMessageList.clientHeight <= 24;
+});
+loungeForm.addEventListener('submit', (event) => void sendLoungeMessage(event));
+loungeInput.addEventListener('keydown', (event) => submitFormOnEnter(event, loungeForm));
 workspaceAdminMembersTab.addEventListener('click', () => switchWorkspaceAdminTab('members'));
 workspaceAdminInvitesTab.addEventListener('click', () => switchWorkspaceAdminTab('invites'));
 workspaceAdminWorkspacesTab.addEventListener('click', () => switchWorkspaceAdminTab('workspaces'));

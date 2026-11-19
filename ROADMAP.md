@@ -4,9 +4,8 @@ Planned work, in no fixed order. Tangent is pre-alpha, so this list will change.
 
 ## Chat
 
-The project chat header has a privacy-preserving presence light: it shows whether another authorized viewer has an active heartbeat, without exposing their identity or a viewer count. Heartbeats run while the project page is visible and expire after 45 seconds.
+The project chat header has a privacy-preserving presence light: it shows whether another authorized viewer has an active heartbeat, without exposing their identity or a viewer count. Heartbeats run while the project page is visible and expire after 45 seconds. The workspace-wide **Lounge** is available for internal off-topic conversation, separate from project chats. No DMs or user-created channels are planned.
 
-- Add standalone channels and direct messages; decide whether group conversations are needed.
 - Evaluate optional SSE or WebSocket updates for hosts that support persistent connections.
 
 ## GitHub and other integrations

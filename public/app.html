@@ -100,6 +100,7 @@
         <nav id="workspace-nav" class="workspace-nav" aria-label="Workspace">
           <button id="projects-nav" class="workspace-nav-button is-active" type="button" aria-current="page">Projects</button>
           <button id="inbox-nav" class="workspace-nav-button" type="button">Inbox</button>
+          <button id="lounge-nav" class="workspace-nav-button" type="button">Lounge</button>
           <button id="admin-nav" class="workspace-nav-button" type="button" hidden>Workspace admin</button>
         </nav>
         <section class="sidebar-projects" aria-labelledby="sidebar-projects-heading">
@@ -181,6 +182,29 @@
             <p id="inbox-summary" class="inbox-summary">Open issues assigned to you across your projects.</p>
             <ul id="inbox-issue-list" class="issue-list inbox-issue-list" aria-live="polite"></ul>
             <p id="inbox-empty-state" class="inbox-empty-state" hidden>You have no open issues assigned to you.</p>
+          </section>
+
+          <section id="lounge-view" class="workspace-view lounge-view" hidden aria-labelledby="lounge-heading">
+            <header class="page-heading lounge-page-heading">
+              <div>
+                <p class="eyebrow">Workspace</p>
+                <h1 id="lounge-heading" tabindex="-1">Lounge</h1>
+                <p class="lounge-description">Off-topic conversation for the workspace team.</p>
+              </div>
+            </header>
+            <section class="lounge-chat-panel" aria-label="Lounge chat">
+              <div id="lounge-message-list" class="chat-message-list lounge-message-list" aria-live="polite">
+                <p id="lounge-empty-state" class="chat-empty-state">No messages yet.</p>
+              </div>
+              <form id="lounge-form" class="chat-composer lounge-composer form-stack">
+                <label>Message
+                  <textarea id="lounge-input" name="body" rows="2" maxlength="10000" placeholder="Message the Lounge…" required></textarea>
+                </label>
+                <div class="chat-composer-actions">
+                  <button class="button button-primary" type="submit">Send</button>
+                </div>
+              </form>
+            </section>
           </section>
 
           <section id="project-view" class="workspace-view project-view" hidden aria-live="polite">
@@ -593,8 +617,8 @@
       <footer id="keyboard-hints" class="keyboard-hints" hidden>
           <span><kbd>j</kbd>/<kbd>k</kbd> Move</span>
           <span><kbd>Enter</kbd> Open</span>
-          <span><kbd>g</kbd> <kbd>p</kbd> Projects · <kbd>g</kbd> <kbd>n</kbd> Inbox<span id="workspace-switch-hint" hidden> · <kbd>g</kbd> <kbd>w</kbd> Workspace</span></span>
-          <span id="go-prefix-hint" class="go-prefix-hint" hidden><kbd>p</kbd> Projects · <kbd>n</kbd> Inbox<span id="go-prefix-workspace-option" hidden> · <kbd>w</kbd> Workspace</span><span id="go-prefix-project-options" hidden> · <kbd>i</kbd> Issues · <kbd>c</kbd> Chat · <kbd>m</kbd> Members</span><span id="admin-go-prefix-option" hidden> · <kbd>a</kbd> Administration</span></span>
+          <span><kbd>g</kbd> <kbd>p</kbd> Projects · <kbd>g</kbd> <kbd>n</kbd> Inbox · <kbd>g</kbd> <kbd>l</kbd> Lounge<span id="workspace-switch-hint" hidden> · <kbd>g</kbd> <kbd>w</kbd> Workspace</span></span>
+          <span id="go-prefix-hint" class="go-prefix-hint" hidden><kbd>p</kbd> Projects · <kbd>n</kbd> Inbox · <kbd>l</kbd> Lounge<span id="go-prefix-workspace-option" hidden> · <kbd>w</kbd> Workspace</span><span id="go-prefix-project-options" hidden> · <kbd>i</kbd> Issues · <kbd>c</kbd> Chat · <kbd>m</kbd> Members</span><span id="admin-go-prefix-option" hidden> · <kbd>a</kbd> Administration</span></span>
           <span id="project-keyboard-hints" hidden><kbd>g</kbd> <kbd>i</kbd> Issues <kbd>g</kbd> <kbd>c</kbd> Chat <kbd>g</kbd> <kbd>m</kbd> Members · <kbd>c</kbd> Create <kbd>e</kbd> Edit <kbd>s</kbd> Status · Chat: <kbd>j</kbd>/<kbd>k</kbd> Move <kbd>r</kbd> Reply <kbd>i</kbd> Issue · <kbd>Enter</kbd> Send <kbd>Shift</kbd>+<kbd>Enter</kbd> New line</span>
           <span><kbd>Ctrl/Cmd</kbd>+<kbd>K</kbd> Commands</span>
           <span><kbd>t</kbd> Theme</span>
@@ -857,6 +881,7 @@
           <div><dt><kbd>Enter</kbd></dt><dd>Open a selected project or issue; submit a form</dd></div>
           <div><dt><kbd>g</kbd>, <kbd>p</kbd></dt><dd>Go to projects</dd></div>
           <div><dt><kbd>g</kbd>, <kbd>n</kbd></dt><dd>Open your Inbox</dd></div>
+          <div><dt><kbd>g</kbd>, <kbd>l</kbd></dt><dd>Open the workspace Lounge</dd></div>
           <div><dt><kbd>g</kbd>, <kbd>w</kbd></dt><dd>When you belong to multiple workspaces, open the picker; arrows choose, Enter switches, Escape cancels</dd></div>
           <div><dt><kbd>g</kbd>, <kbd>i</kbd></dt><dd>Focus project issues</dd></div>
           <div><dt><kbd>g</kbd>, <kbd>c</kbd></dt><dd>Focus project chat</dd></div>

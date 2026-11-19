@@ -44,6 +44,17 @@ final class ChatRepository
         return $channelId === false ? null : (int) $channelId;
     }
 
+    public function findOrCreateLoungeChannel(int $workspaceId): int
+    {
+        $statement = $this->pdo->prepare(
+            "INSERT INTO channels (workspace_id, project_id, channel_type, name)
+             VALUES (:workspace_id, NULL, 'standalone', 'Lounge')
+             ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)"
+        );
+        $statement->execute(['workspace_id' => $workspaceId]);
+        return (int) $this->pdo->lastInsertId();
+    }
+
     public function heartbeatProjectPresence(int $workspaceId, int $projectId, int $userId): bool
     {
         $prune = $this->pdo->prepare(

@@ -52,6 +52,56 @@ final class ChatService
         ];
     }
 
+    public function loungeMessages(
+        AuthenticatedUser $user,
+        ?int $sinceId,
+        ?string $ifNoneMatch,
+    ): array {
+        if (!Permissions::can($user, 'lounge.read')) {
+            throw new ApiException(403, 'forbidden', 'You cannot read the Lounge.');
+        }
+
+        $channelId = $this->chat->findOrCreateLoungeChannel($user->workspaceId);
+        $latestId = $this->chat->latestMessageId($user->workspaceId, $channelId);
+        $etag = '"lounge-' . $channelId . '-' . $latestId . '"';
+        $noNewMessages = $sinceId !== null && $sinceId >= $latestId;
+        $notModified = $ifNoneMatch !== null
+            && hash_equals($etag, trim($ifNoneMatch))
+            && ($sinceId === null || $noNewMessages);
+        $messages = $noNewMessages || $notModified
+            ? []
+            : $this->chat->listMessages($user->workspaceId, $channelId, $sinceId);
+
+        return [
+            'messages' => $messages,
+            'etag' => $etag,
+            'not_modified' => $notModified,
+        ];
+    }
+
+    public function sendLoungeMessage(AuthenticatedUser $user, array $input): array
+    {
+        if (!Permissions::can($user, 'lounge.send')) {
+            throw new ApiException(403, 'forbidden', 'You cannot post in the Lounge.');
+        }
+
+        $body = is_string($input['body'] ?? null) ? trim($input['body']) : '';
+        if ($body === '' || mb_strlen($body, 'UTF-8') > 10_000) {
+            throw new ApiException(422, 'validation_failed', 'Message must be between 1 and 10000 characters.');
+        }
+
+        $channelId = $this->chat->findOrCreateLoungeChannel($user->workspaceId);
+        $parentId = null;
+        if (array_key_exists('parent_id', $input) && $input['parent_id'] !== null) {
+            $parentId = self::positiveInteger($input['parent_id']);
+            if ($this->chat->threadRoot($user->workspaceId, $channelId, $parentId) === null) {
+                throw new ApiException(404, 'not_found', 'The parent message was not found.');
+            }
+        }
+
+        return $this->chat->createMessage($user->workspaceId, $channelId, $user->id, $parentId, $body);
+    }
+
     public function message(AuthenticatedUser $user, int $projectId, int $messageId): array
     {
         $channelId = $this->visibleProjectChannel($user, $projectId);

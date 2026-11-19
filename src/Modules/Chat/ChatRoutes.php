@@ -18,6 +18,39 @@ final class ChatRoutes
 
     public function register(Router $router): void
     {
+        $router->add('GET', '/api/v1/lounge/messages', function (
+            Request $request,
+            array $params,
+            AuthenticatedUser $user,
+        ): Response {
+            $result = $this->service->loungeMessages(
+                $user,
+                self::sinceId($request),
+                $request->header('If-None-Match'),
+            );
+            if ($result['not_modified']) {
+                return Response::notModified([
+                    'ETag' => $result['etag'],
+                    'Cache-Control' => 'no-cache',
+                ]);
+            }
+
+            return Response::json(200, ['messages' => $result['messages']], [
+                'ETag' => $result['etag'],
+                'Cache-Control' => 'no-cache',
+            ]);
+        });
+
+        $router->add('POST', '/api/v1/lounge/messages', function (
+            Request $request,
+            array $params,
+            AuthenticatedUser $user,
+        ): Response {
+            return Response::json(201, [
+                'message' => $this->service->sendLoungeMessage($user, $request->body),
+            ]);
+        });
+
         $router->add('GET', '/api/v1/projects/{id}/messages/{messageId}', function (
             Request $request,
             array $params,

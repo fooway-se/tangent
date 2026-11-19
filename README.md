@@ -58,9 +58,9 @@ Open [http://localhost:8081](http://localhost:8081). The seed command prompts yo
 
 ## Status
 
-Implemented: authentication and invites, workspaces, project chat with viewer presence, issue tracking, inbox events, the restricted client guest view and the shared-host installer.
+Implemented: authentication and invites, workspaces, project chat with viewer presence, the workspace-wide Lounge for internal off-topic conversation, issue tracking, inbox events, the restricted client guest view and the shared-host installer.
 
-Planned: standalone channels and direct messages, GitLab links, weekly client summaries, and agent-friendly API access. See [ROADMAP.md](ROADMAP.md).
+Planned: GitLab links, weekly client summaries, and agent-friendly API access. See [ROADMAP.md](ROADMAP.md).
 
 ## Documentation
 

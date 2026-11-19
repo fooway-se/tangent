@@ -212,6 +212,12 @@ kbd {
 .status-message-dismiss:hover { color: var(--screen-ink); }
 .workspace-view { flex: 1; min-height: 0; }
 .projects-view, .inbox-view, .admin-view { overflow: auto; padding: 14px 22px 22px; }
+.lounge-view { display: flex; flex-direction: column; overflow: hidden; padding: 14px 22px 22px; }
+.lounge-page-heading { flex: 0 0 auto; margin-bottom: 12px; }
+.lounge-description { margin: 5px 0 0; color: var(--screen-muted); font-size: 12px; }
+.lounge-chat-panel { display: flex; flex: 1; flex-direction: column; min-height: 280px; overflow: hidden; border: 1px solid var(--screen-border); border-radius: var(--radius-panel); background: var(--screen-inset); }
+.lounge-message-list { min-height: 0; }
+.lounge-composer { flex: 0 0 auto; }
 .inbox-summary { margin: -4px 0 0; color: var(--screen-muted); font-size: 12px; }
 .inbox-issue-list { align-content: start; }
 .issue-card.inbox-issue-card { grid-template-columns: 10px minmax(0, 1fr) auto; gap: 14px; }
@@ -645,6 +651,7 @@ dialog::backdrop { background: var(--backdrop); }
   .workspace-stage { grid-column: 1; grid-row: 2; flex-direction: column; padding: 12px; }
   .workspace-screen { flex: none; }
   .workspace-content, .project-view { overflow: visible; }
+  .lounge-view { overflow: visible; padding: 12px 14px 18px; }
   .project-main { overflow: visible; padding: 12px 14px 18px; }
   .projects-view, .inbox-view, .admin-view { padding: 12px 14px 18px; }
   .workspace-admin-member-tools { align-items: flex-start; flex-direction: column; }
