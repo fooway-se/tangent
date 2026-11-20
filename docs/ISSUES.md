@@ -6,6 +6,12 @@ Issue statuses are **Backlog**, **Todo**, **Doing**, **Testing**, **Done**, and 
 
 Milestones can be archived at any point, including while work is unfinished. Archived milestones and their issues move out of **Current work** and remain available in **History**. Restore a milestone to return it and its issues to the active board; archiving does not change issue statuses or client-visible history.
 
+## My Work
+
+Open **My Work** from the workspace navigation. The **Inbox** tab contains mentions and other project updates. The **Tasks** tab lists open issues assigned to you across your accessible projects, grouped first by project and then by milestone. Milestone groups show their due date and task count; issues without a milestone appear under **No milestone**.
+
+Tasks includes issues in **Backlog**, **Todo**, **Doing**, and **Testing**. Completed and cancelled issues are not listed. My Work does not identify a current sprint; teams can use milestones to group sprint-sized work. Guests use the separate client portal and do not see this internal view.
+
 ## Quick-add issues
 
 Enter a title in the issue quick-add field. You can add priority and due date tokens directly to the title:

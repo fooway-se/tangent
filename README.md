@@ -16,6 +16,7 @@ A keyboard-first, self-hosted workspace for small dev teams and freelancers: pro
 - **Sixteen themes.** Choose Putty & Screen, Rubber & Rainbow, Breadbin, Broadcast & Beige, Cassette & Colour, Mono & Membrane, Stripe & Signal, Paper & Rainbow, Desk & Phosphor, Silver & Speech, Blue & Byte, Cartridge & Cobalt, Nordic & Phosphor, Icon & Mouse, Copper & Chroma, or Clean, a neutral light theme, in the login, guest, or workspace view; the choice is saved in this browser.
 - **Issues come out of the conversation.** Turn a chat message into an issue; the issue keeps a link back to its thread. Issues support priorities, due dates, and an optional guided AI prompt builder with copy and Markdown export.
 - **Track linked pull requests.** Connect a GitHub repository to a project, manually link PRs to issues, and receive inbox updates as their state changes. Guests cannot see GitHub details.
+- **My Work.** Review inbox updates or browse open issues assigned to you, grouped by project and milestone. Issues without a milestone appear in their own group. This internal workspace view is not part of the guest portal.
 - **A client portal that is not your internal tracker.** Invited guests see only what you share: progress, milestones and shared items. They can comment and approve requested work. Internal issues stay hidden, and visibility is enforced in the API, not just in the interface.
 - **A team roadmap across projects.** Review milestones, completed and remaining work, missed deadlines, and a clearly labeled “Needs attention” workload heuristic. This view is internal; guests do not see its signals.
 - **Built to be installed by uploading files.** Plain PHP JSON API, no framework and no runtime dependencies. The frontend is static HTML, CSS and TypeScript. The release archive needs no Composer or npm on the server.
@@ -59,7 +60,7 @@ Open [http://localhost:8081](http://localhost:8081). The seed command prompts yo
 
 ## Status
 
-Implemented: authentication and invites, workspaces, project chat with viewer presence, the workspace-wide Lounge for internal off-topic conversation, issue tracking, the internal team roadmap, inbox events, the restricted client guest view and the shared-host installer.
+Implemented: authentication and invites, workspaces, project chat with viewer presence, the workspace-wide Lounge for internal off-topic conversation, issue tracking, My Work with inbox events and assigned tasks, the internal team roadmap, the restricted client guest view and the shared-host installer.
 
 Planned: GitLab links, weekly client summaries, and agent-friendly API access. See [ROADMAP.md](ROADMAP.md).
 
