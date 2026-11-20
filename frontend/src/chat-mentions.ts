@@ -107,6 +107,11 @@ export function splitMentions(value: string, members: readonly MentionMember[]):
   return segments.length > 0 ? segments : [{ text: value, memberId: null }];
 }
 
+export function nextMentionSelectionIndex(currentIndex: number, direction: -1 | 1, optionCount: number): number {
+  if (optionCount <= 0) return currentIndex;
+  return (currentIndex + direction + optionCount) % optionCount;
+}
+
 function normalize(value: string): string {
   return value.trim().replace(/\s+/gu, ' ').toLocaleLowerCase();
 }

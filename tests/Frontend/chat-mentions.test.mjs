@@ -6,6 +6,7 @@ import {
   replaceMentionQuery,
   mentionEmptyMessage,
   splitMentions,
+  nextMentionSelectionIndex,
 } from '../../public/assets/chat-mentions.js';
 
 const members = [
@@ -58,4 +59,10 @@ test('message mention highlighting matches display names without treating email 
     { text: '@Richard K', memberId: 2 },
     { text: ', email richard.k@example.test', memberId: null },
   ]);
+});
+
+test('mention arrow navigation wraps through the same option list in either direction', () => {
+  assert.equal(nextMentionSelectionIndex(0, -1, 3), 2);
+  assert.equal(nextMentionSelectionIndex(2, 1, 3), 0);
+  assert.equal(nextMentionSelectionIndex(1, 1, 0), 1);
 });

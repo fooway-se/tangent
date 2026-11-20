@@ -59,6 +59,8 @@ test('Lounge composer uses the project chat mention autocomplete for workspace m
   assert.match(app, /filterMentionMembers\(loungeMembers, query\.query/);
   assert.match(app, /replaceMentionQuery\(loungeInput\.value, loungeMentionQuery, member\.name\)/);
   assert.match(app, /handleLoungeMentionKeydown/);
+  assert.match(app, /return handleMentionKeydown\([\s\S]{0,80}event,\s*loungeInput,\s*loungeMentionList/);
+  assert.match(app, /return handleMentionKeydown\([\s\S]{0,80}event,\s*chatInput,\s*chatMentionList/);
   assert.match(app, /splitMentions\(message\.body, loungeMembers\)/);
   assert.match(app, /chat-message-mention/);
 });

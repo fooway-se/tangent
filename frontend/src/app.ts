@@ -11,8 +11,10 @@ import {
   filterMentionMembers,
   findMentionQuery,
   mentionEmptyMessage,
+  nextMentionSelectionIndex,
   replaceMentionQuery,
   splitMentions,
+  type MentionMember,
   type MentionQuery,
 } from './chat-mentions.js';
 import { resolveShortcut, shouldSubmitOnEnter, type ShortcutAction } from './shortcuts.js';
@@ -309,11 +311,7 @@ interface Member extends User {
   is_active?: boolean | number;
 }
 
-interface LoungeMentionMember {
-  id: number;
-  name: string;
-  email: string;
-}
+type LoungeMentionMember = MentionMember;
 
 interface ChatMessage {
   id: number;
@@ -1790,37 +1788,19 @@ function selectLoungeMention(member: LoungeMentionMember): void {
 }
 
 function handleLoungeMentionKeydown(event: KeyboardEvent): boolean {
-  if (loungeMentionList.hidden) return false;
-  if (event.key === 'Escape') {
-    event.preventDefault();
-    event.stopPropagation();
-    loungeMentionDismissed = true;
-    hideLoungeMentionSuggestions();
-    return true;
-  }
-  if (loungeMentionMatches.length === 0) return false;
-  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-    event.preventDefault();
-    loungeMentionSelectedIndex = (loungeMentionSelectedIndex
-      + (event.key === 'ArrowDown' ? 1 : -1) + loungeMentionMatches.length) % loungeMentionMatches.length;
-    const options = Array.from(loungeMentionList.querySelectorAll<HTMLButtonElement>('[role="option"]'));
-    options.forEach((option, index) => option.setAttribute('aria-selected', String(index === loungeMentionSelectedIndex)));
-    const selected = options[loungeMentionSelectedIndex];
-    if (selected !== undefined) {
-      loungeInput.setAttribute('aria-activedescendant', selected.id);
-      selected.scrollIntoView({ block: 'nearest' });
-    }
-    return true;
-  }
-  if ((event.key === 'Enter' && !event.shiftKey && !event.isComposing) || event.key === 'Tab') {
-    const member = loungeMentionMatches[loungeMentionSelectedIndex];
-    if (member === undefined) return false;
-    event.preventDefault();
-    event.stopPropagation();
-    selectLoungeMention(member);
-    return true;
-  }
-  return false;
+  return handleMentionKeydown(
+    event,
+    loungeInput,
+    loungeMentionList,
+    loungeMentionMatches,
+    loungeMentionSelectedIndex,
+    (index) => { loungeMentionSelectedIndex = index; },
+    selectLoungeMention,
+    () => {
+      loungeMentionDismissed = true;
+      hideLoungeMentionSuggestions();
+    },
+  );
 }
 
 function scheduleLoungePoll(delay = loungePollDelay): void {
@@ -3779,33 +3759,60 @@ function selectChatMention(member: Member): void {
 
 function handleChatMentionKeydown(event: KeyboardEvent): boolean {
   if (chatMentionList === null || chatMentionList.hidden) return false;
+  if (chatInput === null) return false;
+  return handleMentionKeydown(
+    event,
+    chatInput,
+    chatMentionList,
+    chatMentionMatches,
+    chatMentionSelectedIndex,
+    (index) => { chatMentionSelectedIndex = index; },
+    selectChatMention,
+    () => {
+      chatMentionDismissed = true;
+      hideChatMentionSuggestions();
+    },
+  );
+}
+
+function handleMentionKeydown<T extends MentionMember>(
+  event: KeyboardEvent,
+  input: HTMLTextAreaElement,
+  list: HTMLDivElement,
+  matches: readonly T[],
+  selectedIndex: number,
+  setSelectedIndex: (index: number) => void,
+  selectMember: (member: T) => void,
+  dismiss: () => void,
+): boolean {
+  if (list.hidden) return false;
   if (event.key === 'Escape') {
     event.preventDefault();
     event.stopPropagation();
-    chatMentionDismissed = true;
-    hideChatMentionSuggestions();
+    dismiss();
     return true;
   }
-  if (chatMentionMatches.length === 0) return false;
+  if (matches.length === 0) return false;
   if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
     event.preventDefault();
-    chatMentionSelectedIndex = (chatMentionSelectedIndex + (event.key === 'ArrowDown' ? 1 : -1) + chatMentionMatches.length)
-      % chatMentionMatches.length;
-    const options = Array.from(chatMentionList.querySelectorAll<HTMLButtonElement>('[role="option"]'));
-    options.forEach((option, index) => option.setAttribute('aria-selected', String(index === chatMentionSelectedIndex)));
-    const selected = options[chatMentionSelectedIndex];
+    event.stopPropagation();
+    const nextIndex = nextMentionSelectionIndex(selectedIndex, event.key === 'ArrowDown' ? 1 : -1, matches.length);
+    setSelectedIndex(nextIndex);
+    const options = Array.from(list.querySelectorAll<HTMLButtonElement>('[role="option"]'));
+    options.forEach((option, index) => option.setAttribute('aria-selected', String(index === nextIndex)));
+    const selected = options[nextIndex];
     if (selected !== undefined) {
-      chatInput?.setAttribute('aria-activedescendant', selected.id);
+      input.setAttribute('aria-activedescendant', selected.id);
       selected.scrollIntoView({ block: 'nearest' });
     }
     return true;
   }
   if ((event.key === 'Enter' && !event.shiftKey && !event.isComposing) || event.key === 'Tab') {
-    const member = chatMentionMatches[chatMentionSelectedIndex];
+    const member = matches[selectedIndex];
     if (member === undefined) return false;
     event.preventDefault();
     event.stopPropagation();
-    selectChatMention(member);
+    selectMember(member);
     return true;
   }
   return false;

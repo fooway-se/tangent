@@ -73,6 +73,11 @@ export function splitMentions(value, members) {
         segments.push({ text: value.slice(cursor), memberId: null });
     return segments.length > 0 ? segments : [{ text: value, memberId: null }];
 }
+export function nextMentionSelectionIndex(currentIndex, direction, optionCount) {
+    if (optionCount <= 0)
+        return currentIndex;
+    return (currentIndex + direction + optionCount) % optionCount;
+}
 function normalize(value) {
     return value.trim().replace(/\s+/gu, ' ').toLocaleLowerCase();
 }

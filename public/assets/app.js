@@ -1,7 +1,7 @@
 import { INBOX_TABS, createEventRow, eventsForTab, tabCount, } from './inbox-events.js';
 import { diffInboxCollections, nextInboxPollDelay, shouldDeferInboxUpdates, } from './inbox-polling.js';
 import { renderClientEmptyState, renderClientView } from './guest-view.js';
-import { filterMentionMembers, findMentionQuery, mentionEmptyMessage, replaceMentionQuery, splitMentions, } from './chat-mentions.js';
+import { filterMentionMembers, findMentionQuery, mentionEmptyMessage, nextMentionSelectionIndex, replaceMentionQuery, splitMentions, } from './chat-mentions.js';
 import { resolveShortcut, shouldSubmitOnEnter } from './shortcuts.js';
 import { THEMES, applyTheme, loadTheme, nextTheme, themeLabel } from './theme.js';
 import { THEME_MACHINES } from './theme-machines.js';
@@ -1538,40 +1538,10 @@ function selectLoungeMention(member) {
     loungeInput.focus();
 }
 function handleLoungeMentionKeydown(event) {
-    if (loungeMentionList.hidden)
-        return false;
-    if (event.key === 'Escape') {
-        event.preventDefault();
-        event.stopPropagation();
+    return handleMentionKeydown(event, loungeInput, loungeMentionList, loungeMentionMatches, loungeMentionSelectedIndex, (index) => { loungeMentionSelectedIndex = index; }, selectLoungeMention, () => {
         loungeMentionDismissed = true;
         hideLoungeMentionSuggestions();
-        return true;
-    }
-    if (loungeMentionMatches.length === 0)
-        return false;
-    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-        event.preventDefault();
-        loungeMentionSelectedIndex = (loungeMentionSelectedIndex
-            + (event.key === 'ArrowDown' ? 1 : -1) + loungeMentionMatches.length) % loungeMentionMatches.length;
-        const options = Array.from(loungeMentionList.querySelectorAll('[role="option"]'));
-        options.forEach((option, index) => option.setAttribute('aria-selected', String(index === loungeMentionSelectedIndex)));
-        const selected = options[loungeMentionSelectedIndex];
-        if (selected !== undefined) {
-            loungeInput.setAttribute('aria-activedescendant', selected.id);
-            selected.scrollIntoView({ block: 'nearest' });
-        }
-        return true;
-    }
-    if ((event.key === 'Enter' && !event.shiftKey && !event.isComposing) || event.key === 'Tab') {
-        const member = loungeMentionMatches[loungeMentionSelectedIndex];
-        if (member === undefined)
-            return false;
-        event.preventDefault();
-        event.stopPropagation();
-        selectLoungeMention(member);
-        return true;
-    }
-    return false;
+    });
 }
 function scheduleLoungePoll(delay = loungePollDelay) {
     if (!loungeActive)
@@ -3674,35 +3644,45 @@ function selectChatMention(member) {
 function handleChatMentionKeydown(event) {
     if (chatMentionList === null || chatMentionList.hidden)
         return false;
+    if (chatInput === null)
+        return false;
+    return handleMentionKeydown(event, chatInput, chatMentionList, chatMentionMatches, chatMentionSelectedIndex, (index) => { chatMentionSelectedIndex = index; }, selectChatMention, () => {
+        chatMentionDismissed = true;
+        hideChatMentionSuggestions();
+    });
+}
+function handleMentionKeydown(event, input, list, matches, selectedIndex, setSelectedIndex, selectMember, dismiss) {
+    if (list.hidden)
+        return false;
     if (event.key === 'Escape') {
         event.preventDefault();
         event.stopPropagation();
-        chatMentionDismissed = true;
-        hideChatMentionSuggestions();
+        dismiss();
         return true;
     }
-    if (chatMentionMatches.length === 0)
+    if (matches.length === 0)
         return false;
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
         event.preventDefault();
-        chatMentionSelectedIndex = (chatMentionSelectedIndex + (event.key === 'ArrowDown' ? 1 : -1) + chatMentionMatches.length)
-            % chatMentionMatches.length;
-        const options = Array.from(chatMentionList.querySelectorAll('[role="option"]'));
-        options.forEach((option, index) => option.setAttribute('aria-selected', String(index === chatMentionSelectedIndex)));
-        const selected = options[chatMentionSelectedIndex];
+        event.stopPropagation();
+        const nextIndex = nextMentionSelectionIndex(selectedIndex, event.key === 'ArrowDown' ? 1 : -1, matches.length);
+        setSelectedIndex(nextIndex);
+        const options = Array.from(list.querySelectorAll('[role="option"]'));
+        options.forEach((option, index) => option.setAttribute('aria-selected', String(index === nextIndex)));
+        const selected = options[nextIndex];
         if (selected !== undefined) {
-            chatInput?.setAttribute('aria-activedescendant', selected.id);
+            input.setAttribute('aria-activedescendant', selected.id);
             selected.scrollIntoView({ block: 'nearest' });
         }
         return true;
     }
     if ((event.key === 'Enter' && !event.shiftKey && !event.isComposing) || event.key === 'Tab') {
-        const member = chatMentionMatches[chatMentionSelectedIndex];
+        const member = matches[selectedIndex];
         if (member === undefined)
             return false;
         event.preventDefault();
         event.stopPropagation();
-        selectChatMention(member);
+        selectMember(member);
         return true;
     }
     return false;
