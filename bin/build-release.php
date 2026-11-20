@@ -27,7 +27,7 @@ if (!is_dir($dist) && !mkdir($dist, 0700, true) && !is_dir($dist)) {
 }
 
 $buildId = date('Ymd-His') . '-' . bin2hex(random_bytes(2));
-$archivePath = $dist . '/tangent-prealpha-' . $buildId . '.zip';
+$archivePath = $dist . '/tangent-alpha-' . $buildId . '.zip';
 $temporaryArchive = $archivePath . '.tmp';
 $zip = new ZipArchive();
 $opened = $zip->open($temporaryArchive, ZipArchive::CREATE | ZipArchive::EXCL);

@@ -5,7 +5,7 @@ A keyboard-first, self-hosted workspace for small dev teams and freelancers: pro
 ![Project view with issues and chat](assets/screenshots/project-issues.webp)
 
 > [!WARNING]
-> **Tangent is pre-alpha.** Do not use it for anything important. The database schema may change, and there is no upgrade guarantee yet: a future version may require a fresh install. There is no production release.
+> **Tangent is in limited alpha.** Use it only for low-risk pilot testing; avoid sensitive or important work. The database schema may change, and future upgrades may require a fresh install. There is no production release or upgrade guarantee.
 
 ## Why Tangent
 

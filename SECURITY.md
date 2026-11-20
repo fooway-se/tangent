@@ -1,6 +1,6 @@
 # Security policy
 
-Tangent is pre-alpha and has no supported releases yet. Security reports are still welcome, especially about authentication, invites, workspace separation and the client guest view.
+Tangent is in limited alpha and has no supported releases yet. Security reports are still welcome, especially about authentication, invites, workspace separation and the client guest view.
 
 ## Reporting a vulnerability
 
@@ -17,4 +17,4 @@ Include what you found, how to reproduce it, and the version or commit you teste
 
 ## Scope
 
-Until there is a release, only the current main branch is considered. Do not run pre-alpha builds with real or sensitive data.
+Until there is a release, only the current main branch is considered. Do not run alpha builds with sensitive or important data.
