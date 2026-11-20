@@ -24,6 +24,7 @@ import { DEFAULT_PROJECT_NOTES_MODE, renderMarkdown } from './project-notes.js';
 import { parseQuickIssueInput } from './quick-issue.js';
 import { milestoneStatus, type RoadmapMilestone } from './roadmap.js';
 import { formatIssueMarkdown, formatIssuePrompt } from './issue-export.js';
+import { groupMyWorkTasks } from './my-work.js';
 import {
   filterIssues,
   filterIssuesByMilestoneArchive,
@@ -153,6 +154,7 @@ interface InvitePreview {
 }
 
 type CredentialFragment = { type: 'invite' | 'reset'; token: string };
+type MyWorkTab = 'inbox' | 'tasks';
 
 interface GuestProject {
   id: number;
@@ -471,6 +473,14 @@ const roadmapEmptyState = document.querySelector<HTMLElement>('#roadmap-empty-st
 const inboxView = document.querySelector<HTMLElement>('#inbox-view')!;
 const loungeView = document.querySelector<HTMLElement>('#lounge-view')!;
 const inboxHeading = document.querySelector<HTMLHeadingElement>('#inbox-heading')!;
+const myWorkTabsElement = document.querySelector<HTMLElement>('#my-work-tabs')!;
+const myWorkInboxTab = document.querySelector<HTMLButtonElement>('#my-work-tab-inbox')!;
+const myWorkTasksTab = document.querySelector<HTMLButtonElement>('#my-work-tab-tasks')!;
+const myWorkInboxPanel = document.querySelector<HTMLElement>('#my-work-inbox-panel')!;
+const myWorkTasksPanel = document.querySelector<HTMLElement>('#my-work-tasks-panel')!;
+const myWorkTasksSummary = document.querySelector<HTMLElement>('#my-work-tasks-summary')!;
+const myWorkTaskGroups = document.querySelector<HTMLElement>('#my-work-task-groups')!;
+const myWorkTasksEmptyState = document.querySelector<HTMLElement>('#my-work-tasks-empty-state')!;
 const loungeHeading = document.querySelector<HTMLHeadingElement>('#lounge-heading')!;
 const loungePresence = document.querySelector<HTMLElement>('#lounge-presence')!;
 const loungeMessageList = document.querySelector<HTMLElement>('#lounge-message-list')!;
@@ -752,7 +762,8 @@ let issueGroupingBeforeNextUp: IssueGrouping = 'status';
 let issueGroupingForcedByNextUp = false;
 let inboxIssues: InboxIssue[] = [];
 let inboxEvents: InboxEvent[] = [];
-let inboxTab: InboxTab = 'assigned';
+let myWorkTab: MyWorkTab = 'inbox';
+let inboxTab: InboxTab = 'unread';
 let inboxIssuesEtag: string | null = null;
 let inboxEventsEtag: string | null = null;
 let inboxPollTimer: number | null = null;
@@ -761,7 +772,6 @@ let inboxPollInFlight = false;
 let inboxPollRequestVersion = 0;
 let inboxPollHasDeferredChanges = false;
 let inboxMutationPending = 0;
-const inboxIssueRowRenderSignatures = new WeakMap<HTMLLIElement, string>();
 const inboxEventRowRenderSignatures = new WeakMap<HTMLLIElement, string>();
 const inboxTabsElement = document.querySelector<HTMLElement>('#inbox-tabs')!;
 const inboxMarkAllReadButton = document.querySelector<HTMLButtonElement>('#inbox-mark-all-read')!;
@@ -993,12 +1003,17 @@ function showSignedOut(): void {
   clearGoPrefix();
   document.body.classList.remove('is-project-view', 'is-guest');
   guestShell.hidden = true;
-  inboxTab = 'assigned';
+  myWorkTab = 'inbox';
+  inboxTab = 'unread';
   inboxIssues = [];
   inboxEvents = [];
   inboxIssueList.replaceChildren();
+  myWorkTaskGroups.replaceChildren();
   inboxEmptyState.hidden = false;
-  inboxEmptyState.textContent = 'You have no open issues assigned to you.';
+  inboxEmptyState.textContent = 'Nothing here.';
+  myWorkTasksEmptyState.hidden = false;
+  myWorkTasksEmptyState.textContent = 'You have no open issues assigned to you.';
+  renderMyWorkTabs();
   projectList.replaceChildren();
   projectSidebarList.replaceChildren();
   issueList.replaceChildren();
@@ -1180,7 +1195,7 @@ function showWorkspaceView(view: 'projects' | 'roadmap' | 'inbox' | 'lounge' | '
   breadcrumbDivider.hidden = view === 'projects';
   breadcrumbCurrent.textContent = view === 'project'
     ? activeProject?.name ?? 'Project'
-    : view === 'admin' ? 'Administration' : view === 'inbox' ? 'Inbox' : view === 'lounge' ? 'Lounge' : view === 'roadmap' ? 'Roadmap' : 'Projects';
+    : view === 'admin' ? 'Administration' : view === 'inbox' ? 'My Work' : view === 'lounge' ? 'Lounge' : view === 'roadmap' ? 'Roadmap' : 'Projects';
   document.body.classList.toggle('is-project-view', view === 'project');
   projectsNavButton.classList.toggle('is-active', view === 'projects');
   roadmapNavButton.classList.toggle('is-active', view === 'roadmap');
@@ -2338,16 +2353,23 @@ function visibleIssueTitleButtons(): HTMLButtonElement[] {
 }
 
 function visibleInboxIssueTitleButtons(): HTMLButtonElement[] {
-  return Array.from(inboxIssueList.querySelectorAll<HTMLButtonElement>('.issue-title-button'));
+  return Array.from(activeMyWorkListRoot().querySelectorAll<HTMLButtonElement>('.issue-title-button'))
+    .filter((button) => button.closest<HTMLDetailsElement>('.my-work-task-group')?.open !== false);
 }
 
 function selectedInboxIssueButton(): HTMLButtonElement | null {
   const focused = document.activeElement;
-  if (focused instanceof HTMLElement) {
+  const activeList = activeMyWorkListRoot();
+  if (focused instanceof HTMLElement && activeList.contains(focused)) {
     const focusedRow = focused.closest<HTMLElement>('.inbox-issue-card');
     if (focusedRow !== null) return focusedRow.querySelector<HTMLButtonElement>('.issue-title-button');
   }
-  return inboxIssueList.querySelector<HTMLButtonElement>('.inbox-issue-card.is-keyboard-selected .issue-title-button');
+  const selected = activeList.querySelector<HTMLButtonElement>('.inbox-issue-card.is-keyboard-selected .issue-title-button');
+  return selected?.closest<HTMLDetailsElement>('.my-work-task-group')?.open === false ? null : selected;
+}
+
+function activeMyWorkListRoot(): HTMLElement {
+  return myWorkTab === 'tasks' ? myWorkTaskGroups : inboxIssueList;
 }
 
 function hasSelectedInboxIssue(): boolean {
@@ -2774,7 +2796,7 @@ function getPaletteCommands(): PaletteCommand[] {
   if (activeUser === null) return [];
   const commands: PaletteCommand[] = [
     { label: 'Go to Projects', detail: 'Open the project list', shortcut: 'g p', run: goToProjects },
-    { label: 'Open Inbox', detail: 'Review open issues assigned to you', shortcut: 'g n', run: goToInbox },
+    { label: 'Open My Work', detail: 'Review inbox updates and tasks assigned to you', shortcut: 'g n', run: goToInbox },
     { label: 'Open Lounge', detail: 'Open the workspace-wide Lounge chat', shortcut: 'g l', run: goToLounge },
     { label: 'Show keyboard shortcuts', detail: 'View key bindings', shortcut: '?', run: showShortcutHelp },
   ];
@@ -4609,9 +4631,10 @@ function formatRoadmapDate(value: string): string {
 }
 
 function loadInboxIssues(): void {
+  renderMyWorkTabs();
   renderInboxTabs();
   if (!inboxPollingIsActive()) return;
-  if (inboxTab === 'assigned') renderInboxIssues();
+  if (myWorkTab === 'tasks') renderInboxIssues();
   else renderInboxEvents();
   inboxPollDelay = 1000;
   scheduleInboxPoll(0);
@@ -4667,7 +4690,7 @@ function scheduleInboxPoll(delay = inboxPollDelay): void {
 
 function inboxUpdatesAreDeferred(): boolean {
   return shouldDeferInboxUpdates({
-    listFocused: inboxIssueList.contains(document.activeElement),
+    listFocused: inboxIssueList.contains(document.activeElement) || myWorkTaskGroups.contains(document.activeElement),
     mutationPending: inboxMutationPending > 0,
   });
 }
@@ -4718,10 +4741,10 @@ async function pollInbox(): Promise<void> {
       if (issuesChanged) inboxIssues = incomingIssues;
       if (eventsChanged) inboxEvents = incomingEvents;
       inboxPollHasDeferredChanges = false;
-      if (issuesChanged && inboxTab === 'assigned') renderInboxIssues();
+      if (issuesChanged && myWorkTab === 'tasks') renderInboxIssues();
       if (eventsChanged) {
         renderInboxTabs();
-        if (inboxTab !== 'assigned') renderInboxEvents();
+        if (myWorkTab === 'inbox') renderInboxEvents();
       }
     }
     inboxPollDelay = nextInboxPollDelay(inboxPollDelay, changed && !deferUpdates, false);
@@ -4740,6 +4763,31 @@ async function pollInbox(): Promise<void> {
       if (inboxPollingIsActive()) scheduleInboxPoll(readyToApplyDeferredChanges ? 0 : inboxPollDelay);
     }
   }
+}
+
+function renderMyWorkTabs(): void {
+  const inboxSelected = myWorkTab === 'inbox';
+  myWorkInboxTab.classList.toggle('is-active', inboxSelected);
+  myWorkInboxTab.setAttribute('aria-selected', String(inboxSelected));
+  myWorkInboxTab.tabIndex = inboxSelected ? 0 : -1;
+  myWorkTasksTab.classList.toggle('is-active', !inboxSelected);
+  myWorkTasksTab.setAttribute('aria-selected', String(!inboxSelected));
+  myWorkTasksTab.tabIndex = inboxSelected ? -1 : 0;
+  myWorkInboxPanel.hidden = !inboxSelected;
+  myWorkTasksPanel.hidden = inboxSelected;
+  inboxMarkAllReadButton.hidden = !inboxSelected || inboxTab === 'done';
+}
+
+function selectMyWorkTab(tab: MyWorkTab): void {
+  myWorkTab = tab;
+  renderMyWorkTabs();
+  if (tab === 'tasks') {
+    renderInboxIssues();
+  } else {
+    renderInboxTabs();
+    renderInboxEvents();
+  }
+  scheduleInboxPoll(0);
 }
 
 function renderInboxTabs(): void {
@@ -4767,19 +4815,38 @@ function renderInboxTabs(): void {
     existing.delete(tab.id);
   }
   for (const button of existing.values()) button.remove();
-  inboxMarkAllReadButton.hidden = inboxTab === 'assigned' || inboxTab === 'done';
+  inboxMarkAllReadButton.hidden = myWorkTab !== 'inbox' || inboxTab === 'done';
 }
 
 function selectInboxTab(tab: InboxTab): void {
   inboxTab = tab;
   renderInboxTabs();
-  if (tab === 'assigned') {
-    renderInboxIssues();
-  } else {
-    renderInboxEvents();
-  }
+  renderInboxEvents();
   scheduleInboxPoll(0);
 }
+
+myWorkInboxTab.addEventListener('click', () => selectMyWorkTab('inbox'));
+myWorkTasksTab.addEventListener('click', () => selectMyWorkTab('tasks'));
+
+myWorkTabsElement.addEventListener('keydown', (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLButtonElement) || event.altKey || event.ctrlKey || event.metaKey) return;
+  const currentIndex = target === myWorkInboxTab ? 0 : target === myWorkTasksTab ? 1 : -1;
+  if (currentIndex < 0) return;
+
+  let nextIndex: number;
+  if (event.key === 'ArrowRight') nextIndex = currentIndex === 0 ? 1 : 0;
+  else if (event.key === 'ArrowLeft') nextIndex = currentIndex === 0 ? 1 : 0;
+  else if (event.key === 'Home') nextIndex = 0;
+  else if (event.key === 'End') nextIndex = 1;
+  else return;
+
+  event.preventDefault();
+  event.stopPropagation();
+  const nextTab = nextIndex === 0 ? myWorkInboxTab : myWorkTasksTab;
+  selectMyWorkTab(nextIndex === 0 ? 'inbox' : 'tasks');
+  nextTab.focus();
+});
 
 inboxTabsElement.addEventListener('keydown', (event) => {
   const target = event.target;
@@ -4956,12 +5023,61 @@ async function openInboxEvent(event: InboxEvent): Promise<void> {
 
 function renderInboxIssues(): void {
   const projectCount = new Set(inboxIssues.map((issue) => issue.project_id)).size;
-  inboxSummary.textContent = inboxIssues.length === 0
+  myWorkTasksSummary.textContent = inboxIssues.length === 0
     ? 'Open issues assigned to you across your projects.'
     : `${inboxIssues.length} open ${inboxIssues.length === 1 ? 'issue' : 'issues'} assigned to you in ${projectCount} ${projectCount === 1 ? 'project' : 'projects'}.`;
-  reconcileInboxRows(inboxIssueList, inboxIssues, 'issueId', inboxIssueRowRenderSignatures, createInboxIssueRow);
-  inboxEmptyState.textContent = 'You have no open issues assigned to you.';
-  inboxEmptyState.hidden = inboxIssues.length > 0;
+  const openGroups = new Map(
+    Array.from(myWorkTaskGroups.querySelectorAll<HTMLDetailsElement>('.my-work-task-group'))
+      .map((group) => [group.dataset.groupKey ?? '', group.open] as const),
+  );
+  const selectedIssueId = myWorkTaskGroups.querySelector<HTMLElement>('.inbox-issue-card.is-keyboard-selected')?.dataset.issueId;
+  const fragment = document.createDocumentFragment();
+  for (const project of groupMyWorkTasks(inboxIssues)) {
+    const projectSection = document.createElement('section');
+    projectSection.className = 'my-work-project-group';
+    projectSection.setAttribute('aria-label', project.projectName);
+    const projectHeading = document.createElement('h2');
+    projectHeading.className = 'my-work-project-heading';
+    projectHeading.textContent = project.projectName;
+    projectSection.append(projectHeading);
+
+    for (const milestone of project.milestones) {
+      const group = document.createElement('details');
+      group.className = 'my-work-task-group';
+      group.dataset.groupKey = milestone.key;
+      group.open = openGroups.get(milestone.key) ?? true;
+      const summary = document.createElement('summary');
+      summary.className = 'my-work-task-group-summary';
+      const name = document.createElement('span');
+      name.className = 'my-work-task-group-name';
+      name.textContent = milestone.name;
+      const count = document.createElement('span');
+      count.className = 'my-work-task-group-count';
+      count.textContent = `${milestone.tasks.length} ${milestone.tasks.length === 1 ? 'task' : 'tasks'}`;
+      summary.append(name, count);
+      if (milestone.dueDate !== null) {
+        const dueDate = document.createElement('span');
+        dueDate.className = 'my-work-task-group-date';
+        dueDate.textContent = `Due ${formatIssueDueDate(milestone.dueDate)}`;
+        summary.append(dueDate);
+      }
+
+      const list = document.createElement('ul');
+      list.className = 'issue-list inbox-issue-list';
+      list.setAttribute('aria-label', `${project.projectName}, ${milestone.name}`);
+      for (const issue of milestone.tasks) {
+        const row = createInboxIssueRow(issue);
+        if (String(issue.id) === selectedIssueId) row.classList.add('is-keyboard-selected');
+        list.append(row);
+      }
+      group.append(summary, list);
+      projectSection.append(group);
+    }
+    fragment.append(projectSection);
+  }
+  myWorkTaskGroups.replaceChildren(fragment);
+  myWorkTasksEmptyState.textContent = 'You have no open issues assigned to you.';
+  myWorkTasksEmptyState.hidden = inboxIssues.length > 0;
 }
 
 function createInboxIssueRow(issue: InboxIssue): HTMLLIElement {
@@ -4974,9 +5090,6 @@ function createInboxIssueRow(issue: InboxIssue): HTMLLIElement {
   marker.setAttribute('aria-hidden', 'true');
   const content = document.createElement('div');
   content.className = 'issue-content';
-  const projectName = document.createElement('span');
-  projectName.className = 'inbox-project-name';
-  projectName.textContent = issue.project_name;
   const mainline = document.createElement('div');
   mainline.className = 'issue-mainline';
   const key = document.createElement('span');
@@ -5020,7 +5133,7 @@ function createInboxIssueRow(issue: InboxIssue): HTMLLIElement {
   if (discussionIndicator !== null) metadata.append(discussionIndicator);
   primary.append(title, metadata);
   mainline.append(key, primary);
-  content.append(projectName, mainline);
+  content.append(mainline);
   const updated = document.createElement('time');
   updated.className = 'inbox-updated';
   updated.dateTime = issue.updated_at;
@@ -6063,7 +6176,7 @@ function updateProjectIssueDiscussionCount(issueId: number, count: number): void
   inboxIssues = inboxIssues.map((issue) => issue.id === issueId && (issue.discussion_count ?? 0) !== count
     ? { ...issue, discussion_count: count }
     : issue);
-  if (!inboxView.hidden && inboxTab === 'assigned') renderInboxIssues();
+  if (!inboxView.hidden && myWorkTab === 'tasks') renderInboxIssues();
 }
 
 function renderIssueDiscussion(): void {

@@ -2,7 +2,6 @@ export const INBOX_TABS = [
     { id: 'unread', label: 'Unread' },
     { id: 'all', label: 'All' },
     { id: 'mentions', label: 'Mentions' },
-    { id: 'assigned', label: 'Assigned' },
     { id: 'done', label: 'Done' },
 ];
 const ICONS = {
@@ -21,11 +20,10 @@ export function eventsForTab(events, tab) {
         case 'all': return events.filter((event) => !event.done);
         case 'mentions': return events.filter((event) => !event.done && event.type === 'mention');
         case 'done': return events.filter((event) => event.done);
-        case 'assigned': return [];
     }
 }
 export function tabCount(events, tab) {
-    if (tab === 'assigned' || tab === 'done' || tab === 'all')
+    if (tab === 'done' || tab === 'all')
         return null;
     return eventsForTab(events, tab).length;
 }

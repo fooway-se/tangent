@@ -63,6 +63,30 @@ final class InboxTest extends ApiTestCase
         self::assertSame(401, $response->status);
     }
 
+    public function testInboxIncludesMilestoneDetailsForAssignedIssues(): void
+    {
+        $admin = $this->login($this->adminEmail);
+        $projectId = $this->createProject($admin, 'Inbox milestone details');
+        $this->addDeveloperToProject($admin, $projectId);
+        $milestone = $this->cookieRequest(
+            'POST',
+            "/api/v1/projects/{$projectId}/milestones",
+            $admin['cookie'],
+            ['name' => 'First delivery', 'due_date' => '2027-01-15'],
+            $admin['csrf'],
+        );
+        self::assertSame(201, $milestone->status, json_encode($milestone->body));
+
+        $developer = $this->login($this->developerEmail);
+        $issueId = $this->createAssignedIssue($developer, $projectId, 'Prepare release');
+        $this->updateIssue($developer, $issueId, ['milestone_id' => $milestone->body['milestone']['id']]);
+        $response = $this->cookieRequest('GET', '/api/v1/inbox', $developer['cookie']);
+
+        self::assertSame(200, $response->status, json_encode($response->body));
+        self::assertSame('First delivery', $response->body['issues'][0]['milestone_name']);
+        self::assertSame('2027-01-15', $response->body['issues'][0]['milestone_due_date']);
+    }
+
     private function createProject(array $admin, string $name): int
     {
         $response = $this->cookieRequest('POST', '/api/v1/projects', $admin['cookie'], ['name' => $name], $admin['csrf']);

@@ -744,6 +744,11 @@ dialog::backdrop { background: var(--backdrop); }
 }
 
 /* Inbox: event feed */
+.my-work-tabs { display: flex; gap: 6px; margin: 0 0 12px; border-bottom: 1px solid var(--screen-border); padding-bottom: 8px; }
+.my-work-tab { border: 1px solid var(--screen-border); border-radius: var(--radius-panel); padding: 6px 14px; color: var(--screen-muted); background: var(--screen-inset); font: 700 12px var(--font-display); letter-spacing: 1px; text-transform: uppercase; cursor: pointer; }
+.my-work-tab:hover { color: var(--screen-ink); }
+.my-work-tab[aria-selected="true"] { border-color: var(--accent); color: var(--accent); }
+.my-work-panel { display: grid; gap: 10px; }
 .inbox-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 10px; }
 .inbox-tab { border: 1px solid var(--screen-border); border-radius: var(--radius-panel); padding: 5px 11px; color: var(--screen-muted); background: var(--screen-inset); font: 700 11px var(--font-display); letter-spacing: 1px; text-transform: uppercase; cursor: pointer; }
 .inbox-tab:hover { color: var(--screen-ink); }
@@ -752,6 +757,17 @@ dialog::backdrop { background: var(--backdrop); }
 .inbox-event-card.is-unread .issue-title { font-weight: 700; }
 .inbox-event-side { display: grid; justify-items: end; gap: 4px; }
 .inbox-event-actions { display: flex; gap: 6px; }
+.my-work-task-groups { display: grid; gap: 14px; }
+.my-work-project-group { display: grid; gap: 8px; }
+.my-work-project-heading { margin: 0; color: var(--screen-ink); font: 800 13px var(--font-display); letter-spacing: 1.2px; text-transform: uppercase; }
+.my-work-task-group { min-width: 0; overflow: hidden; border: 1px solid var(--screen-border); border-radius: var(--radius-panel); background: var(--screen-group); box-shadow: inset 0 0 30px var(--inset-wash); }
+.my-work-task-group > summary { display: flex; align-items: center; gap: 8px; padding: 8px 12px; color: var(--screen-ink); background: linear-gradient(180deg, var(--screen-group-top), var(--screen-group-bottom)); font-size: 11px; cursor: pointer; list-style: none; }
+.my-work-task-group > summary::-webkit-details-marker { display: none; }
+.my-work-task-group > summary::before { width: 10px; color: var(--screen-muted); font-size: 11px; content: "›"; }
+.my-work-task-group[open] > summary::before { transform: rotate(90deg); }
+.my-work-task-group-name { font: 800 11px var(--font-display); letter-spacing: 1.2px; text-transform: uppercase; }
+.my-work-task-group-count, .my-work-task-group-date { color: var(--screen-muted); }
+.my-work-task-group .inbox-issue-list { margin: 0; padding: 10px; }
 
 /* Guest: client portal */
 .guest-shell { display: flex; min-height: 100vh; flex-direction: column; background: linear-gradient(180deg, var(--case-top), var(--case-mid) 60%, var(--case-bottom)); color: var(--case-ink); }

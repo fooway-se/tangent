@@ -44,17 +44,19 @@ final class IssueRepository
         }
 
         $statement = $this->pdo->prepare(
-            "SELECT id, workspace_id, project_id, title, description, context, expected_outcome, acceptance_criteria,
-                    issue_type AS type, assignee_id, status, priority, due_date, created_by,
-                    source_channel_id, source_message_id, is_shared, milestone_id, sort_order, approval_requested_at, approved_by, approved_at,
-                    created_at, updated_at, deleted_at,
+            "SELECT issues.id, issues.workspace_id, issues.project_id, title, description, context, expected_outcome, acceptance_criteria,
+                    issue_type AS type, assignee_id, status, priority, issues.due_date, created_by,
+                    source_channel_id, source_message_id, is_shared, issues.milestone_id, milestones.name AS milestone_name,
+                    milestones.due_date AS milestone_due_date, sort_order, approval_requested_at, approved_by, approved_at,
+                    issues.created_at, issues.updated_at, issues.deleted_at,
                     (SELECT COUNT(*) FROM issue_discussion_messages discussion
                      WHERE discussion.workspace_id = issues.workspace_id AND discussion.issue_id = issues.id) AS discussion_count
              FROM issues
-             WHERE workspace_id = :workspace_id AND assignee_id = :assignee_id AND deleted_at IS NULL
-               AND status IN ('backlog', 'todo', 'doing', 'testing')
-               AND project_id IN (" . implode(', ', $projectPlaceholders) . ")
-             ORDER BY updated_at DESC, id DESC"
+             LEFT JOIN milestones ON milestones.workspace_id = issues.workspace_id AND milestones.id = issues.milestone_id
+             WHERE issues.workspace_id = :workspace_id AND issues.assignee_id = :assignee_id AND issues.deleted_at IS NULL
+               AND issues.status IN ('backlog', 'todo', 'doing', 'testing')
+               AND issues.project_id IN (" . implode(', ', $projectPlaceholders) . ")
+             ORDER BY issues.updated_at DESC, issues.id DESC"
         );
         $statement->execute($parameters);
         return array_map(self::normalize(...), $statement->fetchAll(PDO::FETCH_ASSOC));

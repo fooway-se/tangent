@@ -163,7 +163,7 @@ test('Escape from a Workspace Admin field returns to its tab bar for section swi
   assert.match(app, /workspaceAdminTabs\.addEventListener\('keydown'/);
   assert.match(app, /function updateWorkspaceAdminPanelTabIndex\(/);
   assert.match(app, /panel\.tabIndex = hasFocusableContent \? -1 : 0/);
-  assert.match(html, /Switch between Inbox filters, Issues and Members in a project, or sections in Workspace Administration/);
+  assert.match(html, /Switch between My Work tabs and Inbox filters, Issues and Members in a project, or sections in Workspace Administration/);
   assert.match(html, /<kbd>Tab<\/kbd><\/dt><dd>Enter the selected tab's section/);
 });
 
@@ -171,8 +171,8 @@ test('Inbox tabs use the same arrow and Home/End navigation as other tab bars', 
   const tabs = app.slice(app.indexOf('function renderInboxTabs'), app.indexOf('function selectInboxTab'));
   assert.match(tabs, /button\.tabIndex = tab\.id === inboxTab \? 0 : -1/);
   assert.match(app, /inboxTabsElement\.addEventListener\('keydown'/);
-  assert.match(html, /<kbd>Home<\/kbd>\/<kbd>End<\/kbd>[\s\S]*Inbox filter/);
-  assert.match(html, /<kbd>←<\/kbd>\/<kbd>→<\/kbd>[\s\S]*Inbox filters/);
+  assert.match(html, /<kbd>Home<\/kbd>\/<kbd>End<\/kbd>[\s\S]*My Work/);
+  assert.match(html, /<kbd>←<\/kbd>\/<kbd>→<\/kbd>[\s\S]*My Work tabs and Inbox filters/);
 });
 
 test('Escape dismisses the milestone dialog before blurring its focused field', () => {

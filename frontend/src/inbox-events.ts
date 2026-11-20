@@ -1,5 +1,5 @@
 export type InboxEventType = 'mention' | 'assigned' | 'reply' | 'status' | 'pr';
-export type InboxTab = 'unread' | 'all' | 'mentions' | 'assigned' | 'done';
+export type InboxTab = 'unread' | 'all' | 'mentions' | 'done';
 
 export interface InboxEvent {
   id: number;
@@ -20,7 +20,6 @@ export const INBOX_TABS: ReadonlyArray<{ id: InboxTab; label: string }> = [
   { id: 'unread', label: 'Unread' },
   { id: 'all', label: 'All' },
   { id: 'mentions', label: 'Mentions' },
-  { id: 'assigned', label: 'Assigned' },
   { id: 'done', label: 'Done' },
 ];
 
@@ -42,12 +41,11 @@ export function eventsForTab(events: readonly InboxEvent[], tab: InboxTab): Inbo
     case 'all': return events.filter((event) => !event.done);
     case 'mentions': return events.filter((event) => !event.done && event.type === 'mention');
     case 'done': return events.filter((event) => event.done);
-    case 'assigned': return [];
   }
 }
 
 export function tabCount(events: readonly InboxEvent[], tab: InboxTab): number | null {
-  if (tab === 'assigned' || tab === 'done' || tab === 'all') return null;
+  if (tab === 'done' || tab === 'all') return null;
   return eventsForTab(events, tab).length;
 }
 

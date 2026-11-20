@@ -18,9 +18,8 @@ test('inbox tabs filter events', () => {
   assert.deepEqual(events.eventsForTab(list, 'all').map((e) => e.id), [1, 2, 3]);
   assert.deepEqual(events.eventsForTab(list, 'mentions').map((e) => e.id), [1]);
   assert.deepEqual(events.eventsForTab(list, 'done').map((e) => e.id), [4]);
-  assert.deepEqual(events.eventsForTab(list, 'assigned'), []);
   assert.equal(events.tabCount(list, 'unread'), 2);
-  assert.equal(events.tabCount(list, 'assigned'), null);
+  assert.equal(events.tabCount(list, 'done'), null);
 });
 
 test('relative time is compact', () => {

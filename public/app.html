@@ -100,7 +100,7 @@
         <nav id="workspace-nav" class="workspace-nav" aria-label="Workspace">
           <button id="projects-nav" class="workspace-nav-button is-active" type="button" aria-current="page">Projects</button>
           <button id="roadmap-nav" class="workspace-nav-button" type="button">Roadmap</button>
-          <button id="inbox-nav" class="workspace-nav-button" type="button">Inbox</button>
+          <button id="inbox-nav" class="workspace-nav-button" type="button">My Work</button>
           <button id="lounge-nav" class="workspace-nav-button" type="button"><span>Lounge</span><span id="lounge-nav-presence" class="lounge-nav-presence" hidden></span></button>
           <button id="admin-nav" class="workspace-nav-button" type="button" hidden>Workspace admin</button>
         </nav>
@@ -190,14 +190,25 @@
             <header class="page-heading">
               <div>
                 <p class="eyebrow">Workspace</p>
-                <h1 id="inbox-heading" tabindex="-1">Inbox</h1>
+                <h1 id="inbox-heading" tabindex="-1">My Work</h1>
               </div>
-              <button id="inbox-mark-all-read" class="button button-quiet" type="button">Mark all read</button>
+              <button id="inbox-mark-all-read" class="button button-quiet" type="button" hidden>Mark all read</button>
             </header>
-            <div id="inbox-tabs" class="inbox-tabs" role="tablist" aria-label="Inbox filter"></div>
-            <p id="inbox-summary" class="inbox-summary">Open issues assigned to you across your projects.</p>
-            <ul id="inbox-issue-list" class="issue-list inbox-issue-list" aria-live="polite"></ul>
-            <p id="inbox-empty-state" class="inbox-empty-state" hidden>You have no open issues assigned to you.</p>
+            <div id="my-work-tabs" class="my-work-tabs" role="tablist" aria-label="My Work">
+              <button id="my-work-tab-inbox" class="my-work-tab is-active" type="button" role="tab" aria-selected="true" aria-controls="my-work-inbox-panel" tabindex="0">Inbox</button>
+              <button id="my-work-tab-tasks" class="my-work-tab" type="button" role="tab" aria-selected="false" aria-controls="my-work-tasks-panel" tabindex="-1">Tasks</button>
+            </div>
+            <section id="my-work-inbox-panel" class="my-work-panel" role="tabpanel" aria-labelledby="my-work-tab-inbox">
+              <div id="inbox-tabs" class="inbox-tabs" role="tablist" aria-label="Inbox updates filter"></div>
+              <p id="inbox-summary" class="inbox-summary">Updates and mentions from your projects.</p>
+              <ul id="inbox-issue-list" class="issue-list inbox-issue-list" aria-live="polite"></ul>
+              <p id="inbox-empty-state" class="inbox-empty-state" hidden>Nothing here.</p>
+            </section>
+            <section id="my-work-tasks-panel" class="my-work-panel" role="tabpanel" aria-labelledby="my-work-tab-tasks" hidden>
+              <p id="my-work-tasks-summary" class="inbox-summary">Open issues assigned to you across your projects.</p>
+              <div id="my-work-task-groups" class="my-work-task-groups" aria-live="polite"></div>
+              <p id="my-work-tasks-empty-state" class="inbox-empty-state" hidden>You have no open issues assigned to you.</p>
+            </section>
           </section>
 
           <section id="lounge-view" class="workspace-view lounge-view" hidden aria-labelledby="lounge-heading">
@@ -640,8 +651,8 @@
       <footer id="keyboard-hints" class="keyboard-hints" hidden>
           <span><kbd>j</kbd>/<kbd>k</kbd> Move</span>
           <span><kbd>Enter</kbd> Open</span>
-          <span><kbd>g</kbd> <kbd>p</kbd> Projects · <kbd>g</kbd> <kbd>r</kbd> Roadmap · <kbd>g</kbd> <kbd>n</kbd> Inbox · <kbd>g</kbd> <kbd>l</kbd> Lounge<span id="workspace-switch-hint" hidden> · <kbd>g</kbd> <kbd>w</kbd> Workspace</span></span>
-          <span id="go-prefix-hint" class="go-prefix-hint" hidden><kbd>p</kbd> Projects<span id="roadmap-go-prefix-option"> · <kbd>r</kbd> Roadmap</span> · <kbd>n</kbd> Inbox · <kbd>l</kbd> Lounge<span id="go-prefix-workspace-option" hidden> · <kbd>w</kbd> Workspace</span><span id="go-prefix-project-options" hidden> · <kbd>i</kbd> Issues · <kbd>c</kbd> Chat · <kbd>m</kbd> Members</span><span id="admin-go-prefix-option" hidden> · <kbd>a</kbd> Administration</span></span>
+          <span><kbd>g</kbd> <kbd>p</kbd> Projects · <kbd>g</kbd> <kbd>r</kbd> Roadmap · <kbd>g</kbd> <kbd>n</kbd> My Work · <kbd>g</kbd> <kbd>l</kbd> Lounge<span id="workspace-switch-hint" hidden> · <kbd>g</kbd> <kbd>w</kbd> Workspace</span></span>
+          <span id="go-prefix-hint" class="go-prefix-hint" hidden><kbd>p</kbd> Projects<span id="roadmap-go-prefix-option"> · <kbd>r</kbd> Roadmap</span> · <kbd>n</kbd> My Work · <kbd>l</kbd> Lounge<span id="go-prefix-workspace-option" hidden> · <kbd>w</kbd> Workspace</span><span id="go-prefix-project-options" hidden> · <kbd>i</kbd> Issues · <kbd>c</kbd> Chat · <kbd>m</kbd> Members</span><span id="admin-go-prefix-option" hidden> · <kbd>a</kbd> Administration</span></span>
           <span id="project-keyboard-hints" hidden><kbd>g</kbd> <kbd>i</kbd> Issues <kbd>g</kbd> <kbd>c</kbd> Chat <kbd>g</kbd> <kbd>m</kbd> Members · <kbd>c</kbd> Create <kbd>e</kbd> Edit <kbd>s</kbd> Status · Chat: <kbd>j</kbd>/<kbd>k</kbd> Move <kbd>r</kbd> Reply <kbd>i</kbd> Issue · <kbd>Enter</kbd> Send <kbd>Shift</kbd>+<kbd>Enter</kbd> New line</span>
           <span><kbd>Ctrl/Cmd</kbd>+<kbd>K</kbd> Commands</span>
           <span><kbd>t</kbd> Theme</span>
@@ -896,15 +907,15 @@
           <div><dt><kbd>t</kbd></dt><dd>Focus the theme selector</dd></div>
           <div><dt><kbd>?</kbd></dt><dd>Show keyboard shortcuts</dd></div>
           <div><dt><kbd>↑</kbd>/<kbd>↓</kbd> or <kbd>j</kbd>/<kbd>k</kbd></dt><dd>Move through project and issue lists; when a chat or discussion message is focused, move between messages. In the issue filter, Down/Up jumps to the first/last match</dd></div>
-          <div><dt><kbd>Home</kbd>/<kbd>End</kbd></dt><dd>In a project, Inbox filter, or Workspace Administration tab list, jump to the first or last tab; in lists, jump to the first or last project or issue; from a focused chat or discussion message, jump to the oldest or newest loaded message</dd></div>
-          <div><dt><kbd>←</kbd>/<kbd>→</kbd></dt><dd>Switch between Inbox filters, Issues and Members in a project, or sections in Workspace Administration, when a tab is focused</dd></div>
+          <div><dt><kbd>Home</kbd>/<kbd>End</kbd></dt><dd>In My Work, a project, or Workspace Administration, jump to the first or last tab; in lists, jump to the first or last project or issue; from a focused chat or discussion message, jump to the oldest or newest loaded message</dd></div>
+          <div><dt><kbd>←</kbd>/<kbd>→</kbd></dt><dd>Switch between My Work tabs and Inbox filters, Issues and Members in a project, or sections in Workspace Administration, when a tab is focused</dd></div>
           <div><dt><kbd>Tab</kbd>/<kbd>Shift</kbd>+<kbd>Tab</kbd></dt><dd>Enter the selected tab's section and move through its controls</dd></div>
           <div><dt><kbd>Page Up</kbd>/<kbd>Page Down</kbd></dt><dd>Move one screen in project and issue lists; from a focused chat or discussion message, move one screen through messages</dd></div>
           <div><dt><kbd>/</kbd></dt><dd>Focus the issue filter</dd></div>
           <div><dt><kbd>Enter</kbd></dt><dd>Open a selected project or issue; submit a form</dd></div>
           <div><dt><kbd>g</kbd>, <kbd>p</kbd></dt><dd>Go to projects</dd></div>
           <div><dt><kbd>g</kbd>, <kbd>r</kbd></dt><dd>Open the team roadmap</dd></div>
-          <div><dt><kbd>g</kbd>, <kbd>n</kbd></dt><dd>Open your Inbox</dd></div>
+          <div><dt><kbd>g</kbd>, <kbd>n</kbd></dt><dd>Open My Work</dd></div>
           <div><dt><kbd>g</kbd>, <kbd>l</kbd></dt><dd>Open the workspace Lounge</dd></div>
           <div><dt><kbd>g</kbd>, <kbd>w</kbd></dt><dd>When you belong to multiple workspaces, open the picker; arrows choose, Enter switches, Escape cancels</dd></div>
           <div><dt><kbd>g</kbd>, <kbd>i</kbd></dt><dd>Focus project issues</dd></div>
