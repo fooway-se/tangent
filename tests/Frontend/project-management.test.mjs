@@ -58,6 +58,16 @@ test('project status labels reflect the selected lifecycle state', () => {
   assert.match(app, /const projects = \[\.\.\.result\.projects\]\.sort/);
 });
 
+test('empty project lists explain missing membership in the sidebar and main view', () => {
+  assert.match(html, /id="project-sidebar-empty"[^>]*class="project-sidebar-empty"[^>]*role="status"[^>]*hidden/);
+  const projectSidebar = html.slice(html.indexOf('class="sidebar-projects"'), html.indexOf('id="account-bar"'));
+  assert.ok(projectSidebar.indexOf('id="sidebar-projects-heading"') < projectSidebar.indexOf('id="project-sidebar-empty"'));
+  assert.ok(projectSidebar.indexOf('id="project-sidebar-empty"') < projectSidebar.indexOf('id="project-sidebar-list"'));
+  assert.match(app, /function updateProjectEmptyStates\(projects: readonly Project\[\]\)/);
+  assert.match(app, /You're not a member of any projects yet\. Ask a workspace admin to add you\./);
+  assert.match(app, /projectSidebarEmpty\.textContent = isAdmin \? 'No projects yet\.' : 'No project access yet\.'/);
+});
+
 test('completed and archived project controls switch to read-only in the project view', () => {
   assert.match(app, /function projectStatusIsReadOnly\(status: Project\['status'\]\): boolean/);
   const controls = app.slice(app.indexOf('function updateProjectReadOnlyNotice'), app.indexOf('function updateProjectStatusHint'));

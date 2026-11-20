@@ -160,6 +160,7 @@ kbd {
 .sidebar-projects { display: flex; flex: 1; flex-direction: column; min-height: 0; }
 .sidebar-projects .section-title { margin: 22px 4px 8px; }
 .project-sidebar-list { display: grid; align-content: start; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.project-sidebar-empty { margin: 4px; color: var(--case-muted); font-size: 11px; line-height: 1.4; }
 @media (min-width: 761px) {
   .project-sidebar-list { flex: 1 1 0; min-height: 0; overflow-y: auto; }
 }

@@ -531,6 +531,7 @@ const projectState = document.querySelector<HTMLElement>('#project-state')!;
 const chatView = document.querySelector<HTMLElement>('#chat-view')!;
 const projectChatColumn = document.querySelector<HTMLElement>('#project-chat-column')!;
 const projectSidebarList = document.querySelector<HTMLUListElement>('#project-sidebar-list')!;
+const projectSidebarEmpty = document.querySelector<HTMLElement>('#project-sidebar-empty')!;
 const projectMain = document.querySelector<HTMLElement>('.project-main')!;
 const projectTabs = document.querySelector<HTMLElement>('.project-tabs')!;
 const issuesView = document.querySelector<HTMLElement>('#issues-view')!;
@@ -4418,6 +4419,19 @@ function projectStatusLabel(status: Project['status']): string {
   return PROJECT_STATUS_LABELS[status];
 }
 
+function updateProjectEmptyStates(projects: readonly Project[]): void {
+  const isEmpty = projects.length === 0;
+  const isAdmin = activeUser?.role === 'admin';
+  emptyProjects.hidden = !isEmpty;
+  projectSidebarEmpty.hidden = !isEmpty;
+  if (!isEmpty) return;
+
+  emptyProjects.textContent = isAdmin
+    ? 'No projects yet.'
+    : "You're not a member of any projects yet. Ask a workspace admin to add you.";
+  projectSidebarEmpty.textContent = isAdmin ? 'No projects yet.' : 'No project access yet.';
+}
+
 async function loadProjects(): Promise<void> {
   const result = await api<{ projects: Project[] }>('/projects');
   const projects = [...result.projects].sort((left, right) => (
@@ -4425,7 +4439,7 @@ async function loadProjects(): Promise<void> {
       || left.name.localeCompare(right.name)
   ));
   projectList.replaceChildren();
-  emptyProjects.hidden = projects.length > 0;
+  updateProjectEmptyStates(projects);
   projectSidebarList.replaceChildren();
 
   for (const project of projects) {

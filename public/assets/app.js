@@ -276,6 +276,7 @@ const projectState = document.querySelector('#project-state');
 const chatView = document.querySelector('#chat-view');
 const projectChatColumn = document.querySelector('#project-chat-column');
 const projectSidebarList = document.querySelector('#project-sidebar-list');
+const projectSidebarEmpty = document.querySelector('#project-sidebar-empty');
 const projectMain = document.querySelector('.project-main');
 const projectTabs = document.querySelector('.project-tabs');
 const issuesView = document.querySelector('#issues-view');
@@ -4315,12 +4316,24 @@ memberForm.addEventListener('submit', async (event) => {
 function projectStatusLabel(status) {
     return PROJECT_STATUS_LABELS[status];
 }
+function updateProjectEmptyStates(projects) {
+    const isEmpty = projects.length === 0;
+    const isAdmin = activeUser?.role === 'admin';
+    emptyProjects.hidden = !isEmpty;
+    projectSidebarEmpty.hidden = !isEmpty;
+    if (!isEmpty)
+        return;
+    emptyProjects.textContent = isAdmin
+        ? 'No projects yet.'
+        : "You're not a member of any projects yet. Ask a workspace admin to add you.";
+    projectSidebarEmpty.textContent = isAdmin ? 'No projects yet.' : 'No project access yet.';
+}
 async function loadProjects() {
     const result = await api('/projects');
     const projects = [...result.projects].sort((left, right) => (PROJECT_STATUS_ORDER[left.status] - PROJECT_STATUS_ORDER[right.status]
         || left.name.localeCompare(right.name)));
     projectList.replaceChildren();
-    emptyProjects.hidden = projects.length > 0;
+    updateProjectEmptyStates(projects);
     projectSidebarList.replaceChildren();
     for (const project of projects) {
         const item = document.createElement('li');
