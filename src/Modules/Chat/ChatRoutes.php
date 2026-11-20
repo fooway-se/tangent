@@ -18,6 +18,14 @@ final class ChatRoutes
 
     public function register(Router $router): void
     {
+        $router->add('GET', '/api/v1/lounge/members', function (
+            Request $request,
+            array $params,
+            AuthenticatedUser $user,
+        ): Response {
+            return Response::json(200, $this->service->loungeMembers($user));
+        });
+
         $router->add('GET', '/api/v1/lounge/messages', function (
             Request $request,
             array $params,

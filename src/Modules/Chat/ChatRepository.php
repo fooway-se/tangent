@@ -64,6 +64,23 @@ final class ChatRepository
         return (int) $this->pdo->lastInsertId();
     }
 
+    public function listLoungeMembers(int $workspaceId): array
+    {
+        $statement = $this->pdo->prepare(
+            "SELECT users.id, users.name, user_accounts.email
+             FROM users
+             INNER JOIN user_accounts ON user_accounts.id = users.account_id
+             WHERE users.workspace_id = :workspace_id AND users.is_active = 1
+               AND users.role IN ('admin', 'developer')
+             ORDER BY users.name, users.id"
+        );
+        $statement->execute(['workspace_id' => $workspaceId]);
+        return array_map(static function (array $member): array {
+            $member['id'] = (int) $member['id'];
+            return $member;
+        }, $statement->fetchAll(PDO::FETCH_ASSOC));
+    }
+
     public function heartbeatProjectPresence(int $workspaceId, int $projectId, int $userId): bool
     {
         $prune = $this->pdo->prepare(

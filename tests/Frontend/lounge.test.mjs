@@ -51,3 +51,14 @@ test('Lounge can be opened with the workspace g-l shortcut', () => {
     canDismiss: false,
   }), 'lounge');
 });
+
+test('Lounge composer uses the project chat mention autocomplete for workspace members', () => {
+  assert.match(html, /id="lounge-mention-suggestions"[^>]*role="listbox"/);
+  assert.match(app, /function updateLoungeMentionSuggestions\(/);
+  assert.match(app, /api<\{ members: LoungeMentionMember\[\] \}>\('\/lounge\/members'\)/);
+  assert.match(app, /filterMentionMembers\(loungeMembers, query\.query/);
+  assert.match(app, /replaceMentionQuery\(loungeInput\.value, loungeMentionQuery, member\.name\)/);
+  assert.match(app, /handleLoungeMentionKeydown/);
+  assert.match(app, /splitMentions\(message\.body, loungeMembers\)/);
+  assert.match(app, /chat-message-mention/);
+});

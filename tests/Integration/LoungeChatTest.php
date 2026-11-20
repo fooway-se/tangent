@@ -75,6 +75,7 @@ final class LoungeChatTest extends ApiTestCase
         $this->createGuest();
         $guest = $this->login('lounge-guest@example.test');
 
+        self::assertSame(403, $this->cookieRequest('GET', '/api/v1/lounge/members', $guest['cookie'])->status);
         self::assertSame(403, $this->cookieRequest('GET', '/api/v1/lounge/messages', $guest['cookie'])->status);
         self::assertSame(403, $this->cookieRequest(
             'POST',
@@ -83,6 +84,23 @@ final class LoungeChatTest extends ApiTestCase
             ['body' => 'Should not be visible'],
             $guest['csrf'],
         )->status);
+    }
+
+    public function testWorkspaceMembersCanListInternalLoungeMentionSuggestions(): void
+    {
+        $this->createGuest();
+        $this->createInactiveDeveloper();
+        $admin = $this->login($this->adminEmail);
+        $developer = $this->login($this->developerEmail);
+
+        $adminResponse = $this->cookieRequest('GET', '/api/v1/lounge/members', $admin['cookie']);
+        self::assertSame(200, $adminResponse->status, json_encode($adminResponse->body));
+        self::assertSame(['Admin', 'Developer'], array_column($adminResponse->body['members'], 'name'));
+        self::assertSame([$this->adminId, $this->developerId], array_column($adminResponse->body['members'], 'id'));
+        self::assertSame(['id', 'name', 'email'], array_keys($adminResponse->body['members'][0]));
+        $developerResponse = $this->cookieRequest('GET', '/api/v1/lounge/members', $developer['cookie']);
+        self::assertSame(200, $developerResponse->status, json_encode($developerResponse->body));
+        self::assertSame($adminResponse->body['members'], $developerResponse->body['members']);
     }
 
     public function testLoungeMessagesDoNotAppearInProjectInboxEvents(): void
@@ -95,7 +113,7 @@ final class LoungeChatTest extends ApiTestCase
             'POST',
             '/api/v1/lounge/messages',
             $admin['cookie'],
-            ['body' => 'A workspace-wide note'],
+            ['body' => '@Developer A workspace-wide note'],
             $admin['csrf'],
         );
         self::assertSame(201, $sent->status, json_encode($sent->body));
@@ -124,6 +142,29 @@ final class LoungeChatTest extends ApiTestCase
             'name' => 'Lounge guest',
             'email' => 'lounge-guest@example.test',
             'role' => 'guest',
+        ]);
+    }
+
+    private function createInactiveDeveloper(): void
+    {
+        $account = $this->pdo->prepare(
+            'INSERT INTO user_accounts (email, password_hash) VALUES (:email, :password_hash)'
+        );
+        $account->execute([
+            'email' => 'inactive-lounge@example.test',
+            'password_hash' => password_hash($this->password, PASSWORD_ARGON2ID),
+        ]);
+
+        $user = $this->pdo->prepare(
+            'INSERT INTO users (workspace_id, account_id, name, email, role, is_active)
+             VALUES (:workspace_id, :account_id, :name, :email, :role, 0)'
+        );
+        $user->execute([
+            'workspace_id' => $this->workspaceId,
+            'account_id' => (int) $this->pdo->lastInsertId(),
+            'name' => 'Inactive Member',
+            'email' => 'inactive-lounge@example.test',
+            'role' => 'developer',
         ]);
     }
 }

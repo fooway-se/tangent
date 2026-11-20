@@ -761,6 +761,23 @@ paths:
                   project: { $ref: '#/components/schemas/Project' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '409': { $ref: '#/components/responses/Conflict' }
+  /lounge/members:
+    get:
+      summary: List active internal Lounge members
+      description: Returns active admins and developers in the current workspace for mention suggestions. Guests cannot access this endpoint.
+      responses:
+        '200':
+          description: Workspace members available to mention in the Lounge.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  members:
+                    type: array
+                    items: { $ref: '#/components/schemas/LoungeMentionMember' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /lounge/messages:
     get:
       summary: Read or poll the workspace Lounge
@@ -1666,6 +1683,13 @@ components:
         role: { type: string, enum: [admin, developer, guest] }
         is_active: { type: boolean }
         created_at: { type: string, format: date-time }
+    LoungeMentionMember:
+      type: object
+      required: [id, name, email]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        email: { type: string, format: email }
     Project:
       type: object
       required: [id, workspace_id, name, slug, description, status, created_by]

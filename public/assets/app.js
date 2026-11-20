@@ -1,7 +1,7 @@
 import { INBOX_TABS, createEventRow, eventsForTab, tabCount, } from './inbox-events.js';
 import { diffInboxCollections, nextInboxPollDelay, shouldDeferInboxUpdates, } from './inbox-polling.js';
 import { renderClientEmptyState, renderClientView } from './guest-view.js';
-import { filterMentionMembers, findMentionQuery, mentionEmptyMessage, replaceMentionQuery } from './chat-mentions.js';
+import { filterMentionMembers, findMentionQuery, mentionEmptyMessage, replaceMentionQuery, splitMentions, } from './chat-mentions.js';
 import { resolveShortcut, shouldSubmitOnEnter } from './shortcuts.js';
 import { THEMES, applyTheme, loadTheme, nextTheme, themeLabel } from './theme.js';
 import { THEME_MACHINES } from './theme-machines.js';
@@ -208,6 +208,7 @@ const loungeMessageList = document.querySelector('#lounge-message-list');
 const loungeEmptyState = document.querySelector('#lounge-empty-state');
 const loungeForm = document.querySelector('#lounge-form');
 const loungeInput = document.querySelector('#lounge-input');
+const loungeMentionList = document.querySelector('#lounge-mention-suggestions');
 const inboxSummary = document.querySelector('#inbox-summary');
 const inboxIssueList = document.querySelector('#inbox-issue-list');
 const inboxEmptyState = document.querySelector('#inbox-empty-state');
@@ -507,6 +508,11 @@ let loungeCursor = 0;
 let loungeEtag = null;
 let loungePollDelay = 1000;
 let loungeFollowLatest = true;
+let loungeMembers = [];
+let loungeMentionQuery = null;
+let loungeMentionMatches = [];
+let loungeMentionSelectedIndex = 0;
+let loungeMentionDismissed = false;
 let issuePollTimer = null;
 let issuePollDelay = 1000;
 let activeIssuesEtag = null;
@@ -1458,8 +1464,114 @@ function stopLoungePolling() {
     if (loungePollTimer !== null)
         window.clearTimeout(loungePollTimer);
     loungePollTimer = null;
+    loungeMembers = [];
+    loungeMentionDismissed = false;
+    hideLoungeMentionSuggestions();
     loungeMessageList.replaceChildren(loungeEmptyState);
     loungeEmptyState.hidden = false;
+}
+function updateLoungeMentionSuggestions() {
+    if (loungeMentionDismissed)
+        return;
+    const query = findMentionQuery(loungeInput.value, loungeInput.selectionStart);
+    if (query === null) {
+        hideLoungeMentionSuggestions();
+        return;
+    }
+    const matches = filterMentionMembers(loungeMembers, query.query, activeUser?.id ?? null);
+    if (matches.length === 0) {
+        loungeMentionQuery = query;
+        loungeMentionMatches = [];
+        loungeMentionSelectedIndex = 0;
+        const empty = document.createElement('div');
+        empty.className = 'chat-mention-empty';
+        empty.setAttribute('role', 'option');
+        empty.setAttribute('aria-disabled', 'true');
+        empty.setAttribute('aria-selected', 'false');
+        empty.textContent = mentionEmptyMessage(loungeMembers, query.query, activeUser?.id ?? null, 'workspace');
+        loungeMentionList.replaceChildren(empty);
+        loungeMentionList.hidden = false;
+        loungeInput.setAttribute('aria-expanded', 'true');
+        loungeInput.removeAttribute('aria-activedescendant');
+        return;
+    }
+    loungeMentionQuery = query;
+    loungeMentionMatches = matches;
+    loungeMentionSelectedIndex = Math.min(loungeMentionSelectedIndex, matches.length - 1);
+    loungeMentionList.replaceChildren(...matches.map((member, index) => {
+        const option = document.createElement('button');
+        option.type = 'button';
+        option.id = `lounge-mention-option-${index}`;
+        option.className = 'chat-mention-option';
+        option.setAttribute('role', 'option');
+        option.setAttribute('aria-selected', String(index === loungeMentionSelectedIndex));
+        const name = document.createElement('strong');
+        name.textContent = member.name;
+        const email = document.createElement('span');
+        email.textContent = member.email;
+        option.append(name, email);
+        option.addEventListener('mousedown', (event) => event.preventDefault());
+        option.addEventListener('click', () => selectLoungeMention(member));
+        return option;
+    }));
+    loungeMentionList.hidden = false;
+    loungeInput.setAttribute('aria-expanded', 'true');
+    loungeInput.setAttribute('aria-activedescendant', `lounge-mention-option-${loungeMentionSelectedIndex}`);
+}
+function hideLoungeMentionSuggestions() {
+    loungeMentionQuery = null;
+    loungeMentionMatches = [];
+    loungeMentionSelectedIndex = 0;
+    loungeMentionList.hidden = true;
+    loungeMentionList.replaceChildren();
+    loungeInput.setAttribute('aria-expanded', 'false');
+    loungeInput.removeAttribute('aria-activedescendant');
+}
+function selectLoungeMention(member) {
+    if (loungeMentionQuery === null)
+        return;
+    const insertion = replaceMentionQuery(loungeInput.value, loungeMentionQuery, member.name);
+    loungeInput.value = insertion.value;
+    loungeInput.setSelectionRange(insertion.cursor, insertion.cursor);
+    loungeMentionDismissed = true;
+    hideLoungeMentionSuggestions();
+    loungeInput.focus();
+}
+function handleLoungeMentionKeydown(event) {
+    if (loungeMentionList.hidden)
+        return false;
+    if (event.key === 'Escape') {
+        event.preventDefault();
+        event.stopPropagation();
+        loungeMentionDismissed = true;
+        hideLoungeMentionSuggestions();
+        return true;
+    }
+    if (loungeMentionMatches.length === 0)
+        return false;
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        loungeMentionSelectedIndex = (loungeMentionSelectedIndex
+            + (event.key === 'ArrowDown' ? 1 : -1) + loungeMentionMatches.length) % loungeMentionMatches.length;
+        const options = Array.from(loungeMentionList.querySelectorAll('[role="option"]'));
+        options.forEach((option, index) => option.setAttribute('aria-selected', String(index === loungeMentionSelectedIndex)));
+        const selected = options[loungeMentionSelectedIndex];
+        if (selected !== undefined) {
+            loungeInput.setAttribute('aria-activedescendant', selected.id);
+            selected.scrollIntoView({ block: 'nearest' });
+        }
+        return true;
+    }
+    if ((event.key === 'Enter' && !event.shiftKey && !event.isComposing) || event.key === 'Tab') {
+        const member = loungeMentionMatches[loungeMentionSelectedIndex];
+        if (member === undefined)
+            return false;
+        event.preventDefault();
+        event.stopPropagation();
+        selectLoungeMention(member);
+        return true;
+    }
+    return false;
 }
 function scheduleLoungePoll(delay = loungePollDelay) {
     if (!loungeActive)
@@ -1499,7 +1611,18 @@ function appendLoungeMessage(message, scrollToBottom = false) {
     heading.append(avatar, authorDetails);
     const body = document.createElement('p');
     body.className = 'chat-message-body';
-    body.textContent = message.body;
+    for (const segment of splitMentions(message.body, loungeMembers)) {
+        if (segment.memberId === null) {
+            body.append(document.createTextNode(segment.text));
+        }
+        else {
+            const mention = document.createElement('mark');
+            mention.className = 'chat-message-mention';
+            mention.dataset.memberId = String(segment.memberId);
+            mention.textContent = segment.text;
+            body.append(mention);
+        }
+    }
     item.append(heading, body);
     loungeMessageList.append(item);
     loungeEmptyState.hidden = true;
@@ -1516,9 +1639,13 @@ async function loadLoungeChat() {
     loungeMessageList.replaceChildren(loungeEmptyState);
     loungeEmptyState.hidden = false;
     try {
-        const result = await api('/lounge/messages');
+        const [result, membersResult] = await Promise.all([
+            api('/lounge/messages'),
+            api('/lounge/members'),
+        ]);
         if (!loungeActive || loungeView.hidden)
             return;
+        loungeMembers = membersResult.members;
         for (const message of result.messages) {
             loungeCursor = Math.max(loungeCursor, message.id);
             appendLoungeMessage(message);
@@ -1607,6 +1734,8 @@ async function sendLoungeMessage(event) {
         loungeCursor = Math.max(loungeCursor, result.message.id);
         appendLoungeMessage(result.message, true);
         loungeInput.value = '';
+        loungeMentionDismissed = false;
+        hideLoungeMentionSuggestions();
         loungeEtag = null;
         loungePollDelay = 1000;
         scheduleLoungePoll(0);
@@ -3771,7 +3900,18 @@ loungeMessageList.addEventListener('scroll', () => {
         - loungeMessageList.clientHeight <= 24;
 });
 loungeForm.addEventListener('submit', (event) => void sendLoungeMessage(event));
-loungeInput.addEventListener('keydown', (event) => submitFormOnEnter(event, loungeForm));
+loungeInput.addEventListener('input', () => {
+    loungeMentionDismissed = false;
+    updateLoungeMentionSuggestions();
+});
+loungeInput.addEventListener('click', updateLoungeMentionSuggestions);
+loungeInput.addEventListener('select', updateLoungeMentionSuggestions);
+loungeInput.addEventListener('keyup', updateLoungeMentionSuggestions);
+loungeInput.addEventListener('blur', hideLoungeMentionSuggestions);
+loungeInput.addEventListener('keydown', (event) => {
+    if (!handleLoungeMentionKeydown(event))
+        submitFormOnEnter(event, loungeForm);
+});
 workspaceAdminMembersTab.addEventListener('click', () => switchWorkspaceAdminTab('members'));
 workspaceAdminInvitesTab.addEventListener('click', () => switchWorkspaceAdminTab('invites'));
 workspaceAdminWorkspacesTab.addEventListener('click', () => switchWorkspaceAdminTab('workspaces'));

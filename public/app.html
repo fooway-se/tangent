@@ -197,8 +197,9 @@
                 <p id="lounge-empty-state" class="chat-empty-state">No messages yet.</p>
               </div>
               <form id="lounge-form" class="chat-composer lounge-composer form-stack">
+                <div id="lounge-mention-suggestions" class="chat-mention-suggestions" role="listbox" aria-label="Mention a workspace member" hidden></div>
                 <label>Message
-                  <textarea id="lounge-input" name="body" rows="2" maxlength="10000" placeholder="Message the Lounge…" required></textarea>
+                  <textarea id="lounge-input" name="body" rows="2" maxlength="10000" placeholder="Message the Lounge…" aria-label="Message" aria-autocomplete="list" aria-controls="lounge-mention-suggestions" aria-expanded="false" required></textarea>
                 </label>
                 <div class="chat-composer-actions">
                   <button class="button button-primary" type="submit">Send</button>
