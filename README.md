@@ -42,7 +42,7 @@ Steps in short:
 2. Upload it to your host and run the one-time installer.
 3. Update later with the update page.
 
-The full layout, setup-key steps and update procedure are in [INSTALL.md](INSTALL.md). The installer and update page are ready for hosting-provider testing, but have not yet been verified on common hosts.
+The full layout, setup-key steps and update procedure are in [INSTALL.md](INSTALL.md). The installer and update flow have been used successfully, including several upgrades, on one shared server. Other hosting providers and layouts have not yet been verified.
 
 ## Run locally (Docker)
 

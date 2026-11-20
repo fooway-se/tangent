@@ -31,5 +31,5 @@ The project chat header has a privacy-preserving presence light: it shows whethe
 
 ## Installation and hosting
 
-- Test the installer, upgrade flow and release archive on common shared-host providers, then publish versioned downloads.
+- Test the release archive and verify the installer and upgrade flow on additional common shared-host providers and layouts, then publish versioned downloads. Install and repeated upgrades have already succeeded on one shared server.
 - Decide whether to support Docker as a production option and whether to offer Tangent as a hosted service.

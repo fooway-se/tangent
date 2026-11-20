@@ -12,7 +12,7 @@ docker compose exec -it php php bin/seed-admin.php
 ```
 
 Composer installs PHPUnit from the `require-dev` section of `composer.json`. It does not add a runtime dependency to the release.
-The seed command is enabled only when `TANGENT_ENV=development`; enter an admin name, email, and password when prompted. Then open [http://localhost:8080](http://localhost:8080) to sign in. The first admin seed is for local development; production account bootstrap will be part of the later installer.
+The seed command is enabled only when `TANGENT_ENV=development`; enter an admin name, email, and password when prompted. Then open [http://localhost:8080](http://localhost:8080) to sign in. The seed command is for local development; production setup creates the workspace and first admin through the installer.
 If port 8080 is already in use, start the stack with `TANGENT_HTTP_PORT=8081 docker compose up -d --build` and open [http://localhost:8081](http://localhost:8081).
 
 To test the PHP 8.5 baseline, rebuild and run the suite with:
