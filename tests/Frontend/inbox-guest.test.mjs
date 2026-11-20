@@ -74,11 +74,11 @@ test('guest dashboard follows the customer mockup layout and remains responsive'
   assert.match(css, /\.guest-item-title\s*\{[^}]*font:[^;]*var\(--font-display\)/);
 });
 
-test('guest progress bars reuse the shared segmented progress treatment', () => {
+test('project, guest, and roadmap progress bars share the segmented treatment', () => {
   assert.match(guestSource, /el\('progress', `guest-progress/);
-  assert.match(css, /#issue-progress, \.guest-progress\s*\{/);
-  assert.match(css, /#issue-progress::-webkit-progress-bar, \.guest-progress::-webkit-progress-bar\s*\{[^}]*repeating-linear-gradient/);
-  assert.match(css, /#issue-progress\.is-complete::-webkit-progress-value, \.guest-progress\.is-complete::-webkit-progress-value\s*\{[^}]*var\(--success\)/);
+  assert.match(css, /#issue-progress, \.guest-progress, \.roadmap-progress\s*\{/);
+  assert.match(css, /#issue-progress::-webkit-progress-bar, \.guest-progress::-webkit-progress-bar, \.roadmap-progress::-webkit-progress-bar\s*\{[^}]*repeating-linear-gradient/);
+  assert.match(css, /#issue-progress\.is-complete::-webkit-progress-value, \.guest-progress\.is-complete::-webkit-progress-value, \.roadmap-progress\.is-complete::-webkit-progress-value\s*\{[^}]*var\(--success\)/);
 });
 
 test('guest view renders its shared conversation alongside the composer', () => {
