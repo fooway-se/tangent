@@ -171,7 +171,7 @@ kbd {
   .workspace-brand .brand { min-width: 0; flex: 1 1 auto; gap: 4px; font-size: 13px; letter-spacing: 1px; white-space: nowrap; }
   .workspace-brand .brand > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .workspace-brand .brand-mark { width: 20px; height: 20px; flex: 0 0 auto; font-size: 12px; }
-  .workspace-picker-trigger { width: auto; min-width: 0; flex: 0 0 68px; margin: 0 0 0 auto; padding: 2px 3px; font-size: 9px; white-space: nowrap; }
+  .workspace-picker-trigger { width: auto; min-width: 0; flex: 0 0 84px; margin: 0 0 0 auto; padding: 2px 3px; font-size: 11px; white-space: nowrap; }
   .workspace-nav { gap: 4px; }
   .workspace-nav::before { display: none; }
   .workspace-nav-button { padding: 4px 8px; font-size: 12px; }
@@ -179,8 +179,8 @@ kbd {
   .workspace-sidebar .sidebar-account { flex-wrap: nowrap; gap: 4px; margin-top: 6px; padding-top: 6px; }
   .workspace-sidebar .sidebar-account #current-user { display: none; }
   .workspace-sidebar .sidebar-account .theme-picker-controls { order: 0; flex: 0 1 auto; }
-  .sidebar-account .theme-select { max-width: 82px; padding-inline: 6px 18px; font-size: 10px; }
-  .workspace-sidebar .button { padding: 3px 5px; font-size: 10px; }
+  .sidebar-account .theme-select { max-width: 90px; padding-inline: 6px 18px; font-size: 11px; }
+  .workspace-sidebar .button { min-height: 26px; padding: 4px 6px; font-size: 11px; }
 }
 .account-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .sidebar-account { flex-shrink: 0; margin-top: 16px; padding-top: 16px; color: var(--case-muted); font-size: 12px; }

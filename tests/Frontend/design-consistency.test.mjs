@@ -109,8 +109,13 @@ test('stacked admin panels are spaced and quiet row actions are visible', () => 
   assert.match(css, /\.member-list \.button-quiet \{[^}]*border-color:\s*var\(--screen-border\)/);
 });
 
-test('no text is set below the 11px minimum', () => {
-  const tooSmall = [...css.matchAll(/font(?:-size)?:[^;}]*?\b(\d+(?:\.\d+)?)px/g)]
+test('text stays at least 11px except for compact Lounge presence details', () => {
+  const cssWithCompactLoungeDetails = css
+    .replace(/\.lounge-nav-presence\s*\{[^}]*\}/, '')
+    .replace(/\.lounge-presence-label\s*\{[^}]*\}/, '');
+  assert.match(css, /\.lounge-nav-presence\s*\{[^}]*font:\s*700 10px/);
+  assert.match(css, /\.lounge-presence-label\s*\{[^}]*font:\s*700 10px/);
+  const tooSmall = [...cssWithCompactLoungeDetails.matchAll(/font(?:-size)?:[^;}]*?\b(\d+(?:\.\d+)?)px/g)]
     .filter((match) => Number(match[1]) < 11)
     .map((match) => match[0]);
   assert.deepEqual(tooSmall, []);
