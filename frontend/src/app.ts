@@ -22,6 +22,7 @@ import { THEMES, applyTheme, loadTheme, nextTheme, themeLabel, type ThemeId } fr
 import { THEME_MACHINES } from './theme-machines.js';
 import { DEFAULT_PROJECT_NOTES_MODE, renderMarkdown } from './project-notes.js';
 import { parseQuickIssueInput } from './quick-issue.js';
+import { milestoneStatus, type RoadmapMilestone } from './roadmap.js';
 import { formatIssueMarkdown, formatIssuePrompt } from './issue-export.js';
 import {
   filterIssues,
@@ -51,6 +52,7 @@ type IssueGrouping = 'status' | 'milestone';
 
 type WorkspaceLocation =
   | { view: 'projects'; focusedProjectId?: number }
+  | { view: 'roadmap' }
   | { view: 'inbox' }
   | { view: 'lounge' }
   | { view: 'admin' }
@@ -455,11 +457,17 @@ const breadcrumbProjectsButton = document.querySelector<HTMLButtonElement>('#bre
 const breadcrumbDivider = document.querySelector<HTMLElement>('#breadcrumb-divider')!;
 const breadcrumbCurrent = document.querySelector<HTMLElement>('#breadcrumb-current')!;
 const projectsNavButton = document.querySelector<HTMLButtonElement>('#projects-nav')!;
+const roadmapNavButton = document.querySelector<HTMLButtonElement>('#roadmap-nav')!;
 const inboxNavButton = document.querySelector<HTMLButtonElement>('#inbox-nav')!;
 const loungeNavButton = document.querySelector<HTMLButtonElement>('#lounge-nav')!;
 const loungeNavPresenceBadge = document.querySelector<HTMLElement>('#lounge-nav-presence')!;
 const adminNavButton = document.querySelector<HTMLButtonElement>('#admin-nav')!;
 const projectsView = document.querySelector<HTMLElement>('#projects-view')!;
+const roadmapView = document.querySelector<HTMLElement>('#roadmap-view')!;
+const roadmapHeading = document.querySelector<HTMLHeadingElement>('#roadmap-heading')!;
+const roadmapSummary = document.querySelector<HTMLElement>('#roadmap-summary')!;
+const roadmapMilestoneList = document.querySelector<HTMLOListElement>('#roadmap-milestone-list')!;
+const roadmapEmptyState = document.querySelector<HTMLElement>('#roadmap-empty-state')!;
 const inboxView = document.querySelector<HTMLElement>('#inbox-view')!;
 const loungeView = document.querySelector<HTMLElement>('#lounge-view')!;
 const inboxHeading = document.querySelector<HTMLHeadingElement>('#inbox-heading')!;
@@ -612,6 +620,7 @@ const goPrefixHint = document.querySelector<HTMLElement>('#go-prefix-hint')!;
 const goPrefixWorkspaceOption = document.querySelector<HTMLElement>('#go-prefix-workspace-option')!;
 const goPrefixProjectOptions = document.querySelector<HTMLElement>('#go-prefix-project-options')!;
 const adminGoPrefixOption = document.querySelector<HTMLElement>('#admin-go-prefix-option')!;
+const roadmapGoPrefixOption = document.querySelector<HTMLElement>('#roadmap-go-prefix-option')!;
 const workspaceSwitchHint = document.querySelector<HTMLElement>('#workspace-switch-hint')!;
 const commandPalette = document.querySelector<HTMLDialogElement>('#command-palette')!;
 const commandPaletteClose = document.querySelector<HTMLButtonElement>('#command-palette-close')!;
@@ -1006,6 +1015,7 @@ function showSignedIn(user: User): void {
   renderLoungeNavigationPresence([]);
   activeUser = user;
   editProjectButton.hidden = user.role !== 'admin';
+  roadmapNavButton.hidden = user.role === 'guest';
   resetPendingWorkspaceSwitch();
   if (user.role === 'guest') {
     showGuestShell(user);
@@ -1137,7 +1147,7 @@ function commitPendingWorkspaceSwitch(): void {
   void switchWorkspace(workspaceId, true);
 }
 
-function showWorkspaceView(view: 'projects' | 'inbox' | 'lounge' | 'admin' | 'project'): void {
+function showWorkspaceView(view: 'projects' | 'roadmap' | 'inbox' | 'lounge' | 'admin' | 'project'): void {
   const wasLoungeActive = view !== 'lounge' && loungeActive;
   if (view !== 'inbox') {
     stopInboxPolling();
@@ -1157,6 +1167,7 @@ function showWorkspaceView(view: 'projects' | 'inbox' | 'lounge' | 'admin' | 'pr
     issueDetailDisplay.hidden = false;
   }
   projectsView.hidden = view !== 'projects';
+  roadmapView.hidden = view !== 'roadmap';
   inboxView.hidden = view !== 'inbox';
   loungeView.hidden = view !== 'lounge';
   adminView.hidden = view !== 'admin';
@@ -1169,41 +1180,26 @@ function showWorkspaceView(view: 'projects' | 'inbox' | 'lounge' | 'admin' | 'pr
   breadcrumbDivider.hidden = view === 'projects';
   breadcrumbCurrent.textContent = view === 'project'
     ? activeProject?.name ?? 'Project'
-    : view === 'admin' ? 'Administration' : view === 'inbox' ? 'Inbox' : view === 'lounge' ? 'Lounge' : 'Projects';
+    : view === 'admin' ? 'Administration' : view === 'inbox' ? 'Inbox' : view === 'lounge' ? 'Lounge' : view === 'roadmap' ? 'Roadmap' : 'Projects';
   document.body.classList.toggle('is-project-view', view === 'project');
   projectsNavButton.classList.toggle('is-active', view === 'projects');
+  roadmapNavButton.classList.toggle('is-active', view === 'roadmap');
   inboxNavButton.classList.toggle('is-active', view === 'inbox');
   loungeNavButton.classList.toggle('is-active', view === 'lounge');
   adminNavButton.classList.toggle('is-active', view === 'admin');
   projectSidebarList.querySelectorAll<HTMLButtonElement>('.project-sidebar-link').forEach((button) => {
     button.classList.toggle('is-active', view === 'project' && button.dataset.projectId === String(activeProject?.id));
   });
-  if (view === 'projects') {
-    projectsNavButton.setAttribute('aria-current', 'page');
-    inboxNavButton.removeAttribute('aria-current');
-    loungeNavButton.removeAttribute('aria-current');
-    adminNavButton.removeAttribute('aria-current');
-  } else if (view === 'inbox') {
-    inboxNavButton.setAttribute('aria-current', 'page');
-    projectsNavButton.removeAttribute('aria-current');
-    loungeNavButton.removeAttribute('aria-current');
-    adminNavButton.removeAttribute('aria-current');
-  } else if (view === 'lounge') {
-    loungeNavButton.setAttribute('aria-current', 'page');
-    projectsNavButton.removeAttribute('aria-current');
-    inboxNavButton.removeAttribute('aria-current');
-    adminNavButton.removeAttribute('aria-current');
-  } else if (view === 'admin') {
-    adminNavButton.setAttribute('aria-current', 'page');
-    projectsNavButton.removeAttribute('aria-current');
-    inboxNavButton.removeAttribute('aria-current');
-    loungeNavButton.removeAttribute('aria-current');
-  } else {
-    projectsNavButton.removeAttribute('aria-current');
-    inboxNavButton.removeAttribute('aria-current');
-    loungeNavButton.removeAttribute('aria-current');
-    adminNavButton.removeAttribute('aria-current');
+  for (const button of [projectsNavButton, roadmapNavButton, inboxNavButton, loungeNavButton, adminNavButton]) {
+    button.removeAttribute('aria-current');
   }
+  const activeNavButton = view === 'projects' ? projectsNavButton
+    : view === 'roadmap' ? roadmapNavButton
+      : view === 'inbox' ? inboxNavButton
+        : view === 'lounge' ? loungeNavButton
+          : view === 'admin' ? adminNavButton
+            : null;
+  activeNavButton?.setAttribute('aria-current', 'page');
   if (view === 'projects' && projectReturnFocusId !== null) {
     const projectId = projectReturnFocusId;
     projectReturnFocusId = null;
@@ -1638,6 +1634,7 @@ function currentWorkspaceLocation(): WorkspaceLocation {
     };
   }
   if (!inboxView.hidden) return { view: 'inbox' };
+  if (!roadmapView.hidden) return { view: 'roadmap' };
   if (!loungeView.hidden) return { view: 'lounge' };
   if (!adminView.hidden) return { view: 'admin' };
   const focused = document.activeElement;
@@ -1666,6 +1663,15 @@ function goToProjects(): void {
   showWorkspaceView('projects');
 }
 
+function goToRoadmap(): void {
+  if (activeUser === null || activeUser.role === 'guest') return;
+  const currentLocation = currentWorkspaceLocation();
+  if (currentLocation.view !== 'roadmap') workspaceViewHistory.push(currentLocation);
+  showWorkspaceView('roadmap');
+  roadmapHeading.focus();
+  void loadRoadmap();
+}
+
 function goToInbox(): void {
   const currentLocation = currentWorkspaceLocation();
   if (currentLocation.view !== 'inbox') workspaceViewHistory.push(currentLocation);
@@ -1692,6 +1698,10 @@ function goBackWorkspaceView(): void {
     showWorkspaceView('inbox');
     inboxHeading.focus();
     void loadInboxIssues();
+  } else if (previousLocation?.view === 'roadmap') {
+    showWorkspaceView('roadmap');
+    roadmapHeading.focus();
+    void loadRoadmap();
   } else if (previousLocation?.view === 'lounge') {
     showWorkspaceView('lounge');
     loungeHeading.focus();
@@ -2482,6 +2492,7 @@ function shortcutContext(target: EventTarget | null) {
     hasWorkspace: activeUser !== null,
     canSwitchWorkspace: activeWorkspaces.length > 1,
     canAdmin: activeUser?.role === 'admin',
+    canRoadmap: activeUser?.role === 'admin' || activeUser?.role === 'developer',
     hasProject: activeProject !== null && !projectView.hidden,
     projectListVisible: !workspacePanel.hidden && !projectsView.hidden,
     inboxListVisible: !workspacePanel.hidden && !inboxView.hidden,
@@ -2512,7 +2523,7 @@ function shortcutContext(target: EventTarget | null) {
       || (!projectView.hidden && (!issueDetailView.hidden || !issueDetailEditForm.hidden
         || issueQuickAddEscapePending || chatReplyParent !== null))
       || (!projectsView.hidden && !projectFormPanel.hidden)
-      || !projectView.hidden || !inboxView.hidden || !loungeView.hidden || !adminView.hidden
+      || !projectView.hidden || !roadmapView.hidden || !inboxView.hidden || !loungeView.hidden || !adminView.hidden
     )),
   };
 }
@@ -2530,6 +2541,7 @@ function startGoPrefix(): void {
   goPrefixWorkspaceOption.hidden = activeWorkspaces.length < 2;
   goPrefixProjectOptions.hidden = activeProject === null || projectView.hidden;
   adminGoPrefixOption.hidden = activeUser?.role !== 'admin';
+  roadmapGoPrefixOption.hidden = activeUser?.role === 'guest' || activeUser === null;
   goPrefixHint.hidden = false;
   goPrefixTimer = window.setTimeout(clearGoPrefix, 1200);
 }
@@ -2766,6 +2778,14 @@ function getPaletteCommands(): PaletteCommand[] {
     { label: 'Open Lounge', detail: 'Open the workspace-wide Lounge chat', shortcut: 'g l', run: goToLounge },
     { label: 'Show keyboard shortcuts', detail: 'View key bindings', shortcut: '?', run: showShortcutHelp },
   ];
+  if (activeUser.role === 'admin' || activeUser.role === 'developer') {
+    commands.splice(1, 0, {
+      label: 'Open Roadmap',
+      detail: 'Review milestones across your projects',
+      shortcut: 'g r',
+      run: goToRoadmap,
+    });
+  }
   if (activeWorkspaces.length > 1) {
     commands.splice(2, 0, {
       label: 'Switch workspace',
@@ -3353,6 +3373,7 @@ function executeShortcut(action: ShortcutAction): void {
     case 'theme-selector': focusThemeSelector(); break;
     case 'await-projects-key': startGoPrefix(); break;
     case 'projects': clearGoPrefix(); goToProjects(); break;
+    case 'roadmap': clearGoPrefix(); goToRoadmap(); break;
     case 'inbox': goToInbox(); break;
     case 'lounge': goToLounge(); break;
     case 'workspace-switcher': openWorkspacePicker(); break;
@@ -4165,6 +4186,7 @@ document.addEventListener('focusout', () => {
 });
 
 projectsNavButton.addEventListener('click', goToProjects);
+roadmapNavButton.addEventListener('click', goToRoadmap);
 inboxNavButton.addEventListener('click', goToInbox);
 loungeNavButton.addEventListener('click', goToLounge);
 adminNavButton.addEventListener('click', openWorkspaceAdmin);
@@ -4489,6 +4511,101 @@ async function loadProjects(): Promise<void> {
     sidebarItem.append(sidebarButton);
     projectSidebarList.append(sidebarItem);
   }
+}
+
+async function loadRoadmap(): Promise<void> {
+  try {
+    const result = await api<{ milestones: RoadmapMilestone[] }>('/roadmap');
+    renderRoadmap(result.milestones);
+  } catch (error) {
+    report(error instanceof Error ? error.message : 'Could not load the roadmap.', true);
+  }
+}
+
+function renderRoadmap(milestones: readonly RoadmapMilestone[]): void {
+  const today = new Date();
+  const statuses = milestones.map((milestone) => milestoneStatus(milestone, today));
+  const completed = statuses.filter((status) => status.key === 'complete').length;
+  const needsAttention = statuses.filter((status) => status.key === 'needs-attention').length;
+  const missedDeadline = statuses.filter((status) => status.key === 'missed-deadline').length;
+  const summary = [
+    ['Left', milestones.length - completed],
+    ['Complete', completed],
+    ['Needs attention', needsAttention],
+    ['Missed deadline', missedDeadline],
+  ] as const;
+
+  roadmapSummary.replaceChildren(...summary.map(([label, value]) => {
+    const item = document.createElement('li');
+    item.className = 'roadmap-summary-item';
+    const count = document.createElement('strong');
+    count.className = 'roadmap-summary-count';
+    count.textContent = String(value);
+    const name = document.createElement('span');
+    name.textContent = label;
+    item.append(count, name);
+    return item;
+  }));
+  roadmapMilestoneList.replaceChildren();
+  roadmapEmptyState.hidden = milestones.length > 0;
+
+  milestones.forEach((milestone, index) => {
+    const status = statuses[index];
+    const item = document.createElement('li');
+    item.className = 'roadmap-milestone';
+    item.dataset.status = status.key;
+
+    const top = document.createElement('div');
+    top.className = 'roadmap-milestone-top';
+    const titleBlock = document.createElement('div');
+    titleBlock.className = 'roadmap-milestone-title';
+    const projectButton = document.createElement('button');
+    projectButton.type = 'button';
+    projectButton.className = 'roadmap-project-link';
+    projectButton.textContent = milestone.project_name;
+    projectButton.setAttribute('aria-label', `Open ${milestone.project_name} issues`);
+    projectButton.addEventListener('click', () => void loadProjectDetail(milestone.project_id, 'issues'));
+    const title = document.createElement('h2');
+    title.textContent = milestone.name;
+    titleBlock.append(projectButton, title);
+
+    const badge = document.createElement('span');
+    badge.className = `roadmap-status is-${status.key}`;
+    badge.textContent = status.label;
+    top.append(titleBlock, badge);
+
+    const details = document.createElement('div');
+    details.className = 'roadmap-milestone-details';
+    const date = document.createElement('span');
+    date.className = 'roadmap-milestone-date';
+    date.textContent = milestone.due_date === null ? 'No due date' : `Due ${formatRoadmapDate(milestone.due_date)}`;
+    const workload = document.createElement('span');
+    workload.className = 'roadmap-milestone-workload';
+    const teamMemberLabel = milestone.assigned_team_members === 1 ? 'team member assigned' : 'team members assigned';
+    const unassignedLabel = milestone.tasks_without_team_assignee === 1 ? 'task without team assignment' : 'tasks without team assignment';
+    workload.textContent = `${milestone.remaining_tasks} remaining · ${milestone.assigned_team_members} ${teamMemberLabel} · ${milestone.tasks_without_team_assignee} ${unassignedLabel}`;
+    details.append(date, workload);
+
+    const progress = document.createElement('progress');
+    progress.className = `roadmap-progress${status.key === 'complete' ? ' is-complete' : ''}`;
+    progress.max = Math.max(1, milestone.total_tasks);
+    progress.value = milestone.completed_tasks;
+    progress.setAttribute('aria-label', `${milestone.completed_tasks} of ${milestone.total_tasks} tasks complete for ${milestone.name}`);
+    const progressLabel = document.createElement('span');
+    progressLabel.className = 'roadmap-progress-label';
+    progressLabel.textContent = `${milestone.completed_tasks} of ${milestone.total_tasks} tasks done`;
+    item.append(top, details, progress, progressLabel);
+    roadmapMilestoneList.append(item);
+  });
+}
+
+function formatRoadmapDate(value: string): string {
+  return new Intl.DateTimeFormat(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(`${value}T00:00:00Z`));
 }
 
 function loadInboxIssues(): void {

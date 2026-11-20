@@ -11,6 +11,7 @@ const baseContext = {
   hasWorkspace: true,
   canSwitchWorkspace: true,
   canAdmin: false,
+  canRoadmap: true,
   hasProject: false,
   projectListVisible: false,
   inboxListVisible: false,
@@ -132,6 +133,8 @@ test('Escape collapses focused issue status history before leaving issue detail'
 
 test('g sequences switch between available project features', () => {
   const project = { hasProject: true };
+  assert.equal(resolve('r', { goPrefixPending: true, canRoadmap: true }), 'roadmap');
+  assert.equal(resolve('r', { goPrefixPending: true, canRoadmap: false }), null);
   assert.equal(resolve('i', { ...project, goPrefixPending: true }), 'issues');
   assert.equal(resolve('c', { ...project, goPrefixPending: true }), 'chat');
   assert.equal(resolve('m', { ...project, goPrefixPending: true }), 'members');

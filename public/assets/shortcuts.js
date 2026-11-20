@@ -41,6 +41,8 @@ export function resolveShortcut(event, context) {
             return 'inbox';
         if (key === 'l' && context.hasWorkspace)
             return 'lounge';
+        if (key === 'r' && context.canRoadmap)
+            return 'roadmap';
         if (key === 'w' && context.canSwitchWorkspace)
             return 'workspace-switcher';
         if (key === 'i' && context.hasProject)

@@ -39,6 +39,9 @@ use Tangent\Modules\Projects\MilestoneService;
 use Tangent\Modules\Projects\MilestoneRoutes;
 use Tangent\Modules\Projects\ClientViewService;
 use Tangent\Modules\Projects\ClientViewRoutes;
+use Tangent\Modules\Projects\RoadmapRepository;
+use Tangent\Modules\Projects\RoadmapRoutes;
+use Tangent\Modules\Projects\RoadmapService;
 use Tangent\Modules\Workspaces\WorkspaceRepository;
 use Tangent\Modules\Workspaces\WorkspaceRoutes;
 use Tangent\Modules\Workspaces\WorkspaceService;
@@ -115,6 +118,7 @@ final class Application
             $csrfCookiePath,
         ))->register($router);
         (new ProjectRoutes($projects))->register($router);
+        (new RoadmapRoutes(new RoadmapService(new RoadmapRepository($pdo))))->register($router);
         (new ClientViewRoutes($clientView, $chat))->register($router);
         (new MilestoneRoutes($milestones))->register($router);
         (new ChatRoutes($chat))->register($router);

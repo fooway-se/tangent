@@ -761,6 +761,23 @@ paths:
                   project: { $ref: '#/components/schemas/Project' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '409': { $ref: '#/components/responses/Conflict' }
+  /roadmap:
+    get:
+      summary: List internal workspace milestones for the team roadmap
+      description: Available to admins and developers. Developers see milestones only from projects they belong to. Archived projects and milestones are omitted. Task counts include internal and shared issues; issue titles and assignee identities are not returned. Guests cannot access this endpoint.
+      responses:
+        '200':
+          description: Milestone progress and workload summaries, ordered by due date.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [milestones]
+                properties:
+                  milestones:
+                    type: array
+                    items: { $ref: '#/components/schemas/RoadmapMilestone' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /lounge/members:
     get:
       summary: List active internal Lounge members
@@ -1887,6 +1904,21 @@ components:
         due_date: { type: [string, 'null'], format: date }
         archived_at: { type: [string, 'null'], format: date-time, description: Non-null when the milestone is archived.}
         created_at: { type: string, format: date-time }
+    RoadmapMilestone:
+      type: object
+      required: [id, project_id, project_name, project_status, name, due_date, total_tasks, completed_tasks, remaining_tasks, assigned_team_members, tasks_without_team_assignee]
+      properties:
+        id: { type: integer }
+        project_id: { type: integer }
+        project_name: { type: string }
+        project_status: { type: string, enum: [active, paused, completed] }
+        name: { type: string }
+        due_date: { type: [string, 'null'], format: date }
+        total_tasks: { type: integer, minimum: 0, description: Non-deleted, non-cancelled issues in the milestone. }
+        completed_tasks: { type: integer, minimum: 0 }
+        remaining_tasks: { type: integer, minimum: 0 }
+        assigned_team_members: { type: integer, minimum: 0, description: Distinct active admins and developers assigned to remaining tasks. }
+        tasks_without_team_assignee: { type: integer, minimum: 0, description: Remaining tasks that are unassigned or assigned to a guest or inactive member. }
     ClientView:
       type: object
       required: [project, progress, next_milestone, completed_this_week, approvals, milestones, items, updates, messages]

@@ -29,6 +29,8 @@ final class Permissions
                 => $user->role === 'admin' || ($user->role === 'developer' && ($resource['is_member'] ?? false) === true),
             'lounge.read', 'lounge.send'
                 => in_array($user->role, ['admin', 'developer'], true),
+            'roadmap.read'
+                => in_array($user->role, ['admin', 'developer'], true),
             'issues.read', 'issues.create', 'issues.update'
                 => $user->role === 'admin' || ($user->role === 'developer' && ($resource['is_member'] ?? false) === true),
             'tokens.create'

@@ -99,6 +99,7 @@
         </div>
         <nav id="workspace-nav" class="workspace-nav" aria-label="Workspace">
           <button id="projects-nav" class="workspace-nav-button is-active" type="button" aria-current="page">Projects</button>
+          <button id="roadmap-nav" class="workspace-nav-button" type="button">Roadmap</button>
           <button id="inbox-nav" class="workspace-nav-button" type="button">Inbox</button>
           <button id="lounge-nav" class="workspace-nav-button" type="button"><span>Lounge</span><span id="lounge-nav-presence" class="lounge-nav-presence" hidden></span></button>
           <button id="admin-nav" class="workspace-nav-button" type="button" hidden>Workspace admin</button>
@@ -169,6 +170,20 @@
               <ul id="project-list" class="project-list"></ul>
               <p id="empty-projects" class="empty-state" hidden>No projects yet.</p>
             </section>
+          </section>
+
+          <section id="roadmap-view" class="workspace-view roadmap-view" hidden aria-labelledby="roadmap-heading">
+            <header class="page-heading roadmap-page-heading">
+              <div>
+                <p class="eyebrow">Workspace</p>
+                <h1 id="roadmap-heading" tabindex="-1">Roadmap</h1>
+                <p class="roadmap-description">Milestones across your projects, with a clear view of work left and upcoming deadlines.</p>
+              </div>
+            </header>
+            <p id="roadmap-heuristic-note" class="roadmap-heuristic-note">“Needs attention” is a rough signal: the deadline is within 7 days and work has no team assignee or exceeds 2 open tasks per assigned team member.</p>
+            <ul id="roadmap-summary" class="roadmap-summary" aria-label="Roadmap milestone summary"></ul>
+            <ol id="roadmap-milestone-list" class="roadmap-milestone-list" aria-live="polite"></ol>
+            <p id="roadmap-empty-state" class="empty-state" hidden>No milestones yet. Add milestones to projects to build the team roadmap.</p>
           </section>
 
           <section id="inbox-view" class="workspace-view inbox-view" hidden aria-labelledby="inbox-heading">
@@ -625,8 +640,8 @@
       <footer id="keyboard-hints" class="keyboard-hints" hidden>
           <span><kbd>j</kbd>/<kbd>k</kbd> Move</span>
           <span><kbd>Enter</kbd> Open</span>
-          <span><kbd>g</kbd> <kbd>p</kbd> Projects · <kbd>g</kbd> <kbd>n</kbd> Inbox · <kbd>g</kbd> <kbd>l</kbd> Lounge<span id="workspace-switch-hint" hidden> · <kbd>g</kbd> <kbd>w</kbd> Workspace</span></span>
-          <span id="go-prefix-hint" class="go-prefix-hint" hidden><kbd>p</kbd> Projects · <kbd>n</kbd> Inbox · <kbd>l</kbd> Lounge<span id="go-prefix-workspace-option" hidden> · <kbd>w</kbd> Workspace</span><span id="go-prefix-project-options" hidden> · <kbd>i</kbd> Issues · <kbd>c</kbd> Chat · <kbd>m</kbd> Members</span><span id="admin-go-prefix-option" hidden> · <kbd>a</kbd> Administration</span></span>
+          <span><kbd>g</kbd> <kbd>p</kbd> Projects · <kbd>g</kbd> <kbd>r</kbd> Roadmap · <kbd>g</kbd> <kbd>n</kbd> Inbox · <kbd>g</kbd> <kbd>l</kbd> Lounge<span id="workspace-switch-hint" hidden> · <kbd>g</kbd> <kbd>w</kbd> Workspace</span></span>
+          <span id="go-prefix-hint" class="go-prefix-hint" hidden><kbd>p</kbd> Projects<span id="roadmap-go-prefix-option"> · <kbd>r</kbd> Roadmap</span> · <kbd>n</kbd> Inbox · <kbd>l</kbd> Lounge<span id="go-prefix-workspace-option" hidden> · <kbd>w</kbd> Workspace</span><span id="go-prefix-project-options" hidden> · <kbd>i</kbd> Issues · <kbd>c</kbd> Chat · <kbd>m</kbd> Members</span><span id="admin-go-prefix-option" hidden> · <kbd>a</kbd> Administration</span></span>
           <span id="project-keyboard-hints" hidden><kbd>g</kbd> <kbd>i</kbd> Issues <kbd>g</kbd> <kbd>c</kbd> Chat <kbd>g</kbd> <kbd>m</kbd> Members · <kbd>c</kbd> Create <kbd>e</kbd> Edit <kbd>s</kbd> Status · Chat: <kbd>j</kbd>/<kbd>k</kbd> Move <kbd>r</kbd> Reply <kbd>i</kbd> Issue · <kbd>Enter</kbd> Send <kbd>Shift</kbd>+<kbd>Enter</kbd> New line</span>
           <span><kbd>Ctrl/Cmd</kbd>+<kbd>K</kbd> Commands</span>
           <span><kbd>t</kbd> Theme</span>
@@ -888,6 +903,7 @@
           <div><dt><kbd>/</kbd></dt><dd>Focus the issue filter</dd></div>
           <div><dt><kbd>Enter</kbd></dt><dd>Open a selected project or issue; submit a form</dd></div>
           <div><dt><kbd>g</kbd>, <kbd>p</kbd></dt><dd>Go to projects</dd></div>
+          <div><dt><kbd>g</kbd>, <kbd>r</kbd></dt><dd>Open the team roadmap</dd></div>
           <div><dt><kbd>g</kbd>, <kbd>n</kbd></dt><dd>Open your Inbox</dd></div>
           <div><dt><kbd>g</kbd>, <kbd>l</kbd></dt><dd>Open the workspace Lounge</dd></div>
           <div><dt><kbd>g</kbd>, <kbd>w</kbd></dt><dd>When you belong to multiple workspaces, open the picker; arrows choose, Enter switches, Escape cancels</dd></div>

@@ -6,6 +6,7 @@ export type ShortcutAction =
   | 'projects'
   | 'inbox'
   | 'lounge'
+  | 'roadmap'
   | 'workspace-switcher'
   | 'issues'
   | 'chat'
@@ -59,6 +60,7 @@ export interface ShortcutContext {
   hasWorkspace: boolean;
   canSwitchWorkspace: boolean;
   canAdmin: boolean;
+  canRoadmap: boolean;
   hasProject: boolean;
   projectListVisible: boolean;
   inboxListVisible: boolean;
@@ -111,6 +113,7 @@ export function resolveShortcut(event: ShortcutEvent, context: ShortcutContext):
     if (key === 'p' && context.hasWorkspace) return 'projects';
     if (key === 'n' && context.hasWorkspace) return 'inbox';
     if (key === 'l' && context.hasWorkspace) return 'lounge';
+    if (key === 'r' && context.canRoadmap) return 'roadmap';
     if (key === 'w' && context.canSwitchWorkspace) return 'workspace-switcher';
     if (key === 'i' && context.hasProject) return 'issues';
     if (key === 'c' && context.hasProject) return 'chat';
