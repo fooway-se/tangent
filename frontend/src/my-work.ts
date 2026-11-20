@@ -13,6 +13,7 @@ export interface MyWorkMilestoneGroup<T extends MyWorkTask = MyWorkTask> {
   milestoneId: number | null;
   name: string;
   dueDate: string | null;
+  isOngoing?: boolean;
   tasks: T[];
 }
 
@@ -47,10 +48,11 @@ export function groupMyWorkTasks<T extends MyWorkTask>(tasks: readonly T[]): MyW
         projectId,
         projectName: firstTask.project_name,
         milestones: groupIssuesByMilestone(projectTasks, [...milestonesById.values()]).map((group) => ({
-          key: `${projectId}:${group.milestoneId ?? 'none'}`,
+          key: `${projectId}:${group.isOngoing ? 'ongoing' : group.milestoneId ?? 'none'}`,
           milestoneId: group.milestoneId,
           name: group.name,
           dueDate: group.dueDate,
+          isOngoing: group.isOngoing,
           tasks: group.issues,
         })),
       };

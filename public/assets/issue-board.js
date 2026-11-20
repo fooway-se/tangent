@@ -5,16 +5,25 @@ export function discussionIndicatorLabel(count) {
 }
 const statusOrder = ['doing', 'testing', 'todo', 'backlog', 'done', 'cancelled'];
 export function milestoneProgress(issues) {
-    const cancelled = issues.filter((issue) => issue.status === 'cancelled').length;
-    const active = issues.length - cancelled;
-    const done = issues.filter((issue) => issue.status === 'done').length;
+    const plannedIssues = issues.filter((issue) => issue.is_ongoing !== true);
+    const cancelled = plannedIssues.filter((issue) => issue.status === 'cancelled').length;
+    const active = plannedIssues.length - cancelled;
+    const done = plannedIssues.filter((issue) => issue.status === 'done').length;
     return { done, active, cancelled, complete: active > 0 && done === active };
+}
+export function projectProgress(issues) {
+    const ongoing = issues.filter((issue) => issue.is_ongoing === true && issue.status !== 'cancelled').length;
+    const cancelled = issues.filter((issue) => issue.status === 'cancelled').length;
+    const plannedIssues = issues.filter((issue) => issue.is_ongoing !== true && issue.status !== 'cancelled');
+    const done = plannedIssues.filter((issue) => issue.status === 'done').length;
+    const total = plannedIssues.length;
+    return { done, total, ongoing, cancelled, complete: total > 0 && done === total };
 }
 export function filterIssues(issues, query) {
     const normalized = query.trim().toLocaleLowerCase();
     if (normalized === '')
         return [...issues];
-    return issues.filter((issue) => `#${issue.id} ${issue.title} ${issue.description} ${issue.status} ${issue.type ?? ''} ${issue.priority ?? ''} ${issue.due_date ?? ''} ${issue.assignee_name ?? ''} ${issue.milestone_name ?? ''}`
+    return issues.filter((issue) => `#${issue.id} ${issue.title} ${issue.description} ${issue.status} ${issue.type ?? ''} ${issue.priority ?? ''} ${issue.due_date ?? ''} ${issue.assignee_name ?? ''} ${issue.milestone_name ?? ''} ${issue.is_ongoing ? 'ongoing' : ''}`
         .toLocaleLowerCase()
         .includes(normalized));
 }
@@ -35,6 +44,8 @@ export function groupIssues(issues) {
 export function groupIssuesByMilestone(issues, milestones) {
     const issuesByMilestone = new Map();
     for (const issue of issues) {
+        if (issue.is_ongoing === true)
+            continue;
         const milestoneId = issue.milestone_id ?? null;
         const matches = issuesByMilestone.get(milestoneId) ?? [];
         matches.push(issue);
@@ -62,6 +73,15 @@ export function groupIssuesByMilestone(issues, milestones) {
             || a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
     });
     const unassigned = issuesByMilestone.get(null);
+    const ongoing = issues.filter((issue) => issue.is_ongoing === true);
+    if (ongoing.length > 0)
+        groups.push({
+            milestoneId: null,
+            name: 'Ongoing',
+            dueDate: null,
+            issues: ongoing,
+            isOngoing: true,
+        });
     if (unassigned !== undefined)
         groups.push({ milestoneId: null, name: 'No milestone', dueDate: null, issues: unassigned });
     return groups;

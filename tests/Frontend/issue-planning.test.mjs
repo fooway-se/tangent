@@ -50,6 +50,15 @@ test('No milestone group offers opt-in bulk selection and a grouped milestone mo
   assert.match(css, /\.issue-bulk-move-toolbar\s*\{/);
 });
 
+test('ongoing issues are marked separately, grouped apart from unplanned work, and excluded from project progress', () => {
+  assert.match(html, /name="is_ongoing"/);
+  assert.match(app, /if \(issueQuickAddOngoing\.checked\) \{\s*issueInput\.is_ongoing = true/);
+  assert.match(app, /projectProgress\(projectIssues\)/);
+  assert.match(app, /group\.isOngoing \? 'milestone:ongoing'/);
+  assert.match(app, /issue\.is_ongoing/);
+  assert.match(css, /\.issue-ongoing-tag\s*\{/);
+});
+
 test('issue rows mark shared issues and leave internal issues without a sharing badge', () => {
   const rowStart = app.indexOf('function createIssueRow(');
   const rowEnd = app.indexOf('\nfunction ', rowStart + 1);

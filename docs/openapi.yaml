@@ -764,7 +764,7 @@ paths:
   /roadmap:
     get:
       summary: List internal workspace milestones for the team roadmap
-      description: Available to admins and developers. Developers see milestones only from projects they belong to. Archived projects and milestones are omitted. Task counts include internal and shared issues; issue titles and assignee identities are not returned. Guests cannot access this endpoint.
+      description: Available to admins and developers. Developers see milestones only from projects they belong to. Archived projects and milestones are omitted. Task counts include internal and shared non-ongoing issues; issue titles and assignee identities are not returned. Guests cannot access this endpoint.
       responses:
         '200':
           description: Milestone progress and workload summaries, ordered by due date.
@@ -1085,6 +1085,7 @@ paths:
                 due_date: { type: [string, 'null'], format: date, description: Issue due date in YYYY-MM-DD format; null means no due date. }
                 assignee_id: { type: [integer, 'null'], minimum: 1, description: Project member responsible for the issue; null means unassigned. }
                 milestone_id: { type: [integer, 'null'], minimum: 1, description: Milestone in this project; null means no milestone. Requires issues.share. }
+                is_ongoing: { type: boolean, default: false, description: Work that continues throughout the project. Requires issues.share. Ongoing issues cannot belong to a milestone or be marked done. }
                 is_shared: { type: boolean, default: false, description: Share the issue with project guests. Requires issues.share. }
                 approval_requested: { type: boolean, default: false, description: Request guest approval; requires is_shared to be true. }
       responses:
@@ -1233,7 +1234,7 @@ paths:
   /projects/{id}/client-view:
     get:
       summary: Client (guest) view of a project
-      description: Progress, milestones, shared items, pending approvals and updates. Visibility is filtered server-side to content marked shared. Completed and archived projects remain readable but do not accept writes.
+      description: Progress, milestones, shared items, pending approvals and updates. Visibility is filtered server-side to content marked shared; ongoing issues remain internal and are omitted. Completed and archived projects remain readable but do not accept writes.
       parameters:
         - $ref: '#/components/parameters/Id'
       responses:
@@ -1388,6 +1389,7 @@ paths:
                 assignee_id: { type: [integer, 'null'], minimum: 1, description: Project member responsible for the issue; null means unassigned. }
                 status: { type: string, enum: [backlog, todo, doing, testing, done, cancelled] }
                 is_shared: { type: boolean, description: Whether this issue appears in the guest client view. }
+                is_ongoing: { type: boolean, description: Whether this is continuing work. Requires issues.share. Ongoing issues cannot belong to a milestone or be marked done. }
                 milestone_id: { type: [integer, 'null'], minimum: 1 }
                 approval_requested: { type: boolean }
       responses:
@@ -1878,7 +1880,7 @@ components:
             type: { type: string, enum: [message] }
     Issue:
       type: object
-      required: [id, workspace_id, project_id, title, description, context, expected_outcome, acceptance_criteria, type, assignee_id, status, priority, due_date, created_by, source_channel_id, source_message_id, is_shared, milestone_id, sort_order, discussion_count, approval_requested_at, approved_by, approved_at, created_at, updated_at, deleted_at]
+      required: [id, workspace_id, project_id, title, description, context, expected_outcome, acceptance_criteria, type, assignee_id, status, priority, due_date, created_by, source_channel_id, source_message_id, is_shared, is_ongoing, milestone_id, sort_order, discussion_count, approval_requested_at, approved_by, approved_at, created_at, updated_at, deleted_at]
       properties:
         id: { type: integer }
         workspace_id: { type: integer }
@@ -1891,6 +1893,7 @@ components:
         type: { type: string, enum: [task, bug, feature, research, maintenance], default: task }
         assignee_id: { type: [integer, 'null'], description: Project member responsible for the issue; null means unassigned. }
         is_shared: { type: boolean, default: false }
+        is_ongoing: { type: boolean, default: false, description: Ongoing work is excluded from planned progress and cannot belong to a milestone or be marked done. }
         milestone_id: { type: [integer, 'null'] }
         sort_order: { type: integer, minimum: 0, description: Saved ordering within the issue's milestone; lower values come first. }
         discussion_count: { type: integer, minimum: 0, description: Number of posts and replies in this issue's discussion. }
@@ -1951,7 +1954,7 @@ components:
         project_status: { type: string, enum: [active, paused, completed] }
         name: { type: string }
         due_date: { type: [string, 'null'], format: date }
-        total_tasks: { type: integer, minimum: 0, description: Non-deleted, non-cancelled issues in the milestone. }
+        total_tasks: { type: integer, minimum: 0, description: Non-deleted, non-cancelled, non-ongoing issues in the milestone. }
         completed_tasks: { type: integer, minimum: 0 }
         remaining_tasks: { type: integer, minimum: 0 }
         assigned_team_members: { type: integer, minimum: 0, description: Distinct active admins and developers assigned to remaining tasks. }

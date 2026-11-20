@@ -34,6 +34,13 @@ final class GuestViewTest extends ApiTestCase
         ]);
         $internal = $this->createIssue($admin, $projectId, 'SECRET INTERNAL ISSUE TITLE');
         $this->updateIssue($admin, $internal, ['status' => 'done', 'milestone_id' => $internalMilestone]);
+        $ongoing = $this->createIssue($admin, $projectId, 'SECRET ONGOING ISSUE TITLE');
+        $this->updateIssue($admin, $ongoing, [
+            'status' => 'doing',
+            'is_shared' => true,
+            'is_ongoing' => true,
+            'approval_requested' => true,
+        ]);
 
         self::assertSame(404, $this->cookieRequest(
             'GET',
@@ -54,7 +61,10 @@ final class GuestViewTest extends ApiTestCase
         self::assertCount(1, $response->body['approvals']);
         self::assertSame($approval, $response->body['approvals'][0]['id']);
         self::assertEqualsCanonicalizing([$done, $approval], array_column($response->body['items'], 'id'));
+        self::assertNotContains($ongoing, array_column($response->body['items'], 'id'));
         self::assertStringNotContainsString('SECRET INTERNAL ISSUE TITLE', json_encode($response->body));
+        self::assertStringNotContainsString('SECRET ONGOING ISSUE TITLE', json_encode($response->body));
+        self::assertStringNotContainsString('SECRET ONGOING ISSUE TITLE', json_encode($response->body['updates']));
         self::assertSame('done', $this->itemById($response->body['items'], $done)['status']);
         self::assertSame('doing', $this->itemById($response->body['items'], $approval)['status']);
         self::assertSame($milestone, $this->itemById($response->body['items'], $done)['milestone_id']);

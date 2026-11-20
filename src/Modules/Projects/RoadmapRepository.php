@@ -31,7 +31,7 @@ final class RoadmapRepository
              INNER JOIN projects p ON p.workspace_id = m.workspace_id AND p.id = m.project_id
              {$membershipJoin}
              LEFT JOIN issues i ON i.workspace_id = m.workspace_id AND i.project_id = m.project_id
-                  AND i.milestone_id = m.id AND i.deleted_at IS NULL AND i.status <> 'cancelled'
+                  AND i.milestone_id = m.id AND i.is_ongoing = 0 AND i.deleted_at IS NULL AND i.status <> 'cancelled'
              LEFT JOIN users u ON u.workspace_id = i.workspace_id AND u.id = i.assignee_id
              WHERE m.workspace_id = :workspace_id AND m.archived_at IS NULL AND p.status <> 'archived'
              GROUP BY m.id, m.project_id, p.name, p.status, m.name, m.due_date

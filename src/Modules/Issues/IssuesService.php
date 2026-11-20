@@ -176,7 +176,7 @@ final class IssuesService
     public function create(AuthenticatedUser $user, int $projectId, array $input): array
     {
         $this->requireProjectAccess($user, $projectId, 'issues.create');
-        $shareFields = ['is_shared', 'milestone_id', 'approval_requested'];
+        $shareFields = ['is_shared', 'is_ongoing', 'milestone_id', 'approval_requested'];
         if (array_intersect($shareFields, array_keys($input)) !== []) {
             $this->requireProjectAccess($user, $projectId, 'issues.share');
         }
@@ -202,6 +202,11 @@ final class IssuesService
         }
         if ($milestoneId !== null && $this->milestones->find($user->workspaceId, $projectId, $milestoneId) === null) {
             throw new ApiException(422, 'validation_failed', 'Milestones must belong to the issue project.');
+        }
+        $isOngoing = $input['is_ongoing'] ?? false;
+        if (!is_bool($isOngoing)) throw new ApiException(422, 'validation_failed', 'is_ongoing must be a boolean.');
+        if ($isOngoing && $milestoneId !== null) {
+            throw new ApiException(422, 'validation_failed', 'Ongoing issues cannot belong to a milestone.');
         }
         $isShared = $input['is_shared'] ?? false;
         if (!is_bool($isShared)) throw new ApiException(422, 'validation_failed', 'is_shared must be a boolean.');
@@ -242,6 +247,7 @@ final class IssuesService
                 $assigneeId,
                 $milestoneId,
                 $isShared,
+                $isOngoing,
                 $approvalRequested,
                 $priority,
                 $dueDate,
@@ -284,7 +290,7 @@ final class IssuesService
         if ($issue === null) {
             throw new ApiException(404, 'not_found', 'The issue was not found.');
         }
-        $shareFields = ['is_shared', 'milestone_id', 'approval_requested'];
+        $shareFields = ['is_shared', 'is_ongoing', 'milestone_id', 'approval_requested'];
         $issueFields = [
             'title', 'description', 'status', 'type', 'assignee_id', 'priority', 'due_date',
             'context', 'expected_outcome', 'acceptance_criteria',
@@ -309,6 +315,7 @@ final class IssuesService
             'priority' => $issue['priority'],
             'due_date' => $issue['due_date'],
             'is_shared' => $issue['is_shared'],
+            'is_ongoing' => $issue['is_ongoing'],
             'milestone_id' => $issue['milestone_id'],
             'sort_order' => $issue['sort_order'],
             'approval_requested_at' => $issue['approval_requested_at'],
@@ -359,6 +366,10 @@ final class IssuesService
             if (!is_bool($input['is_shared'])) throw new ApiException(422, 'validation_failed', 'is_shared must be a boolean.');
             $updated['is_shared'] = $input['is_shared'];
         }
+        if (array_key_exists('is_ongoing', $input)) {
+            if (!is_bool($input['is_ongoing'])) throw new ApiException(422, 'validation_failed', 'is_ongoing must be a boolean.');
+            $updated['is_ongoing'] = $input['is_ongoing'];
+        }
         if (array_key_exists('milestone_id', $input)) {
             if ($input['milestone_id'] !== null && (!is_int($input['milestone_id']) || $input['milestone_id'] < 1)) {
                 throw new ApiException(422, 'validation_failed', 'milestone_id must be a positive integer or null.');
@@ -385,6 +396,17 @@ final class IssuesService
                 $updated['approved_by'] = null;
                 $updated['approved_at'] = null;
             }
+        }
+
+        if ($updated['is_ongoing'] && $updated['status'] === 'done') {
+            throw new ApiException(422, 'validation_failed', 'Ongoing issues cannot be marked done. Remove the ongoing classification first.');
+        }
+        if ($updated['is_ongoing'] && $updated['milestone_id'] !== null) {
+            if (array_key_exists('milestone_id', $input) && $input['milestone_id'] !== null) {
+                throw new ApiException(422, 'validation_failed', 'Ongoing issues cannot belong to a milestone.');
+            }
+            $updated['milestone_id'] = null;
+            $updated['sort_order'] = $this->issues->maxSortOrder($user->workspaceId, $issue['project_id'], null) + 1;
         }
 
         $assigneeChanged = $updated['assignee_id'] !== $issue['assignee_id'];
@@ -454,6 +476,9 @@ final class IssuesService
             if ($issue['milestone_id'] !== null) {
                 throw new ApiException(409, 'issue_already_planned', 'One or more selected issues already belong to a milestone. Refresh and try again.');
             }
+            if ($issue['is_ongoing']) {
+                throw new ApiException(409, 'issue_ongoing', 'Ongoing issues cannot be moved into a milestone. Remove the ongoing classification first.');
+            }
         }
 
         $ownsTransaction = !$this->pdo->inTransaction();
@@ -492,7 +517,7 @@ final class IssuesService
         $project = $this->projects->find($user->workspaceId, $issue['project_id']);
         if ($project === null) throw new ApiException(404, 'not_found', 'The project was not found.');
         ProjectLifecycle::requireWritable($project['status']);
-        if (!$issue['is_shared'] || $issue['approval_requested_at'] === null || $issue['status'] === 'cancelled') {
+        if (!$issue['is_shared'] || $issue['is_ongoing'] || $issue['approval_requested_at'] === null || $issue['status'] === 'cancelled') {
             throw new ApiException(404, 'not_found', 'The approval was not found.');
         }
         if ($issue['approved_at'] !== null) throw new ApiException(409, 'already_approved', 'This issue has already been approved.');
@@ -503,7 +528,7 @@ final class IssuesService
             if (!$this->issues->approve($user->workspaceId, $issueId, $user->id)) {
                 $current = $this->issues->approvalIssue($user->workspaceId, $issueId);
                 if ($current !== null && $current['is_shared'] && $current['approval_requested_at'] !== null
-                    && $current['status'] !== 'cancelled' && $current['approved_at'] !== null) {
+                    && !$current['is_ongoing'] && $current['status'] !== 'cancelled' && $current['approved_at'] !== null) {
                     throw new ApiException(409, 'already_approved', 'This issue has already been approved.');
                 }
                 throw new ApiException(404, 'not_found', 'The approval was not found.');
@@ -547,6 +572,7 @@ final class IssuesService
                 $issue['milestone_id'],
                 $issueId,
                 $direction,
+                $issue['is_ongoing'],
             );
             if ($ownsTransaction) $this->pdo->commit();
             return $this->issues->find($user->workspaceId, $issueId) ?? [];

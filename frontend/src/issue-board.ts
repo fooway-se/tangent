@@ -13,6 +13,7 @@ export interface BoardIssue {
   milestone_id?: number | null;
   milestone_name?: string | null;
   milestone_due_date?: string | null;
+  is_ongoing?: boolean;
   discussion_count?: number;
   sort_order?: number;
   created_at: string;
@@ -35,6 +36,14 @@ export interface MilestoneProgress {
   complete: boolean;
 }
 
+export interface ProjectProgress {
+  done: number;
+  total: number;
+  ongoing: number;
+  cancelled: number;
+  complete: boolean;
+}
+
 export function discussionIndicatorLabel(count: number): string | null {
   if (!Number.isSafeInteger(count) || count < 1) return null;
   return `${count} discussion ${count === 1 ? 'message' : 'messages'}`;
@@ -42,18 +51,28 @@ export function discussionIndicatorLabel(count: number): string | null {
 
 const statusOrder: IssueStatus[] = ['doing', 'testing', 'todo', 'backlog', 'done', 'cancelled'];
 
-export function milestoneProgress(issues: readonly Pick<BoardIssue, 'status'>[]): MilestoneProgress {
-  const cancelled = issues.filter((issue) => issue.status === 'cancelled').length;
-  const active = issues.length - cancelled;
-  const done = issues.filter((issue) => issue.status === 'done').length;
+export function milestoneProgress(issues: readonly Pick<BoardIssue, 'status' | 'is_ongoing'>[]): MilestoneProgress {
+  const plannedIssues = issues.filter((issue) => issue.is_ongoing !== true);
+  const cancelled = plannedIssues.filter((issue) => issue.status === 'cancelled').length;
+  const active = plannedIssues.length - cancelled;
+  const done = plannedIssues.filter((issue) => issue.status === 'done').length;
   return { done, active, cancelled, complete: active > 0 && done === active };
+}
+
+export function projectProgress(issues: readonly Pick<BoardIssue, 'status' | 'is_ongoing'>[]): ProjectProgress {
+  const ongoing = issues.filter((issue) => issue.is_ongoing === true && issue.status !== 'cancelled').length;
+  const cancelled = issues.filter((issue) => issue.status === 'cancelled').length;
+  const plannedIssues = issues.filter((issue) => issue.is_ongoing !== true && issue.status !== 'cancelled');
+  const done = plannedIssues.filter((issue) => issue.status === 'done').length;
+  const total = plannedIssues.length;
+  return { done, total, ongoing, cancelled, complete: total > 0 && done === total };
 }
 
 export function filterIssues<T extends BoardIssue>(issues: readonly T[], query: string): T[] {
   const normalized = query.trim().toLocaleLowerCase();
   if (normalized === '') return [...issues];
   return issues.filter((issue) =>
-    `#${issue.id} ${issue.title} ${issue.description} ${issue.status} ${issue.type ?? ''} ${issue.priority ?? ''} ${issue.due_date ?? ''} ${issue.assignee_name ?? ''} ${issue.milestone_name ?? ''}`
+    `#${issue.id} ${issue.title} ${issue.description} ${issue.status} ${issue.type ?? ''} ${issue.priority ?? ''} ${issue.due_date ?? ''} ${issue.assignee_name ?? ''} ${issue.milestone_name ?? ''} ${issue.is_ongoing ? 'ongoing' : ''}`
       .toLocaleLowerCase()
       .includes(normalized),
   );
@@ -84,9 +103,10 @@ export function groupIssues<T extends BoardIssue>(issues: readonly T[]): Array<{
 export function groupIssuesByMilestone<T extends BoardIssue>(
   issues: readonly T[],
   milestones: readonly BoardMilestone[],
-): Array<{ milestoneId: number | null; name: string; dueDate: string | null; issues: T[] }> {
+): Array<{ milestoneId: number | null; name: string; dueDate: string | null; issues: T[]; isOngoing?: boolean }> {
   const issuesByMilestone = new Map<number | null, T[]>();
   for (const issue of issues) {
+    if (issue.is_ongoing === true) continue;
     const milestoneId = issue.milestone_id ?? null;
     const matches = issuesByMilestone.get(milestoneId) ?? [];
     matches.push(issue);
@@ -94,7 +114,13 @@ export function groupIssuesByMilestone<T extends BoardIssue>(
   }
 
   const milestoneById = new Map(milestones.map((milestone) => [milestone.id, milestone]));
-  const groups = [...issuesByMilestone.entries()]
+  const groups: Array<{
+    milestoneId: number | null;
+    name: string;
+    dueDate: string | null;
+    issues: T[];
+    isOngoing?: boolean;
+  }> = [...issuesByMilestone.entries()]
     .filter(([milestoneId]) => milestoneId !== null)
     .map(([milestoneId, groupedIssues]) => {
       const firstIssue = groupedIssues[0]!;
@@ -114,6 +140,14 @@ export function groupIssuesByMilestone<T extends BoardIssue>(
     });
 
   const unassigned = issuesByMilestone.get(null);
+  const ongoing = issues.filter((issue) => issue.is_ongoing === true);
+  if (ongoing.length > 0) groups.push({
+    milestoneId: null,
+    name: 'Ongoing',
+    dueDate: null,
+    issues: ongoing,
+    isOngoing: true,
+  });
   if (unassigned !== undefined) groups.push({ milestoneId: null, name: 'No milestone', dueDate: null, issues: unassigned });
   return groups;
 }

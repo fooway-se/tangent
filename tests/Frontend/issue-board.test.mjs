@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { discussionIndicatorLabel, filterIssues, filterIssuesByMilestoneArchive, groupIssues, groupIssuesByMilestone, milestoneProgress, sortIssues } from '../../public/assets/issue-board.js';
+import { discussionIndicatorLabel, filterIssues, filterIssuesByMilestoneArchive, groupIssues, groupIssuesByMilestone, milestoneProgress, projectProgress, sortIssues } from '../../public/assets/issue-board.js';
 
 const issues = [
   { id: 12, title: 'Fix login redirect', description: 'After reset', status: 'doing', created_at: '2026-11-01', updated_at: '2026-11-14' },
@@ -38,6 +38,16 @@ test('issues group by milestone in due-date order with unassigned issues last', 
   const groups = groupIssuesByMilestone(planned, milestones);
   assert.deepEqual(groups.map((group) => group.name), ['Soon', 'Later', 'No date', 'No milestone']);
   assert.deepEqual(groups.map((group) => group.issues.map((issue) => issue.id)), [[33], [31], [34], [32]]);
+});
+
+test('ongoing issues get their own group apart from issues that are simply unplanned', () => {
+  const groups = groupIssuesByMilestone([
+    { ...issues[0], id: 51, milestone_id: null, is_ongoing: true },
+    { ...issues[1], id: 52, milestone_id: null },
+  ], []);
+  assert.deepEqual(groups.map((group) => group.name), ['Ongoing', 'No milestone']);
+  assert.deepEqual(groups.map((group) => group.issues.map((issue) => issue.id)), [[51], [52]]);
+  assert.equal(groups[0].isOngoing, true);
 });
 
 test('milestone history filtering hides archived milestone issues from current work and preserves unassigned issues', () => {
@@ -119,4 +129,25 @@ test('milestone progress ignores cancelled issues and completes only when active
     { status: 'cancelled' },
   ]), { done: 1, active: 2, cancelled: 1, complete: false });
   assert.deepEqual(milestoneProgress([]), { done: 0, active: 0, cancelled: 0, complete: false });
+});
+
+test('milestone progress excludes ongoing work from the planned completion denominator', () => {
+  assert.deepEqual(milestoneProgress([
+    { status: 'done' },
+    { status: 'doing', is_ongoing: true },
+    { status: 'cancelled' },
+  ]), { done: 1, active: 1, cancelled: 1, complete: true });
+});
+
+test('ongoing issues do not block project completion and are counted separately', () => {
+  assert.deepEqual(projectProgress([
+    { status: 'done' },
+    { status: 'testing' },
+    { status: 'doing', is_ongoing: true },
+    { status: 'cancelled' },
+  ]), { done: 1, total: 2, ongoing: 1, cancelled: 1, complete: false });
+  assert.deepEqual(projectProgress([
+    { status: 'done' },
+    { status: 'doing', is_ongoing: true },
+  ]), { done: 1, total: 1, ongoing: 1, cancelled: 0, complete: true });
 });

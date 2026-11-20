@@ -17,7 +17,7 @@ final class IssueRepository
         $statement = $this->pdo->prepare(
             "SELECT id, workspace_id, project_id, title, description, context, expected_outcome, acceptance_criteria,
                     issue_type AS type, assignee_id, status, priority, due_date, created_by,
-                    source_channel_id, source_message_id, is_shared, milestone_id, sort_order, approval_requested_at, approved_by, approved_at,
+                    source_channel_id, source_message_id, is_shared, is_ongoing, milestone_id, sort_order, approval_requested_at, approved_by, approved_at,
                     created_at, updated_at, deleted_at,
                     (SELECT COUNT(*) FROM issue_discussion_messages discussion
                      WHERE discussion.workspace_id = issues.workspace_id AND discussion.issue_id = issues.id) AS discussion_count
@@ -46,7 +46,7 @@ final class IssueRepository
         $statement = $this->pdo->prepare(
             "SELECT issues.id, issues.workspace_id, issues.project_id, title, description, context, expected_outcome, acceptance_criteria,
                     issue_type AS type, assignee_id, status, priority, issues.due_date, created_by,
-                    source_channel_id, source_message_id, is_shared, issues.milestone_id, milestones.name AS milestone_name,
+                    source_channel_id, source_message_id, is_shared, issues.is_ongoing, issues.milestone_id, milestones.name AS milestone_name,
                     milestones.due_date AS milestone_due_date, sort_order, approval_requested_at, approved_by, approved_at,
                     issues.created_at, issues.updated_at, issues.deleted_at,
                     (SELECT COUNT(*) FROM issue_discussion_messages discussion
@@ -67,7 +67,7 @@ final class IssueRepository
         $statement = $this->pdo->prepare(
             'SELECT id, workspace_id, project_id, title, description, context, expected_outcome, acceptance_criteria,
                     issue_type AS type, assignee_id, status, priority, due_date, created_by,
-                    source_channel_id, source_message_id, is_shared, milestone_id, sort_order, approval_requested_at, approved_by, approved_at,
+                    source_channel_id, source_message_id, is_shared, is_ongoing, milestone_id, sort_order, approval_requested_at, approved_by, approved_at,
                     created_at, updated_at, deleted_at,
                     (SELECT COUNT(*) FROM issue_discussion_messages discussion
                      WHERE discussion.workspace_id = issues.workspace_id AND discussion.issue_id = issues.id) AS discussion_count
@@ -91,6 +91,7 @@ final class IssueRepository
         ?int $assigneeId = null,
         ?int $milestoneId = null,
         bool $isShared = false,
+        bool $isOngoing = false,
         bool $approvalRequested = false,
         string $priority = 'medium',
         ?string $dueDate = null,
@@ -102,11 +103,11 @@ final class IssueRepository
             "INSERT INTO issues (
                 workspace_id, project_id, title, description, context, expected_outcome, acceptance_criteria,
                 issue_type, status, priority, due_date, created_by, assignee_id,
-                source_channel_id, source_message_id, is_shared, milestone_id, approval_requested_at
+                source_channel_id, source_message_id, is_shared, is_ongoing, milestone_id, approval_requested_at
              ) VALUES (
                 :workspace_id, :project_id, :title, :description, :context, :expected_outcome, :acceptance_criteria,
                 :type, 'backlog', :priority, :due_date, :created_by, :assignee_id,
-                :source_channel_id, :source_message_id, :is_shared, :milestone_id, :approval_requested_at
+                :source_channel_id, :source_message_id, :is_shared, :is_ongoing, :milestone_id, :approval_requested_at
              )"
         );
         $approvalRequestedAt = $approvalRequested ? gmdate('Y-m-d H:i:s') : null;
@@ -126,6 +127,7 @@ final class IssueRepository
             'source_channel_id' => $sourceChannelId,
             'source_message_id' => $sourceMessageId,
             'is_shared' => $isShared ? 1 : 0,
+            'is_ongoing' => $isOngoing ? 1 : 0,
             'milestone_id' => $milestoneId,
             'approval_requested_at' => $approvalRequestedAt,
         ]);
@@ -144,7 +146,7 @@ final class IssueRepository
         $statement = $this->pdo->prepare(
             'SELECT id, workspace_id, project_id, title, description, context, expected_outcome, acceptance_criteria,
                     issue_type AS type, assignee_id, status, priority, due_date, created_by,
-                    source_channel_id, source_message_id, is_shared, milestone_id, sort_order, approval_requested_at, approved_by, approved_at,
+                    source_channel_id, source_message_id, is_shared, is_ongoing, milestone_id, sort_order, approval_requested_at, approved_by, approved_at,
                     created_at, updated_at, deleted_at,
                     (SELECT COUNT(*) FROM issue_discussion_messages discussion
                      WHERE discussion.workspace_id = issues.workspace_id AND discussion.issue_id = issues.id) AS discussion_count
@@ -160,7 +162,7 @@ final class IssueRepository
         $statement = $this->pdo->prepare(
             'SELECT id, workspace_id, project_id, title, description, context, expected_outcome, acceptance_criteria,
                     issue_type AS type, assignee_id, status, priority, due_date, created_by,
-                    source_channel_id, source_message_id, is_shared, milestone_id, sort_order, approval_requested_at, approved_by, approved_at,
+                    source_channel_id, source_message_id, is_shared, is_ongoing, milestone_id, sort_order, approval_requested_at, approved_by, approved_at,
                     created_at, updated_at, deleted_at,
                     (SELECT COUNT(*) FROM issue_discussion_messages discussion
                      WHERE discussion.workspace_id = issues.workspace_id AND discussion.issue_id = issues.id) AS discussion_count
@@ -178,7 +180,7 @@ final class IssueRepository
              SET title = :title, description = :description, context = :context, expected_outcome = :expected_outcome,
                  acceptance_criteria = :acceptance_criteria, issue_type = :type, assignee_id = :assignee_id,
                  status = :status, priority = :priority, due_date = :due_date,
-                 is_shared = :is_shared, milestone_id = :milestone_id, sort_order = :sort_order,
+                 is_shared = :is_shared, is_ongoing = :is_ongoing, milestone_id = :milestone_id, sort_order = :sort_order,
                  approval_requested_at = :approval_requested_at, approved_by = :approved_by, approved_at = :approved_at
              WHERE workspace_id = :workspace_id AND id = :id AND deleted_at IS NULL'
         );
@@ -196,6 +198,7 @@ final class IssueRepository
             'priority' => $issue['priority'],
             'due_date' => $issue['due_date'],
             'is_shared' => $issue['is_shared'] ? 1 : 0,
+            'is_ongoing' => $issue['is_ongoing'] ? 1 : 0,
             'milestone_id' => $issue['milestone_id'],
             'sort_order' => $issue['sort_order'],
             'approval_requested_at' => $issue['approval_requested_at'],
@@ -214,7 +217,7 @@ final class IssueRepository
         $statement = $this->pdo->prepare(
             'UPDATE issues SET milestone_id = :milestone_id, sort_order = :sort_order
              WHERE workspace_id = :workspace_id AND project_id = :project_id AND id = :id
-               AND milestone_id IS NULL AND deleted_at IS NULL'
+               AND milestone_id IS NULL AND is_ongoing = 0 AND deleted_at IS NULL'
         );
         $statement->execute([
             'workspace_id' => $workspaceId,
@@ -246,11 +249,13 @@ final class IssueRepository
         ?int $milestoneId,
         int $issueId,
         string $direction,
+        bool $isOngoing,
     ): void
     {
         $statement = $this->pdo->prepare(
             "SELECT id, sort_order FROM issues
              WHERE workspace_id = :workspace_id AND project_id = :project_id AND milestone_id <=> :milestone_id
+               AND is_ongoing = :is_ongoing
                AND status IN ('backlog', 'todo', 'doing', 'testing') AND deleted_at IS NULL
              ORDER BY sort_order, id FOR UPDATE"
         );
@@ -258,6 +263,7 @@ final class IssueRepository
             'workspace_id' => $workspaceId,
             'project_id' => $projectId,
             'milestone_id' => $milestoneId,
+            'is_ongoing' => $isOngoing ? 1 : 0,
         ]);
         $rows = $statement->fetchAll(PDO::FETCH_ASSOC);
         $index = array_search($issueId, array_map(static fn (array $row): int => (int) $row['id'], $rows), true);
@@ -356,7 +362,7 @@ final class IssueRepository
              FROM issues i LEFT JOIN milestones m
                ON m.workspace_id = i.workspace_id AND m.id = i.milestone_id
              WHERE i.workspace_id = :workspace_id AND i.project_id = :project_id AND i.is_shared = 1
-               AND i.deleted_at IS NULL AND i.status <> 'cancelled'
+               AND i.is_ongoing = 0 AND i.deleted_at IS NULL AND i.status <> 'cancelled'
              ORDER BY FIELD(i.status, 'backlog', 'todo', 'doing', 'testing', 'done'), i.id DESC"
         );
         $statement->execute(['workspace_id' => $workspaceId, 'project_id' => $projectId]);
@@ -377,7 +383,7 @@ final class IssueRepository
                     SUM(SUM(status = 'done')) OVER () AS overall_done
              FROM issues
              WHERE workspace_id = :workspace_id AND project_id = :project_id AND is_shared = 1
-               AND deleted_at IS NULL AND status <> 'cancelled'
+               AND is_ongoing = 0 AND deleted_at IS NULL AND status <> 'cancelled'
              GROUP BY milestone_id"
         );
         $statement->execute(['workspace_id' => $workspaceId, 'project_id' => $projectId]);
@@ -406,7 +412,7 @@ final class IssueRepository
         $statement = $this->pdo->prepare(
             "SELECT id, title, description FROM issues
              WHERE workspace_id = :workspace_id AND project_id = :project_id AND is_shared = 1
-               AND deleted_at IS NULL AND status <> 'cancelled'
+               AND is_ongoing = 0 AND deleted_at IS NULL AND status <> 'cancelled'
                AND approval_requested_at IS NOT NULL AND approved_at IS NULL
              ORDER BY approval_requested_at, id"
         );
@@ -423,7 +429,7 @@ final class IssueRepository
             "SELECT COUNT(DISTINCT h.issue_id) FROM issue_status_history h FORCE INDEX (ix_issue_status_history_done_created)
              INNER JOIN issues i ON i.workspace_id = h.workspace_id AND i.id = h.issue_id
              WHERE h.workspace_id = :workspace_id AND i.project_id = :project_id AND i.is_shared = 1
-               AND i.deleted_at IS NULL AND i.status <> 'cancelled' AND h.to_status = 'done'
+               AND i.is_ongoing = 0 AND i.deleted_at IS NULL AND i.status <> 'cancelled' AND h.to_status = 'done'
                AND h.created_at >= DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 7 DAY)"
         );
         $statement->execute(['workspace_id' => $workspaceId, 'project_id' => $projectId]);
@@ -437,7 +443,7 @@ final class IssueRepository
              FROM issue_status_history h FORCE INDEX (ix_issue_status_history_workspace_recent)
              INNER JOIN issues i ON i.workspace_id = h.workspace_id AND i.id = h.issue_id
              WHERE h.workspace_id = :workspace_id AND i.project_id = :project_id AND i.is_shared = 1
-               AND i.deleted_at IS NULL AND i.status <> 'cancelled'
+               AND i.is_ongoing = 0 AND i.deleted_at IS NULL AND i.status <> 'cancelled'
              ORDER BY h.id DESC LIMIT 10"
         );
         $statement->execute(['workspace_id' => $workspaceId, 'project_id' => $projectId]);
@@ -456,7 +462,7 @@ final class IssueRepository
     public function approvalIssue(int $workspaceId, int $issueId): ?array
     {
         $statement = $this->pdo->prepare(
-            'SELECT project_id, title, created_by, is_shared, approval_requested_at, approved_at, status
+            'SELECT project_id, title, created_by, is_shared, is_ongoing, approval_requested_at, approved_at, status
              FROM issues WHERE workspace_id = :workspace_id AND id = :id
              AND deleted_at IS NULL LIMIT 1'
         );
@@ -468,6 +474,7 @@ final class IssueRepository
             'title' => (string) $row['title'],
             'created_by' => (int) $row['created_by'],
             'is_shared' => (bool) $row['is_shared'],
+            'is_ongoing' => (bool) $row['is_ongoing'],
             'approval_requested_at' => $row['approval_requested_at'] === null ? null : (string) $row['approval_requested_at'],
             'approved_at' => $row['approved_at'] === null ? null : (string) $row['approved_at'],
             'status' => (string) $row['status'],
@@ -526,6 +533,7 @@ final class IssueRepository
         }
         $issue['assignee_id'] = $issue['assignee_id'] === null ? null : (int) $issue['assignee_id'];
         $issue['is_shared'] = (bool) $issue['is_shared'];
+        $issue['is_ongoing'] = (bool) ($issue['is_ongoing'] ?? false);
         $issue['milestone_id'] = $issue['milestone_id'] === null ? null : (int) $issue['milestone_id'];
         $issue['priority'] = (string) $issue['priority'];
         $issue['due_date'] = $issue['due_date'] === null ? null : (string) $issue['due_date'];

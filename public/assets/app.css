@@ -390,6 +390,7 @@ select { padding-right: 28px; background: var(--screen-inset) url("data:image/sv
 .issue-description-details textarea { min-height: 32px; padding: 6px 8px; font-size: 12px; }
 .issue-quick-add-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin-top: 8px; }
 .issue-quick-add-fields label { display: grid; gap: 4px; color: var(--screen-muted); font-size: 11px; }
+.issue-quick-add-fields label.form-check-label { display: flex; align-items: center; gap: 8px; min-height: 100%; }
 .issue-quick-add-fields select { width: 100%; }
 .issue-quick-add-sharing { display: flex; flex-wrap: wrap; gap: 4px 18px; margin-top: 8px; }
 .issue-quick-add-actions { display: flex; align-items: center; align-self: center; gap: 6px; }
@@ -462,6 +463,7 @@ select { padding-right: 28px; background: var(--screen-inset) url("data:image/sv
 .issue-assignee-label { overflow-wrap: anywhere; }
 .issue-milestone-tag { max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
 .issue-type-tag { color: var(--screen-ink); }
+.issue-ongoing-tag { color: var(--accent); font-weight: 700; }
 .issue-priority-tag.is-high, .issue-shared-tag, .inbox-issue-status.is-doing { color: var(--accent); }
 .issue-priority-tag.is-urgent, .issue-due-date-tag.is-overdue { color: var(--danger); }
 .issue-status-button { display: flex; width: 108px; min-width: 108px; align-items: center; justify-content: space-between; border-color: var(--accent-edge); border-bottom-width: var(--key-depth); color: var(--accent-ink); background: var(--accent); box-shadow: inset 0 1px 0 var(--accent-shine); font: 700 12px var(--font-display); text-align: left; text-transform: capitalize; }

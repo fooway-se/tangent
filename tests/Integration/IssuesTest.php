@@ -213,6 +213,81 @@ final class IssuesTest extends ApiTestCase
         self::assertSame(422, $approvalWithoutSharing->status);
     }
 
+    public function testOngoingIssueClearsItsMilestoneAndCannotBeCompletedUntilReclassified(): void
+    {
+        $admin = $this->login($this->adminEmail);
+        $projectId = $this->createProject($admin, 'Ongoing work');
+        $milestone = $this->apiCookieRequest(
+            'POST',
+            "/api/v1/projects/{$projectId}/milestones",
+            $admin['cookie'],
+            ['name' => 'First delivery'],
+            $admin['csrf'],
+        );
+        self::assertSame(201, $milestone->status, json_encode($milestone->body));
+        $milestoneId = (int) $milestone->body['milestone']['id'];
+        $created = $this->apiCookieRequest(
+            'POST',
+            "/api/v1/projects/{$projectId}/issues",
+            $admin['cookie'],
+            ['title' => 'Monitor production', 'milestone_id' => $milestoneId],
+            $admin['csrf'],
+        );
+        self::assertSame(201, $created->status, json_encode($created->body));
+        $issueId = (int) $created->body['issue']['id'];
+
+        $ongoing = $this->apiCookieRequest(
+            'PATCH',
+            "/api/v1/issues/{$issueId}",
+            $admin['cookie'],
+            ['is_ongoing' => true],
+            $admin['csrf'],
+        );
+        self::assertSame(200, $ongoing->status, json_encode($ongoing->body));
+        self::assertTrue($ongoing->body['issue']['is_ongoing']);
+        self::assertNull($ongoing->body['issue']['milestone_id']);
+
+        $cannotComplete = $this->apiCookieRequest(
+            'PATCH',
+            "/api/v1/issues/{$issueId}",
+            $admin['cookie'],
+            ['status' => 'done'],
+            $admin['csrf'],
+        );
+        self::assertSame(422, $cannotComplete->status);
+
+        $reclassified = $this->apiCookieRequest(
+            'PATCH',
+            "/api/v1/issues/{$issueId}",
+            $admin['cookie'],
+            ['is_ongoing' => false],
+            $admin['csrf'],
+        );
+        self::assertSame(200, $reclassified->status, json_encode($reclassified->body));
+        self::assertFalse($reclassified->body['issue']['is_ongoing']);
+
+        $completed = $this->apiCookieRequest(
+            'PATCH',
+            "/api/v1/issues/{$issueId}",
+            $admin['cookie'],
+            ['status' => 'done'],
+            $admin['csrf'],
+        );
+        self::assertSame(200, $completed->status, json_encode($completed->body));
+        self::assertSame('done', $completed->body['issue']['status']);
+
+        $createdOngoing = $this->apiCookieRequest(
+            'POST',
+            "/api/v1/projects/{$projectId}/issues",
+            $admin['cookie'],
+            ['title' => 'Review error reports', 'is_ongoing' => true],
+            $admin['csrf'],
+        );
+        self::assertSame(201, $createdOngoing->status, json_encode($createdOngoing->body));
+        self::assertTrue($createdOngoing->body['issue']['is_ongoing']);
+        self::assertNull($createdOngoing->body['issue']['milestone_id']);
+    }
+
     public function testIssuePriorityAndDueDateCanBeCreatedUpdatedAndCleared(): void
     {
         $admin = $this->login($this->adminEmail);

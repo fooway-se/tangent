@@ -23,10 +23,11 @@ export function groupMyWorkTasks(tasks) {
             projectId,
             projectName: firstTask.project_name,
             milestones: groupIssuesByMilestone(projectTasks, [...milestonesById.values()]).map((group) => ({
-                key: `${projectId}:${group.milestoneId ?? 'none'}`,
+                key: `${projectId}:${group.isOngoing ? 'ongoing' : group.milestoneId ?? 'none'}`,
                 milestoneId: group.milestoneId,
                 name: group.name,
                 dueDate: group.dueDate,
+                isOngoing: group.isOngoing,
                 tasks: group.issues,
             })),
         };

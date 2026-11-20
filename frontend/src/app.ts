@@ -32,6 +32,7 @@ import {
   groupIssuesByMilestone,
   discussionIndicatorLabel,
   milestoneProgress,
+  projectProgress,
   sortIssues,
   type BoardIssue,
   type IssueSortOrder,
@@ -176,6 +177,7 @@ interface Issue extends BoardIssue {
   source_channel_id: number | null;
   source_message_id: number | null;
   is_shared: boolean;
+  is_ongoing: boolean;
   milestone_id: number | null;
   milestone_name?: string | null;
   milestone_due_date?: string | null;
@@ -222,6 +224,7 @@ interface IssueBoardGroup {
   className: string;
   issues: Issue[];
   reorderByIssueId?: Map<number, { canMoveEarlier?: boolean; canMoveLater?: boolean; showMilestoneTag?: boolean }>;
+  isOngoing?: boolean;
   allowBulkMove?: boolean;
 }
 
@@ -256,6 +259,12 @@ const ISSUE_TYPE_OPTIONS: Array<{ value: IssueType; label: string }> = [
 
 function issueStatusLabel(status: IssueStatus): string {
   return ISSUE_STATUS_OPTIONS.find((option) => option.value === status)?.label ?? status;
+}
+
+function issueStatusOptions(issue: Pick<Issue, 'is_ongoing'>): typeof ISSUE_STATUS_OPTIONS {
+  return issue.is_ongoing
+    ? ISSUE_STATUS_OPTIONS.filter((option) => option.value !== 'done')
+    : ISSUE_STATUS_OPTIONS;
 }
 
 function issueTypeLabel(type: IssueType): string {
@@ -650,17 +659,20 @@ const issueQuickAddPriority = document.querySelector<HTMLSelectElement>('#issue-
 const issueQuickAddDueDate = document.querySelector<HTMLInputElement>('#issue-quick-add-due-date')!;
 const issueQuickAddAssignee = document.querySelector<HTMLSelectElement>('#issue-quick-add-assignee')!;
 const issueQuickAddMilestone = document.querySelector<HTMLSelectElement>('#issue-quick-add-milestone')!;
+const issueQuickAddOngoing = document.querySelector<HTMLInputElement>('#issue-quick-add-ongoing')!;
 const issueQuickAddShared = document.querySelector<HTMLInputElement>('#issue-quick-add-shared')!;
 const issueQuickAddApproval = document.querySelector<HTMLInputElement>('#issue-quick-add-approval')!;
 const issueQuickAddCancelButton = document.querySelector<HTMLButtonElement>('#issue-quick-add-cancel')!;
 const issueDetailType = document.querySelector<HTMLElement>('#issue-detail-type')!;
 const issueDetailAssignee = document.querySelector<HTMLElement>('#issue-detail-assignee')!;
 const issueDetailMilestone = document.querySelector<HTMLElement>('#issue-detail-milestone')!;
+const issueDetailOngoingRow = document.querySelector<HTMLElement>('#issue-detail-ongoing-row')!;
 const issueDetailSharing = document.querySelector<HTMLElement>('#issue-detail-sharing')!;
 const issueDetailApproval = document.querySelector<HTMLElement>('#issue-detail-approval')!;
 const issueDetailTypeInput = document.querySelector<HTMLSelectElement>('#issue-detail-type-input')!;
 const issueDetailAssigneeInput = document.querySelector<HTMLSelectElement>('#issue-detail-assignee-input')!;
 const issueDetailMilestoneInput = document.querySelector<HTMLSelectElement>('#issue-detail-milestone-input')!;
+const issueDetailOngoingInput = document.querySelector<HTMLInputElement>('#issue-detail-ongoing-input')!;
 const issueDetailSharedInput = document.querySelector<HTMLInputElement>('#issue-detail-shared-input')!;
 const issueDetailApprovalInput = document.querySelector<HTMLInputElement>('#issue-detail-approval-input')!;
 const issueStatusHistory = document.querySelector<HTMLDetailsElement>('#issue-status-history')!;
@@ -2780,6 +2792,7 @@ function beginCreateIssueFromChatMessage(message: ChatMessage, trigger: HTMLButt
   }
 
   issueForm.reset();
+  updateOngoingMilestoneControl(issueQuickAddOngoing, issueQuickAddMilestone);
   issueQuickAddSourceMessageId = message.id;
   issueQuickAddSourceProjectId = projectId;
   issueQuickAddReturnFocus = trigger;
@@ -3120,8 +3133,14 @@ function updateIssueQuickAddApproval(): void {
   if (issueQuickAddApproval.disabled) issueQuickAddApproval.checked = false;
 }
 
+function updateOngoingMilestoneControl(ongoing: HTMLInputElement, milestone: HTMLSelectElement): void {
+  if (ongoing.checked) milestone.value = '';
+  milestone.disabled = ongoing.checked;
+}
+
 function cancelIssueQuickAdd(): void {
   issueForm.reset();
+  updateOngoingMilestoneControl(issueQuickAddOngoing, issueQuickAddMilestone);
   issueQuickAddTitle.setCustomValidity('');
   issueQuickAddSourceMessageId = null;
   issueQuickAddSourceProjectId = null;
@@ -3142,6 +3161,7 @@ function issueQuickAddHasDraft(): boolean {
     || (type?.value ?? 'task') !== 'task'
     || issueQuickAddAssignee.value !== ''
     || issueQuickAddMilestone.value !== ''
+    || issueQuickAddOngoing.checked
     || issueQuickAddShared.checked
     || issueQuickAddApproval.checked;
 }
@@ -4339,6 +4359,10 @@ issueDescriptionDetails.addEventListener('toggle', () => {
 });
 issueQuickAddCancelButton.addEventListener('click', cancelIssueQuickAdd);
 issueQuickAddShared.addEventListener('change', updateIssueQuickAddApproval);
+issueQuickAddOngoing.addEventListener('change', () =>
+  updateOngoingMilestoneControl(issueQuickAddOngoing, issueQuickAddMilestone));
+issueDetailOngoingInput.addEventListener('change', () =>
+  updateOngoingMilestoneControl(issueDetailOngoingInput, issueDetailMilestoneInput));
 issueQuickAddTitle.addEventListener('input', () => issueQuickAddTitle.setCustomValidity(''));
 projectForm.querySelector<HTMLTextAreaElement>('textarea[name="description"]')
   ?.addEventListener('keydown', (event) => submitFormOnEnter(event, projectForm));
@@ -4439,7 +4463,10 @@ issueForm.addEventListener('submit', async (event) => {
     assignee_id: parsedIssue.assigneeId
       ?? (typeof assigneeValue === 'string' && assigneeValue !== '' ? Number(assigneeValue) : null),
   };
-  if (parsedIssue.milestoneId !== undefined) issueInput.milestone_id = parsedIssue.milestoneId;
+  if (issueQuickAddOngoing.checked) {
+    issueInput.is_ongoing = true;
+    issueInput.milestone_id = null;
+  } else if (parsedIssue.milestoneId !== undefined) issueInput.milestone_id = parsedIssue.milestoneId;
   else if (typeof milestoneValue === 'string' && milestoneValue !== '') issueInput.milestone_id = Number(milestoneValue);
   if (issueQuickAddShared.checked) issueInput.is_shared = true;
   if (issueQuickAddApproval.checked) issueInput.approval_requested = true;
@@ -4450,6 +4477,7 @@ issueForm.addEventListener('submit', async (event) => {
       body: JSON.stringify(issueInput),
     });
     issueForm.reset();
+    updateOngoingMilestoneControl(issueQuickAddOngoing, issueQuickAddMilestone);
     issueQuickAddTitle.setCustomValidity('');
     issueQuickAddSourceMessageId = null;
     issueQuickAddSourceProjectId = null;
@@ -5472,6 +5500,7 @@ async function loadProjectDetail(
   stopIssuePolling();
   if (issueQuickAddSourceProjectId !== null && issueQuickAddSourceProjectId !== projectId) {
     issueForm.reset();
+    updateOngoingMilestoneControl(issueQuickAddOngoing, issueQuickAddMilestone);
     issueQuickAddSourceMessageId = null;
     issueQuickAddSourceProjectId = null;
     issueQuickAddReturnFocus = null;
@@ -5715,27 +5744,34 @@ function clearBulkMoveSelection(): void {
 }
 
 function renderProjectIssueBoard(): void {
-  const projectTotal = projectIssues.length;
-  const projectCompleted = projectIssues.filter((issue) => issue.status === 'done').length;
-  const projectCancelled = projectIssues.filter((issue) => issue.status === 'cancelled').length;
-  const progressTotal = projectTotal - projectCancelled;
-  issueProgress.max = Math.max(progressTotal, 1);
-  issueProgress.value = projectCompleted;
-  issueProgress.classList.toggle('is-complete', progressTotal > 0 && projectCompleted === progressTotal);
-  setTextContentIfChanged(issueProgressLabel, projectCancelled > 0
-    ? `${projectCompleted} of ${progressTotal} non-cancelled issues done · ${projectCancelled} cancelled`
-    : `${projectCompleted} of ${projectTotal} issues done`);
+  const projectIssueProgress = projectProgress(projectIssues);
+  issueProgress.max = Math.max(projectIssueProgress.total, 1);
+  issueProgress.value = projectIssueProgress.done;
+  issueProgress.classList.toggle('is-complete', projectIssueProgress.complete);
+  const progressUnit = projectIssueProgress.ongoing > 0
+    ? 'planned issues'
+    : projectIssueProgress.cancelled > 0 ? 'non-cancelled issues' : 'issues';
+  const progressExtras = [
+    projectIssueProgress.ongoing > 0 ? `${projectIssueProgress.ongoing} ongoing` : '',
+    projectIssueProgress.cancelled > 0 ? `${projectIssueProgress.cancelled} cancelled` : '',
+  ].filter(Boolean);
+  setTextContentIfChanged(issueProgressLabel,
+    `${projectIssueProgress.done} of ${projectIssueProgress.total} ${progressUnit} done${progressExtras.length > 0 ? ` · ${progressExtras.join(' · ')}` : ''}`);
 
   const boardIssues = filterIssuesByMilestoneArchive(projectIssues, projectMilestones, issueScope.value as IssueBoardScope);
   const total = boardIssues.length;
   const completed = boardIssues.filter((issue) => issue.status === 'done').length;
   const cancelled = boardIssues.filter((issue) => issue.status === 'cancelled').length;
-  const open = total - completed - cancelled;
+  const ongoing = boardIssues.filter((issue) => issue.is_ongoing && issue.status !== 'cancelled').length;
+  const open = total - completed - cancelled - ongoing;
   setTextContentIfChanged(issueCountSummary, issueScope.value === 'history'
     ? `${total} ${total === 1 ? 'issue' : 'issues'} in History`
-    : cancelled > 0
-      ? `${open} open · ${completed} done · ${cancelled} cancelled`
-      : `${open} open · ${completed} done`);
+    : [
+      `${open} open`,
+      `${completed} done`,
+      ongoing > 0 ? `${ongoing} ongoing` : '',
+      cancelled > 0 ? `${cancelled} cancelled` : '',
+    ].filter(Boolean).join(' · '));
 
   const searchableIssues = boardIssues.map((issue) => ({
     ...issue,
@@ -5786,25 +5822,28 @@ function renderMilestoneIssueBoard(visibleIssues: Issue[]): void {
   const hasActiveMilestones = projectMilestones.some((milestone) => milestone.archived_at === null);
   if (!hasActiveMilestones) clearBulkMoveSelection();
   const visibleUnassignedIssueIds = new Set(visibleIssues
-    .filter((issue) => issue.milestone_id === null)
+    .filter((issue) => issue.milestone_id === null && !issue.is_ongoing)
     .map((issue) => issue.id));
   for (const issueId of selectedBulkMoveIssueIds) {
     if (!visibleUnassignedIssueIds.has(issueId)) selectedBulkMoveIssueIds.delete(issueId);
   }
   reconcileIssueBoardGroups(groupIssuesByMilestone(visibleIssues, projectMilestones).map((group) => ({
-    key: `milestone:${group.milestoneId ?? 'none'}`,
+    key: group.isOngoing ? 'milestone:ongoing' : `milestone:${group.milestoneId ?? 'none'}`,
     name: group.dueDate === null ? group.name : `${group.name} · due ${group.dueDate}`,
     className: 'issue-group milestone-issue-group',
     issues: group.issues,
-    allowBulkMove: group.milestoneId === null && hasActiveMilestones,
+    isOngoing: group.isOngoing,
+    allowBulkMove: group.milestoneId === null && group.isOngoing !== true && hasActiveMilestones,
   })));
 }
 
 function renderNextUpIssueBoard(visibleIssues: Issue[], allOpenIssues: Issue[]): void {
   const groups = groupIssuesByMilestone(visibleIssues, projectMilestones).map((group) => {
-    const allGroupIssues = allOpenIssues.filter((issue) => issue.milestone_id === group.milestoneId);
+    const allGroupIssues = allOpenIssues.filter((issue) => group.isOngoing
+      ? issue.is_ongoing
+      : !issue.is_ongoing && issue.milestone_id === group.milestoneId);
     const reorderByIssueId = new Map<number, { canMoveEarlier?: boolean; canMoveLater?: boolean; showMilestoneTag?: boolean }>();
-    for (const issue of group.issues) {
+    for (const issue of group.isOngoing ? [] : group.issues) {
       const index = allGroupIssues.findIndex((candidate) => candidate.id === issue.id);
       reorderByIssueId.set(issue.id, {
         canMoveEarlier: index > 0,
@@ -5813,11 +5852,12 @@ function renderNextUpIssueBoard(visibleIssues: Issue[], allOpenIssues: Issue[]):
       });
     }
     return {
-      key: `milestone:${group.milestoneId ?? 'none'}`,
+      key: group.isOngoing ? 'milestone:ongoing' : `milestone:${group.milestoneId ?? 'none'}`,
       name: group.dueDate === null ? group.name : `${group.name} · due ${group.dueDate}`,
       className: 'issue-group milestone-issue-group',
       issues: group.issues,
       reorderByIssueId,
+      isOngoing: group.isOngoing,
     };
   });
   reconcileIssueBoardGroups(groups);
@@ -6099,6 +6139,7 @@ function issueRowSignature(
     issue.discussion_count ?? 0,
     reorder?.canMoveEarlier,
     reorder?.canMoveLater,
+    issue.is_ongoing,
     allowBulkSelection,
     bulkSelected,
   ]);
@@ -6197,6 +6238,7 @@ function renderIssueDetail(): void {
   issueDetailDueDate.classList.toggle('is-overdue', overdue);
   issueDetailAssignee.textContent = issueAssigneeLabel(selectedIssue.assignee_id);
   issueDetailMilestone.textContent = projectMilestones.find((milestone) => milestone.id === selectedIssue?.milestone_id)?.name ?? 'None';
+  issueDetailOngoingRow.hidden = !selectedIssue.is_ongoing;
   issueDetailSharing.textContent = selectedIssue.is_shared ? 'Shared' : 'Internal only';
   issueDetailApproval.textContent = selectedIssue.approved_at !== null
     ? 'Approved'
@@ -6776,10 +6818,17 @@ function focusIssueTitleButton(issueId: number): boolean {
 }
 
 function closeIssueDetailEditForm(): void {
-  issueDetailEditForm.reset();
+  resetIssueDetailEditForm();
   issueDetailEditForm.hidden = true;
   issueDetailDisplay.hidden = false;
   if (!issueDetailView.hidden) issueDetailEditButton.focus();
+}
+
+function resetIssueDetailEditForm(): void {
+  issueDetailEditForm.reset();
+  issueDetailOngoingInput.disabled = false;
+  issueDetailOngoingInput.title = '';
+  updateOngoingMilestoneControl(issueDetailOngoingInput, issueDetailMilestoneInput);
 }
 
 function openIssue(issue: Issue): void {
@@ -6811,8 +6860,9 @@ function openIssueStatusPicker(issue: Issue, returnFocus: HTMLElement): void {
   issueStatusPickerReturnFocus = returnFocus;
   issueStatusPickerDescription.textContent = `Choose a status for “${issue.title}”. Current status: ${issueStatusLabel(issue.status)}.`;
   issueStatusPickerOptions.replaceChildren();
-  issueStatusPickerOptionIndex = ISSUE_STATUS_OPTIONS.findIndex((option) => option.value === issue.status);
-  ISSUE_STATUS_OPTIONS.forEach((option, index) => {
+  const statusOptions = issueStatusOptions(issue);
+  issueStatusPickerOptionIndex = statusOptions.findIndex((option) => option.value === issue.status);
+  statusOptions.forEach((option, index) => {
     const button = document.createElement('button');
     button.className = 'button issue-status-option';
     button.type = 'button';
@@ -6884,7 +6934,7 @@ async function deleteSelectedIssue(): Promise<void> {
     if (activeProject?.id !== projectId) return;
     if (selectedIssue?.id === issue.id) {
       selectedIssue = null;
-      issueDetailEditForm.reset();
+      resetIssueDetailEditForm();
       issueDetailEditForm.hidden = true;
       issueDetailDisplay.hidden = false;
       switchProjectTab('issues', issue.id);
@@ -6926,7 +6976,7 @@ function showDeletedIssues(restoreIssueId?: number): void {
   if (projectId === undefined || deletedProjectIssues.length === 0) return;
 
   selectedIssue = null;
-  issueDetailEditForm.reset();
+  resetIssueDetailEditForm();
   issueDetailEditForm.hidden = true;
   issueDetailDisplay.hidden = false;
   switchProjectTab('issues', undefined, false);
@@ -6948,7 +6998,7 @@ function showDeletedIssues(restoreIssueId?: number): void {
 
 async function applyIssueStatusPickerSelection(): Promise<void> {
   const issue = issueStatusPickerIssue;
-  const status = ISSUE_STATUS_OPTIONS[issueStatusPickerOptionIndex]?.value;
+  const status = issue === null ? undefined : issueStatusOptions(issue)[issueStatusPickerOptionIndex]?.value;
   if (issue === null || status === undefined) return;
   closeIssueStatusPicker();
   if (status !== issue.status) await updateIssueStatus(issue, status);
@@ -7054,6 +7104,13 @@ function createIssueRow(
     shared.textContent = 'Shared';
     shared.title = 'Shared with guest';
     metadata.append(shared);
+  }
+  if (issue.is_ongoing) {
+    const ongoing = document.createElement('span');
+    ongoing.className = 'issue-ongoing-tag';
+    ongoing.textContent = 'Ongoing';
+    ongoing.title = 'Continuous work outside milestone completion.';
+    metadata.append(ongoing);
   }
   if (issue.milestone_name !== null && issue.milestone_name !== undefined && reorder?.showMilestoneTag !== false) {
     const milestone = document.createElement('span');
@@ -7371,6 +7428,10 @@ issueDetailEditButton.addEventListener('click', () => {
   issueDetailTypeInput.value = selectedIssue.type;
   populateIssueAssigneeSelect(issueDetailAssigneeInput, selectedIssue.assignee_id);
   populateIssueMilestoneSelect(issueDetailMilestoneInput, selectedIssue.milestone_id);
+  issueDetailOngoingInput.checked = selectedIssue.is_ongoing;
+  issueDetailOngoingInput.disabled = selectedIssue.status === 'done' && !selectedIssue.is_ongoing;
+  issueDetailOngoingInput.title = issueDetailOngoingInput.disabled ? 'Move this issue out of Done before marking it as ongoing.' : '';
+  updateOngoingMilestoneControl(issueDetailOngoingInput, issueDetailMilestoneInput);
   issueDetailSharedInput.checked = selectedIssue.is_shared;
   issueDetailApprovalInput.checked = selectedIssue.approval_requested_at !== null;
   issueDetailApprovalInput.disabled = !selectedIssue.is_shared;
@@ -7390,7 +7451,7 @@ issueDetailCancelButton.addEventListener('click', () => {
 issueBackButton.addEventListener('click', () => {
   const issueId = selectedIssue?.id;
   selectedIssue = null;
-  issueDetailEditForm.reset();
+  resetIssueDetailEditForm();
   issueDetailEditForm.hidden = true;
   issueDetailDisplay.hidden = false;
   switchProjectTab('issues', issueId);
@@ -7411,7 +7472,10 @@ issueDetailEditForm.addEventListener('submit', async (event) => {
         due_date: issueDetailDueDateInput.value === '' ? null : issueDetailDueDateInput.value,
         type: issueDetailTypeInput.value,
         assignee_id: issueDetailAssigneeInput.value === '' ? null : Number(issueDetailAssigneeInput.value),
-        milestone_id: issueDetailMilestoneInput.value === '' ? null : Number(issueDetailMilestoneInput.value),
+        milestone_id: issueDetailOngoingInput.checked || issueDetailMilestoneInput.value === ''
+          ? null
+          : Number(issueDetailMilestoneInput.value),
+        is_ongoing: issueDetailOngoingInput.checked,
         is_shared: issueDetailSharedInput.checked,
         approval_requested: issueDetailApprovalInput.checked,
       }),
