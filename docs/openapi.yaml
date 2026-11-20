@@ -839,6 +839,28 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '422': { $ref: '#/components/responses/ValidationFailed' }
   /lounge/presence:
+    get:
+      summary: List members currently in the workspace Lounge
+      description: Returns active internal workspace members who sent a Lounge heartbeat within the last 45 seconds. This read-only request does not mark the requester as present. Guests cannot access this endpoint.
+      responses:
+        '200':
+          description: Active members currently in the Lounge.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [members]
+                properties:
+                  members:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, name]
+                      properties:
+                        id: { type: integer, minimum: 1 }
+                        name: { type: string }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
     post:
       summary: Update presence in the workspace Lounge
       description: Records the authenticated member's active Lounge presence and returns active internal workspace members. Presence expires after 45 seconds without a heartbeat. Guests cannot access this endpoint.

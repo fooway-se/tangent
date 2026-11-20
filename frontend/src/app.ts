@@ -453,6 +453,7 @@ const breadcrumbCurrent = document.querySelector<HTMLElement>('#breadcrumb-curre
 const projectsNavButton = document.querySelector<HTMLButtonElement>('#projects-nav')!;
 const inboxNavButton = document.querySelector<HTMLButtonElement>('#inbox-nav')!;
 const loungeNavButton = document.querySelector<HTMLButtonElement>('#lounge-nav')!;
+const loungeNavPresenceBadge = document.querySelector<HTMLElement>('#lounge-nav-presence')!;
 const adminNavButton = document.querySelector<HTMLButtonElement>('#admin-nav')!;
 const projectsView = document.querySelector<HTMLElement>('#projects-view')!;
 const inboxView = document.querySelector<HTMLElement>('#inbox-view')!;
@@ -805,6 +806,8 @@ let chatPresenceIndicator: HTMLSpanElement | null = null;
 let loungePresenceTimer: number | null = null;
 let loungePresenceRequestVersion = 0;
 let loungePresenceRenderKey: string | null = null;
+let workspaceLoungePresenceTimer: number | null = null;
+let workspaceLoungePresenceRequestVersion = 0;
 let chatFollowLatest = true;
 let chatMessageList: HTMLElement | null = null;
 let chatEmptyState: HTMLElement | null = null;
@@ -947,6 +950,8 @@ function showSignedOut(): void {
   resetPendingWorkspaceSwitch();
   stopChatPolling();
   stopLoungePolling();
+  stopWorkspaceLoungePresenceMonitor();
+  renderLoungeNavigationPresence([]);
   activeUser = null;
   githubRepositories = [];
   projectGithubRepository.replaceChildren(new Option('No repository connected', ''));
@@ -991,6 +996,8 @@ function showSignedIn(user: User): void {
   projectReturnFocusId = null;
   activeProject = null;
   stopLoungePolling();
+  stopWorkspaceLoungePresenceMonitor();
+  renderLoungeNavigationPresence([]);
   activeUser = user;
   editProjectButton.hidden = user.role !== 'admin';
   resetPendingWorkspaceSwitch();
@@ -1008,6 +1015,7 @@ function showSignedIn(user: User): void {
   adminNavButton.hidden = user.role !== 'admin';
   toggleProjectFormButton.hidden = user.role !== 'admin';
   showWorkspaceView('projects');
+  void pollWorkspaceLoungePresence();
   if (user.role === 'admin') void loadGithubRepositories();
   report('');
 }
@@ -1124,6 +1132,7 @@ function commitPendingWorkspaceSwitch(): void {
 }
 
 function showWorkspaceView(view: 'projects' | 'inbox' | 'lounge' | 'admin' | 'project'): void {
+  const wasLoungeActive = view !== 'lounge' && loungeActive;
   if (view !== 'inbox') {
     stopInboxPolling();
     inboxIssues = [];
@@ -1194,6 +1203,7 @@ function showWorkspaceView(view: 'projects' | 'inbox' | 'lounge' | 'admin' | 'pr
     projectReturnFocusId = null;
     if (!focusProjectOpenButton(projectId)) projectsNavButton.focus();
   }
+  if (wasLoungeActive) void pollWorkspaceLoungePresence();
 }
 
 function openWorkspaceAdmin(): void {
@@ -1753,6 +1763,25 @@ function renderLoungePresence(members: readonly LoungePresenceMember[]): void {
     person.textContent = member.name;
     loungePresence.append(person);
   }
+  renderLoungeNavigationPresence(members);
+}
+
+function renderLoungeNavigationPresence(members: readonly LoungePresenceMember[]): void {
+  if (members.length === 0) {
+    loungeNavPresenceBadge.hidden = true;
+    loungeNavPresenceBadge.textContent = '';
+    loungeNavButton.removeAttribute('title');
+    loungeNavButton.removeAttribute('aria-label');
+    return;
+  }
+
+  const names = members.map((member) => member.name);
+  const countLabel = `${members.length} here`;
+  const countDescription = `${members.length} ${members.length === 1 ? 'person' : 'people'} in the Lounge`;
+  loungeNavPresenceBadge.textContent = countLabel;
+  loungeNavPresenceBadge.hidden = false;
+  loungeNavButton.title = `${countDescription}: ${names.join(', ')}`;
+  loungeNavButton.setAttribute('aria-label', `Lounge. ${countDescription}: ${names.join(', ')}`);
 }
 
 function scheduleLoungePresencePoll(delay = LOUNGE_PRESENCE_INTERVAL_MS): void {
@@ -1791,6 +1820,48 @@ async function pollLoungePresence(): Promise<void> {
   } finally {
     if (requestVersion === loungePresenceRequestVersion && loungeActive) {
       scheduleLoungePresencePoll();
+    }
+  }
+}
+
+function stopWorkspaceLoungePresenceMonitor(): void {
+  if (workspaceLoungePresenceTimer !== null) window.clearTimeout(workspaceLoungePresenceTimer);
+  workspaceLoungePresenceTimer = null;
+  workspaceLoungePresenceRequestVersion += 1;
+}
+
+function scheduleWorkspaceLoungePresencePoll(delay = LOUNGE_PRESENCE_INTERVAL_MS): void {
+  if (activeUser === null || activeUser.role === 'guest' || workspacePanel.hidden) return;
+  if (workspaceLoungePresenceTimer !== null) window.clearTimeout(workspaceLoungePresenceTimer);
+  workspaceLoungePresenceTimer = window.setTimeout(() => {
+    workspaceLoungePresenceTimer = null;
+    void pollWorkspaceLoungePresence();
+  }, delay);
+}
+
+async function pollWorkspaceLoungePresence(): Promise<void> {
+  if (activeUser === null || activeUser.role === 'guest' || workspacePanel.hidden) return;
+  if (workspaceLoungePresenceTimer !== null) window.clearTimeout(workspaceLoungePresenceTimer);
+  workspaceLoungePresenceTimer = null;
+  if (document.hidden || (loungeActive && !loungeView.hidden)) {
+    scheduleWorkspaceLoungePresencePoll();
+    return;
+  }
+
+  const requestVersion = ++workspaceLoungePresenceRequestVersion;
+  try {
+    const result = await api<{ members: LoungePresenceMember[] }>('/lounge/presence');
+    if (requestVersion !== workspaceLoungePresenceRequestVersion || activeUser === null || loungeActive) return;
+    renderLoungeNavigationPresence(result.members.filter((member) => member.id !== activeUser?.id));
+  } catch (error) {
+    if (requestVersion !== workspaceLoungePresenceRequestVersion) return;
+    if (error instanceof ApiFailure && error.status === 401) {
+      showSignedOut();
+      return;
+    }
+  } finally {
+    if (requestVersion === workspaceLoungePresenceRequestVersion) {
+      scheduleWorkspaceLoungePresencePoll();
     }
   }
 }
@@ -4072,6 +4143,7 @@ document.addEventListener('visibilitychange', () => {
     scheduleLoungePoll(0);
     void pollLoungePresence();
   }
+  if (!document.hidden && !loungeActive) void pollWorkspaceLoungePresence();
   if (!document.hidden && activeProject !== null && issuePollingIsActive(activeProject.id)) {
     issuePollDelay = 1000;
     scheduleIssuePoll(0);

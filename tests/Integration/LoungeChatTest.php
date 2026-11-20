@@ -104,6 +104,24 @@ final class LoungeChatTest extends ApiTestCase
         ], $afterExpiry->body['members']);
     }
 
+    public function testReadOnlyLoungePresenceListsCurrentNamesWithoutMarkingTheViewerPresent(): void
+    {
+        $admin = $this->login($this->adminEmail);
+        $developer = $this->login($this->developerEmail);
+
+        $empty = $this->getLoungePresence($developer);
+        self::assertSame(200, $empty->status, json_encode($empty->body));
+        self::assertSame([], $empty->body['members']);
+        self::assertSame(0, $this->loungePresenceCount($this->developerId));
+
+        $this->postLoungePresence($admin);
+        $visible = $this->getLoungePresence($developer);
+        self::assertSame([
+            ['id' => $this->adminId, 'name' => 'Admin'],
+        ], $visible->body['members']);
+        self::assertSame(0, $this->loungePresenceCount($this->developerId));
+    }
+
     public function testGuestsCannotReadOrPostInTheLounge(): void
     {
         $this->createGuest();
@@ -111,6 +129,7 @@ final class LoungeChatTest extends ApiTestCase
 
         self::assertSame(403, $this->cookieRequest('GET', '/api/v1/lounge/members', $guest['cookie'])->status);
         self::assertSame(403, $this->cookieRequest('GET', '/api/v1/lounge/messages', $guest['cookie'])->status);
+        self::assertSame(403, $this->getLoungePresence($guest)->status);
         self::assertSame(403, $this->postLoungePresence($guest)->status);
         self::assertSame(403, $this->cookieRequest(
             'POST',
@@ -212,5 +231,19 @@ final class LoungeChatTest extends ApiTestCase
             [],
             $user['csrf'],
         );
+    }
+
+    private function getLoungePresence(array $user): \Tangent\Core\Response
+    {
+        return $this->cookieRequest('GET', '/api/v1/lounge/presence', $user['cookie']);
+    }
+
+    private function loungePresenceCount(int $userId): int
+    {
+        $statement = $this->pdo->prepare(
+            'SELECT COUNT(*) FROM lounge_presence WHERE workspace_id = :workspace_id AND user_id = :user_id'
+        );
+        $statement->execute(['workspace_id' => $this->workspaceId, 'user_id' => $userId]);
+        return (int) $statement->fetchColumn();
     }
 }

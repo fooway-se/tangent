@@ -5,6 +5,7 @@ import { resolveShortcut } from '../../public/assets/shortcuts.js';
 
 const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
+const css = await readFile(new URL('../../public/assets/app.css', import.meta.url), 'utf8');
 const shortcuts = await readFile(new URL('../../frontend/src/shortcuts.ts', import.meta.url), 'utf8');
 
 test('Lounge is a fixed workspace destination between Inbox and workspace admin', () => {
@@ -14,7 +15,8 @@ test('Lounge is a fixed workspace destination between Inbox and workspace admin'
   const adminNav = html.indexOf('id="admin-nav"');
 
   assert.ok(projectsNav < inboxNav && inboxNav < loungeNav && loungeNav < adminNav);
-  assert.match(html, /id="lounge-nav"[^>]*>Lounge<\/button>/);
+  assert.match(html, /id="lounge-nav"[^>]*>[\s\S]*Lounge[\s\S]*<\/button>/);
+  assert.match(html, /id="lounge-nav-presence"/);
   assert.match(html, /id="lounge-view"[^>]*hidden/);
   assert.match(app, /function goToLounge\(/);
   assert.match(app, /\/lounge\/messages/);
@@ -72,4 +74,17 @@ test('Lounge shows the names of teammates who are currently present', () => {
   assert.match(app, /api<\{ members: LoungePresenceMember\[\] \}>\('\/lounge\/presence'/);
   assert.match(app, /const LOUNGE_PRESENCE_INTERVAL_MS = 15_000/);
   assert.match(app, /void pollLoungePresence\(\)/);
+});
+
+test('Lounge presence stays visible in navigation without adding the viewer to presence', () => {
+  assert.match(app, /function pollWorkspaceLoungePresence\(/);
+  assert.match(app, /api<\{ members: LoungePresenceMember\[\] \}>\('\/lounge\/presence'\)/);
+  assert.match(app, /function renderLoungeNavigationPresence\(/);
+  assert.match(app, /loungeNavPresenceBadge/);
+});
+
+test('Lounge presence indicator matches the Lounge button label color', () => {
+  assert.match(css, /\.lounge-nav-presence \{[^}]*color: var\(--case-ink\)/);
+  assert.match(css, /\.lounge-nav-presence::before \{[^}]*background: currentColor; box-shadow: none/);
+  assert.match(css, /#lounge-nav\.is-active #lounge-nav-presence \{ color: var\(--accent-ink\); \}/);
 });

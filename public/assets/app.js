@@ -198,6 +198,7 @@ const breadcrumbCurrent = document.querySelector('#breadcrumb-current');
 const projectsNavButton = document.querySelector('#projects-nav');
 const inboxNavButton = document.querySelector('#inbox-nav');
 const loungeNavButton = document.querySelector('#lounge-nav');
+const loungeNavPresenceBadge = document.querySelector('#lounge-nav-presence');
 const adminNavButton = document.querySelector('#admin-nav');
 const projectsView = document.querySelector('#projects-view');
 const inboxView = document.querySelector('#inbox-view');
@@ -543,6 +544,8 @@ let chatPresenceIndicator = null;
 let loungePresenceTimer = null;
 let loungePresenceRequestVersion = 0;
 let loungePresenceRenderKey = null;
+let workspaceLoungePresenceTimer = null;
+let workspaceLoungePresenceRequestVersion = 0;
 let chatFollowLatest = true;
 let chatMessageList = null;
 let chatEmptyState = null;
@@ -685,6 +688,8 @@ function showSignedOut() {
     resetPendingWorkspaceSwitch();
     stopChatPolling();
     stopLoungePolling();
+    stopWorkspaceLoungePresenceMonitor();
+    renderLoungeNavigationPresence([]);
     activeUser = null;
     githubRepositories = [];
     projectGithubRepository.replaceChildren(new Option('No repository connected', ''));
@@ -729,6 +734,8 @@ function showSignedIn(user) {
     projectReturnFocusId = null;
     activeProject = null;
     stopLoungePolling();
+    stopWorkspaceLoungePresenceMonitor();
+    renderLoungeNavigationPresence([]);
     activeUser = user;
     editProjectButton.hidden = user.role !== 'admin';
     resetPendingWorkspaceSwitch();
@@ -746,6 +753,7 @@ function showSignedIn(user) {
     adminNavButton.hidden = user.role !== 'admin';
     toggleProjectFormButton.hidden = user.role !== 'admin';
     showWorkspaceView('projects');
+    void pollWorkspaceLoungePresence();
     if (user.role === 'admin')
         void loadGithubRepositories();
     report('');
@@ -867,6 +875,7 @@ function commitPendingWorkspaceSwitch() {
     void switchWorkspace(workspaceId, true);
 }
 function showWorkspaceView(view) {
+    const wasLoungeActive = view !== 'lounge' && loungeActive;
     if (view !== 'inbox') {
         stopInboxPolling();
         inboxIssues = [];
@@ -944,6 +953,8 @@ function showWorkspaceView(view) {
         if (!focusProjectOpenButton(projectId))
             projectsNavButton.focus();
     }
+    if (wasLoungeActive)
+        void pollWorkspaceLoungePresence();
 }
 function openWorkspaceAdmin() {
     const currentLocation = currentWorkspaceLocation();
@@ -1504,6 +1515,23 @@ function renderLoungePresence(members) {
         person.textContent = member.name;
         loungePresence.append(person);
     }
+    renderLoungeNavigationPresence(members);
+}
+function renderLoungeNavigationPresence(members) {
+    if (members.length === 0) {
+        loungeNavPresenceBadge.hidden = true;
+        loungeNavPresenceBadge.textContent = '';
+        loungeNavButton.removeAttribute('title');
+        loungeNavButton.removeAttribute('aria-label');
+        return;
+    }
+    const names = members.map((member) => member.name);
+    const countLabel = `${members.length} here`;
+    const countDescription = `${members.length} ${members.length === 1 ? 'person' : 'people'} in the Lounge`;
+    loungeNavPresenceBadge.textContent = countLabel;
+    loungeNavPresenceBadge.hidden = false;
+    loungeNavButton.title = `${countDescription}: ${names.join(', ')}`;
+    loungeNavButton.setAttribute('aria-label', `Lounge. ${countDescription}: ${names.join(', ')}`);
 }
 function scheduleLoungePresencePoll(delay = LOUNGE_PRESENCE_INTERVAL_MS) {
     if (!loungeActive)
@@ -1547,6 +1575,53 @@ async function pollLoungePresence() {
     finally {
         if (requestVersion === loungePresenceRequestVersion && loungeActive) {
             scheduleLoungePresencePoll();
+        }
+    }
+}
+function stopWorkspaceLoungePresenceMonitor() {
+    if (workspaceLoungePresenceTimer !== null)
+        window.clearTimeout(workspaceLoungePresenceTimer);
+    workspaceLoungePresenceTimer = null;
+    workspaceLoungePresenceRequestVersion += 1;
+}
+function scheduleWorkspaceLoungePresencePoll(delay = LOUNGE_PRESENCE_INTERVAL_MS) {
+    if (activeUser === null || activeUser.role === 'guest' || workspacePanel.hidden)
+        return;
+    if (workspaceLoungePresenceTimer !== null)
+        window.clearTimeout(workspaceLoungePresenceTimer);
+    workspaceLoungePresenceTimer = window.setTimeout(() => {
+        workspaceLoungePresenceTimer = null;
+        void pollWorkspaceLoungePresence();
+    }, delay);
+}
+async function pollWorkspaceLoungePresence() {
+    if (activeUser === null || activeUser.role === 'guest' || workspacePanel.hidden)
+        return;
+    if (workspaceLoungePresenceTimer !== null)
+        window.clearTimeout(workspaceLoungePresenceTimer);
+    workspaceLoungePresenceTimer = null;
+    if (document.hidden || (loungeActive && !loungeView.hidden)) {
+        scheduleWorkspaceLoungePresencePoll();
+        return;
+    }
+    const requestVersion = ++workspaceLoungePresenceRequestVersion;
+    try {
+        const result = await api('/lounge/presence');
+        if (requestVersion !== workspaceLoungePresenceRequestVersion || activeUser === null || loungeActive)
+            return;
+        renderLoungeNavigationPresence(result.members.filter((member) => member.id !== activeUser?.id));
+    }
+    catch (error) {
+        if (requestVersion !== workspaceLoungePresenceRequestVersion)
+            return;
+        if (error instanceof ApiFailure && error.status === 401) {
+            showSignedOut();
+            return;
+        }
+    }
+    finally {
+        if (requestVersion === workspaceLoungePresenceRequestVersion) {
+            scheduleWorkspaceLoungePresencePoll();
         }
     }
 }
@@ -3942,6 +4017,8 @@ document.addEventListener('visibilitychange', () => {
         scheduleLoungePoll(0);
         void pollLoungePresence();
     }
+    if (!document.hidden && !loungeActive)
+        void pollWorkspaceLoungePresence();
     if (!document.hidden && activeProject !== null && issuePollingIsActive(activeProject.id)) {
         issuePollDelay = 1000;
         scheduleIssuePoll(0);

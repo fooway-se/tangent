@@ -34,6 +34,14 @@ final class ChatRoutes
             return Response::json(200, $this->service->heartbeatLoungePresence($user));
         });
 
+        $router->add('GET', '/api/v1/lounge/presence', function (
+            Request $request,
+            array $params,
+            AuthenticatedUser $user,
+        ): Response {
+            return Response::json(200, $this->service->loungePresence($user));
+        });
+
         $router->add('GET', '/api/v1/lounge/messages', function (
             Request $request,
             array $params,

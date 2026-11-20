@@ -100,6 +100,11 @@ final class ChatRepository
             'user_id' => $userId,
         ]);
 
+        return $this->listActiveLoungePresence($workspaceId);
+    }
+
+    public function listActiveLoungePresence(int $workspaceId): array
+    {
         $activeMembers = $this->pdo->prepare(
             "SELECT users.id, users.name
              FROM lounge_presence

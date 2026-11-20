@@ -151,6 +151,11 @@ kbd {
 .workspace-nav-button:hover, .project-sidebar-link:hover { filter: brightness(1.06); }
 .workspace-nav-button:active, .project-sidebar-link:active { transform: translateY(2px); }
 .workspace-nav-button.is-active, .project-sidebar-link.is-active { border-color: var(--accent-edge); color: var(--accent-ink); background: var(--accent); box-shadow: inset 0 1px 0 var(--accent-shine); font-weight: 800; }
+#lounge-nav { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.lounge-nav-presence { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 5px; color: var(--case-ink); font: 700 10px var(--font-mono); white-space: nowrap; }
+.lounge-nav-presence[hidden] { display: none; }
+.lounge-nav-presence::before { width: 7px; height: 7px; flex: 0 0 auto; border-radius: 50%; background: currentColor; box-shadow: none; content: ""; }
+#lounge-nav.is-active #lounge-nav-presence { color: var(--accent-ink); }
 .section-title { margin: 0 0 8px; color: var(--case-muted); font: 700 11px/1.4 var(--font-display); letter-spacing: 2px; text-transform: uppercase; }
 .sidebar-projects { display: flex; flex: 1; flex-direction: column; min-height: 0; }
 .sidebar-projects .section-title { margin: 22px 4px 8px; }
