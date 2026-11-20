@@ -70,6 +70,40 @@ final class LoungeChatTest extends ApiTestCase
         self::assertSame(1, (int) $count->fetchColumn(), 'Opening Lounge again reuses the workspace channel.');
     }
 
+    public function testLoungePresenceListsActiveInternalMembersAndExpiresStaleViewers(): void
+    {
+        $this->createGuest();
+        $this->createInactiveDeveloper();
+        $admin = $this->login($this->adminEmail);
+        $developer = $this->login($this->developerEmail);
+
+        $adminHeartbeat = $this->postLoungePresence($admin);
+        self::assertSame(200, $adminHeartbeat->status, json_encode($adminHeartbeat->body));
+        self::assertSame([
+            ['id' => $this->adminId, 'name' => 'Admin'],
+        ], $adminHeartbeat->body['members']);
+
+        $developerHeartbeat = $this->postLoungePresence($developer);
+        self::assertSame(200, $developerHeartbeat->status, json_encode($developerHeartbeat->body));
+        self::assertSame([
+            ['id' => $this->adminId, 'name' => 'Admin'],
+            ['id' => $this->developerId, 'name' => 'Developer'],
+        ], $developerHeartbeat->body['members']);
+
+        $stalePresence = $this->pdo->prepare(
+            'UPDATE lounge_presence SET last_seen_at = UTC_TIMESTAMP() - INTERVAL 2 MINUTE
+             WHERE workspace_id = :workspace_id AND user_id = :user_id'
+        );
+        $stalePresence->execute([
+            'workspace_id' => $this->workspaceId,
+            'user_id' => $this->developerId,
+        ]);
+        $afterExpiry = $this->postLoungePresence($admin);
+        self::assertSame([
+            ['id' => $this->adminId, 'name' => 'Admin'],
+        ], $afterExpiry->body['members']);
+    }
+
     public function testGuestsCannotReadOrPostInTheLounge(): void
     {
         $this->createGuest();
@@ -77,6 +111,7 @@ final class LoungeChatTest extends ApiTestCase
 
         self::assertSame(403, $this->cookieRequest('GET', '/api/v1/lounge/members', $guest['cookie'])->status);
         self::assertSame(403, $this->cookieRequest('GET', '/api/v1/lounge/messages', $guest['cookie'])->status);
+        self::assertSame(403, $this->postLoungePresence($guest)->status);
         self::assertSame(403, $this->cookieRequest(
             'POST',
             '/api/v1/lounge/messages',
@@ -166,5 +201,16 @@ final class LoungeChatTest extends ApiTestCase
             'email' => 'inactive-lounge@example.test',
             'role' => 'developer',
         ]);
+    }
+
+    private function postLoungePresence(array $user): \Tangent\Core\Response
+    {
+        return $this->cookieRequest(
+            'POST',
+            '/api/v1/lounge/presence',
+            $user['cookie'],
+            [],
+            $user['csrf'],
+        );
     }
 }

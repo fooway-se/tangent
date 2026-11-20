@@ -87,6 +87,14 @@ final class ChatService
         return ['members' => $this->chat->listLoungeMembers($user->workspaceId)];
     }
 
+    public function heartbeatLoungePresence(AuthenticatedUser $user): array
+    {
+        if (!Permissions::can($user, 'lounge.read')) {
+            throw new ApiException(403, 'forbidden', 'You cannot read the Lounge.');
+        }
+        return ['members' => $this->chat->heartbeatLoungePresence($user->workspaceId, $user->id)];
+    }
+
     public function sendLoungeMessage(AuthenticatedUser $user, array $input): array
     {
         if (!Permissions::can($user, 'lounge.send')) {

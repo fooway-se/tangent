@@ -215,6 +215,10 @@ kbd {
 .lounge-view { display: flex; flex-direction: column; overflow: hidden; padding: 14px 22px 22px; }
 .lounge-page-heading { flex: 0 0 auto; margin-bottom: 12px; }
 .lounge-description { margin: 5px 0 0; color: var(--screen-muted); font-size: 12px; }
+.lounge-presence { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 8px 0 0; color: var(--screen-muted); font: 400 11px/1.5 var(--font-mono); }
+.lounge-presence-label { color: var(--screen-muted); font: 700 10px var(--font-display); letter-spacing: 1px; text-transform: uppercase; }
+.lounge-presence-person { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--screen-border); border-radius: var(--radius-panel); padding: 2px 7px; color: var(--screen-ink); background: var(--screen-panel); }
+.lounge-presence-person::before { width: 6px; height: 6px; flex: 0 0 auto; border-radius: 50%; background: var(--accent); box-shadow: 0 0 5px var(--accent); content: ""; }
 .lounge-chat-panel { display: flex; flex: 1; flex-direction: column; min-height: 280px; overflow: hidden; border: 1px solid var(--screen-border); border-radius: var(--radius-panel); background: var(--screen-inset); }
 .lounge-message-list { min-height: 0; }
 .lounge-composer { flex: 0 0 auto; }

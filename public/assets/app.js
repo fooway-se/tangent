@@ -204,6 +204,7 @@ const inboxView = document.querySelector('#inbox-view');
 const loungeView = document.querySelector('#lounge-view');
 const inboxHeading = document.querySelector('#inbox-heading');
 const loungeHeading = document.querySelector('#lounge-heading');
+const loungePresence = document.querySelector('#lounge-presence');
 const loungeMessageList = document.querySelector('#lounge-message-list');
 const loungeEmptyState = document.querySelector('#lounge-empty-state');
 const loungeForm = document.querySelector('#lounge-form');
@@ -535,9 +536,13 @@ let chatCursor = 0;
 let chatEtag = null;
 let chatPollDelay = 1000;
 const PROJECT_PRESENCE_INTERVAL_MS = 15_000;
+const LOUNGE_PRESENCE_INTERVAL_MS = 15_000;
 let projectPresenceTimer = null;
 let projectPresenceRequestVersion = 0;
 let chatPresenceIndicator = null;
+let loungePresenceTimer = null;
+let loungePresenceRequestVersion = 0;
+let loungePresenceRenderKey = null;
 let chatFollowLatest = true;
 let chatMessageList = null;
 let chatEmptyState = null;
@@ -1464,11 +1469,86 @@ function stopLoungePolling() {
     if (loungePollTimer !== null)
         window.clearTimeout(loungePollTimer);
     loungePollTimer = null;
+    stopLoungePresencePolling();
     loungeMembers = [];
     loungeMentionDismissed = false;
     hideLoungeMentionSuggestions();
     loungeMessageList.replaceChildren(loungeEmptyState);
     loungeEmptyState.hidden = false;
+}
+function stopLoungePresencePolling() {
+    if (loungePresenceTimer !== null)
+        window.clearTimeout(loungePresenceTimer);
+    loungePresenceTimer = null;
+    loungePresenceRequestVersion += 1;
+}
+function setLoungePresenceStatus(message, renderKey) {
+    if (loungePresenceRenderKey === renderKey)
+        return;
+    loungePresenceRenderKey = renderKey;
+    loungePresence.textContent = message;
+}
+function renderLoungePresence(members) {
+    const renderKey = JSON.stringify(members.map(({ id, name }) => [id, name]));
+    if (loungePresenceRenderKey === renderKey)
+        return;
+    loungePresenceRenderKey = renderKey;
+    loungePresence.replaceChildren();
+    const label = document.createElement('span');
+    label.className = 'lounge-presence-label';
+    label.textContent = members.length === 1 ? 'Here now' : `Here now (${members.length})`;
+    loungePresence.append(label);
+    for (const member of members) {
+        const person = document.createElement('span');
+        person.className = 'lounge-presence-person';
+        person.textContent = member.name;
+        loungePresence.append(person);
+    }
+}
+function scheduleLoungePresencePoll(delay = LOUNGE_PRESENCE_INTERVAL_MS) {
+    if (!loungeActive)
+        return;
+    if (loungePresenceTimer !== null)
+        window.clearTimeout(loungePresenceTimer);
+    loungePresenceTimer = window.setTimeout(() => {
+        loungePresenceTimer = null;
+        void pollLoungePresence();
+    }, delay);
+}
+async function pollLoungePresence() {
+    if (!loungeActive || loungeView.hidden)
+        return;
+    if (loungePresenceTimer !== null)
+        window.clearTimeout(loungePresenceTimer);
+    loungePresenceTimer = null;
+    if (document.hidden) {
+        scheduleLoungePresencePoll();
+        return;
+    }
+    const requestVersion = ++loungePresenceRequestVersion;
+    try {
+        const result = await api('/lounge/presence', {
+            method: 'POST',
+            body: JSON.stringify({}),
+        });
+        if (requestVersion !== loungePresenceRequestVersion || !loungeActive || loungeView.hidden)
+            return;
+        renderLoungePresence(result.members);
+    }
+    catch (error) {
+        if (requestVersion !== loungePresenceRequestVersion || !loungeActive)
+            return;
+        if (error instanceof ApiFailure && error.status === 401) {
+            showSignedOut();
+            return;
+        }
+        setLoungePresenceStatus('Could not check who’s in the Lounge.', 'error');
+    }
+    finally {
+        if (requestVersion === loungePresenceRequestVersion && loungeActive) {
+            scheduleLoungePresencePoll();
+        }
+    }
 }
 function updateLoungeMentionSuggestions() {
     if (loungeMentionDismissed)
@@ -1602,6 +1682,9 @@ function appendLoungeMessage(message, scrollToBottom = false) {
 async function loadLoungeChat() {
     stopLoungePolling();
     loungeActive = true;
+    loungePresenceRenderKey = null;
+    setLoungePresenceStatus('Checking who’s here…', 'checking');
+    void pollLoungePresence();
     loungeCursor = 0;
     loungeEtag = null;
     loungePollDelay = 1000;
@@ -3857,6 +3940,7 @@ document.addEventListener('visibilitychange', () => {
     if (!document.hidden && loungeActive) {
         loungePollDelay = 1000;
         scheduleLoungePoll(0);
+        void pollLoungePresence();
     }
     if (!document.hidden && activeProject !== null && issuePollingIsActive(activeProject.id)) {
         issuePollDelay = 1000;

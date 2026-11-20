@@ -838,6 +838,31 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '422': { $ref: '#/components/responses/ValidationFailed' }
+  /lounge/presence:
+    post:
+      summary: Update presence in the workspace Lounge
+      description: Records the authenticated member's active Lounge presence and returns active internal workspace members. Presence expires after 45 seconds without a heartbeat. Guests cannot access this endpoint.
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+      responses:
+        '200':
+          description: Active members currently in the Lounge.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [members]
+                properties:
+                  members:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, name]
+                      properties:
+                        id: { type: integer, minimum: 1 }
+                        name: { type: string }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /projects/{id}/presence:
     post:
       summary: Update viewer presence for a project

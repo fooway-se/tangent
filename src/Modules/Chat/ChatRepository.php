@@ -81,6 +81,43 @@ final class ChatRepository
         }, $statement->fetchAll(PDO::FETCH_ASSOC));
     }
 
+    public function heartbeatLoungePresence(int $workspaceId, int $userId): array
+    {
+        $prune = $this->pdo->prepare(
+            'DELETE FROM lounge_presence
+             WHERE workspace_id = :workspace_id
+               AND last_seen_at < UTC_TIMESTAMP() - INTERVAL 1 DAY'
+        );
+        $prune->execute(['workspace_id' => $workspaceId]);
+
+        $heartbeat = $this->pdo->prepare(
+            'INSERT INTO lounge_presence (workspace_id, user_id, last_seen_at)
+             VALUES (:workspace_id, :user_id, UTC_TIMESTAMP())
+             ON DUPLICATE KEY UPDATE last_seen_at = UTC_TIMESTAMP()'
+        );
+        $heartbeat->execute([
+            'workspace_id' => $workspaceId,
+            'user_id' => $userId,
+        ]);
+
+        $activeMembers = $this->pdo->prepare(
+            "SELECT users.id, users.name
+             FROM lounge_presence
+             INNER JOIN users ON users.workspace_id = lounge_presence.workspace_id
+                            AND users.id = lounge_presence.user_id
+             WHERE lounge_presence.workspace_id = :workspace_id
+               AND lounge_presence.last_seen_at >= UTC_TIMESTAMP() - INTERVAL 45 SECOND
+               AND users.is_active = 1
+               AND users.role IN ('admin', 'developer')
+             ORDER BY users.name, users.id"
+        );
+        $activeMembers->execute(['workspace_id' => $workspaceId]);
+        return array_map(static function (array $member): array {
+            $member['id'] = (int) $member['id'];
+            return $member;
+        }, $activeMembers->fetchAll(PDO::FETCH_ASSOC));
+    }
+
     public function heartbeatProjectPresence(int $workspaceId, int $projectId, int $userId): bool
     {
         $prune = $this->pdo->prepare(

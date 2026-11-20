@@ -64,3 +64,12 @@ test('Lounge composer uses the project chat mention autocomplete for workspace m
   assert.match(app, /splitMentions\(message\.body, loungeMembers\)/);
   assert.match(app, /chat-message-mention/);
 });
+
+test('Lounge shows the names of teammates who are currently present', () => {
+  assert.match(html, /id="lounge-presence"[^>]*role="status"/);
+  assert.match(app, /function renderLoungePresence\(/);
+  assert.match(app, /className = 'lounge-presence-person'/);
+  assert.match(app, /api<\{ members: LoungePresenceMember\[\] \}>\('\/lounge\/presence'/);
+  assert.match(app, /const LOUNGE_PRESENCE_INTERVAL_MS = 15_000/);
+  assert.match(app, /void pollLoungePresence\(\)/);
+});

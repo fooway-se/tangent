@@ -312,6 +312,7 @@ interface Member extends User {
 }
 
 type LoungeMentionMember = MentionMember;
+type LoungePresenceMember = Pick<LoungeMentionMember, 'id' | 'name'>;
 
 interface ChatMessage {
   id: number;
@@ -458,6 +459,7 @@ const inboxView = document.querySelector<HTMLElement>('#inbox-view')!;
 const loungeView = document.querySelector<HTMLElement>('#lounge-view')!;
 const inboxHeading = document.querySelector<HTMLHeadingElement>('#inbox-heading')!;
 const loungeHeading = document.querySelector<HTMLHeadingElement>('#lounge-heading')!;
+const loungePresence = document.querySelector<HTMLElement>('#lounge-presence')!;
 const loungeMessageList = document.querySelector<HTMLElement>('#lounge-message-list')!;
 const loungeEmptyState = document.querySelector<HTMLElement>('#lounge-empty-state')!;
 const loungeForm = document.querySelector<HTMLFormElement>('#lounge-form')!;
@@ -796,9 +798,13 @@ let chatCursor = 0;
 let chatEtag: string | null = null;
 let chatPollDelay = 1000;
 const PROJECT_PRESENCE_INTERVAL_MS = 15_000;
+const LOUNGE_PRESENCE_INTERVAL_MS = 15_000;
 let projectPresenceTimer: number | null = null;
 let projectPresenceRequestVersion = 0;
 let chatPresenceIndicator: HTMLSpanElement | null = null;
+let loungePresenceTimer: number | null = null;
+let loungePresenceRequestVersion = 0;
+let loungePresenceRenderKey: string | null = null;
 let chatFollowLatest = true;
 let chatMessageList: HTMLElement | null = null;
 let chatEmptyState: HTMLElement | null = null;
@@ -1710,11 +1716,83 @@ function stopLoungePolling(): void {
   loungeActive = false;
   if (loungePollTimer !== null) window.clearTimeout(loungePollTimer);
   loungePollTimer = null;
+  stopLoungePresencePolling();
   loungeMembers = [];
   loungeMentionDismissed = false;
   hideLoungeMentionSuggestions();
   loungeMessageList.replaceChildren(loungeEmptyState);
   loungeEmptyState.hidden = false;
+}
+
+function stopLoungePresencePolling(): void {
+  if (loungePresenceTimer !== null) window.clearTimeout(loungePresenceTimer);
+  loungePresenceTimer = null;
+  loungePresenceRequestVersion += 1;
+}
+
+function setLoungePresenceStatus(message: string, renderKey: string): void {
+  if (loungePresenceRenderKey === renderKey) return;
+  loungePresenceRenderKey = renderKey;
+  loungePresence.textContent = message;
+}
+
+function renderLoungePresence(members: readonly LoungePresenceMember[]): void {
+  const renderKey = JSON.stringify(members.map(({ id, name }) => [id, name]));
+  if (loungePresenceRenderKey === renderKey) return;
+  loungePresenceRenderKey = renderKey;
+  loungePresence.replaceChildren();
+
+  const label = document.createElement('span');
+  label.className = 'lounge-presence-label';
+  label.textContent = members.length === 1 ? 'Here now' : `Here now (${members.length})`;
+  loungePresence.append(label);
+
+  for (const member of members) {
+    const person = document.createElement('span');
+    person.className = 'lounge-presence-person';
+    person.textContent = member.name;
+    loungePresence.append(person);
+  }
+}
+
+function scheduleLoungePresencePoll(delay = LOUNGE_PRESENCE_INTERVAL_MS): void {
+  if (!loungeActive) return;
+  if (loungePresenceTimer !== null) window.clearTimeout(loungePresenceTimer);
+  loungePresenceTimer = window.setTimeout(() => {
+    loungePresenceTimer = null;
+    void pollLoungePresence();
+  }, delay);
+}
+
+async function pollLoungePresence(): Promise<void> {
+  if (!loungeActive || loungeView.hidden) return;
+  if (loungePresenceTimer !== null) window.clearTimeout(loungePresenceTimer);
+  loungePresenceTimer = null;
+  if (document.hidden) {
+    scheduleLoungePresencePoll();
+    return;
+  }
+
+  const requestVersion = ++loungePresenceRequestVersion;
+  try {
+    const result = await api<{ members: LoungePresenceMember[] }>('/lounge/presence', {
+      method: 'POST',
+      body: JSON.stringify({}),
+    });
+    if (requestVersion !== loungePresenceRequestVersion || !loungeActive || loungeView.hidden) return;
+    renderLoungePresence(result.members);
+  } catch (error) {
+    if (requestVersion !== loungePresenceRequestVersion || !loungeActive) return;
+    if (error instanceof ApiFailure && error.status === 401) {
+      showSignedOut();
+      return;
+    }
+    setLoungePresenceStatus('Could not check who’s in the Lounge.', 'error');
+  } finally {
+    if (requestVersion === loungePresenceRequestVersion && loungeActive) {
+      scheduleLoungePresencePoll();
+    }
+  }
 }
 
 function updateLoungeMentionSuggestions(): void {
@@ -1861,6 +1939,9 @@ function appendLoungeMessage(message: ChatMessage, scrollToBottom = false): void
 async function loadLoungeChat(): Promise<void> {
   stopLoungePolling();
   loungeActive = true;
+  loungePresenceRenderKey = null;
+  setLoungePresenceStatus('Checking who’s here…', 'checking');
+  void pollLoungePresence();
   loungeCursor = 0;
   loungeEtag = null;
   loungePollDelay = 1000;
@@ -3989,6 +4070,7 @@ document.addEventListener('visibilitychange', () => {
   if (!document.hidden && loungeActive) {
     loungePollDelay = 1000;
     scheduleLoungePoll(0);
+    void pollLoungePresence();
   }
   if (!document.hidden && activeProject !== null && issuePollingIsActive(activeProject.id)) {
     issuePollDelay = 1000;
