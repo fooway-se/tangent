@@ -46,6 +46,15 @@ final class ChatRepository
 
     public function findOrCreateLoungeChannel(int $workspaceId): int
     {
+        $existing = $this->pdo->prepare(
+            "SELECT id FROM channels
+             WHERE workspace_id = :workspace_id AND channel_type = 'standalone' AND name = 'Lounge'
+             ORDER BY id ASC LIMIT 1"
+        );
+        $existing->execute(['workspace_id' => $workspaceId]);
+        $channelId = $existing->fetchColumn();
+        if ($channelId !== false) return (int) $channelId;
+
         $statement = $this->pdo->prepare(
             "INSERT INTO channels (workspace_id, project_id, channel_type, name)
              VALUES (:workspace_id, NULL, 'standalone', 'Lounge')
