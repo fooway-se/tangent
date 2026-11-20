@@ -40,6 +40,16 @@ test('milestone groups are collapsible and their headings show issue counts', ()
   assert.match(app, /reconcileIssueBoardGroups\(groups\)/);
 });
 
+test('No milestone group offers opt-in bulk selection and a grouped milestone move action', () => {
+  assert.match(app, /allowBulkMove: group\.milestoneId === null/);
+  assert.match(app, /issue-bulk-select-toggle/);
+  assert.match(app, /issue-bulk-move-toolbar/);
+  assert.match(app, /Select all/);
+  assert.match(app, /Move selected/);
+  assert.match(app, /\/projects\/\$\{projectId\}\/issues\/move-to-milestone/);
+  assert.match(css, /\.issue-bulk-move-toolbar\s*\{/);
+});
+
 test('issue rows mark shared issues and leave internal issues without a sharing badge', () => {
   const rowStart = app.indexOf('function createIssueRow(');
   const rowEnd = app.indexOf('\nfunction ', rowStart + 1);

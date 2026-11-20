@@ -418,6 +418,68 @@ final class IssuesService
         }
     }
 
+    public function moveUnassignedToMilestone(AuthenticatedUser $user, int $projectId, array $input): int
+    {
+        $this->requireProjectAccess($user, $projectId, 'issues.share');
+        $issueIds = $input['issue_ids'] ?? null;
+        if (!is_array($issueIds) || $issueIds === [] || count($issueIds) > 500) {
+            throw new ApiException(422, 'validation_failed', 'Select between 1 and 500 issues to move.');
+        }
+        $seen = [];
+        foreach ($issueIds as $issueId) {
+            if (!is_int($issueId) || $issueId < 1) {
+                throw new ApiException(422, 'validation_failed', 'issue_ids must contain positive integers.');
+            }
+            if (isset($seen[$issueId])) {
+                throw new ApiException(422, 'validation_failed', 'issue_ids cannot contain duplicates.');
+            }
+            $seen[$issueId] = true;
+        }
+
+        $milestoneId = $input['milestone_id'] ?? null;
+        if (!is_int($milestoneId) || $milestoneId < 1) {
+            throw new ApiException(422, 'validation_failed', 'milestone_id must be a positive integer.');
+        }
+        $milestone = $this->milestones->find($user->workspaceId, $projectId, $milestoneId);
+        if ($milestone === null) throw new ApiException(404, 'not_found', 'The milestone was not found.');
+        if ($milestone['archived_at'] !== null) {
+            throw new ApiException(422, 'validation_failed', 'Issues can only be moved to an active milestone.');
+        }
+
+        foreach ($issueIds as $issueId) {
+            $issue = $this->issues->find($user->workspaceId, $issueId);
+            if ($issue === null || $issue['project_id'] !== $projectId) {
+                throw new ApiException(404, 'not_found', 'One or more issues were not found in this project.');
+            }
+            if ($issue['milestone_id'] !== null) {
+                throw new ApiException(409, 'issue_already_planned', 'One or more selected issues already belong to a milestone. Refresh and try again.');
+            }
+        }
+
+        $ownsTransaction = !$this->pdo->inTransaction();
+        if ($ownsTransaction) $this->pdo->beginTransaction();
+        try {
+            $sortOrder = $this->issues->maxSortOrder($user->workspaceId, $projectId, $milestoneId) + 1;
+            foreach ($issueIds as $issueId) {
+                if (!$this->issues->moveUnassignedToMilestone(
+                    $user->workspaceId,
+                    $projectId,
+                    $issueId,
+                    $milestoneId,
+                    $sortOrder,
+                )) {
+                    throw new ApiException(409, 'issue_already_planned', 'One or more selected issues changed. Refresh and try again.');
+                }
+                $sortOrder += 1;
+            }
+            if ($ownsTransaction) $this->pdo->commit();
+            return count($issueIds);
+        } catch (Throwable $exception) {
+            if ($ownsTransaction && $this->pdo->inTransaction()) $this->pdo->rollBack();
+            throw $exception;
+        }
+    }
+
     public function approve(AuthenticatedUser $user, int $issueId): void
     {
         $issue = $this->issues->approvalIssue($user->workspaceId, $issueId);

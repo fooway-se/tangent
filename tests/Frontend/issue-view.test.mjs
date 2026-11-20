@@ -22,7 +22,7 @@ test('the issue board keeps chat in its separate right column', () => {
 });
 
 test('the issue grouping control switches between status and milestone groups', () => {
-  assert.match(app, /issueGrouping\.addEventListener\('change', renderProjectIssueBoard\)/);
+  assert.match(app, /issueGrouping\.addEventListener\('change', \(\) => \{\s*clearBulkMoveSelection\(\);\s*renderProjectIssueBoard\(\);\s*\}\)/);
   assert.match(app, /if \(issueGrouping\.value === 'milestone'\) \{\s*renderMilestoneIssueBoard\(visible\)/);
   assert.match(app, /function renderMilestoneIssueBoard\(/);
 });

@@ -204,6 +204,28 @@ final class IssueRepository
         ]);
     }
 
+    public function moveUnassignedToMilestone(
+        int $workspaceId,
+        int $projectId,
+        int $issueId,
+        int $milestoneId,
+        int $sortOrder,
+    ): bool {
+        $statement = $this->pdo->prepare(
+            'UPDATE issues SET milestone_id = :milestone_id, sort_order = :sort_order
+             WHERE workspace_id = :workspace_id AND project_id = :project_id AND id = :id
+               AND milestone_id IS NULL AND deleted_at IS NULL'
+        );
+        $statement->execute([
+            'workspace_id' => $workspaceId,
+            'project_id' => $projectId,
+            'id' => $issueId,
+            'milestone_id' => $milestoneId,
+            'sort_order' => $sortOrder,
+        ]);
+        return $statement->rowCount() === 1;
+    }
+
     public function maxSortOrder(int $workspaceId, int $projectId, ?int $milestoneId): int
     {
         $statement = $this->pdo->prepare(

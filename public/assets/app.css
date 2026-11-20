@@ -430,6 +430,12 @@ select { padding-right: 28px; background: var(--screen-inset) url("data:image/sv
 .issue-group[open] .issue-group-chevron { transform: rotate(90deg); }
 .issue-group-name { font: 800 11px var(--font-display); letter-spacing: 1.5px; text-transform: uppercase; }
 .issue-group-count { color: var(--screen-muted); }
+.issue-bulk-select-toggle { margin-left: auto; padding: 4px 8px; font-size: 11px; }
+.issue-bulk-move-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; border-top: 1px solid var(--screen-line); padding: 8px 12px; background: var(--screen-inset); }
+.issue-bulk-move-count { margin-right: auto; color: var(--screen-muted); font: 700 11px var(--font-mono); }
+.issue-bulk-move-milestone { min-width: 160px; max-width: 100%; }
+.issue-bulk-select-checkbox { width: 16px; height: 16px; margin: 0 5px; accent-color: var(--accent); cursor: pointer; }
+.issue-bulk-select-checkbox:disabled { cursor: not-allowed; }
 .issue-group-items { display: grid; margin: 0; padding: 0; list-style: none; }
 .issue-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; border-top: 1px solid var(--screen-line); padding: 10px 12px; transition: background-color 100ms ease; }
 .issue-row-actions { display: flex; align-items: center; justify-self: end; gap: 4px; }

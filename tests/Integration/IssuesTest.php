@@ -507,6 +507,93 @@ final class IssuesTest extends ApiTestCase
         self::assertSame([2, 3, 4], array_map(static fn (int $issueId): int => $sortOrders[$issueId], $movedIssues));
     }
 
+    public function testUnassignedIssuesMoveTogetherIntoAProjectMilestone(): void
+    {
+        $admin = $this->login($this->adminEmail);
+        $projectId = $this->createProject($admin, 'Bulk milestone move');
+        $milestone = $this->apiCookieRequest(
+            'POST',
+            "/api/v1/projects/{$projectId}/milestones",
+            $admin['cookie'],
+            ['name' => 'Next delivery'],
+            $admin['csrf'],
+        );
+        self::assertSame(201, $milestone->status, json_encode($milestone->body));
+        $milestoneId = (int) $milestone->body['milestone']['id'];
+        $createIssue = function (string $title) use ($admin, $projectId): int {
+            $created = $this->apiCookieRequest(
+                'POST',
+                "/api/v1/projects/{$projectId}/issues",
+                $admin['cookie'],
+                ['title' => $title],
+                $admin['csrf'],
+            );
+            self::assertSame(201, $created->status, json_encode($created->body));
+            return (int) $created->body['issue']['id'];
+        };
+        $issueIds = [$createIssue('Write the plan'), $createIssue('Review the plan'), $createIssue('Unselected issue')];
+
+        $moved = $this->apiCookieRequest(
+            'POST',
+            "/api/v1/projects/{$projectId}/issues/move-to-milestone",
+            $admin['cookie'],
+            ['issue_ids' => array_slice($issueIds, 0, 2), 'milestone_id' => $milestoneId],
+            $admin['csrf'],
+        );
+        self::assertSame(200, $moved->status, json_encode($moved->body));
+        self::assertSame(2, $moved->body['moved_count']);
+
+        $listed = $this->apiCookieRequest('GET', "/api/v1/projects/{$projectId}/issues", $admin['cookie']);
+        self::assertSame(200, $listed->status);
+        $byId = array_column($listed->body['issues'], null, 'id');
+        self::assertSame($milestoneId, $byId[$issueIds[0]]['milestone_id']);
+        self::assertSame($milestoneId, $byId[$issueIds[1]]['milestone_id']);
+        self::assertNull($byId[$issueIds[2]]['milestone_id']);
+    }
+
+    public function testBulkMilestoneMoveRejectsIssuesFromAnotherProjectWithoutPartialChanges(): void
+    {
+        $admin = $this->login($this->adminEmail);
+        $projectId = $this->createProject($admin, 'Bulk move target');
+        $otherProjectId = $this->createProject($admin, 'Bulk move source');
+        $targetIssue = $this->apiCookieRequest(
+            'POST',
+            "/api/v1/projects/{$projectId}/issues",
+            $admin['cookie'],
+            ['title' => 'Stay unassigned after failed move'],
+            $admin['csrf'],
+        );
+        $otherIssue = $this->apiCookieRequest(
+            'POST',
+            "/api/v1/projects/{$otherProjectId}/issues",
+            $admin['cookie'],
+            ['title' => 'Wrong project'],
+            $admin['csrf'],
+        );
+        $milestone = $this->apiCookieRequest(
+            'POST',
+            "/api/v1/projects/{$projectId}/milestones",
+            $admin['cookie'],
+            ['name' => 'Target milestone'],
+            $admin['csrf'],
+        );
+        $moved = $this->apiCookieRequest(
+            'POST',
+            "/api/v1/projects/{$projectId}/issues/move-to-milestone",
+            $admin['cookie'],
+            [
+                'issue_ids' => [$targetIssue->body['issue']['id'], $otherIssue->body['issue']['id']],
+                'milestone_id' => $milestone->body['milestone']['id'],
+            ],
+            $admin['csrf'],
+        );
+
+        self::assertSame(404, $moved->status);
+        $listed = $this->apiCookieRequest('GET', "/api/v1/projects/{$projectId}/issues", $admin['cookie']);
+        self::assertSame(200, $listed->status);
+        self::assertNull($listed->body['issues'][0]['milestone_id']);
+    }
+
     private function createProject(array $admin, string $name): int
     {
         $response = $this->cookieRequest(

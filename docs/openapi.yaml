@@ -1100,6 +1100,43 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
         '422': { $ref: '#/components/responses/ValidationFailed' }
+  /projects/{id}/issues/move-to-milestone:
+    post:
+      summary: Move unassigned project issues into a milestone
+      description: Moves the selected unassigned issues as one transaction. All issue IDs must belong to the project and target an active milestone. Requires issues.share.
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [issue_ids, milestone_id]
+              properties:
+                issue_ids:
+                  type: array
+                  minItems: 1
+                  maxItems: 500
+                  uniqueItems: true
+                  items: { type: integer, minimum: 1 }
+                milestone_id: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: Issues moved into the milestone.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  moved_count: { type: integer, minimum: 1 }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: One or more selected issues are no longer unassigned.
+        '422':
+          description: Invalid issue IDs or an archived milestone.
   /inbox:
     get:
       summary: List open issues assigned to the authenticated user

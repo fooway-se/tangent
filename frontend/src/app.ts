@@ -222,6 +222,7 @@ interface IssueBoardGroup {
   className: string;
   issues: Issue[];
   reorderByIssueId?: Map<number, { canMoveEarlier?: boolean; canMoveLater?: boolean; showMilestoneTag?: boolean }>;
+  allowBulkMove?: boolean;
 }
 
 interface Milestone {
@@ -758,6 +759,10 @@ let projectMilestones: Milestone[] = [];
 let editingMilestoneId: number | null = null;
 let milestoneDeleteTarget: { milestone: Milestone; button: HTMLButtonElement } | null = null;
 let projectIssues: Issue[] = [];
+let bulkMoveSelectionMode = false;
+let bulkMovePending = false;
+let selectedBulkMoveIssueIds = new Set<number>();
+let bulkMoveMilestoneId: number | null = null;
 let issueGroupingBeforeNextUp: IssueGrouping = 'status';
 let issueGroupingForcedByNextUp = false;
 let inboxIssues: InboxIssue[] = [];
@@ -4342,10 +4347,19 @@ issueDetailDescriptionInput.addEventListener('keydown', (event) => submitFormOnE
 issueDiscussionInput.addEventListener('keydown', (event) => submitFormOnEnter(event, issueDiscussionForm));
 issueDiscussionForm.addEventListener('submit', (event) => void postIssueDiscussionMessage(event));
 issueDiscussionReplyCancel.addEventListener('click', clearIssueDiscussionReply);
-issueFilter.addEventListener('input', renderProjectIssueBoard);
-issueGrouping.addEventListener('change', renderProjectIssueBoard);
+issueFilter.addEventListener('input', () => {
+  clearBulkMoveSelection();
+  renderProjectIssueBoard();
+});
+issueGrouping.addEventListener('change', () => {
+  clearBulkMoveSelection();
+  renderProjectIssueBoard();
+});
 issueOrder.addEventListener('change', handleIssueOrderChange);
-issueScope.addEventListener('change', renderProjectIssueBoard);
+issueScope.addEventListener('change', () => {
+  clearBulkMoveSelection();
+  renderProjectIssueBoard();
+});
 
 toggleProjectFormButton.addEventListener('click', () => {
   if (!projectFormPanel.hidden) {
@@ -5451,6 +5465,7 @@ async function loadProjectDetail(
   tab: 'issues' | 'members' | 'notes' = 'issues',
   recordHistory = true,
 ): Promise<void> {
+  clearBulkMoveSelection();
   const previousLocation = currentWorkspaceLocation();
   if (milestoneManagerDialog.open) closeMilestoneManager();
   stopChatPolling();
@@ -5689,7 +5704,14 @@ function synchronizeIssueGroupingForOrder(): void {
 
 function handleIssueOrderChange(): void {
   synchronizeIssueGroupingForOrder();
+  if (issueOrder.value === 'next_up') clearBulkMoveSelection();
   renderProjectIssueBoard();
+}
+
+function clearBulkMoveSelection(): void {
+  bulkMoveSelectionMode = false;
+  selectedBulkMoveIssueIds.clear();
+  bulkMoveMilestoneId = null;
 }
 
 function renderProjectIssueBoard(): void {
@@ -5761,11 +5783,20 @@ function renderProjectIssueBoard(): void {
 }
 
 function renderMilestoneIssueBoard(visibleIssues: Issue[]): void {
+  const hasActiveMilestones = projectMilestones.some((milestone) => milestone.archived_at === null);
+  if (!hasActiveMilestones) clearBulkMoveSelection();
+  const visibleUnassignedIssueIds = new Set(visibleIssues
+    .filter((issue) => issue.milestone_id === null)
+    .map((issue) => issue.id));
+  for (const issueId of selectedBulkMoveIssueIds) {
+    if (!visibleUnassignedIssueIds.has(issueId)) selectedBulkMoveIssueIds.delete(issueId);
+  }
   reconcileIssueBoardGroups(groupIssuesByMilestone(visibleIssues, projectMilestones).map((group) => ({
     key: `milestone:${group.milestoneId ?? 'none'}`,
     name: group.dueDate === null ? group.name : `${group.name} · due ${group.dueDate}`,
     className: 'issue-group milestone-issue-group',
     issues: group.issues,
+    allowBulkMove: group.milestoneId === null && hasActiveMilestones,
   })));
 }
 
@@ -5818,28 +5849,63 @@ function reconcileIssueBoardGroups(groups: IssueBoardGroup[]): void {
     const groupCount = summary.querySelector<HTMLElement>('.issue-group-count');
     if (groupName !== null) setTextContentIfChanged(groupName, group.name);
     if (groupCount !== null) setTextContentIfChanged(groupCount, String(group.issues.length));
+    let bulkSelectToggle = summary.querySelector<HTMLButtonElement>(':scope > .issue-bulk-select-toggle');
+    if (group.allowBulkMove === true) {
+      if (bulkSelectToggle === null) {
+        bulkSelectToggle = document.createElement('button');
+        bulkSelectToggle.type = 'button';
+        bulkSelectToggle.className = 'button button-secondary issue-bulk-select-toggle';
+        bulkSelectToggle.addEventListener('click', (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          if (bulkMovePending) return;
+          if (bulkMoveSelectionMode) clearBulkMoveSelection();
+          else bulkMoveSelectionMode = true;
+          details.open = true;
+          renderProjectIssueBoard();
+        });
+        summary.append(bulkSelectToggle);
+      }
+      bulkSelectToggle.textContent = bulkMoveSelectionMode ? 'Cancel selection' : 'Select issues';
+      bulkSelectToggle.disabled = bulkMovePending || (activeProject !== null && projectStatusIsReadOnly(activeProject.status));
+    } else {
+      bulkSelectToggle?.remove();
+    }
+    const isBulkMoveGroup = group.key === 'milestone:none' && group.allowBulkMove === true;
+    let bulkToolbar = details.querySelector<HTMLDivElement>(':scope > .issue-bulk-move-toolbar');
+    if (isBulkMoveGroup && bulkMoveSelectionMode) {
+      if (bulkToolbar === null) bulkToolbar = createIssueBulkMoveToolbar(group.issues);
+      syncIssueBulkMoveToolbar(bulkToolbar, group.issues);
+    } else {
+      bulkToolbar?.remove();
+      bulkToolbar = null;
+    }
     const rows = details.querySelector<HTMLUListElement>(':scope > .issue-group-items') ?? document.createElement('ul');
     rows.className = 'issue-group-items';
     const expectedIds = new Set<number>();
     for (const [rowIndex, issue] of group.issues.entries()) {
       expectedIds.add(issue.id);
       const reorder = group.reorderByIssueId?.get(issue.id);
-      const signature = issueRowSignature(issue, reorder);
+      const allowBulkSelection = isBulkMoveGroup && bulkMoveSelectionMode;
+      const bulkSelected = selectedBulkMoveIssueIds.has(issue.id);
+      const signature = issueRowSignature(issue, reorder, allowBulkSelection, bulkSelected);
       const existing = existingRows.get(issue.id);
       let row: HTMLLIElement;
       if (existing !== undefined && issueRowRenderSignatures.get(existing) === signature) {
         row = existing;
       } else {
-        row = createIssueRow(issue, reorder) as HTMLLIElement;
+        row = createIssueRow(issue, reorder, allowBulkSelection) as HTMLLIElement;
         row.classList.toggle('is-keyboard-selected', selectedIssue?.id === issue.id);
         issueRowRenderSignatures.set(row, signature);
         if (existing !== undefined) replaceIssueRowPreservingFocus(existing, row);
       }
       placeNodeAtPosition(rows, row, rowIndex);
     }
+    if (bulkToolbar !== null) syncIssueBulkMoveToolbar(bulkToolbar, group.issues);
     expectedRowsByGroup.set(group.key, expectedIds);
     placeNodeAtPosition(details, summary, 0);
-    placeNodeAtPosition(details, rows, 1);
+    if (bulkToolbar !== null) placeNodeAtPosition(details, bulkToolbar, 1);
+    placeNodeAtPosition(details, rows, bulkToolbar === null ? 1 : 2);
     placeNodeAtPosition(issueList, details, groupIndex);
   }
 
@@ -5856,6 +5922,156 @@ function reconcileIssueBoardGroups(groups: IssueBoardGroup[]): void {
   }
 }
 
+function createIssueBulkMoveToolbar(issues: Issue[]): HTMLDivElement {
+  const toolbar = document.createElement('div');
+  toolbar.className = 'issue-bulk-move-toolbar';
+  toolbar.setAttribute('role', 'group');
+  toolbar.setAttribute('aria-label', 'Move unassigned issues to a milestone');
+
+  const count = document.createElement('span');
+  count.className = 'issue-bulk-move-count';
+  count.setAttribute('aria-live', 'polite');
+
+  const selectAll = document.createElement('button');
+  selectAll.type = 'button';
+  selectAll.className = 'button button-secondary issue-bulk-select-all';
+  selectAll.textContent = 'Select all';
+  selectAll.addEventListener('click', () => {
+    if (bulkMovePending) return;
+    const details = toolbar.parentElement;
+    if (!(details instanceof HTMLDetailsElement)) return;
+    const issueIds = Array.from(details.querySelectorAll<HTMLInputElement>('.issue-bulk-select-checkbox'))
+      .map((checkbox) => Number(checkbox.dataset.issueId))
+      .filter((issueId) => Number.isInteger(issueId) && issueId > 0);
+    if (issueIds.length > 500) return;
+    selectedBulkMoveIssueIds = new Set(issueIds);
+    renderProjectIssueBoard();
+  });
+
+  const milestoneSelect = document.createElement('select');
+  milestoneSelect.className = 'issue-bulk-move-milestone';
+  milestoneSelect.setAttribute('aria-label', 'Move selected issues to milestone');
+  milestoneSelect.addEventListener('change', () => {
+    bulkMoveMilestoneId = milestoneSelect.value === '' ? null : Number(milestoneSelect.value);
+    const moveButton = toolbar.querySelector<HTMLButtonElement>('.issue-bulk-move-button');
+    if (moveButton !== null) moveButton.disabled = bulkMovePending
+      || selectedBulkMoveIssueIds.size === 0
+      || bulkMoveMilestoneId === null
+      || (activeProject !== null && projectStatusIsReadOnly(activeProject.status));
+  });
+
+  const moveButton = document.createElement('button');
+  moveButton.type = 'button';
+  moveButton.className = 'button button-primary issue-bulk-move-button';
+  moveButton.textContent = 'Move selected';
+  moveButton.addEventListener('click', () => void moveSelectedIssuesToMilestone());
+
+  toolbar.append(count, selectAll, milestoneSelect, moveButton);
+  syncIssueBulkMoveToolbar(toolbar, issues);
+  return toolbar;
+}
+
+function syncIssueBulkMoveToolbar(toolbar: HTMLDivElement, issues: Issue[]): void {
+  const count = toolbar.querySelector<HTMLElement>('.issue-bulk-move-count');
+  const selectAll = toolbar.querySelector<HTMLButtonElement>('.issue-bulk-select-all');
+  const milestoneSelect = toolbar.querySelector<HTMLSelectElement>('.issue-bulk-move-milestone');
+  const moveButton = toolbar.querySelector<HTMLButtonElement>('.issue-bulk-move-button');
+  const disabled = bulkMovePending || (activeProject !== null && projectStatusIsReadOnly(activeProject.status));
+  if (count !== null) setTextContentIfChanged(count, `${selectedBulkMoveIssueIds.size} selected`);
+  if (selectAll !== null) {
+    selectAll.disabled = disabled || issues.length > 500;
+    selectAll.title = issues.length > 500 ? 'Select up to 500 issues at a time.' : '';
+  }
+  if (milestoneSelect !== null) {
+    const optionsSignature = projectMilestones
+      .filter((milestone) => milestone.archived_at === null)
+      .map((milestone) => `${milestone.id}:${milestone.name}`)
+      .join('|');
+    if (milestoneSelect.dataset.optionsSignature !== optionsSignature) {
+      const placeholder = document.createElement('option');
+      placeholder.value = '';
+      placeholder.textContent = 'Choose milestone';
+      milestoneSelect.replaceChildren(placeholder);
+      for (const milestone of projectMilestones) {
+        if (milestone.archived_at !== null) continue;
+        const option = document.createElement('option');
+        option.value = String(milestone.id);
+        option.textContent = milestone.name;
+        milestoneSelect.append(option);
+      }
+      milestoneSelect.dataset.optionsSignature = optionsSignature;
+    }
+    if (bulkMoveMilestoneId !== null && !projectMilestones.some((milestone) =>
+      milestone.id === bulkMoveMilestoneId && milestone.archived_at === null)) {
+      bulkMoveMilestoneId = null;
+    }
+    milestoneSelect.value = bulkMoveMilestoneId === null ? '' : String(bulkMoveMilestoneId);
+    milestoneSelect.disabled = disabled;
+  }
+  if (moveButton !== null) moveButton.disabled = disabled
+    || selectedBulkMoveIssueIds.size === 0
+    || bulkMoveMilestoneId === null;
+
+  const details = toolbar.parentElement;
+  if (details instanceof HTMLDetailsElement) {
+    for (const checkbox of details.querySelectorAll<HTMLInputElement>('.issue-bulk-select-checkbox')) {
+      checkbox.checked = selectedBulkMoveIssueIds.has(Number(checkbox.dataset.issueId));
+      checkbox.disabled = disabled
+        || (!checkbox.checked && selectedBulkMoveIssueIds.size >= 500);
+    }
+  }
+}
+
+async function moveSelectedIssuesToMilestone(): Promise<void> {
+  const projectId = activeProject?.id;
+  const milestoneId = bulkMoveMilestoneId;
+  const issueIds = Array.from(selectedBulkMoveIssueIds);
+  if (projectId === undefined || milestoneId === null || issueIds.length === 0 || issueIds.length > 500 || bulkMovePending) return;
+
+  bulkMovePending = true;
+  renderProjectIssueBoard();
+  try {
+    await api<{ moved_count: number }>(`/projects/${projectId}/issues/move-to-milestone`, {
+      method: 'POST',
+      body: JSON.stringify({ issue_ids: issueIds, milestone_id: milestoneId }),
+    });
+    if (activeProject?.id !== projectId) {
+      bulkMovePending = false;
+      return;
+    }
+    const milestone = projectMilestones.find((candidate) => candidate.id === milestoneId);
+    const nextSortOrder = Math.max(0, ...projectIssues
+      .filter((issue) => issue.milestone_id === milestoneId)
+      .map((issue) => issue.sort_order)) + 1;
+    let sortOrder = nextSortOrder;
+    projectIssues = projectIssues.map((issue) => issueIds.includes(issue.id)
+      ? {
+        ...issue,
+        milestone_id: milestoneId,
+        milestone_name: milestone?.name ?? null,
+        milestone_due_date: milestone?.due_date ?? null,
+        sort_order: sortOrder++,
+      }
+      : issue);
+    clearBulkMoveSelection();
+    bulkMovePending = false;
+    renderProjectIssueBoard();
+    issueList.querySelector<HTMLDetailsElement>(`:scope > .issue-group[data-group-key="milestone:${milestoneId}"]`)
+      ?.querySelector<HTMLElement>(':scope > summary')?.focus();
+    report(`Moved ${issueIds.length} ${issueIds.length === 1 ? 'issue' : 'issues'} to ${milestone?.name ?? 'the milestone'}.`);
+    void loadProjectIssues(projectId);
+  } catch (error) {
+    bulkMovePending = false;
+    if (activeProject?.id !== projectId) return;
+    renderProjectIssueBoard();
+    if (error instanceof ApiFailure && error.status === 401) {
+      showSignedOut();
+      return;
+    }
+    report(error instanceof Error ? error.message : 'Could not move the selected issues.', true);
+  }
+}
+
 function setTextContentIfChanged(element: HTMLElement, value: string): void {
   if (element.textContent !== value) element.textContent = value;
 }
@@ -5868,6 +6084,8 @@ function placeNodeAtPosition(parent: Element, node: Element, index: number): voi
 function issueRowSignature(
   issue: Issue,
   reorder: { canMoveEarlier?: boolean; canMoveLater?: boolean; showMilestoneTag?: boolean } | undefined,
+  allowBulkSelection = false,
+  bulkSelected = false,
 ): string {
   return JSON.stringify([
     issue.title,
@@ -5881,6 +6099,8 @@ function issueRowSignature(
     issue.discussion_count ?? 0,
     reorder?.canMoveEarlier,
     reorder?.canMoveLater,
+    allowBulkSelection,
+    bulkSelected,
   ]);
 }
 
@@ -5890,6 +6110,7 @@ function replaceIssueRowPreservingFocus(previous: HTMLLIElement, next: HTMLLIEle
   if (focused instanceof HTMLElement && previous.contains(focused)) {
     if (focused.matches('.issue-title-button')) focusTarget = '.issue-title-button';
     else if (focused.matches('.issue-status-button')) focusTarget = '.issue-status-button';
+    else if (focused.matches('.issue-bulk-select-checkbox')) focusTarget = '.issue-bulk-select-checkbox';
     else if (focused.matches('[data-move-direction]')) {
       focusTarget = `[data-move-direction="${focused.getAttribute('data-move-direction')}"]`;
     }
@@ -6782,6 +7003,7 @@ async function updateIssueStatus(issue: Issue, nextStatus: IssueStatus): Promise
 function createIssueRow(
   issue: Issue,
   reorder?: { canMoveEarlier?: boolean; canMoveLater?: boolean; showMilestoneTag?: boolean },
+  allowBulkSelection = false,
 ): HTMLElement {
   const item = document.createElement('li');
   item.className = 'issue-card';
@@ -6865,12 +7087,14 @@ function createIssueRow(
   if (!hasReorderActions) {
     const actions = document.createElement('div');
     actions.className = 'issue-row-actions';
+    if (allowBulkSelection) actions.append(createIssueBulkSelectCheckbox(issue));
     if (discussionIndicator !== null) actions.append(discussionIndicator);
     actions.append(createIssueStatusButton(issue));
     item.append(content, actions);
   } else {
     const actions = document.createElement('div');
     actions.className = 'issue-row-actions';
+    if (allowBulkSelection) actions.append(createIssueBulkSelectCheckbox(issue));
     if (discussionIndicator !== null) actions.append(discussionIndicator);
     for (const direction of ['up', 'down'] as const) {
       const button = document.createElement('button');
@@ -6890,6 +7114,33 @@ function createIssueRow(
     item.append(content, actions);
   }
   return item;
+}
+
+function createIssueBulkSelectCheckbox(issue: Issue): HTMLInputElement {
+  const checkbox = document.createElement('input');
+  checkbox.type = 'checkbox';
+  checkbox.className = 'issue-bulk-select-checkbox';
+  checkbox.dataset.issueId = String(issue.id);
+  checkbox.checked = selectedBulkMoveIssueIds.has(issue.id);
+  checkbox.disabled = bulkMovePending
+    || (!checkbox.checked && selectedBulkMoveIssueIds.size >= 500)
+    || (activeProject !== null && projectStatusIsReadOnly(activeProject.status));
+  checkbox.setAttribute('aria-label', `Select ${issue.title}`);
+  checkbox.addEventListener('change', () => {
+    if (bulkMovePending) return;
+    if (checkbox.checked) {
+      if (selectedBulkMoveIssueIds.size >= 500) {
+        checkbox.checked = false;
+        report('Move up to 500 issues at a time.', true);
+        return;
+      }
+      selectedBulkMoveIssueIds.add(issue.id);
+    } else {
+      selectedBulkMoveIssueIds.delete(issue.id);
+    }
+    renderProjectIssueBoard();
+  });
+  return checkbox;
 }
 
 function createDiscussionIndicator(count: number): HTMLSpanElement | null {

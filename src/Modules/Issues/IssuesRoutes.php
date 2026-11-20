@@ -59,6 +59,20 @@ final class IssuesRoutes
             );
         });
 
+        $router->add('POST', '/api/v1/projects/{id}/issues/move-to-milestone', function (
+            Request $request,
+            array $params,
+            AuthenticatedUser $user,
+        ): Response {
+            return Response::json(200, [
+                'moved_count' => $this->service->moveUnassignedToMilestone(
+                    $user,
+                    self::positiveId($params['id']),
+                    $request->body,
+                ),
+            ]);
+        });
+
         $router->add('GET', '/api/v1/issues/{id}/history', function (
             Request $request,
             array $params,
