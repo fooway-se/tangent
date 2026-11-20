@@ -4,6 +4,8 @@ Issues can be created from the project issue list or from a chat message. An iss
 
 Issue statuses are **Backlog**, **Todo**, **Doing**, **Testing**, **Done**, and **Cancelled**. Move an issue to **Testing** when implementation is ready for verification; move it to **Done** after it passes.
 
+Milestones can be archived at any point, including while work is unfinished. Archived milestones and their issues move out of **Current work** and remain available in **History**. Restore a milestone to return it and its issues to the active board; archiving does not change issue statuses or client-visible history.
+
 ## Quick-add issues
 
 Enter a title in the issue quick-add field. You can add priority and due date tokens directly to the title:

@@ -1,0 +1,2 @@
+ALTER TABLE milestones
+    ADD COLUMN archived_at TIMESTAMP NULL DEFAULT NULL AFTER due_date;

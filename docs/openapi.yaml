@@ -1256,7 +1256,7 @@ paths:
         '422': { $ref: '#/components/responses/ValidationFailed' }
   /projects/{id}/milestones/{milestoneId}:
     patch:
-      summary: Update a project milestone
+      summary: Update or archive a project milestone
       parameters:
         - $ref: '#/components/parameters/Id'
         - $ref: '#/components/parameters/CsrfToken'
@@ -1274,8 +1274,9 @@ paths:
               properties:
                 name: { type: string, minLength: 1, maxLength: 120 }
                 due_date: { type: [string, 'null'], format: date }
+                archived: { type: boolean, description: Set true to hide its issues from Current work, or false to restore them. }
       responses:
-        '200': { description: Milestone updated. }
+        '200': { description: Milestone updated; the response includes archived_at. }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
@@ -1877,13 +1878,14 @@ components:
         created_at: { type: string, format: date-time }
     Milestone:
       type: object
-      required: [id, workspace_id, project_id, name, due_date, created_at]
+      required: [id, workspace_id, project_id, name, due_date, archived_at, created_at]
       properties:
         id: { type: integer }
         workspace_id: { type: integer }
         project_id: { type: integer }
         name: { type: string }
         due_date: { type: [string, 'null'], format: date }
+        archived_at: { type: [string, 'null'], format: date-time, description: Non-null when the milestone is archived.}
         created_at: { type: string, format: date-time }
     ClientView:
       type: object

@@ -305,6 +305,11 @@
                       <span>Filter</span>
                       <input id="issue-filter" type="search" placeholder="Title, ID, description, priority, due date, type, assignee" aria-label="Filter issues by title, priority, due date, type, or assignee">
                     </label>
+                  <label class="visually-hidden" for="issue-scope">Issue scope</label>
+                  <select id="issue-scope" class="issue-order-select" aria-label="Issue scope">
+                    <option value="active">Current work</option>
+                    <option value="history">History</option>
+                  </select>
                     <label class="visually-hidden" for="issue-grouping">Group issues</label>
                     <select id="issue-grouping" class="issue-order-select" aria-label="Group issues">
                       <option value="status">Group: Status</option>
@@ -816,7 +821,7 @@
           <h2 id="milestone-manager-heading">Project milestones</h2>
           <button id="milestone-manager-close" class="button button-quiet" type="button">Close</button>
         </header>
-        <p id="milestone-manager-description" class="milestone-manager-description">Group project issues into milestones and set optional due dates.</p>
+        <p id="milestone-manager-description" class="milestone-manager-description">Group project issues into milestones and set optional due dates. Archive a milestone to move its issues into History; restore it when work resumes.</p>
         <p id="milestone-list-empty" class="milestone-list-empty" hidden>No milestones yet. Add one below.</p>
         <ul id="milestone-list" class="milestone-list" aria-label="Project milestones"></ul>
         <form id="milestone-form" class="milestone-form">

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { discussionIndicatorLabel, filterIssues, groupIssues, groupIssuesByMilestone, milestoneProgress, sortIssues } from '../../public/assets/issue-board.js';
+import { discussionIndicatorLabel, filterIssues, filterIssuesByMilestoneArchive, groupIssues, groupIssuesByMilestone, milestoneProgress, sortIssues } from '../../public/assets/issue-board.js';
 
 const issues = [
   { id: 12, title: 'Fix login redirect', description: 'After reset', status: 'doing', created_at: '2026-11-01', updated_at: '2026-11-14' },
@@ -38,6 +38,21 @@ test('issues group by milestone in due-date order with unassigned issues last', 
   const groups = groupIssuesByMilestone(planned, milestones);
   assert.deepEqual(groups.map((group) => group.name), ['Soon', 'Later', 'No date', 'No milestone']);
   assert.deepEqual(groups.map((group) => group.issues.map((issue) => issue.id)), [[33], [31], [34], [32]]);
+});
+
+test('milestone history filtering hides archived milestone issues from current work and preserves unassigned issues', () => {
+  const milestones = [
+    { id: 1, name: 'Current', due_date: null, archived_at: null },
+    { id: 2, name: 'Shelved', due_date: null, archived_at: '2026-11-20 12:00:00' },
+  ];
+  const planned = [
+    { ...issues[0], id: 41, milestone_id: 1 },
+    { ...issues[1], id: 42, milestone_id: 2 },
+    { ...issues[2], id: 43, milestone_id: null },
+  ];
+
+  assert.deepEqual(filterIssuesByMilestoneArchive(planned, milestones, 'active').map((issue) => issue.id), [41, 43]);
+  assert.deepEqual(filterIssuesByMilestoneArchive(planned, milestones, 'history').map((issue) => issue.id), [42]);
 });
 
 test('issue filter matches title, description, status, and identifier', () => {

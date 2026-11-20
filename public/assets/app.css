@@ -486,6 +486,7 @@ select { padding-right: 28px; background: var(--screen-inset) url("data:image/sv
 .milestone-row-info { display: grid; min-width: 0; gap: 2px; }
 .milestone-row-info strong { overflow-wrap: anywhere; font-size: 12px; font-weight: 600; }
 .milestone-row-info span { color: var(--screen-muted); font-size: 11px; }
+.milestone-row-info .milestone-row-archived { color: var(--accent); font-size: 11px; font-weight: 700; text-transform: uppercase; }
 .milestone-row-progress.is-complete { color: var(--success); font-weight: 700; }
 .milestone-form { display: grid; gap: 10px; margin: 16px 18px 0; border-top: 1px solid var(--screen-border); padding-top: 14px; }
 .milestone-form h3 { margin: 0; font: 700 13px var(--font-display); }

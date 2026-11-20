@@ -23,7 +23,10 @@ export interface BoardMilestone {
   id: number;
   name: string;
   due_date: string | null;
+  archived_at?: string | null;
 }
+
+export type IssueBoardScope = 'active' | 'history';
 
 export interface MilestoneProgress {
   done: number;
@@ -54,6 +57,21 @@ export function filterIssues<T extends BoardIssue>(issues: readonly T[], query: 
       .toLocaleLowerCase()
       .includes(normalized),
   );
+}
+
+export function filterIssuesByMilestoneArchive<T extends Pick<BoardIssue, 'milestone_id'>>(
+  issues: readonly T[],
+  milestones: readonly BoardMilestone[],
+  scope: IssueBoardScope,
+): T[] {
+  const archivedMilestoneIds = new Set(
+    milestones.filter((milestone) => milestone.archived_at != null).map((milestone) => milestone.id),
+  );
+  const includeArchived = scope === 'history';
+  return issues.filter((issue) => {
+    const isArchived = issue.milestone_id != null && archivedMilestoneIds.has(issue.milestone_id);
+    return isArchived === includeArchived;
+  });
 }
 
 export function groupIssues<T extends BoardIssue>(issues: readonly T[]): Array<{ status: IssueStatus; issues: T[] }> {

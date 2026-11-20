@@ -42,8 +42,14 @@ final class MilestoneService
         ProjectLifecycle::requireWritable($project['status']);
         $current = $this->milestones->find($user->workspaceId, $projectId, $milestoneId);
         if ($current === null) throw new ApiException(404, 'not_found', 'The milestone was not found.');
+        if (array_key_exists('archived', $input) && !is_bool($input['archived'])) {
+            throw new ApiException(422, 'validation_failed', 'Milestone archived must be a boolean.');
+        }
         [$name, $dueDate] = self::fields($input, $current['name'], $current['due_date'], true);
         $this->milestones->update($user->workspaceId, $projectId, $milestoneId, $name, $dueDate);
+        if (array_key_exists('archived', $input)) {
+            $this->milestones->setArchived($user->workspaceId, $projectId, $milestoneId, $input['archived']);
+        }
         return $this->milestones->find($user->workspaceId, $projectId, $milestoneId) ?? [];
     }
 
@@ -68,7 +74,7 @@ final class MilestoneService
 
     private static function fields(array $input, ?string $currentName, ?string $currentDate, bool $partial): array
     {
-        if ($partial && !array_intersect(['name', 'due_date'], array_keys($input))) {
+        if ($partial && !array_intersect(['name', 'due_date', 'archived'], array_keys($input))) {
             throw new ApiException(422, 'validation_failed', 'At least one milestone field must be supplied.');
         }
         $name = array_key_exists('name', $input)

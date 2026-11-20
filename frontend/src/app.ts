@@ -25,6 +25,7 @@ import { parseQuickIssueInput } from './quick-issue.js';
 import { formatIssueMarkdown, formatIssuePrompt } from './issue-export.js';
 import {
   filterIssues,
+  filterIssuesByMilestoneArchive,
   groupIssues,
   groupIssuesByMilestone,
   discussionIndicatorLabel,
@@ -32,6 +33,7 @@ import {
   sortIssues,
   type BoardIssue,
   type IssueSortOrder,
+  type IssueBoardScope,
   type IssueStatus,
 } from './issue-board.js';
 import {
@@ -222,6 +224,7 @@ interface Milestone {
   id: number;
   name: string;
   due_date: string | null;
+  archived_at: string | null;
 }
 
 interface InboxIssue extends Issue {
@@ -298,9 +301,10 @@ function populateIssueMilestoneSelect(select: HTMLSelectElement, selectedMilesto
   none.textContent = 'No milestone';
   select.replaceChildren(none);
   for (const milestone of projectMilestones) {
+    if (milestone.archived_at !== null && milestone.id !== selectedMilestoneId) continue;
     const option = document.createElement('option');
     option.value = String(milestone.id);
-    option.textContent = milestone.name;
+    option.textContent = milestone.archived_at === null ? milestone.name : `${milestone.name} (archived)`;
     select.append(option);
   }
   select.value = selectedMilestoneId === null ? '' : String(selectedMilestoneId);
@@ -677,6 +681,7 @@ const milestoneFormSubmit = document.querySelector<HTMLButtonElement>('#mileston
 const issueFilter = document.querySelector<HTMLInputElement>('#issue-filter')!;
 const issueGrouping = document.querySelector<HTMLSelectElement>('#issue-grouping')!;
 const issueOrder = document.querySelector<HTMLSelectElement>('#issue-order')!;
+const issueScope = document.querySelector<HTMLSelectElement>('#issue-scope')!;
 const issueCountSummary = document.querySelector<HTMLElement>('#issue-count-summary')!;
 const issueList = document.querySelector<HTMLUListElement>('#issue-list')!;
 const deletedIssuesDetails = document.querySelector<HTMLDetailsElement>('#deleted-issues-details')!;
@@ -4296,6 +4301,7 @@ issueDiscussionReplyCancel.addEventListener('click', clearIssueDiscussionReply);
 issueFilter.addEventListener('input', renderProjectIssueBoard);
 issueGrouping.addEventListener('change', renderProjectIssueBoard);
 issueOrder.addEventListener('change', handleIssueOrderChange);
+issueScope.addEventListener('change', renderProjectIssueBoard);
 
 toggleProjectFormButton.addEventListener('click', () => {
   if (!projectFormPanel.hidden) {
@@ -4934,14 +4940,24 @@ function renderMilestoneList(): void {
   milestoneList.replaceChildren();
   milestoneListEmpty.hidden = projectMilestones.length > 0;
   for (const milestone of projectMilestones) {
+    const archived = milestone.archived_at !== null;
     const row = document.createElement('li');
     row.className = 'milestone-row';
+    row.classList.toggle('is-archived', archived);
     row.tabIndex = 0;
     row.setAttribute('aria-keyshortcuts', 'Delete');
     const info = document.createElement('div');
     info.className = 'milestone-row-info';
     const name = document.createElement('strong');
     name.textContent = milestone.name;
+    if (archived) {
+      const archivedLabel = document.createElement('span');
+      archivedLabel.className = 'milestone-row-archived';
+      archivedLabel.textContent = 'Archived';
+      info.append(name, archivedLabel);
+    } else {
+      info.append(name);
+    }
     const dueDate = document.createElement('span');
     dueDate.textContent = milestone.due_date === null ? 'No due date' : `Due ${milestone.due_date}`;
     const milestoneIssues = projectIssues.filter((issue) => issue.milestone_id === milestone.id);
@@ -4957,7 +4973,7 @@ function renderMilestoneList(): void {
       const cancelled = progress.cancelled > 0 ? ` · ${progress.cancelled} cancelled` : '';
       progressLabel.textContent = `${completion}${progress.done}/${progress.active} issues done${cancelled}`;
     }
-    info.append(name, dueDate, progressLabel);
+    info.append(dueDate, progressLabel);
 
     const edit = document.createElement('button');
     edit.type = 'button';
@@ -4976,6 +4992,14 @@ function renderMilestoneList(): void {
       milestoneNameInput.focus();
     });
 
+    const archive = document.createElement('button');
+    archive.type = 'button';
+    archive.className = 'button button-quiet';
+    archive.textContent = archived ? 'Restore' : 'Archive';
+    archive.dataset.milestoneId = String(milestone.id);
+    archive.setAttribute('aria-label', `${archived ? 'Restore' : 'Archive'} milestone: ${milestone.name}`);
+    archive.addEventListener('click', () => void setMilestoneArchived(milestone, !archived, archive));
+
     const remove = document.createElement('button');
     remove.type = 'button';
     remove.className = 'button button-quiet button-danger';
@@ -4991,9 +5015,47 @@ function renderMilestoneList(): void {
 
     const actions = document.createElement('div');
     actions.className = 'milestone-row-actions';
-    actions.append(edit, remove);
+    actions.append(edit, archive, remove);
     row.append(info, actions);
     milestoneList.append(row);
+  }
+}
+
+async function setMilestoneArchived(milestone: Milestone, archived: boolean, button: HTMLButtonElement): Promise<void> {
+  const projectId = activeProject?.id;
+  if (projectId === undefined) return;
+  const quickAddMilestoneId = issueQuickAddMilestone.value === '' ? null : Number(issueQuickAddMilestone.value);
+  const detailMilestoneId = issueDetailMilestoneInput.value === '' ? null : Number(issueDetailMilestoneInput.value);
+  button.disabled = true;
+  try {
+    await api<{ milestone: Milestone }>(`/projects/${projectId}/milestones/${milestone.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ archived }),
+    });
+    const result = await api<{ milestones: Milestone[] }>(`/projects/${projectId}/milestones`);
+    if (activeProject?.id !== projectId) return;
+    projectMilestones = result.milestones;
+    populateIssueMilestoneSelect(
+      issueQuickAddMilestone,
+      archived && quickAddMilestoneId === milestone.id ? null : quickAddMilestoneId,
+    );
+    populateIssueMilestoneSelect(issueDetailMilestoneInput, detailMilestoneId);
+    renderMilestoneList();
+    renderProjectIssueBoard();
+    if (selectedIssue !== null) renderIssueDetail();
+    report(archived
+      ? 'Milestone archived. Its issues are in History.'
+      : 'Milestone restored to Current work.');
+    milestoneList.querySelector<HTMLButtonElement>(`button[data-milestone-id="${milestone.id}"]`)?.focus();
+  } catch (error) {
+    if (error instanceof ApiFailure && error.status === 401) {
+      closeMilestoneManager();
+      showSignedOut();
+      return;
+    }
+    report(error instanceof Error ? error.message : 'Could not update the milestone archive state.', true);
+  } finally {
+    button.disabled = false;
   }
 }
 
@@ -5210,6 +5272,7 @@ async function loadProjectDetail(
     projectIssues = [];
     deletedProjectIssues = [];
     issueFilter.value = '';
+    issueScope.value = 'active';
     issueOrder.value = 'updated';
     synchronizeIssueGroupingForOrder();
     issueDescriptionDetails.open = false;
@@ -5400,38 +5463,49 @@ function handleIssueOrderChange(): void {
 }
 
 function renderProjectIssueBoard(): void {
-  const total = projectIssues.length;
-  const completed = projectIssues.filter((issue) => issue.status === 'done').length;
-  const cancelled = projectIssues.filter((issue) => issue.status === 'cancelled').length;
-  const progressTotal = total - cancelled;
-  const open = progressTotal - completed;
+  const projectTotal = projectIssues.length;
+  const projectCompleted = projectIssues.filter((issue) => issue.status === 'done').length;
+  const projectCancelled = projectIssues.filter((issue) => issue.status === 'cancelled').length;
+  const progressTotal = projectTotal - projectCancelled;
   issueProgress.max = Math.max(progressTotal, 1);
-  issueProgress.value = completed;
-  issueProgress.classList.toggle('is-complete', progressTotal > 0 && completed === progressTotal);
-  setTextContentIfChanged(issueProgressLabel, cancelled > 0
-    ? `${completed} of ${progressTotal} non-cancelled issues done · ${cancelled} cancelled`
-    : `${completed} of ${total} issues done`);
-  setTextContentIfChanged(issueCountSummary, cancelled > 0
-    ? `${open} open · ${completed} done · ${cancelled} cancelled`
-    : `${open} open · ${completed} done`);
+  issueProgress.value = projectCompleted;
+  issueProgress.classList.toggle('is-complete', progressTotal > 0 && projectCompleted === progressTotal);
+  setTextContentIfChanged(issueProgressLabel, projectCancelled > 0
+    ? `${projectCompleted} of ${progressTotal} non-cancelled issues done · ${projectCancelled} cancelled`
+    : `${projectCompleted} of ${projectTotal} issues done`);
 
-  const searchableIssues = projectIssues.map((issue) => ({
+  const boardIssues = filterIssuesByMilestoneArchive(projectIssues, projectMilestones, issueScope.value as IssueBoardScope);
+  const total = boardIssues.length;
+  const completed = boardIssues.filter((issue) => issue.status === 'done').length;
+  const cancelled = boardIssues.filter((issue) => issue.status === 'cancelled').length;
+  const open = total - completed - cancelled;
+  setTextContentIfChanged(issueCountSummary, issueScope.value === 'history'
+    ? `${total} ${total === 1 ? 'issue' : 'issues'} in History`
+    : cancelled > 0
+      ? `${open} open · ${completed} done · ${cancelled} cancelled`
+      : `${open} open · ${completed} done`);
+
+  const searchableIssues = boardIssues.map((issue) => ({
     ...issue,
     assignee_name: issueAssigneeLabel(issue.assignee_id),
     milestone_name: projectMilestones.find((milestone) => milestone.id === issue.milestone_id)?.name ?? null,
     milestone_due_date: projectMilestones.find((milestone) => milestone.id === issue.milestone_id)?.due_date ?? null,
   }));
   const ordered = sortIssues(searchableIssues, issueOrder.value as IssueSortOrder);
-  const nextUpMode = issueOrder.value === 'next_up';
+  const nextUpMode = issueScope.value === 'active' && issueOrder.value === 'next_up';
   const workQueue = nextUpMode ? ordered.filter((issue) => ['backlog', 'todo', 'doing', 'testing'].includes(issue.status)) : ordered;
   const visible = filterIssues(workQueue, issueFilter.value);
   emptyIssues.hidden = visible.length > 0;
   setTextContentIfChanged(emptyIssues, nextUpMode && workQueue.length === 0
     ? 'No open issues to work on next.'
     : total === 0
-    ? deletedProjectIssues.length > 0
-      ? 'No active issues. Restore one from Deleted issues or create a new issue.'
-      : 'No issues yet. Create the first one.'
+      ? issueScope.value === 'history'
+        ? 'No archived milestone issues. Archive a milestone to move its issues into History.'
+        : projectIssues.length > 0
+          ? 'No issues in Current work. View History or create a new issue.'
+          : deletedProjectIssues.length > 0
+            ? 'No active issues. Restore one from Deleted issues or create a new issue.'
+            : 'No issues yet. Create the first one.'
       : 'No issues match that filter.');
 
   setTextContentIfChanged(deletedIssueCount, String(deletedProjectIssues.length));

@@ -28,6 +28,20 @@ test('milestone manager loads and saves project milestones through the existing 
   assert.match(app, /`\/projects\/\$\{projectId\}\/milestones\/\$\{editingId\}`/);
 });
 
+test('issue board has separate current-work and history views for archived milestone issues', () => {
+  assert.match(html, /id="issue-scope"/);
+  assert.match(html, /<option value="active">Current work<\/option>/);
+  assert.match(html, /<option value="history">History<\/option>/);
+  assert.match(app, /filterIssuesByMilestoneArchive\(/);
+});
+
+test('milestone manager offers archive and restore actions without deleting milestones', () => {
+  assert.match(app, /milestone\.archived_at !== null/);
+  assert.match(app, /Archive/);
+  assert.match(app, /Restore/);
+  assert.match(app, /async function setMilestoneArchived\(/);
+});
+
 test('saving a milestone refreshes issue labels and quick-add choices', () => {
   const saveStart = app.indexOf('async function saveMilestone(');
   const saveEnd = app.indexOf('\nasync function ', saveStart + 1);

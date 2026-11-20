@@ -15,9 +15,9 @@ final class MilestoneRepository
     public function list(int $workspaceId, int $projectId): array
     {
         $statement = $this->pdo->prepare(
-            'SELECT id, workspace_id, project_id, name, due_date, created_at FROM milestones
+            'SELECT id, workspace_id, project_id, name, due_date, archived_at, created_at FROM milestones
              WHERE workspace_id = :workspace_id AND project_id = :project_id
-             ORDER BY due_date IS NULL, due_date, name, id'
+             ORDER BY archived_at IS NOT NULL, due_date IS NULL, due_date, name, id'
         );
         $statement->execute(['workspace_id' => $workspaceId, 'project_id' => $projectId]);
         return array_map(self::normalize(...), $statement->fetchAll(PDO::FETCH_ASSOC));
@@ -26,7 +26,7 @@ final class MilestoneRepository
     public function find(int $workspaceId, int $projectId, int $milestoneId): ?array
     {
         $statement = $this->pdo->prepare(
-            'SELECT id, workspace_id, project_id, name, due_date, created_at FROM milestones
+            'SELECT id, workspace_id, project_id, name, due_date, archived_at, created_at FROM milestones
              WHERE workspace_id = :workspace_id AND project_id = :project_id AND id = :id LIMIT 1'
         );
         $statement->execute(['workspace_id' => $workspaceId, 'project_id' => $projectId, 'id' => $milestoneId]);
@@ -57,6 +57,18 @@ final class MilestoneRepository
             'name' => $name,
             'due_date' => $dueDate,
         ]);
+    }
+
+    public function setArchived(int $workspaceId, int $projectId, int $milestoneId, bool $archived): void
+    {
+        $statement = $this->pdo->prepare(
+            $archived
+                ? 'UPDATE milestones SET archived_at = COALESCE(archived_at, CURRENT_TIMESTAMP)
+                   WHERE workspace_id = :workspace_id AND project_id = :project_id AND id = :id'
+                : 'UPDATE milestones SET archived_at = NULL
+                   WHERE workspace_id = :workspace_id AND project_id = :project_id AND id = :id'
+        );
+        $statement->execute(['workspace_id' => $workspaceId, 'project_id' => $projectId, 'id' => $milestoneId]);
     }
 
     public function delete(int $workspaceId, int $projectId, int $milestoneId): void

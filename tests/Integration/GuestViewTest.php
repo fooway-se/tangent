@@ -299,6 +299,60 @@ final class GuestViewTest extends ApiTestCase
         self::assertSame(200, $clientView->status);
     }
 
+    public function testIncompleteMilestoneCanBeArchivedAndRestoredWithoutHidingClientHistory(): void
+    {
+        $admin = $this->login($this->adminEmail);
+        $projectId = $this->createProject($admin, 'Deferred milestone');
+        $guestId = $this->createUser($admin, 'Customer', 'customer@example.test', 'guest');
+        $this->addMember($admin, $projectId, $guestId);
+        $guest = $this->login('customer@example.test');
+        $milestoneId = $this->createMilestone($admin, $projectId, 'Later delivery');
+        $issueId = $this->createIssue($admin, $projectId, 'Work to resume later');
+        $this->updateIssue($admin, $issueId, [
+            'status' => 'backlog',
+            'is_shared' => true,
+            'milestone_id' => $milestoneId,
+        ]);
+
+        $invalid = $this->cookieRequest(
+            'PATCH',
+            "/api/v1/projects/{$projectId}/milestones/{$milestoneId}",
+            $admin['cookie'],
+            ['name' => 'Must remain unchanged', 'archived' => 'yes'],
+            $admin['csrf'],
+        );
+        self::assertSame(422, $invalid->status);
+
+        $archived = $this->cookieRequest(
+            'PATCH',
+            "/api/v1/projects/{$projectId}/milestones/{$milestoneId}",
+            $admin['cookie'],
+            ['archived' => true],
+            $admin['csrf'],
+        );
+        self::assertSame(200, $archived->status, json_encode($archived->body));
+        self::assertNotNull($archived->body['milestone']['archived_at']);
+        self::assertSame('Later delivery', $archived->body['milestone']['name']);
+
+        $listed = $this->cookieRequest('GET', "/api/v1/projects/{$projectId}/issues", $admin['cookie']);
+        self::assertSame(200, $listed->status);
+        self::assertContains($issueId, array_column($listed->body['issues'], 'id'));
+        $clientView = $this->cookieRequest('GET', "/api/v1/projects/{$projectId}/client-view", $guest['cookie']);
+        self::assertSame(200, $clientView->status);
+        self::assertContains($milestoneId, array_column($clientView->body['milestones'], 'id'));
+        self::assertContains($issueId, array_column($clientView->body['items'], 'id'));
+
+        $restored = $this->cookieRequest(
+            'PATCH',
+            "/api/v1/projects/{$projectId}/milestones/{$milestoneId}",
+            $admin['cookie'],
+            ['archived' => false],
+            $admin['csrf'],
+        );
+        self::assertSame(200, $restored->status, json_encode($restored->body));
+        self::assertNull($restored->body['milestone']['archived_at']);
+    }
+
     private function createProject(array $admin, string $name): int
     {
         $response = $this->cookieRequest('POST', '/api/v1/projects', $admin['cookie'], ['name' => $name], $admin['csrf']);

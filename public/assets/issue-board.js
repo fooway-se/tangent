@@ -18,6 +18,14 @@ export function filterIssues(issues, query) {
         .toLocaleLowerCase()
         .includes(normalized));
 }
+export function filterIssuesByMilestoneArchive(issues, milestones, scope) {
+    const archivedMilestoneIds = new Set(milestones.filter((milestone) => milestone.archived_at != null).map((milestone) => milestone.id));
+    const includeArchived = scope === 'history';
+    return issues.filter((issue) => {
+        const isArchived = issue.milestone_id != null && archivedMilestoneIds.has(issue.milestone_id);
+        return isArchived === includeArchived;
+    });
+}
 export function groupIssues(issues) {
     return statusOrder.flatMap((status) => {
         const matches = issues.filter((issue) => issue.status === status);
