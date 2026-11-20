@@ -6,6 +6,8 @@ Issue statuses are **Backlog**, **Todo**, **Doing**, **Testing**, **Done**, and 
 
 Milestones can be archived at any point, including while work is unfinished. Archived milestones and their issues move out of **Current work** and remain available in **History**. Restore a milestone to return it and its issues to the active board; archiving does not change issue statuses or client-visible history.
 
+To plan several unassigned issues together, set the project issue board to **Group by Milestone**. In **No milestone**, choose **Select issues**, check the issues to move (or choose **Select all**), pick an active milestone, then choose **Move selected**. You can move up to 500 issues at a time.
+
 ## My Work
 
 Open **My Work** from the workspace navigation. The **Inbox** tab contains mentions and other project updates. The **Tasks** tab lists open issues assigned to you across your accessible projects, grouped first by project and then by milestone. Milestone groups show their due date and task count; issues without a milestone appear under **No milestone**.
