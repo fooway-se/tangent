@@ -50,6 +50,18 @@ test('No milestone group offers opt-in bulk selection and a grouped milestone mo
   assert.match(css, /\.issue-bulk-move-toolbar\s*\{/);
 });
 
+test('issue board offers opt-in bulk assignment across milestone groups', () => {
+  assert.match(html, /id="issue-bulk-assign-toggle"/);
+  assert.match(app, /issue-bulk-assign-toolbar/);
+  assert.match(app, /issue-bulk-assign-checkbox/);
+  assert.match(app, /const allowBulkAssignSelection = bulkAssignSelectionMode/);
+  assert.match(app, /visibleBulkAssignIssueIds = new Set\(visible\.map\(\(issue\) => issue\.id\)\)/);
+  assert.match(html, /Assign selected/);
+  assert.match(html, /Unassigned/);
+  assert.match(app, /\/projects\/\$\{projectId\}\/issues\/assign/);
+  assert.match(css, /\.issue-bulk-assign-toolbar\s*\{/);
+});
+
 test('ongoing issues are marked separately, grouped apart from unplanned work, and excluded from project progress', () => {
   assert.match(html, /name="is_ongoing"/);
   assert.match(app, /if \(issueQuickAddOngoing\.checked\) \{\s*issueInput\.is_ongoing = true/);

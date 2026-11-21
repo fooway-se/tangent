@@ -229,6 +229,28 @@ final class IssueRepository
         return $statement->rowCount() === 1;
     }
 
+    public function assignToMember(
+        int $workspaceId,
+        int $projectId,
+        int $issueId,
+        ?int $previousAssigneeId,
+        ?int $assigneeId,
+    ): bool {
+        $statement = $this->pdo->prepare(
+            'UPDATE issues SET assignee_id = :assignee_id
+             WHERE workspace_id = :workspace_id AND project_id = :project_id AND id = :id
+               AND deleted_at IS NULL AND assignee_id <=> :previous_assignee_id'
+        );
+        $statement->execute([
+            'workspace_id' => $workspaceId,
+            'project_id' => $projectId,
+            'id' => $issueId,
+            'previous_assignee_id' => $previousAssigneeId,
+            'assignee_id' => $assigneeId,
+        ]);
+        return $statement->rowCount() === 1;
+    }
+
     public function maxSortOrder(int $workspaceId, int $projectId, ?int $milestoneId): int
     {
         $statement = $this->pdo->prepare(

@@ -669,6 +669,98 @@ final class IssuesTest extends ApiTestCase
         self::assertNull($listed->body['issues'][0]['milestone_id']);
     }
 
+    public function testProjectMemberCanBulkAssignAndUnassignIssues(): void
+    {
+        $admin = $this->login($this->adminEmail);
+        $projectId = $this->createProject($admin, 'Bulk issue assignment');
+        $added = $this->apiCookieRequest(
+            'PUT',
+            "/api/v1/projects/{$projectId}/members/{$this->developerId}",
+            $admin['cookie'],
+            [],
+            $admin['csrf'],
+        );
+        self::assertSame(200, $added->status, json_encode($added->body));
+
+        $issueIds = [];
+        foreach (['Prepare fixtures', 'Review implementation'] as $title) {
+            $created = $this->apiCookieRequest(
+                'POST',
+                "/api/v1/projects/{$projectId}/issues",
+                $admin['cookie'],
+                ['title' => $title],
+                $admin['csrf'],
+            );
+            self::assertSame(201, $created->status, json_encode($created->body));
+            $issueIds[] = (int) $created->body['issue']['id'];
+        }
+
+        $assigned = $this->apiCookieRequest(
+            'POST',
+            "/api/v1/projects/{$projectId}/issues/assign",
+            $admin['cookie'],
+            ['issue_ids' => $issueIds, 'assignee_id' => $this->developerId],
+            $admin['csrf'],
+        );
+        self::assertSame(200, $assigned->status, json_encode($assigned->body));
+        self::assertSame(2, $assigned->body['assigned_count']);
+
+        $developer = $this->login($this->developerEmail);
+        $assignmentEvents = $this->apiCookieRequest('GET', '/api/v1/inbox/events', $developer['cookie']);
+        self::assertSame(200, $assignmentEvents->status, json_encode($assignmentEvents->body));
+        self::assertEqualsCanonicalizing(
+            $issueIds,
+            array_column($assignmentEvents->body['events'], 'issue_id'),
+            'Bulk assignment should notify the newly assigned teammate for each issue.',
+        );
+
+        $unassigned = $this->apiCookieRequest(
+            'POST',
+            "/api/v1/projects/{$projectId}/issues/assign",
+            $admin['cookie'],
+            ['issue_ids' => $issueIds, 'assignee_id' => null],
+            $admin['csrf'],
+        );
+        self::assertSame(200, $unassigned->status, json_encode($unassigned->body));
+        self::assertSame(2, $unassigned->body['assigned_count']);
+
+        $listed = $this->apiCookieRequest('GET', "/api/v1/projects/{$projectId}/issues", $admin['cookie']);
+        $byId = array_column($listed->body['issues'], null, 'id');
+        foreach ($issueIds as $issueId) self::assertNull($byId[$issueId]['assignee_id']);
+    }
+
+    public function testBulkIssueAssignmentRejectsMixedProjectsWithoutPartialChanges(): void
+    {
+        $admin = $this->login($this->adminEmail);
+        $projectId = $this->createProject($admin, 'Bulk assignment target');
+        $otherProjectId = $this->createProject($admin, 'Bulk assignment source');
+        $createIssue = function (int $targetProjectId, string $title) use ($admin): int {
+            $created = $this->apiCookieRequest(
+                'POST',
+                "/api/v1/projects/{$targetProjectId}/issues",
+                $admin['cookie'],
+                ['title' => $title],
+                $admin['csrf'],
+            );
+            self::assertSame(201, $created->status, json_encode($created->body));
+            return (int) $created->body['issue']['id'];
+        };
+        $targetIssueId = $createIssue($projectId, 'Keep this issue unassigned');
+        $otherIssueId = $createIssue($otherProjectId, 'Wrong project');
+
+        $assigned = $this->apiCookieRequest(
+            'POST',
+            "/api/v1/projects/{$projectId}/issues/assign",
+            $admin['cookie'],
+            ['issue_ids' => [$targetIssueId, $otherIssueId], 'assignee_id' => $this->adminId],
+            $admin['csrf'],
+        );
+        self::assertSame(404, $assigned->status);
+
+        $listed = $this->apiCookieRequest('GET', "/api/v1/projects/{$projectId}/issues", $admin['cookie']);
+        self::assertNull($listed->body['issues'][0]['assignee_id']);
+    }
+
     private function createProject(array $admin, string $name): int
     {
         $response = $this->cookieRequest(

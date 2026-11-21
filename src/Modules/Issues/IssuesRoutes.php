@@ -73,6 +73,20 @@ final class IssuesRoutes
             ]);
         });
 
+        $router->add('POST', '/api/v1/projects/{id}/issues/assign', function (
+            Request $request,
+            array $params,
+            AuthenticatedUser $user,
+        ): Response {
+            return Response::json(200, [
+                'assigned_count' => $this->service->bulkAssign(
+                    $user,
+                    self::positiveId($params['id']),
+                    $request->body,
+                ),
+            ]);
+        });
+
         $router->add('GET', '/api/v1/issues/{id}/history', function (
             Request $request,
             array $params,

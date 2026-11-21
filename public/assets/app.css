@@ -428,6 +428,14 @@ select { padding-right: 28px; background: var(--screen-inset) url("data:image/sv
 .issue-group-name { font: 800 11px var(--font-display); letter-spacing: 1.5px; text-transform: uppercase; }
 .issue-group-count { color: var(--screen-muted); }
 .issue-bulk-select-toggle { margin-left: auto; padding: 4px 8px; font-size: 11px; }
+.issue-bulk-assign-toggle { padding: 5px 9px; font-size: 11px; white-space: nowrap; }
+.issue-bulk-assign-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; border: 1px solid var(--screen-line); border-radius: var(--radius-panel); padding: 8px 10px; background: var(--screen-inset); }
+.issue-bulk-assign-toolbar[hidden] { display: none; }
+.issue-bulk-assign-count { margin-right: auto; color: var(--screen-muted); font: 700 11px var(--font-mono); }
+.issue-bulk-assign-target-label { display: flex; align-items: center; gap: 7px; color: var(--screen-muted); font-size: 11px; }
+.issue-bulk-assign-target { width: auto; min-width: 150px; max-width: 100%; }
+.issue-bulk-assign-checkbox { width: 16px; height: 16px; margin: 0 5px; accent-color: var(--accent); cursor: pointer; }
+.issue-bulk-assign-checkbox:disabled { cursor: not-allowed; }
 .issue-bulk-move-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; border-top: 1px solid var(--screen-line); padding: 8px 12px; background: var(--screen-inset); }
 .issue-bulk-move-count { margin-right: auto; color: var(--screen-muted); font: 700 11px var(--font-mono); }
 .issue-bulk-move-milestone { min-width: 160px; max-width: 100%; }

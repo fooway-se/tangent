@@ -505,6 +505,69 @@ final class IssuesService
         }
     }
 
+    public function bulkAssign(AuthenticatedUser $user, int $projectId, array $input): int
+    {
+        $this->requireProjectAccess($user, $projectId, 'issues.update');
+        $issueIds = $input['issue_ids'] ?? null;
+        if (!is_array($issueIds) || $issueIds === [] || count($issueIds) > 500) {
+            throw new ApiException(422, 'validation_failed', 'Select between 1 and 500 issues to assign.');
+        }
+        $seen = [];
+        foreach ($issueIds as $issueId) {
+            if (!is_int($issueId) || $issueId < 1) {
+                throw new ApiException(422, 'validation_failed', 'issue_ids must contain positive integers.');
+            }
+            if (isset($seen[$issueId])) {
+                throw new ApiException(422, 'validation_failed', 'issue_ids cannot contain duplicates.');
+            }
+            $seen[$issueId] = true;
+        }
+        if (!array_key_exists('assignee_id', $input)) {
+            throw new ApiException(422, 'validation_failed', 'assignee_id must be a project member or null.');
+        }
+        $assigneeId = self::assigneeId($input['assignee_id']);
+        $this->requireProjectMemberAssignee($user->workspaceId, $projectId, $assigneeId);
+
+        $issues = [];
+        foreach ($issueIds as $issueId) {
+            $issue = $this->issues->find($user->workspaceId, $issueId);
+            if ($issue === null || $issue['project_id'] !== $projectId) {
+                throw new ApiException(404, 'not_found', 'One or more issues were not found in this project.');
+            }
+            $issues[] = $issue;
+        }
+
+        $ownsTransaction = !$this->pdo->inTransaction();
+        if ($ownsTransaction) $this->pdo->beginTransaction();
+        try {
+            foreach ($issues as $issue) {
+                if ($issue['assignee_id'] === $assigneeId) continue;
+                if (!$this->issues->assignToMember(
+                    $user->workspaceId,
+                    $projectId,
+                    $issue['id'],
+                    $issue['assignee_id'],
+                    $assigneeId,
+                )) {
+                    throw new ApiException(409, 'issue_changed', 'One or more selected issues changed. Refresh and try again.');
+                }
+                $this->inboxEvents->recordAssigned(
+                    $user->workspaceId,
+                    $projectId,
+                    $user->id,
+                    $assigneeId,
+                    $issue['id'],
+                    $issue['title'],
+                );
+            }
+            if ($ownsTransaction) $this->pdo->commit();
+            return count($issues);
+        } catch (Throwable $exception) {
+            if ($ownsTransaction && $this->pdo->inTransaction()) $this->pdo->rollBack();
+            throw $exception;
+        }
+    }
+
     public function approve(AuthenticatedUser $user, int $issueId): void
     {
         $issue = $this->issues->approvalIssue($user->workspaceId, $issueId);
