@@ -47,6 +47,15 @@ import {
 } from './issue-polling.js';
 
 const apiBaseUrl = new URL('../api/v1', import.meta.url).pathname.replace(/\/$/, '');
+const KEYBOARD_HINTS_STORAGE_KEY = 'tangent.keyboard-hints-visible';
+
+function loadKeyboardHintsPreference(): boolean {
+  try {
+    return window.localStorage.getItem(KEYBOARD_HINTS_STORAGE_KEY) !== 'false';
+  } catch {
+    return true;
+  }
+}
 
 type Role = 'admin' | 'developer' | 'guest';
 type IssueType = 'task' | 'bug' | 'feature' | 'research' | 'maintenance';
@@ -746,6 +755,7 @@ const loginStatusMessage = document.querySelector<HTMLElement>('#login-status-me
 const logoutButton = document.querySelector<HTMLButtonElement>('#logout-button')!;
 
 let activeUser: User | null = null;
+let keyboardHintsVisible = loadKeyboardHintsPreference();
 let credentialFragment: CredentialFragment | null = null;
 let invitePreview: InvitePreview | null = null;
 let adminProjects: Project[] = [];
@@ -989,6 +999,25 @@ function report(message: string, isError = false): void {
   }
 }
 
+function updateKeyboardHintsVisibility(): void {
+  keyboardHints.hidden = !keyboardHintsVisible
+    || activeUser === null
+    || activeUser.role === 'guest'
+    || workspacePanel.hidden;
+}
+
+function toggleKeyboardHints(): void {
+  if (activeUser === null || activeUser.role === 'guest' || workspacePanel.hidden) return;
+  keyboardHintsVisible = !keyboardHintsVisible;
+  try {
+    window.localStorage.setItem(KEYBOARD_HINTS_STORAGE_KEY, String(keyboardHintsVisible));
+  } catch {
+    /* Storage can be blocked; the choice then lasts for this page only. */
+  }
+  updateKeyboardHintsVisibility();
+  report(keyboardHintsVisible ? 'Keyboard hints shown.' : 'Keyboard hints hidden.');
+}
+
 function showSignedOut(): void {
   resetAuthForms();
   workspaceViewHistory.length = 0;
@@ -1026,7 +1055,7 @@ function showSignedOut(): void {
   loginPanel.hidden = false;
   workspacePanel.hidden = true;
   accountBar.hidden = true;
-  keyboardHints.hidden = true;
+  updateKeyboardHintsVisibility();
   projectKeyboardHints.hidden = true;
   clearGoPrefix();
   document.body.classList.remove('is-project-view', 'is-guest');
@@ -1082,7 +1111,7 @@ function showSignedIn(user: User): void {
   loginPanel.hidden = true;
   workspacePanel.hidden = false;
   accountBar.hidden = false;
-  keyboardHints.hidden = false;
+  updateKeyboardHintsVisibility();
   currentUserLabel.textContent = `${user.name} · ${user.role}`;
   adminNavButton.hidden = user.role !== 'admin';
   toggleProjectFormButton.hidden = user.role !== 'admin';
@@ -1230,7 +1259,7 @@ function showWorkspaceView(view: 'projects' | 'roadmap' | 'inbox' | 'lounge' | '
   projectView.hidden = view !== 'project';
   projectChatColumn.hidden = view !== 'project';
   workspaceNav.hidden = false;
-  keyboardHints.hidden = false;
+  updateKeyboardHintsVisibility();
   projectKeyboardHints.hidden = view !== 'project';
   breadcrumbProjectsButton.hidden = view === 'projects';
   breadcrumbDivider.hidden = view === 'projects';
@@ -2840,6 +2869,16 @@ function getPaletteCommands(): PaletteCommand[] {
     { label: 'Open Lounge', detail: 'Open the workspace-wide Lounge chat', shortcut: 'g l', run: goToLounge },
     { label: 'Show keyboard shortcuts', detail: 'View key bindings', shortcut: '?', run: showShortcutHelp },
   ];
+  if (activeUser.role !== 'guest' && !workspacePanel.hidden) {
+    commands.push({
+      label: keyboardHintsVisible ? 'Hide keyboard hints' : 'Show keyboard hints',
+      detail: keyboardHintsVisible
+        ? 'Hide the shortcut hints along the bottom of the workspace'
+        : 'Show the shortcut hints along the bottom of the workspace',
+      shortcut: '',
+      run: toggleKeyboardHints,
+    });
+  }
   if (activeUser.role === 'admin' || activeUser.role === 'developer') {
     commands.splice(1, 0, {
       label: 'Open Roadmap',
@@ -7997,7 +8036,7 @@ function showGuestShell(user: User): void {
   loginPanel.hidden = true;
   workspacePanel.hidden = true;
   accountBar.hidden = true;
-  keyboardHints.hidden = true;
+  updateKeyboardHintsVisibility();
   guestShell.hidden = false;
   guestCap.textContent = 'Read-only · guest';
   guestPreviewMemberLabel.hidden = true;
@@ -8037,7 +8076,7 @@ function openGuestViewPreview(): void {
   guestShell.hidden = false;
   workspacePanel.hidden = true;
   accountBar.hidden = true;
-  keyboardHints.hidden = true;
+  updateKeyboardHintsVisibility();
   projectKeyboardHints.hidden = true;
   document.body.classList.remove('is-project-view');
   document.body.classList.add('is-guest');
@@ -8067,7 +8106,7 @@ function closeGuestViewPreview(): void {
   document.body.classList.remove('is-guest');
   workspacePanel.hidden = false;
   accountBar.hidden = false;
-  keyboardHints.hidden = false;
+  updateKeyboardHintsVisibility();
   showWorkspaceView('project');
   previewGuestViewButton.focus();
 }

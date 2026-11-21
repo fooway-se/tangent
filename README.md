@@ -9,7 +9,7 @@ A keyboard-first, self-hosted workspace for small dev teams and freelancers: pro
 
 ## Why Tangent
 
-- **Keyboard first.** Move, open, change status, create and reply without the mouse. There is a command palette (`Ctrl/Cmd+K`) and a shortcut list (`?`). Statuses are changed with a key or a menu, never by drag and drop.
+- **Keyboard first.** Move, open, change status, create and reply without the mouse. There is a command palette (`Ctrl/Cmd+K`) and a shortcut list (`?`). Hide or restore the bottom shortcut hints from the command palette; the choice is saved in this browser. Statuses are changed with a key or a menu, never by drag and drop.
 - **See when someone else is around.** A small power light in project chat shows whether another authorized viewer is active, without showing names or a count.
 - **Chat mentions.** Type `@` to find a project member by their saved name; selecting them inserts an exact mention and sends them an inbox notification.
 - **Project notes.** Each project has one internal Markdown page for durable context, with a safe rendered preview. Guest clients cannot access it.

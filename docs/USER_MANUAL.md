@@ -194,7 +194,7 @@ Workspace admins use **Workspace admin** to manage members, invitations, and wor
 
 ## 10. Keyboard shortcuts
 
-Tangent supports keyboard navigation. Shortcuts depend on the current view and are paused while you type into an editable field. Press **?** in the workspace to see the full in-app shortcut list.
+Keyboard shortcuts vary by view and pause while you type. Press **?** for the full list. Use **Ctrl/Cmd+K** to run **Hide keyboard hints** or **Show keyboard hints**; your choice is saved in this browser.
 
 | Shortcut | Action |
 | --- | --- |
