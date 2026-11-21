@@ -1286,6 +1286,7 @@ function renderWorkspaceInvites(invites) {
         const item = document.createElement('li');
         item.className = 'workspace-invite-row';
         const details = document.createElement('span');
+        details.className = 'workspace-invite-details';
         details.textContent = `${invite.name} · ${invite.email} · ${invite.role} · Expires ${new Date(`${invite.expires_at}Z`).toLocaleDateString()}`;
         const actions = document.createElement('div');
         actions.className = 'workspace-invite-actions';

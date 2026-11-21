@@ -28,6 +28,13 @@ test('workspace admin invites members without creating their passwords', () => {
   assert.match(app, /function showGeneratedCredentialLink\(/);
 });
 
+test('pending invite details and actions fit narrow phone screens', () => {
+  assert.match(app, /details\.className = 'workspace-invite-details'/);
+  assert.match(css, /@media \(max-width: 520px\)[\s\S]*\.workspace-invite-row\s*\{[^}]*flex-direction:\s*column/);
+  assert.match(css, /\.workspace-invite-actions\s*\{[^}]*flex-wrap:\s*wrap/);
+  assert.match(css, /\.workspace-invite-actions \.button\s*\{[^}]*min-height:\s*44px/);
+});
+
 test('generated credential links use the same host port as the development app', () => {
   assert.match(compose, /"\$\{TANGENT_HTTP_PORT:-8081\}:8080"/);
   assert.match(compose, /TANGENT_APP_URL:\s*"http:\/\/localhost:\$\{TANGENT_HTTP_PORT:-8081\}"/);

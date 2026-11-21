@@ -727,6 +727,10 @@ dialog::backdrop { background: var(--backdrop); }
   .sidebar-projects { grid-column: 1 / -1; grid-row: 3; }
   .sidebar-account { grid-column: 1 / -1; grid-row: 4; margin-top: 4px; }
   .workspace-topbar { padding: 0 14px; }
+  .workspace-invite-row { align-items: stretch !important; flex-direction: column; gap: 10px !important; }
+  .workspace-invite-details { display: block; width: 100%; }
+  .workspace-invite-actions { width: 100%; flex-wrap: wrap; }
+  .workspace-invite-actions .button { min-height: 44px; white-space: nowrap; }
   .issue-detail-toolbar { flex-wrap: wrap; }
   .issue-detail-actions { margin-left: auto; }
   .issue-progress-strip { grid-template-columns: minmax(0, 1fr); }
