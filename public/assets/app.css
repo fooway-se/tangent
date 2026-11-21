@@ -623,9 +623,15 @@ select { padding-right: 28px; background: var(--screen-inset) url("data:image/sv
 .chat-mention-empty { padding: 8px 10px; color: var(--screen-muted); font-size: 12px; }
 
 /* Keyboard strip: black keycaps on the case */
-.keyboard-hints { grid-column: 1 / -1; grid-row: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding: 10px 18px; border-top: 2px solid var(--case-shade); background: linear-gradient(180deg, var(--footer-top), var(--footer-bottom)); box-shadow: inset 0 1px 0 var(--case-light); color: var(--case-muted); font-size: 11px; }
-.keyboard-hints span { white-space: nowrap; }
-.keyboard-hints #project-keyboard-hints { white-space: normal; }
+.keyboard-hints { grid-column: 1 / -1; grid-row: 2; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; gap: 8px 16px; padding: 10px 18px; border-top: 2px solid var(--case-shade); background: linear-gradient(180deg, var(--footer-top), var(--footer-bottom)); box-shadow: inset 0 1px 0 var(--case-light); color: var(--case-muted); font-size: 11px; }
+.keyboard-hint-group { display: flex; min-width: 0; flex-direction: column; align-items: flex-start; gap: 5px; border-right: 1px solid var(--case-shade); padding-right: 12px; }
+.keyboard-hint-group:last-child { border-right: 0; padding-right: 0; }
+.keyboard-hint-group[hidden] { display: none; }
+.keyboard-hint-group-label { color: var(--case-ink); font: 700 11px/1.2 var(--font-display); letter-spacing: 1px; text-transform: uppercase; }
+.keyboard-hint-group-items { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 12px; }
+.keyboard-hint-group-items > span { white-space: nowrap; }
+.keyboard-hint-group-items #go-prefix-hint { white-space: normal; }
+.keyboard-hint-group-items #go-prefix-hint:not([hidden]) { flex-basis: 100%; }
 .keyboard-hints kbd { margin: 0 1px; padding: 2px 7px; border-color: var(--cap-edge); border-bottom-width: var(--key-depth); color: var(--plate-ink); background: linear-gradient(180deg, var(--cap-top), var(--cap-bottom)); }
 
 /* Dialogs */
@@ -675,6 +681,7 @@ dialog::backdrop { background: var(--backdrop); }
 
 @media (max-width: 1050px) {
   :root { --sidebar-width: 205px; --chat-width: 340px; }
+  .keyboard-hints { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; padding-inline: 14px; }
 }
 
 @media (max-width: 760px) {
