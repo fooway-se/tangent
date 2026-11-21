@@ -1,7 +1,7 @@
 Options -Indexes
 DirectoryIndex app.html
 
-<FilesMatch "^(app-root\.php|\.tangent-app-root)$">
+<FilesMatch "^(app-root\.php|\.tangent-app-root|\.install-key|\.upgrade-key|config\.php|\.install\.lock|\.upgrade\.lock|config\.php\.lock)$">
     Require all denied
 </FilesMatch>
 

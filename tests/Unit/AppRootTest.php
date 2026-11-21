@@ -58,4 +58,29 @@ final class AppRootTest extends TestCase
             rmdir($directory);
         }
     }
+
+    public function testRejectsApplicationDirectoryInsideThePublicWebRoot(): void
+    {
+        $directory = sys_get_temp_dir() . '/tangent-public-app-' . bin2hex(random_bytes(8));
+        $public = $directory . '/public';
+        $application = $public . '/application';
+        mkdir($public, 0700, true);
+        mkdir($application . '/src', 0700, true);
+        mkdir($application . '/migrations', 0700, true);
+        file_put_contents($application . '/bootstrap.php', "<?php\n");
+        file_put_contents($public . '/.tangent-app-root', $application . "\n");
+
+        try {
+            $this->expectException(\RuntimeException::class);
+            tangentResolveAppRoot($public);
+        } finally {
+            unlink($public . '/.tangent-app-root');
+            unlink($application . '/bootstrap.php');
+            rmdir($application . '/src');
+            rmdir($application . '/migrations');
+            rmdir($application);
+            rmdir($public);
+            rmdir($directory);
+        }
+    }
 }

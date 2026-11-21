@@ -11,6 +11,54 @@ use Tangent\Tests\Support\ApiTestCase;
 
 final class AuthLifecycleTest extends ApiTestCase
 {
+    public function testLoginRejectsCrossOriginAndNonJsonRequests(): void
+    {
+        $crossOrigin = $this->request('POST', '/api/v1/auth/login', [
+            'email' => $this->adminEmail,
+            'password' => $this->password,
+        ], ['Origin' => 'https://attacker.example']);
+
+        self::assertSame(403, $crossOrigin->status);
+        self::assertSame('origin_invalid', $crossOrigin->body['error']['code']);
+
+        $nonJson = $this->application->handle(Request::fromHttp(
+            'POST',
+            '/api/v1/auth/login',
+            [],
+            ['Content-Type' => 'text/plain'],
+            [],
+            json_encode(['email' => $this->adminEmail, 'password' => $this->password], JSON_THROW_ON_ERROR),
+            '192.0.2.10',
+        ));
+
+        self::assertSame(400, $nonJson->status);
+        self::assertSame('invalid_json', $nonJson->body['error']['code']);
+
+        $sameOrigin = $this->request('POST', '/api/v1/auth/login', [
+            'email' => $this->adminEmail,
+            'password' => $this->password,
+        ], ['Origin' => 'http://localhost:8080']);
+
+        self::assertSame(200, $sameOrigin->status, json_encode($sameOrigin->body));
+    }
+
+    public function testOversizedRequestBodyIsRejectedBeforeAuthentication(): void
+    {
+        $body = json_encode(['unused' => str_repeat('x', 1_048_577)], JSON_THROW_ON_ERROR);
+        $response = $this->application->handle(Request::fromHttp(
+            'POST',
+            '/api/v1/auth/login',
+            [],
+            ['Content-Type' => 'application/json'],
+            [],
+            $body,
+            '192.0.2.11',
+        ));
+
+        self::assertSame(413, $response->status);
+        self::assertSame('payload_too_large', $response->body['error']['code']);
+    }
+
     public function testSessionCookiesAreScopedToTheConfiguredAppSubdirectory(): void
     {
         $application = Application::create(
@@ -475,10 +523,45 @@ final class AuthLifecycleTest extends ApiTestCase
         self::assertSame('returning@example.test', $this->login('returning@example.test', 'older secure password phrase')['user']['email']);
     }
 
-    public function testAdminGeneratesOneUsePasswordResetLinkAndCompletionRevokesSessions(): void
+    public function testAdminGeneratesOneUsePasswordResetLinkAndCompletionRevokesAllTokens(): void
     {
         $admin = $this->login($this->adminEmail);
         $sessionCookie = $admin['cookie'];
+        $otherWorkspaceId = $this->insertWorkspace('Password reset token workspace');
+        $adminAccountId = $this->accountIdForUser($this->workspaceId, $this->adminId);
+        $this->insertWorkspaceMembership(
+            $otherWorkspaceId,
+            $adminAccountId,
+            'Workspace Admin',
+            $this->adminEmail,
+            'admin',
+        );
+        $otherApplication = Application::create($this->pdo, new AppConfig($otherWorkspaceId, false));
+        $otherLogin = $otherApplication->handle(Request::json('POST', '/api/v1/auth/login', [
+            'email' => $this->adminEmail,
+            'password' => $this->password,
+        ]));
+        self::assertSame(200, $otherLogin->status, json_encode($otherLogin->body));
+        $otherSessionCookie = $this->cookieFrom($otherLogin);
+        $otherApiTokenResponse = $otherApplication->handle(Request::json(
+            'POST',
+            '/api/v1/tokens',
+            ['label' => 'cross-workspace reset security test'],
+            ['X-CSRF-Token' => $otherLogin->body['csrf_token']],
+            ['tangent_session' => $otherSessionCookie],
+        ));
+        self::assertSame(201, $otherApiTokenResponse->status, json_encode($otherApiTokenResponse->body));
+        $otherApiToken = $otherApiTokenResponse->body['token'];
+
+        $apiTokenResponse = $this->cookieRequest(
+            'POST',
+            '/api/v1/tokens',
+            $admin['cookie'],
+            ['label' => 'reset security test'],
+            $admin['csrf'],
+        );
+        self::assertSame(201, $apiTokenResponse->status, json_encode($apiTokenResponse->body));
+        $apiToken = $apiTokenResponse->body['token'];
         $generated = $this->cookieRequest(
             'POST',
             '/api/v1/users/' . $this->adminId . '/password-reset',
@@ -496,6 +579,19 @@ final class AuthLifecycleTest extends ApiTestCase
         ]);
         self::assertSame(204, $completed->status);
         self::assertSame(401, $this->request('GET', '/api/v1/auth/me', cookies: ['tangent_session' => $sessionCookie])->status);
+        self::assertSame(401, $otherApplication->handle(Request::json(
+            'GET',
+            '/api/v1/auth/me',
+            cookies: ['tangent_session' => $otherSessionCookie],
+        ))->status, 'Password reset revokes sessions across workspaces.');
+        self::assertSame(401, $this->request('GET', '/api/v1/auth/me', headers: [
+            'Authorization' => 'Bearer ' . $apiToken,
+        ])->status, 'Password reset also revokes API tokens for the account.');
+        self::assertSame(401, $otherApplication->handle(Request::json(
+            'GET',
+            '/api/v1/auth/me',
+            headers: ['Authorization' => 'Bearer ' . $otherApiToken],
+        ))->status, 'Password reset revokes API tokens across workspaces.');
         self::assertSame(401, $this->request('POST', '/api/v1/auth/login', [
             'email' => $this->adminEmail,
             'password' => $this->password,

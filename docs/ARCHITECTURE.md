@@ -61,8 +61,9 @@ Each module registers its own routes. Modules do not touch each other's tables; 
 - Resource-oriented, versioned under `/api/v1/`.
 - Use sensible action endpoints where something is not a pure resource, for example `PATCH /issues/{id}` for issue field changes, `DELETE /issues/{id}` plus `POST /issues/{id}/restore` for recoverable deletion, and `POST /messages/{id}/issue` to create an issue from a message.
 - The polling endpoint supports `ETag` and `304` so empty polls are almost free.
+- Non-empty API request bodies must use `Content-Type: application/json`. The gateway accepts request bodies up to 1 MiB and returns `413 payload_too_large` above that limit. Login requests with an `Origin` header must match the configured public app origin; clients that do not send `Origin` remain supported.
 - Browser sessions use the `tangent_workspace` cookie to select the active workspace. Bearer tokens are workspace-scoped; non-default workspaces use the `X-Tangent-Workspace` header.
-- Workspace admins generate one-use invite and password-reset links to copy and send manually; Tangent has no mail integration. Invite acceptance creates or links the global account, workspace membership, guest project access, and session in one transaction. Admin-generated password reset links use the same typed, one-use credential-token table and revoke sessions after a successful reset.
+- Workspace admins generate one-use invite and password-reset links to copy and send manually; Tangent has no mail integration. Invite acceptance creates or links the global account, workspace membership, guest project access, and session in one transaction. Admin-generated password reset links use the same typed, one-use credential-token table and revoke all sessions and API tokens for the account across workspaces after a successful reset.
 - Cursor-based pagination.
 - One consistent JSON error format.
 - OpenAPI is the contract.

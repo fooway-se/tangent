@@ -41,7 +41,7 @@ Migration 011 stops before applying if one normalized email belongs to multiple 
 
 Workspace admins create developer or guest invites from **Workspace admin**. A guest invite must select at least one active project. Tangent generates a random one-use link that expires after seven days and displays it once so the admin can copy and send it manually. Only the SHA-256 token hash is stored; pending invite lists never expose links. Admins can generate a replacement link, which invalidates the previous one, or revoke the invite. New accounts choose a password from the link. If the email already belongs to an account in another workspace, accepting the invite adds a membership to that account and leaves its password unchanged.
 
-Tangent has no self-service **Forgot password?** form or mail delivery. The sign-in screen tells the user to contact a workspace admin only after the login attempt limit is reached. An admin can generate a one-use, one-hour password reset link from the member list, then copy and send it manually. Completing the reset revokes the account's active sessions across workspaces.
+Tangent has no self-service **Forgot password?** form or mail delivery. The sign-in screen tells the user to contact a workspace admin only after the login attempt limit is reached. An admin can generate a one-use, one-hour password reset link from the member list, then copy and send it manually. Completing the reset revokes every active session and API token for the account across workspaces, so a reset also cuts off integrations using that account's tokens.
 
 Configure these values in the host environment or in `config.php` for production:
 

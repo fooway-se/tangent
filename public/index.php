@@ -78,7 +78,7 @@ $request = Request::fromHttp(
     $_GET,
     $headers,
     $_COOKIE,
-    (string) file_get_contents('php://input'),
+    (string) file_get_contents('php://input', false, null, 0, Request::MAX_BODY_BYTES + 1),
     $_SERVER['REMOTE_ADDR'] ?? 'unknown',
 );
 

@@ -329,7 +329,7 @@ final class ProjectChatTest extends ApiTestCase
             $method,
             $path,
             $query,
-            $headers,
+            array_merge(['Content-Type' => 'application/json'], $headers),
             $cookies,
             $body === [] ? '' : (string) json_encode($body),
             '127.0.0.1',

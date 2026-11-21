@@ -31,6 +31,7 @@ final class AuthService
 
     public function login(Request $request): array
     {
+        $this->assertLoginOrigin($request);
         $email = UserRepository::normalizeEmail((string) ($request->body['email'] ?? ''));
         $password = (string) ($request->body['password'] ?? '');
 
@@ -311,6 +312,48 @@ final class AuthService
             'name' => (string) $user['name'],
             'email' => (string) $user['email'],
             'role' => (string) $user['role'],
+        ];
+    }
+
+    private function assertLoginOrigin(Request $request): void
+    {
+        $origin = $request->header('Origin');
+        if ($origin === null) {
+            return;
+        }
+
+        $actual = $this->parseOrigin($origin, false);
+        $expected = $this->parseOrigin($this->config->publicAppUrl, true);
+        if ($actual === null || $expected === null || $actual !== $expected) {
+            throw new ApiException(403, 'origin_invalid', 'The request origin is not allowed.');
+        }
+    }
+
+    /** @return array{scheme: string, host: string, port: int}|null */
+    private function parseOrigin(string $url, bool $allowPath): ?array
+    {
+        try {
+            $parts = parse_url(trim($url));
+        } catch (\ValueError) {
+            return null;
+        }
+        if (!is_array($parts)
+            || !isset($parts['scheme'], $parts['host'])
+            || !in_array(strtolower($parts['scheme']), ['http', 'https'], true)
+            || isset($parts['user'])
+            || isset($parts['pass'])
+            || isset($parts['query'])
+            || isset($parts['fragment'])
+            || (!$allowPath && isset($parts['path']) && $parts['path'] !== '' && $parts['path'] !== '/')
+        ) {
+            return null;
+        }
+
+        $scheme = strtolower($parts['scheme']);
+        return [
+            'scheme' => $scheme,
+            'host' => strtolower($parts['host']),
+            'port' => (int) ($parts['port'] ?? ($scheme === 'https' ? 443 : 80)),
         ];
     }
 }

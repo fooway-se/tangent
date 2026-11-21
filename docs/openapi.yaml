@@ -149,6 +149,7 @@ paths:
     post:
       security: []
       summary: Sign in and create a browser session
+      description: Any supplied Origin header must match the configured public app origin. Clients that do not send Origin are supported.
       requestBody:
         required: true
         content:
@@ -174,6 +175,7 @@ paths:
                   csrf_token: { type: string }
                   expires_at: { type: string, format: date-time }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
         '429': { $ref: '#/components/responses/RateLimited' }
   /auth/invites/inspect:
     post:
@@ -247,7 +249,7 @@ paths:
     post:
       security: []
       summary: Set a new password using a reset token
-      description: Public, rate-limited, one-use token. Revokes all active browser and API sessions for the account after a successful reset.
+      description: Public, rate-limited, one-use token. Revokes all active sessions and API tokens for the account across workspaces after a successful reset.
       requestBody:
         required: true
         content:
@@ -618,7 +620,7 @@ paths:
   /users/{id}/password-reset:
     post:
       summary: Generate a one-use password reset link (admin only)
-      description: The link is returned only in this response; copy and send it manually. It expires after one hour. Successful completion changes the account-wide password and revokes active sessions across workspaces.
+      description: The link is returned only in this response; copy and send it manually. It expires after one hour. Successful completion changes the account-wide password and revokes all active sessions and API tokens across workspaces.
       parameters:
         - $ref: '#/components/parameters/Id'
         - $ref: '#/components/parameters/CsrfToken'

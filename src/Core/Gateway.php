@@ -17,6 +17,10 @@ final class Gateway
 
     public function handle(Request $request): Response
     {
+        if ($request->bodyTooLarge) {
+            return $this->error(413, 'payload_too_large', 'Request body exceeds the maximum allowed size.');
+        }
+
         if (!$request->validJson) {
             return $this->error(400, 'invalid_json', 'Request body must be a JSON object.');
         }

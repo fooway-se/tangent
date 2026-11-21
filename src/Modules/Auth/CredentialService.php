@@ -25,7 +25,7 @@ final class CredentialService
         private readonly PDO $pdo,
         private readonly UserRepository $users,
         private readonly CredentialTokenRepository $credentialTokens,
-        private readonly TokenRepository $sessionTokens,
+        private readonly TokenRepository $tokens,
         private readonly RateLimiter $rateLimiter,
         private readonly ProjectRepository $projects,
         private readonly WorkspaceRepository $workspaces,
@@ -269,7 +269,7 @@ final class CredentialService
 
             $accountId = (int) $credential['account_id'];
             $this->users->updateAccountPassword($accountId, $password);
-            $this->sessionTokens->revokeSessionsForAccount($accountId);
+            $this->tokens->revokeAllForAccount($accountId);
             if (!$this->credentialTokens->markUsed((int) $credential['workspace_id'], (int) $credential['id'])) {
                 throw $this->invalidToken();
             }
