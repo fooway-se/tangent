@@ -2,6 +2,7 @@ import { INBOX_TABS, createEventRow, eventsForTab, tabCount, } from './inbox-eve
 import { diffInboxCollections, nextInboxPollDelay, shouldDeferInboxUpdates, } from './inbox-polling.js';
 import { renderClientEmptyState, renderClientView } from './guest-view.js';
 import { filterMentionMembers, findMentionQuery, mentionEmptyMessage, nextMentionSelectionIndex, replaceMentionQuery, splitMentions, } from './chat-mentions.js';
+import { formatChatTimestamp } from './chat-time.js';
 import { resolveShortcut, shouldSubmitOnEnter } from './shortcuts.js';
 import { THEMES, applyTheme, loadTheme, nextTheme, themeLabel } from './theme.js';
 import { THEME_MACHINES } from './theme-machines.js';
@@ -1767,10 +1768,7 @@ function appendLoungeMessage(message, scrollToBottom = false) {
     const time = document.createElement('time');
     time.className = 'chat-message-time';
     time.dateTime = message.created_at;
-    const parsedDate = new Date(message.created_at);
-    time.textContent = Number.isNaN(parsedDate.getTime())
-        ? ''
-        : new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' }).format(parsedDate);
+    time.textContent = formatChatTimestamp(message.created_at);
     authorDetails.append(author, time);
     heading.append(avatar, authorDetails);
     const body = document.createElement('p');

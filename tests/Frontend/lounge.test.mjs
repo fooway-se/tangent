@@ -76,6 +76,11 @@ test('Lounge shows the names of teammates who are currently present', () => {
   assert.match(app, /void pollLoungePresence\(\)/);
 });
 
+test('Lounge messages use relative calendar days in their timestamps', () => {
+  assert.match(app, /import \{ formatChatTimestamp \} from '\.\/chat-time\.js'/);
+  assert.match(app, /time\.textContent = formatChatTimestamp\(message\.created_at\)/);
+});
+
 test('Lounge presence stays visible in navigation without adding the viewer to presence', () => {
   assert.match(app, /function pollWorkspaceLoungePresence\(/);
   assert.match(app, /api<\{ members: LoungePresenceMember\[\] \}>\('\/lounge\/presence'\)/);

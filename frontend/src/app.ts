@@ -17,6 +17,7 @@ import {
   type MentionMember,
   type MentionQuery,
 } from './chat-mentions.js';
+import { formatChatTimestamp } from './chat-time.js';
 import { resolveShortcut, shouldSubmitOnEnter, type ShortcutAction } from './shortcuts.js';
 import { THEMES, applyTheme, loadTheme, nextTheme, themeLabel, type ThemeId } from './theme.js';
 import { THEME_MACHINES } from './theme-machines.js';
@@ -2030,10 +2031,7 @@ function appendLoungeMessage(message: ChatMessage, scrollToBottom = false): void
   const time = document.createElement('time');
   time.className = 'chat-message-time';
   time.dateTime = message.created_at;
-  const parsedDate = new Date(message.created_at);
-  time.textContent = Number.isNaN(parsedDate.getTime())
-    ? ''
-    : new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' }).format(parsedDate);
+  time.textContent = formatChatTimestamp(message.created_at);
   authorDetails.append(author, time);
   heading.append(avatar, authorDetails);
 
