@@ -50,6 +50,9 @@ final class GuestViewTest extends ApiTestCase
 
         $response = $this->cookieRequest('GET', "/api/v1/projects/{$projectId}/client-view", $guest['cookie']);
         self::assertSame(200, $response->status, json_encode($response->body));
+        $adminPreview = $this->cookieRequest('GET', "/api/v1/projects/{$projectId}/client-view", $admin['cookie']);
+        self::assertSame(200, $adminPreview->status, json_encode($adminPreview->body));
+        self::assertSame($response->body, $adminPreview->body, 'The admin preview must use the same guest-filtered project data.');
         self::assertSame('Client project', $response->body['project']['name']);
         self::assertSame(50, $response->body['progress']['percent']);
         self::assertSame(1, $response->body['progress']['done']);

@@ -240,6 +240,7 @@ kbd {
 .inbox-issue-status.is-doing, .inbox-issue-status.is-testing { color: var(--accent); }
 .eyebrow { margin-bottom: 4px; color: var(--screen-muted); font: 700 11px/1.4 var(--font-display); letter-spacing: 2px; text-transform: uppercase; }
 .page-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin: 4px 0 16px; border-bottom: 1px solid var(--screen-border); padding-bottom: 12px; }
+.project-page-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
 .workspace-content .section-title { color: var(--screen-muted); }
 
 /* Panels, forms and buttons */
@@ -727,6 +728,7 @@ dialog::backdrop { background: var(--backdrop); }
   .sidebar-projects { grid-column: 1 / -1; grid-row: 3; }
   .sidebar-account { grid-column: 1 / -1; grid-row: 4; margin-top: 4px; }
   .workspace-topbar { padding: 0 14px; }
+  .project-page-actions { width: 100%; justify-content: flex-start; }
   .workspace-invite-row { align-items: stretch !important; flex-direction: column; gap: 10px !important; }
   .workspace-invite-details { display: block; width: 100%; }
   .workspace-invite-actions { width: 100%; flex-wrap: wrap; }

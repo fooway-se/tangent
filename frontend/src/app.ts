@@ -416,6 +416,7 @@ const projectReadOnlyNotice = document.querySelector<HTMLElement>('#project-read
 const projectEditMessage = document.querySelector<HTMLElement>('#project-edit-message')!;
 const projectEditSave = document.querySelector<HTMLButtonElement>('#project-edit-save')!;
 const editProjectButton = document.querySelector<HTMLButtonElement>('#edit-project-button')!;
+const previewGuestViewButton = document.querySelector<HTMLButtonElement>('#preview-guest-view-button')!;
 const projectGithubRepository = document.querySelector<HTMLSelectElement>('#project-github-repository')!;
 const projectEditGithubRepository = document.querySelector<HTMLSelectElement>('#project-edit-github-repository')!;
 const githubProjectSelectionStatus = document.querySelector<HTMLElement>('#github-project-selection-status')!;
@@ -798,8 +799,12 @@ const guestStatus = document.querySelector<HTMLElement>('#guest-status')!;
 const guestMain = document.querySelector<HTMLElement>('#guest-main')!;
 const guestTitle = document.querySelector<HTMLElement>('#guest-title')!;
 const guestUser = document.querySelector<HTMLElement>('#guest-user')!;
+const guestCap = document.querySelector<HTMLElement>('#guest-cap')!;
 const guestProjectLabel = document.querySelector<HTMLElement>('#guest-project-label')!;
 const guestProjectSelect = document.querySelector<HTMLSelectElement>('#guest-project-select')!;
+const guestPreviewMemberLabel = document.querySelector<HTMLElement>('#guest-preview-member-label')!;
+const guestPreviewMemberSelect = document.querySelector<HTMLSelectElement>('#guest-preview-member-select')!;
+const guestPreviewReturnButton = document.querySelector<HTMLButtonElement>('#guest-preview-return-button')!;
 const guestLogoutButton = document.querySelector<HTMLButtonElement>('#guest-logout-button')!;
 let deletedProjectIssues: Issue[] = [];
 let selectedIssue: Issue | null = null;
@@ -810,6 +815,10 @@ let issueAiPromptStepIndex = 0;
 let issueAiPromptReturnFocus: HTMLElement | null = null;
 let activeChatProjectId: number | null = null;
 let loungeActive = false;
+let guestPreviewActive = false;
+let guestPreviewProjectId: number | null = null;
+let guestPreviewMembers: Member[] = [];
+let guestViewRequestVersion = 0;
 let loungePollTimer: number | null = null;
 let loungeCursor = 0;
 let loungeEtag: string | null = null;
@@ -1004,6 +1013,7 @@ function showSignedOut(): void {
   connectGithubCreateButton.hidden = true;
   connectGithubEditButton.hidden = true;
   editProjectButton.hidden = true;
+  previewGuestViewButton.hidden = true;
   if (projectEditDialog.open) projectEditDialog.close();
   activeProject = null;
   activeProjectMembers = [];
@@ -1021,6 +1031,18 @@ function showSignedOut(): void {
   clearGoPrefix();
   document.body.classList.remove('is-project-view', 'is-guest');
   guestShell.hidden = true;
+  guestPreviewActive = false;
+  guestViewRequestVersion += 1;
+  guestPreviewProjectId = null;
+  guestPreviewMembers = [];
+  guestPreviewMemberLabel.hidden = true;
+  guestPreviewMemberSelect.replaceChildren();
+  guestPreviewReturnButton.hidden = true;
+  guestLogoutButton.hidden = false;
+  guestCap.textContent = 'Read-only · guest';
+  guestUser.textContent = '';
+  guestStatus.textContent = '';
+  guestStatus.classList.remove('error');
   myWorkTab = 'inbox';
   inboxTab = 'unread';
   inboxIssues = [];
@@ -1048,6 +1070,7 @@ function showSignedIn(user: User): void {
   renderLoungeNavigationPresence([]);
   activeUser = user;
   editProjectButton.hidden = user.role !== 'admin';
+  previewGuestViewButton.hidden = user.role !== 'admin';
   roadmapNavButton.hidden = user.role === 'guest';
   resetPendingWorkspaceSwitch();
   if (user.role === 'guest') {
@@ -3467,6 +3490,10 @@ function executeShortcut(action: ShortcutAction): void {
 }
 
 function handleKeyboardShortcut(event: KeyboardEvent): void {
+  if (guestPreviewActive) {
+    if (event.key === 'Escape') closeGuestViewPreview();
+    return;
+  }
   if ((commandPalette.open || shortcutHelp.open || issueAiPromptDialog.open || issueStatusPicker.open || issueDeleteConfirmation.open || memberRemovalConfirmation.open || workspaceMemberDeactivationDialog.open || workspaceMemberRoleDialog.open || workspaceGuestProjectsDialog.open || milestoneDeleteConfirmation.open || milestoneManagerDialog.open || workspacePicker.open || themeAboutDialog.open || projectEditDialog.open)
     && event.key !== 'Escape'
     && !((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k')) return;
@@ -7963,15 +7990,86 @@ inviteForm.addEventListener('submit', async (event) => {
 });
 
 function showGuestShell(user: User): void {
+  guestPreviewActive = false;
+  guestPreviewProjectId = null;
+  guestPreviewMembers = [];
   loginShell.hidden = true;
   loginPanel.hidden = true;
   workspacePanel.hidden = true;
   accountBar.hidden = true;
   keyboardHints.hidden = true;
   guestShell.hidden = false;
+  guestCap.textContent = 'Read-only · guest';
+  guestPreviewMemberLabel.hidden = true;
+  guestPreviewReturnButton.hidden = true;
+  guestLogoutButton.hidden = false;
+  guestLogoutButton.textContent = 'Sign out';
+  guestStatus.textContent = '';
+  guestStatus.classList.remove('error');
   guestUser.textContent = user.email;
   document.body.classList.add('is-guest');
   void loadGuestProjects();
+}
+
+function openGuestViewPreview(): void {
+  if (activeUser?.role !== 'admin' || activeProject === null) return;
+
+  const projectId = activeProject.id;
+  guestPreviewActive = true;
+  guestPreviewProjectId = projectId;
+  guestPreviewMembers = activeProjectMembers.filter((member) =>
+    member.role === 'guest' && member.is_active !== false && member.is_active !== 0);
+  guestPreviewMemberSelect.replaceChildren(...guestPreviewMembers.map((member) =>
+    new Option(`${member.name} · ${member.email}`, String(member.id))));
+  guestPreviewMemberLabel.hidden = guestPreviewMembers.length < 2;
+  guestPreviewMemberSelect.value = guestPreviewMembers[0] === undefined ? '' : String(guestPreviewMembers[0].id);
+  guestProjectSelect.replaceChildren();
+  guestProjectLabel.hidden = true;
+  guestTitle.textContent = 'Client portal';
+  guestCap.textContent = 'Admin preview · read-only';
+  guestUser.textContent = guestPreviewMembers[0]?.email ?? 'No guest access';
+  guestStatus.classList.remove('error');
+  guestStatus.textContent = guestPreviewMembers.length === 0
+    ? 'No guest currently has access to this project.'
+    : '';
+  guestPreviewReturnButton.hidden = false;
+  guestLogoutButton.hidden = true;
+  guestShell.hidden = false;
+  workspacePanel.hidden = true;
+  accountBar.hidden = true;
+  keyboardHints.hidden = true;
+  projectKeyboardHints.hidden = true;
+  document.body.classList.remove('is-project-view');
+  document.body.classList.add('is-guest');
+  guestPreviewReturnButton.focus();
+
+  void loadClientView(projectId, true, guestPreviewMembers[0]?.id ?? 0);
+}
+
+function closeGuestViewPreview(): void {
+  if (!guestPreviewActive) return;
+
+  guestPreviewActive = false;
+  guestViewRequestVersion += 1;
+  guestPreviewProjectId = null;
+  guestPreviewMembers = [];
+  guestPreviewMemberSelect.replaceChildren();
+  guestPreviewMemberLabel.hidden = true;
+  guestProjectSelect.replaceChildren();
+  guestProjectLabel.hidden = true;
+  guestCap.textContent = 'Read-only · guest';
+  guestUser.textContent = '';
+  guestStatus.textContent = '';
+  guestStatus.classList.remove('error');
+  guestPreviewReturnButton.hidden = true;
+  guestLogoutButton.hidden = false;
+  guestShell.hidden = true;
+  document.body.classList.remove('is-guest');
+  workspacePanel.hidden = false;
+  accountBar.hidden = false;
+  keyboardHints.hidden = false;
+  showWorkspaceView('project');
+  previewGuestViewButton.focus();
 }
 
 async function loadGuestProjects(): Promise<void> {
@@ -7995,28 +8093,46 @@ async function loadGuestProjects(): Promise<void> {
   }
 }
 
-async function loadClientView(projectId: number): Promise<void> {
+async function loadClientView(
+  projectId: number,
+  previewMode = false,
+  viewerUserId = activeUser?.id ?? 0,
+): Promise<void> {
+  const requestVersion = ++guestViewRequestVersion;
   try {
     const view = await api<ClientView>(`/projects/${projectId}/client-view`);
+    if (requestVersion !== guestViewRequestVersion || (previewMode && !guestPreviewActive)) return;
     guestTitle.textContent = 'Client portal';
     renderClientView(guestMain, view, {
-      userId: activeUser?.id ?? 0,
+      userId: viewerUserId,
       approve: async (approvalId) => {
+        if (previewMode) return;
         await api(`/approvals/${approvalId}/approve`, { method: 'POST' });
         await loadClientView(projectId);
       },
       comment: async (body) => {
+        if (previewMode) return;
         await api(`/projects/${projectId}/client-comments`, { method: 'POST', body: JSON.stringify({ body }) });
         await loadClientView(projectId);
       },
-    });
+    }, { previewMode });
   } catch (error) {
+    if (requestVersion !== guestViewRequestVersion || (previewMode && !guestPreviewActive)) return;
     if (error instanceof ApiFailure && error.status === 401) { showSignedOut(); return; }
     report(error instanceof Error ? error.message : 'Could not load the client view.', true);
   }
 }
 
 guestProjectSelect.addEventListener('change', () => { void loadClientView(Number(guestProjectSelect.value)); });
+guestPreviewMemberSelect.addEventListener('change', () => {
+  if (!guestPreviewActive || guestPreviewProjectId === null) return;
+  const viewer = guestPreviewMembers.find((member) => member.id === Number(guestPreviewMemberSelect.value));
+  if (viewer === undefined) return;
+  guestUser.textContent = viewer.email;
+  void loadClientView(guestPreviewProjectId, true, viewer.id);
+});
+previewGuestViewButton.addEventListener('click', openGuestViewPreview);
+guestPreviewReturnButton.addEventListener('click', closeGuestViewPreview);
 guestLogoutButton.addEventListener('click', () => { void signOut(); });
 inboxMarkAllReadButton.addEventListener('click', () => { void markAllInboxEventsRead(); });
 window.addEventListener('storage', (event) => {

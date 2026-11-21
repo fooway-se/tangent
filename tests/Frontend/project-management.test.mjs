@@ -9,7 +9,7 @@ const guestView = await readFile(new URL('../../frontend/src/guest-view.ts', imp
 test('project details provide admins an edit dialog for name, description, and status', () => {
   const projectView = html.slice(html.indexOf('id="project-view"'), html.indexOf('id="admin-view"'));
   const projectHeader = projectView.slice(0, projectView.indexOf('class="project-tabs"'));
-  assert.match(projectHeader, /<header class="page-heading project-page-heading">[\s\S]*<h1 id="project-heading"[\s\S]*<button id="edit-project-button"[^>]*hidden[^>]*>Edit project/);
+  assert.match(projectHeader, /<header class="page-heading project-page-heading">[\s\S]*<h1 id="project-heading"[\s\S]*<div class="project-page-actions">[\s\S]*<button id="edit-project-button"[^>]*hidden[^>]*>Edit project/);
   assert.doesNotMatch(projectView.slice(projectView.indexOf('class="issue-progress-strip"'), projectView.indexOf('id="issues-view"')), /id="edit-project-button"/);
   assert.match(html, /<dialog id="project-edit-dialog"[^>]*aria-labelledby="project-edit-heading"/);
   assert.match(html, /id="project-edit-name"[^>]*name="name"[^>]*required/);
@@ -22,6 +22,7 @@ test('project details provide admins an edit dialog for name, description, and s
   assert.match(html, /id="project-edit-status-help"[^>]*aria-live="polite"/);
   assert.match(html, /id="project-read-only-notice"[^>]*role="status" hidden/);
   assert.match(app, /editProjectButton\.hidden = user\.role !== 'admin'/);
+  assert.match(app, /previewGuestViewButton\.hidden = user\.role !== 'admin'/);
   assert.match(app, /editProjectButton\.addEventListener\('click', openProjectEditDialog\)/);
 });
 

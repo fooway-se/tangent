@@ -177,6 +177,7 @@ Guests see a separate, read-only project overview with limited actions. The proj
 - A guest can approve a shared issue when the team has requested approval for it.
 - A guest can add a comment to the client conversation. Replies in that guest-visible thread remain visible in the portal.
 - Guests do not see internal issues, ongoing issues, project Notes, the internal team roadmap, My Work, the Lounge, or ordinary project chat.
+- Workspace admins can choose **Preview guest view** in a project header to inspect the portal as a guest sees it. If several guests have access, use **Preview as** to select whose conversation perspective to preview. The preview is read-only: approval and comment actions are disabled. Choose **Back to project** or press **Esc** to return.
 
 > **Share deliberately:** For an issue to appear in the portal, an internal team member must share it with the guest. The portal does not expose internal issue fields or ongoing-work classification.
 

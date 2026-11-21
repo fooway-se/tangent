@@ -185,6 +185,10 @@ export interface GuestHandlers {
   comment: (body: string) => Promise<void>;
 }
 
+export interface GuestViewOptions {
+  previewMode?: boolean;
+}
+
 export function renderClientEmptyState(container: HTMLElement, message: string): void {
   const screenHeading = el('div', 'guest-screen-heading');
   const breadcrumb = el('div', 'guest-project-breadcrumb');
@@ -206,8 +210,14 @@ export function renderClientEmptyState(container: HTMLElement, message: string):
   container.replaceChildren(screenHeading, page);
 }
 
-export function renderClientView(container: HTMLElement, view: ClientView, handlers: GuestHandlers): void {
+export function renderClientView(
+  container: HTMLElement,
+  view: ClientView,
+  handlers: GuestHandlers,
+  options: GuestViewOptions = {},
+): void {
   const readOnly = view.project.status === 'completed' || view.project.status === 'archived';
+  const previewMode = options.previewMode === true;
   const screenHeading = el('div', 'guest-screen-heading');
   const breadcrumb = el('div', 'guest-project-breadcrumb');
   breadcrumb.append(
@@ -261,13 +271,19 @@ export function renderClientView(container: HTMLElement, view: ClientView, handl
       if (readOnly) {
         copy.append(el('p', 'guest-muted', 'Approval is unavailable while this project is read-only.'));
       } else {
-        const button = el('button', 'button button-primary guest-approve-button', 'Approve');
-        button.type = 'button';
-        button.addEventListener('click', () => {
-          button.disabled = true;
-          handlers.approve(approval.id).catch(() => { button.disabled = false; });
+        const approveButton = el('button', 'button button-primary guest-approve-button', 'Approve');
+        approveButton.type = 'button';
+        approveButton.disabled = previewMode;
+        if (previewMode) {
+          approveButton.title = 'Approval is disabled in admin preview.';
+          approveButton.setAttribute('aria-label', 'Approve (disabled in admin preview)');
+        }
+        approveButton.addEventListener('click', () => {
+          if (previewMode) return;
+          approveButton.disabled = true;
+          handlers.approve(approval.id).catch(() => { approveButton.disabled = false; });
         });
-        card.append(copy, button);
+        card.append(copy, approveButton);
       }
       approvalList.append(card);
     }
@@ -379,16 +395,21 @@ export function renderClientView(container: HTMLElement, view: ClientView, handl
     textarea.placeholder = 'Write to the team…';
     textarea.rows = 3;
     textarea.maxLength = 2000;
+    textarea.disabled = previewMode;
     const footer = el('div', 'guest-composer-footer');
     footer.append(
-      el('span', 'guest-composer-note', 'Goes to the team’s project channel'),
+      el('span', 'guest-composer-note', previewMode
+        ? 'Read-only preview · Message sending is disabled.'
+        : 'Goes to the team’s project channel'),
     );
     const send = el('button', 'button button-primary', 'Send');
     send.type = 'submit';
+    send.disabled = previewMode;
     footer.append(send);
     write.append(textarea, footer);
     write.addEventListener('submit', (submitEvent) => {
       submitEvent.preventDefault();
+      if (previewMode) return;
       const body = textarea.value.trim();
       if (body === '') return;
       send.disabled = true;

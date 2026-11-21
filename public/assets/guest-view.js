@@ -138,8 +138,9 @@ export function renderClientEmptyState(container, message) {
     page.append(overview, el('p', 'guest-empty guest-no-projects', message));
     container.replaceChildren(screenHeading, page);
 }
-export function renderClientView(container, view, handlers) {
+export function renderClientView(container, view, handlers, options = {}) {
     const readOnly = view.project.status === 'completed' || view.project.status === 'archived';
+    const previewMode = options.previewMode === true;
     const screenHeading = el('div', 'guest-screen-heading');
     const breadcrumb = el('div', 'guest-project-breadcrumb');
     breadcrumb.append(el('span', 'guest-breadcrumb-muted', 'Projects'), el('span', 'guest-breadcrumb-separator', '/'), el('strong', undefined, view.project.name));
@@ -174,13 +175,20 @@ export function renderClientView(container, view, handlers) {
                 copy.append(el('p', 'guest-muted', 'Approval is unavailable while this project is read-only.'));
             }
             else {
-                const button = el('button', 'button button-primary guest-approve-button', 'Approve');
-                button.type = 'button';
-                button.addEventListener('click', () => {
-                    button.disabled = true;
-                    handlers.approve(approval.id).catch(() => { button.disabled = false; });
+                const approveButton = el('button', 'button button-primary guest-approve-button', 'Approve');
+                approveButton.type = 'button';
+                approveButton.disabled = previewMode;
+                if (previewMode) {
+                    approveButton.title = 'Approval is disabled in admin preview.';
+                    approveButton.setAttribute('aria-label', 'Approve (disabled in admin preview)');
+                }
+                approveButton.addEventListener('click', () => {
+                    if (previewMode)
+                        return;
+                    approveButton.disabled = true;
+                    handlers.approve(approval.id).catch(() => { approveButton.disabled = false; });
                 });
-                card.append(copy, button);
+                card.append(copy, approveButton);
             }
             approvalList.append(card);
         }
@@ -284,14 +292,20 @@ export function renderClientView(container, view, handlers) {
         textarea.placeholder = 'Write to the team…';
         textarea.rows = 3;
         textarea.maxLength = 2000;
+        textarea.disabled = previewMode;
         const footer = el('div', 'guest-composer-footer');
-        footer.append(el('span', 'guest-composer-note', 'Goes to the team’s project channel'));
+        footer.append(el('span', 'guest-composer-note', previewMode
+            ? 'Read-only preview · Message sending is disabled.'
+            : 'Goes to the team’s project channel'));
         const send = el('button', 'button button-primary', 'Send');
         send.type = 'submit';
+        send.disabled = previewMode;
         footer.append(send);
         write.append(textarea, footer);
         write.addEventListener('submit', (submitEvent) => {
             submitEvent.preventDefault();
+            if (previewMode)
+                return;
             const body = textarea.value.trim();
             if (body === '')
                 return;

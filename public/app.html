@@ -74,7 +74,10 @@
         <label id="guest-project-label" class="guest-project-label" hidden>Project
           <select id="guest-project-select"></select>
         </label>
-        <span class="guest-cap">Read-only · guest</span>
+        <label id="guest-preview-member-label" class="guest-project-label" hidden>Preview as
+          <select id="guest-preview-member-select" aria-label="Guest preview member"></select>
+        </label>
+        <span id="guest-cap" class="guest-cap">Read-only · guest</span>
         <span id="guest-user" class="guest-user"></span>
         <div class="theme-picker-controls">
           <select class="theme-select" aria-label="Theme" aria-keyshortcuts="t"></select>
@@ -82,6 +85,7 @@
             <span class="retro-computer-icon" aria-hidden="true"><span></span></span>
           </button>
         </div>
+        <button id="guest-preview-return-button" class="button button-quiet" type="button" hidden>Back to project</button>
         <button id="guest-logout-button" class="button button-quiet" type="button">Sign out</button>
       </header>
       <p id="guest-status" class="guest-status-line" role="status"></p>
@@ -243,7 +247,10 @@
                   <p class="eyebrow">Project</p>
                   <h1 id="project-heading" tabindex="-1"></h1>
                 </div>
-                <button id="edit-project-button" class="button button-quiet" type="button" hidden aria-haspopup="dialog" aria-controls="project-edit-dialog">Edit project</button>
+                <div class="project-page-actions">
+                  <button id="preview-guest-view-button" class="button button-quiet" type="button" hidden>Preview guest view</button>
+                  <button id="edit-project-button" class="button button-quiet" type="button" hidden aria-haspopup="dialog" aria-controls="project-edit-dialog">Edit project</button>
+                </div>
               </header>
               <p id="project-read-only-notice" class="project-read-only-notice" role="status" hidden></p>
               <nav class="project-tabs" role="tablist" aria-label="Project work">
