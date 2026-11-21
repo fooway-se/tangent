@@ -12,7 +12,10 @@ if (!class_exists(ZipArchive::class)) {
 }
 
 $root = dirname(__DIR__);
-$requiredFiles = ['bootstrap.php', 'LICENSE', 'public/index.php', 'public/install.php', 'public/upgrade.php'];
+$requiredFiles = [
+    'bootstrap.php', 'LICENSE', 'public/index.php', 'public/install.php', 'public/upgrade.php',
+    'docs/GITHUB.md', 'docs/ISSUES.md', 'docs/USER_MANUAL.md', 'docs/USER_MANUAL.pdf', 'docs/openapi.yaml',
+];
 foreach ($requiredFiles as $relative) {
     if (!is_file($root . '/' . $relative)) {
         fwrite(STDERR, "Required release file is missing: {$relative}\n");
@@ -73,6 +76,7 @@ $addFile = static function (string $relative, string $archiveName) use ($root, $
 try {
     $zip->addEmptyDir($prefix . 'tangent-app');
     $zip->addEmptyDir($prefix . 'public_html');
+    $zip->addEmptyDir($prefix . 'docs');
     $addFile('bootstrap.php', $prefix . 'tangent-app/bootstrap.php');
     $addFile('bin/migrate.php', $prefix . 'tangent-app/bin/migrate.php');
     foreach (['migrations', 'resources', 'src', 'public'] as $directory) {
@@ -81,6 +85,9 @@ try {
     $addTree($root . '/public', $prefix . 'public_html/');
     $addFile('LICENSE', $prefix . 'LICENSE');
     $addFile('INSTALL.md', $prefix . 'INSTALL.md');
+    foreach (['docs/GITHUB.md', 'docs/ISSUES.md', 'docs/USER_MANUAL.md', 'docs/USER_MANUAL.pdf', 'docs/openapi.yaml'] as $relative) {
+        $addFile($relative, $prefix . $relative);
+    }
     if (!$zip->close()) {
         throw new RuntimeException('Unable to finish the release archive.');
     }

@@ -40,7 +40,7 @@ Aimed at freelancers, small remote teams and studios that coordinate client work
 
 Steps in short:
 
-1. Build the release archive with `php bin/build-release.php` (needs the PHP `zip` extension). It contains prebuilt assets.
+1. Build the release archive with `php bin/build-release.php` (needs the PHP `zip` extension). It contains prebuilt assets and user documentation, including the English manual.
 2. Upload it to your host and run the one-time installer.
 3. Update later with the update page.
 
@@ -66,6 +66,7 @@ Planned: GitLab links, weekly client summaries, and agent-friendly API access. S
 
 ## Documentation
 
+- [English user manual (PDF)](docs/USER_MANUAL.pdf) | [Markdown source](docs/USER_MANUAL.md)
 - [Issues and AI prompt builder](docs/ISSUES.md)
 - [Architecture and conventions](docs/ARCHITECTURE.md)
 - [Development setup](docs/DEVELOPMENT.md)
