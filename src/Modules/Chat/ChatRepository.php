@@ -169,30 +169,75 @@ final class ChatRepository
         return (int) $statement->fetchColumn();
     }
 
-    public function latestEventId(int $workspaceId, array $projectIds): int
+    public function nextEventCursor(int $workspaceId): int
+    {
+        if (!$this->pdo->inTransaction()) {
+            throw new \LogicException('A chat event cursor must be allocated in the message transaction.');
+        }
+
+        $ensureSequence = $this->pdo->prepare(
+            'INSERT INTO chat_event_sequences (workspace_id, last_cursor) VALUES (:workspace_id, 0)
+             ON DUPLICATE KEY UPDATE last_cursor = chat_event_sequences.last_cursor'
+        );
+        $ensureSequence->execute(['workspace_id' => $workspaceId]);
+
+        $lock = $this->pdo->prepare(
+            'SELECT last_cursor FROM chat_event_sequences WHERE workspace_id = :workspace_id FOR UPDATE'
+        );
+        $lock->execute(['workspace_id' => $workspaceId]);
+        $cursor = (int) $lock->fetchColumn() + 1;
+
+        $update = $this->pdo->prepare(
+            'UPDATE chat_event_sequences SET last_cursor = :last_cursor WHERE workspace_id = :workspace_id'
+        );
+        $update->execute(['last_cursor' => $cursor, 'workspace_id' => $workspaceId]);
+
+        return $cursor;
+    }
+
+    public function eventCursorAtMessageId(int $workspaceId, array $projectIds, int $messageId): int
+    {
+        if ($messageId <= 0 || $projectIds === []) return 0;
+        [$projectFilter, $projectParameters] = self::projectFilter($projectIds);
+        $statement = $this->pdo->prepare(
+            'SELECT COALESCE(MAX(m.feed_cursor), 0)
+             FROM messages m
+             INNER JOIN channels c ON c.workspace_id = m.workspace_id AND c.id = m.channel_id
+             WHERE m.workspace_id = :workspace_id AND c.channel_type = :channel_type
+               AND c.project_id IN (' . $projectFilter . ')
+               AND m.feed_cursor IS NOT NULL AND m.id <= :message_id'
+        );
+        $statement->execute([
+            'workspace_id' => $workspaceId,
+            'channel_type' => 'project',
+            'message_id' => $messageId,
+            ...$projectParameters,
+        ]);
+        return (int) $statement->fetchColumn();
+    }
+
+    public function latestEventCursor(int $workspaceId, array $projectIds): int
     {
         if ($projectIds === []) {
             return 0;
         }
         [$projectFilter, $projectParameters] = self::projectFilter($projectIds);
         $statement = $this->pdo->prepare(
-            'SELECT m.id
-             FROM messages m FORCE INDEX (ix_messages_workspace_recent)
+            'SELECT COALESCE(MAX(m.feed_cursor), 0)
+             FROM messages m FORCE INDEX (ix_messages_workspace_feed_cursor)
              INNER JOIN channels c ON c.workspace_id = m.workspace_id AND c.id = m.channel_id
              WHERE m.workspace_id = :workspace_id AND c.channel_type = :channel_type
-               AND c.project_id IN (' . $projectFilter . ')
-             ORDER BY m.id DESC LIMIT 1'
+               AND c.project_id IN (' . $projectFilter . ') AND m.feed_cursor IS NOT NULL'
         );
         $statement->execute([
             'workspace_id' => $workspaceId,
             'channel_type' => 'project',
             ...$projectParameters,
         ]);
-        $latestId = $statement->fetchColumn();
-        return $latestId === false ? 0 : (int) $latestId;
+        return (int) $statement->fetchColumn();
     }
 
-    public function listEvents(int $workspaceId, array $projectIds, int $sinceId): array
+    public function listEvents(int $workspaceId, array $projectIds, int $sinceCursor): array
     {
         if ($projectIds === []) {
             return [];
@@ -200,13 +245,14 @@ final class ChatRepository
         [$projectFilter, $projectParameters] = self::projectFilter($projectIds);
         $statement = $this->pdo->prepare(
             'WITH RECURSIVE event_messages AS (
-                SELECT m.id, c.project_id, m.channel_id, m.parent_id, m.author_id, m.body,
+                SELECT m.id, m.feed_cursor, c.project_id, m.channel_id, m.parent_id, m.author_id, m.body,
                        m.is_client_visible AS message_client_visible, m.created_at
-                FROM messages m FORCE INDEX (ix_messages_workspace_recent)
+                FROM messages m FORCE INDEX (ix_messages_workspace_feed_cursor)
                 STRAIGHT_JOIN channels c ON c.workspace_id = m.workspace_id AND c.id = m.channel_id
                 WHERE m.workspace_id = :workspace_id AND c.channel_type = :channel_type
-                  AND c.project_id IN (' . $projectFilter . ') AND m.id > :since_id
-                ORDER BY m.id ASC
+                  AND c.project_id IN (' . $projectFilter . ')
+                  AND m.feed_cursor IS NOT NULL AND m.feed_cursor > :since_cursor
+                ORDER BY m.feed_cursor ASC
                 LIMIT 100
             ), reply_stats AS (
                 SELECT replies.channel_id, replies.parent_id, COUNT(*) AS reply_count,
@@ -228,7 +274,7 @@ final class ChatRepository
                  AND parent.channel_id = roots.channel_id AND parent.id = roots.parent_id
                 WHERE roots.parent_id IS NOT NULL
             )
-            SELECT messages.id, messages.project_id, messages.channel_id, messages.parent_id, messages.author_id,
+            SELECT messages.id, messages.feed_cursor, messages.project_id, messages.channel_id, messages.parent_id, messages.author_id,
                    users.name AS author_name, users.role AS author_role, messages.body,
                    parent_users.name AS parent_author_name, parent_message.body AS parent_body,
                    COALESCE(reply_stats.reply_count, 0) AS reply_count, reply_stats.first_reply_id,
@@ -244,12 +290,12 @@ final class ChatRepository
              AND parent_message.channel_id = messages.channel_id AND parent_message.id = messages.parent_id
             LEFT JOIN users parent_users
               ON parent_users.workspace_id = :parent_author_workspace_id AND parent_users.id = parent_message.author_id
-            ORDER BY messages.id ASC'
+            ORDER BY messages.feed_cursor ASC'
         );
         $statement->execute([
             'workspace_id' => $workspaceId,
             'channel_type' => 'project',
-            'since_id' => $sinceId,
+            'since_cursor' => $sinceCursor,
             'reply_stats_workspace_id' => $workspaceId,
             'root_workspace_id' => $workspaceId,
             'author_workspace_id' => $workspaceId,
@@ -451,10 +497,11 @@ final class ChatRepository
         ?int $parentId,
         string $body,
         bool $clientVisible = false,
+        ?int $feedCursor = null,
     ): array {
         $statement = $this->pdo->prepare(
-            'INSERT INTO messages (workspace_id, channel_id, author_id, parent_id, body, is_client_visible)
-             VALUES (:workspace_id, :channel_id, :author_id, :parent_id, :body, :is_client_visible)'
+            'INSERT INTO messages (workspace_id, channel_id, author_id, parent_id, body, is_client_visible, feed_cursor)
+             VALUES (:workspace_id, :channel_id, :author_id, :parent_id, :body, :is_client_visible, :feed_cursor)'
         );
         $statement->execute([
             'workspace_id' => $workspaceId,
@@ -463,6 +510,7 @@ final class ChatRepository
             'parent_id' => $parentId,
             'body' => $body,
             'is_client_visible' => $clientVisible ? 1 : 0,
+            'feed_cursor' => $feedCursor,
         ]);
 
         $message = $this->findMessage($workspaceId, $channelId, (int) $this->pdo->lastInsertId());
@@ -472,7 +520,7 @@ final class ChatRepository
     private function findMessage(int $workspaceId, int $channelId, int $messageId): ?array
     {
         $statement = $this->pdo->prepare(
-            'SELECT m.id, m.channel_id, m.parent_id, m.author_id, u.name AS author_name, u.role AS author_role,
+            'SELECT m.id, m.channel_id, m.parent_id, m.author_id, m.feed_cursor, u.name AS author_name, u.role AS author_role,
                     m.body, m.is_client_visible, m.created_at,
                     parent_user.name AS parent_author_name, parent.body AS parent_body,
                     (SELECT COUNT(*) FROM messages replies
@@ -513,6 +561,9 @@ final class ChatRepository
         $message['parent_body'] = $message['parent_body'] ?? null;
         $message['reply_count'] = (int) ($message['reply_count'] ?? 0);
         $message['first_reply_id'] = $message['first_reply_id'] === null ? null : (int) $message['first_reply_id'];
+        if (array_key_exists('feed_cursor', $message)) {
+            $message['feed_cursor'] = $message['feed_cursor'] === null ? null : (int) $message['feed_cursor'];
+        }
         return $message;
     }
 

@@ -94,7 +94,8 @@ final class ChatRoutes
         ): Response {
             $result = $this->service->events(
                 $user,
-                self::sinceId($request) ?? 0,
+                self::eventCursor($request),
+                self::sinceId($request),
                 $request->header('If-None-Match'),
             );
             if ($result['not_modified']) {
@@ -182,6 +183,23 @@ final class ChatRoutes
         $parsed = filter_var((string) $value, FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]);
         if ($parsed === false) {
             throw new ApiException(422, 'validation_failed', 'The since cursor must be a non-negative integer.');
+        }
+        return $parsed;
+    }
+
+    private static function eventCursor(Request $request): ?int
+    {
+        if (!array_key_exists('cursor', $request->query)) {
+            return null;
+        }
+
+        $value = $request->query['cursor'];
+        if (!is_int($value) && !is_string($value)) {
+            throw new ApiException(422, 'validation_failed', 'The event cursor must be a non-negative integer.');
+        }
+        $parsed = filter_var((string) $value, FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]);
+        if ($parsed === false) {
+            throw new ApiException(422, 'validation_failed', 'The event cursor must be a non-negative integer.');
         }
         return $parsed;
     }

@@ -9,6 +9,7 @@ import {
 import { renderClientEmptyState, renderClientView, type ClientView } from './guest-view.js';
 import { createLogoutController } from './logout.js';
 import { ProjectNavigationOwner, runOwnedRequest } from './project-navigation.js';
+import { ChatEventFeed, type ChatFeedEvent } from './chat-event-feed.js';
 import { switchWorkspaceMembership } from './workspace-switch.js';
 import { credentialNeedsConfirmation, inviteCredentialPresentation } from './credential-flow.js';
 import { generateClientSummary, type ClientSummaryActivity } from './client-summary.js';
@@ -367,8 +368,7 @@ interface ChatMessage {
   is_client_visible?: boolean;
 }
 
-interface ChatEvent extends ChatMessage {
-  project_id: number;
+interface ChatEvent extends ChatMessage, ChatFeedEvent {
   type: 'message';
 }
 
@@ -903,7 +903,7 @@ let confirmingIssueDiscussionDeleteId: number | null = null;
 const issueRowRenderSignatures = new WeakMap<HTMLLIElement, string>();
 const deletedIssueRowRenderSignatures = new WeakMap<HTMLLIElement, string>();
 let chatPollTimer: number | null = null;
-let chatCursor = 0;
+const chatEventFeed = new ChatEventFeed();
 let chatEtag: string | null = null;
 let chatPollDelay = 1000;
 const PROJECT_PRESENCE_INTERVAL_MS = 15_000;
@@ -3790,7 +3790,7 @@ async function pollProjectChat(projectId: number): Promise<void> {
 
   const headers = new Headers();
   if (chatEtag !== null) headers.set('If-None-Match', chatEtag);
-  const cursor = `?since=${chatCursor}`;
+  const cursor = chatEventFeed.requestQuery();
   try {
     const response = await fetch(`${apiBaseUrl}/events${cursor}`, {
       headers,
@@ -3805,10 +3805,12 @@ async function pollProjectChat(projectId: number): Promise<void> {
       if (!response.ok) throw new ApiFailure(payload.error?.message ?? 'Could not load project chat.', response.status);
       chatEtag = response.headers.get('ETag');
       const received = payload.events ?? [];
-      for (const event of received) {
-        chatCursor = Math.max(chatCursor, event.id);
-        if (event.project_id === projectId) appendChatMessage(event, chatFollowLatest);
-      }
+      chatEventFeed.consume(
+        received,
+        projectId,
+        (messageId) => chatMessagesById.has(messageId),
+        (event) => appendChatMessage(event, chatFollowLatest),
+      );
       if (received.length > 0) {
         chatPollDelay = 1000;
       } else {
@@ -3943,7 +3945,6 @@ function appendChatMessage(message: ChatMessage, scrollToBottom = false): void {
   chatMessageList.insertBefore(item, followingMessage ?? null);
   updateChatMessageReplyCount(message);
   chatEmptyState!.hidden = true;
-  chatCursor = Math.max(chatCursor, message.id);
   if (scrollToBottom) scrollChatToBottom();
 }
 
@@ -4374,7 +4375,7 @@ function createProjectChat(projectId: number): HTMLElement {
   section.append(heading, chatMessageList, form);
   activeChatProjectId = projectId;
   chatPresenceIndicator = presenceIndicator;
-  chatCursor = 0;
+  chatEventFeed.reset();
   chatEtag = null;
   chatPollDelay = 1000;
   void pollProjectPresence(projectId);

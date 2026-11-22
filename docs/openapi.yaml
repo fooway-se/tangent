@@ -718,12 +718,19 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
   /events:
     get:
-      summary: Poll visible project chat messages after an ID
-      description: Returns up to 100 events from projects the user can access. Matching If-None-Match returns 304.
+      summary: Poll visible project chat messages after a commit-ordered cursor
+      description: Returns up to 100 committed events from projects the user can access, ordered by the workspace's transaction-serialized feed cursor. New clients should send cursor and resume from each event's feed_cursor. The deprecated since parameter accepts a legacy message ID and maps it to the feed cursor for compatibility. Matching If-None-Match returns 304.
       parameters:
+        - name: cursor
+          in: query
+          required: false
+          description: Commit-ordered cursor returned as feed_cursor on each event.
+          schema: { type: integer, minimum: 0, default: 0 }
         - name: since
           in: query
           required: false
+          deprecated: true
+          description: Legacy message ID cursor. Accepted for existing clients and translated to the commit-ordered feed cursor.
           schema: { type: integer, minimum: 0, default: 0 }
         - name: If-None-Match
           in: header
@@ -1941,10 +1948,11 @@ components:
       allOf:
         - $ref: '#/components/schemas/Message'
         - type: object
-          required: [project_id, type]
+          required: [project_id, type, feed_cursor]
           properties:
             project_id: { type: integer }
             type: { type: string, enum: [message] }
+            feed_cursor: { type: integer, minimum: 1, description: Commit-ordered cursor scoped to the workspace. }
     Issue:
       type: object
       required: [id, workspace_id, project_id, title, description, context, expected_outcome, acceptance_criteria, type, assignee_id, status, priority, due_date, created_by, source_channel_id, source_message_id, is_shared, is_ongoing, milestone_id, sort_order, discussion_count, approval_requested_at, approved_by, approved_at, created_at, updated_at, deleted_at]

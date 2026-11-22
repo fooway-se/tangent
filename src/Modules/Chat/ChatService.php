@@ -152,7 +152,12 @@ final class ChatService
         return $this->chat->listClientConversationMessages($user->workspaceId, $channelId);
     }
 
-    public function events(AuthenticatedUser $user, int $sinceId, ?string $ifNoneMatch): array
+    public function events(
+        AuthenticatedUser $user,
+        ?int $cursor,
+        ?int $legacySinceId,
+        ?string $ifNoneMatch,
+    ): array
     {
         $projectIds = [];
         foreach ($this->projects->visibilityForUser($user->workspaceId, $user->id) as $project) {
@@ -161,12 +166,17 @@ final class ChatService
             }
         }
 
-        $latestId = $this->chat->latestEventId($user->workspaceId, $projectIds);
-        $etag = '"events-' . $user->workspaceId . '-' . $latestId . '"';
+        $cursor ??= $this->chat->eventCursorAtMessageId(
+            $user->workspaceId,
+            $projectIds,
+            $legacySinceId ?? 0,
+        );
+        $latestCursor = $this->chat->latestEventCursor($user->workspaceId, $projectIds);
+        $etag = '"events-' . $user->workspaceId . '-' . $latestCursor . '"';
         $notModified = $ifNoneMatch !== null
             && hash_equals($etag, trim($ifNoneMatch))
-            && $sinceId >= $latestId;
-        $events = $notModified ? [] : $this->chat->listEvents($user->workspaceId, $projectIds, $sinceId);
+            && $cursor >= $latestCursor;
+        $events = $notModified ? [] : $this->chat->listEvents($user->workspaceId, $projectIds, $cursor);
 
         return [
             'events' => $events,
@@ -201,7 +211,16 @@ final class ChatService
         $ownsTransaction = !$this->pdo->inTransaction();
         if ($ownsTransaction) $this->pdo->beginTransaction();
         try {
-            $message = $this->chat->createMessage($user->workspaceId, $channelId, $user->id, $parentId, $body, $clientVisible);
+            $feedCursor = $this->chat->nextEventCursor($user->workspaceId);
+            $message = $this->chat->createMessage(
+                $user->workspaceId,
+                $channelId,
+                $user->id,
+                $parentId,
+                $body,
+                $clientVisible,
+                $feedCursor,
+            );
             $this->inboxEvents->recordMessage($user->workspaceId, $projectId, $user->id, $message, $threadParticipants);
             if ($ownsTransaction) $this->pdo->commit();
             return $message;
@@ -221,7 +240,16 @@ final class ChatService
         $ownsTransaction = !$this->pdo->inTransaction();
         if ($ownsTransaction) $this->pdo->beginTransaction();
         try {
-            $message = $this->chat->createMessage($user->workspaceId, $channelId, $user->id, null, $body, true);
+            $feedCursor = $this->chat->nextEventCursor($user->workspaceId);
+            $message = $this->chat->createMessage(
+                $user->workspaceId,
+                $channelId,
+                $user->id,
+                null,
+                $body,
+                true,
+                $feedCursor,
+            );
             $this->inboxEvents->recordClientComment($user->workspaceId, $projectId, $user->id, (int) $message['id'], $body);
             if ($ownsTransaction) $this->pdo->commit();
             return $message;
