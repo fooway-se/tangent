@@ -4,11 +4,14 @@ import test from 'node:test';
 import {
   diffConditionalIssueCollections,
   diffIssueCollections,
+  loadIssueCollections,
   nextIssuePollDelay,
+  refreshDeletedIssuesOnOpen,
   shouldDeferIssueUpdates,
 } from '../../public/assets/issue-polling.js';
 
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
+const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
 
 test('issue collection diff identifies only added, changed, and removed issues', () => {
   const before = [
@@ -45,6 +48,39 @@ test('mixed issue responses only diff the collection with a response body', () =
     active: { added: [2], changed: [1], removed: [] },
     deleted: null,
   });
+});
+
+test('active issue view does not fetch the deleted collection', async () => {
+  let deletedRequests = 0;
+  const result = await loadIssueCollections(
+    async () => 'active',
+    async () => { deletedRequests++; return 'deleted'; },
+    false,
+  );
+  assert.deepEqual(result, { active: 'active', deleted: null });
+  assert.equal(deletedRequests, 0);
+});
+
+test('opening deleted issues fetches that collection without waiting for active issues', async () => {
+  let deletedRequests = 0;
+  const result = await loadIssueCollections(
+    async () => 'active',
+    async () => { deletedRequests++; return 'deleted'; },
+    true,
+  );
+  assert.deepEqual(result, { active: 'active', deleted: 'deleted' });
+  assert.equal(deletedRequests, 1);
+  assert.match(app, /deletedIssuesDetails\.addEventListener\('toggle'/);
+  assert.match(app, /refreshDeletedIssuesOnOpen\(deletedIssuesDetails\.open, projectId, loadDeletedProjectIssues\)/);
+  assert.match(html, /<details id="deleted-issues-details" class="deleted-issues-details">/);
+});
+
+test('opening deleted issues starts a refresh for the current project', async () => {
+  const projects = [];
+  await refreshDeletedIssuesOnOpen(true, 12, async (projectId) => { projects.push(projectId); });
+  await refreshDeletedIssuesOnOpen(false, 12, async (projectId) => { projects.push(projectId); });
+  await refreshDeletedIssuesOnOpen(true, null, async (projectId) => { projects.push(projectId); });
+  assert.deepEqual(projects, [12]);
 });
 
 test('issue polling backs off when quiet, resets after changes, and slows in the background', () => {

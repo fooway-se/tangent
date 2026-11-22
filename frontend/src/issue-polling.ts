@@ -9,6 +9,32 @@ export interface ConditionalIssueDiffs {
   deleted: IssueCollectionDiff | null;
 }
 
+export interface IssueCollections<T> {
+  active: T;
+  deleted: T | null;
+}
+
+export async function loadIssueCollections<T>(
+  loadActive: () => Promise<T>,
+  loadDeleted: () => Promise<T>,
+  includeDeleted: boolean,
+): Promise<IssueCollections<T>> {
+  const [active, deleted] = await Promise.all([
+    loadActive(),
+    includeDeleted ? loadDeleted() : Promise.resolve(null),
+  ]);
+  return { active, deleted };
+}
+
+export function refreshDeletedIssuesOnOpen(
+  isOpen: boolean,
+  projectId: number | null,
+  loadDeleted: (projectId: number) => Promise<void>,
+): Promise<void> {
+  if (!isOpen || projectId === null) return Promise.resolve();
+  return loadDeleted(projectId);
+}
+
 export function diffConditionalIssueCollections<T extends { id: number }>(
   previousActive: readonly T[],
   nextActive: readonly T[] | null,

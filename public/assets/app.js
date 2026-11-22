@@ -14,7 +14,7 @@ import { milestoneStatus } from './roadmap.js';
 import { formatIssueMarkdown, formatIssuePrompt } from './issue-export.js';
 import { groupMyWorkTasks } from './my-work.js';
 import { filterIssues, filterIssuesByMilestoneArchive, groupIssues, groupIssuesByMilestone, discussionIndicatorLabel, milestoneProgress, projectProgress, sortIssues, } from './issue-board.js';
-import { diffConditionalIssueCollections, nextIssuePollDelay, shouldDeferIssueUpdates, } from './issue-polling.js';
+import { diffConditionalIssueCollections, loadIssueCollections, nextIssuePollDelay, refreshDeletedIssuesOnOpen, shouldDeferIssueUpdates, } from './issue-polling.js';
 const apiBaseUrl = new URL('../api/v1', import.meta.url).pathname.replace(/\/$/, '');
 const KEYBOARD_HINTS_STORAGE_KEY = 'tangent.keyboard-hints-visible';
 function loadKeyboardHintsPreference() {
@@ -601,6 +601,8 @@ let issuePollTimer = null;
 let issuePollDelay = 1000;
 let activeIssuesEtag = null;
 let deletedIssuesEtag = null;
+let deletedIssuesLoadProjectId = null;
+let deletedIssuesLoadPromise = null;
 let issuePollHasDeferredChanges = false;
 let issuePollInFlightProjectId = null;
 let issuePollRequestVersion = 0;
@@ -2098,10 +2100,9 @@ async function pollProjectIssues(projectId) {
     issuePollInFlightProjectId = projectId;
     let changed = false;
     try {
-        const [activeResult, deletedResult] = await Promise.all([
-            fetchConditionalIssueList(projectId, false, activeEtag),
-            fetchConditionalIssueList(projectId, true, deletedEtag),
-        ]);
+        const collections = await loadIssueCollections(() => fetchConditionalIssueList(projectId, false, activeEtag), () => fetchConditionalIssueList(projectId, true, deletedEtag), deletedIssuesDetails.open);
+        const activeResult = collections.active;
+        const deletedResult = collections.deleted ?? { issues: null, etag: deletedIssuesEtag };
         if (requestVersion !== issuePollRequestVersion || !issuePollingIsActive(projectId))
             return;
         const deferUpdates = deferUpdatesAtStart || issueUpdatesAreDeferred();
@@ -2116,7 +2117,8 @@ async function pollProjectIssues(projectId) {
             : [...deletedDiff.added, ...deletedDiff.changed, ...deletedDiff.removed];
         changed = changedIssueIds.length > 0 || changedDeletedIssueIds.length > 0;
         activeIssuesEtag = activeResult.etag;
-        deletedIssuesEtag = deletedResult.etag;
+        if (collections.deleted !== null)
+            deletedIssuesEtag = deletedResult.etag;
         if (deferUpdates && changed) {
             issuePollHasDeferredChanges = true;
         }
@@ -4313,6 +4315,10 @@ milestoneManagerDialog.addEventListener('close', () => {
     }
 });
 issuesTabButton.addEventListener('click', () => switchProjectTab('issues'));
+deletedIssuesDetails.addEventListener('toggle', () => {
+    const projectId = activeProject?.id ?? null;
+    void refreshDeletedIssuesOnOpen(deletedIssuesDetails.open, projectId, loadDeletedProjectIssues);
+});
 membersTabButton.addEventListener('click', () => switchProjectTab('members'));
 notesTabButton.addEventListener('click', () => switchProjectTab('notes'));
 projectNotesWrite.addEventListener('click', () => setProjectNotesMode('write'));
@@ -5595,6 +5601,7 @@ async function loadProjectDetail(projectId, tab = 'issues', recordHistory = true
         updateProjectReadOnlyNotice(result.project.status);
         projectIssues = [];
         deletedProjectIssues = [];
+        deletedIssuesDetails.open = false;
         issueFilter.value = '';
         issueScope.value = 'active';
         issueOrder.value = 'updated';
@@ -5753,16 +5760,17 @@ async function saveProjectNotes(event) {
 async function loadProjectIssues(projectId) {
     pauseIssuePolling();
     try {
-        const [result, deletedResult] = await Promise.all([
-            fetchConditionalIssueList(projectId, false, null),
-            fetchConditionalIssueList(projectId, true, null),
-        ]);
+        const collections = await loadIssueCollections(() => fetchConditionalIssueList(projectId, false, null), () => fetchConditionalIssueList(projectId, true, null), deletedIssuesDetails.open);
+        const result = collections.active;
+        const deletedResult = collections.deleted;
         if (activeProject?.id !== projectId || issuesView.hidden)
             return;
         projectIssues = result.issues ?? [];
-        deletedProjectIssues = deletedResult.issues ?? [];
         activeIssuesEtag = result.etag;
-        deletedIssuesEtag = deletedResult.etag;
+        if (deletedResult !== null) {
+            deletedProjectIssues = deletedResult.issues ?? [];
+            deletedIssuesEtag = deletedResult.etag;
+        }
         issuePollHasDeferredChanges = false;
         issuePollDelay = 1000;
         renderProjectIssueBoard();
@@ -5775,6 +5783,39 @@ async function loadProjectIssues(projectId) {
         }
         report(error instanceof Error ? error.message : 'Could not load project issues.', true);
     }
+}
+function loadDeletedProjectIssues(projectId) {
+    if (deletedIssuesLoadProjectId === projectId && deletedIssuesLoadPromise !== null) {
+        return deletedIssuesLoadPromise;
+    }
+    const request = (async () => {
+        try {
+            const result = await fetchConditionalIssueList(projectId, true, null);
+            if (activeProject?.id !== projectId || projectView.hidden)
+                return;
+            deletedProjectIssues = result.issues ?? [];
+            deletedIssuesEtag = result.etag;
+            renderProjectIssueBoard();
+        }
+        catch (error) {
+            if (error instanceof ApiFailure && error.status === 401) {
+                showSignedOut();
+                return;
+            }
+            if (activeProject?.id === projectId) {
+                report(error instanceof Error ? error.message : 'Could not load deleted issues.', true);
+            }
+        }
+    })();
+    deletedIssuesLoadProjectId = projectId;
+    deletedIssuesLoadPromise = request;
+    void request.finally(() => {
+        if (deletedIssuesLoadPromise === request) {
+            deletedIssuesLoadProjectId = null;
+            deletedIssuesLoadPromise = null;
+        }
+    });
+    return request;
 }
 function synchronizeIssueGroupingForOrder() {
     const nextUpMode = issueOrder.value === 'next_up';
@@ -5901,7 +5942,7 @@ function renderProjectIssueBoard() {
                         : 'No issues yet. Create the first one.'
             : 'No issues match that filter.');
     setTextContentIfChanged(deletedIssueCount, String(deletedProjectIssues.length));
-    deletedIssuesDetails.hidden = deletedProjectIssues.length === 0;
+    deletedIssuesDetails.hidden = false;
     reconcileDeletedIssueRows();
     if (nextUpMode) {
         renderNextUpIssueBoard(visible, workQueue);
@@ -7179,9 +7220,13 @@ async function deleteSelectedIssue() {
             issueDetailEditForm.hidden = true;
             issueDetailDisplay.hidden = false;
             switchProjectTab('issues', issue.id);
+            if (!deletedIssuesDetails.open)
+                void loadDeletedProjectIssues(projectId);
         }
         else {
             await loadProjectIssues(projectId);
+            if (!deletedIssuesDetails.open)
+                await loadDeletedProjectIssues(projectId);
             if (!focusIssueTitleButton(issue.id))
                 issueFilter.focus();
         }
@@ -7226,10 +7271,10 @@ function showDeletedIssues(restoreIssueId) {
     issueDetailEditForm.hidden = true;
     issueDetailDisplay.hidden = false;
     switchProjectTab('issues', undefined, false);
-    void loadProjectIssues(projectId).then(() => {
+    deletedIssuesDetails.open = true;
+    void loadDeletedProjectIssues(projectId).then(() => {
         if (activeProject?.id !== projectId || issuesView.hidden || deletedProjectIssues.length === 0)
             return;
-        deletedIssuesDetails.open = true;
         deletedIssuesDetails.scrollIntoView({ block: 'nearest' });
         if (restoreIssueId !== undefined) {
             const restoreButton = Array.from(deletedIssueList.querySelectorAll('.deleted-issue-item button'))

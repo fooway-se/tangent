@@ -1,3 +1,15 @@
+export async function loadIssueCollections(loadActive, loadDeleted, includeDeleted) {
+    const [active, deleted] = await Promise.all([
+        loadActive(),
+        includeDeleted ? loadDeleted() : Promise.resolve(null),
+    ]);
+    return { active, deleted };
+}
+export function refreshDeletedIssuesOnOpen(isOpen, projectId, loadDeleted) {
+    if (!isOpen || projectId === null)
+        return Promise.resolve();
+    return loadDeleted(projectId);
+}
 export function diffConditionalIssueCollections(previousActive, nextActive, previousDeleted, nextDeleted) {
     return {
         active: nextActive === null ? null : diffIssueCollections(previousActive, nextActive),
