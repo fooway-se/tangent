@@ -7,6 +7,7 @@ import { THEME_MACHINES } from '../../public/assets/theme-machines.js';
 const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
 const htaccess = await readFile(new URL('../../public/.htaccess', import.meta.url), 'utf8');
 const appSource = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
+const themeUiSource = await readFile(new URL('../../frontend/src/theme-ui.ts', import.meta.url), 'utf8');
 const css = await readFile(new URL('../../public/assets/app.css', import.meta.url), 'utf8');
 
 test('every theme has a locally hosted, credited computer photo and two short facts', async () => {
@@ -81,9 +82,9 @@ test('theme selectors have a silent computer icon that opens the accessible card
   assert.match(htaccess, /img-src 'self' data:/);
   assert.doesNotMatch(html, /img-src[^>]*wikimedia\.org/);
   assert.doesNotMatch(htaccess, /img-src[^\n]*wikimedia\.org/);
-  assert.match(appSource, /THEME_MACHINES\[activeTheme\]/);
-  assert.match(appSource, /themeAboutDialog\.showModal\(\)/);
-  assert.match(appSource, /themeAboutImage\.src\s*=\s*machine\.imageUrl/);
+  assert.match(themeUiSource, /THEME_MACHINES\[activeTheme\]/);
+  assert.match(themeUiSource, /themeAboutDialog\.showModal\(\)/);
+  assert.match(themeUiSource, /themeAboutImage\.src\s*=\s*machine\.imageUrl/);
   assert.match(css, /\.theme-about-button/);
   assert.match(css, /\.retro-computer-icon/);
 });
@@ -93,10 +94,10 @@ test('computer card handles Escape before workspace navigation', () => {
   const keyboardHandler = appSource.slice(appSource.indexOf('function handleKeyboardShortcut'), appSource.indexOf('function movePaletteCommandSelection'));
   const commandPaletteHandler = appSource.slice(appSource.indexOf('function openCommandPalette'), appSource.indexOf('function showShortcutHelp'));
   const dismissHandler = appSource.slice(appSource.indexOf('function dismissCurrentView'), appSource.indexOf('function focusIssueQuickAddReturnTarget'));
-  assert.match(shortcutContext, /modalOpen:[\s\S]*themeAboutDialog\.open/);
-  assert.match(keyboardHandler, /themeAboutDialog\.open/);
-  assert.match(commandPaletteHandler, /if \(themeAboutDialog\.open\) themeAboutDialog\.close\(\);/);
-  assert.match(dismissHandler, /if \(themeAboutDialog\.open\)\s*\{\s*themeAboutDialog\.close\(\);/);
+  assert.match(shortcutContext, /modalOpen:[\s\S]*themeUi\.aboutDialog\.open/);
+  assert.match(keyboardHandler, /themeUi\.aboutDialog\.open/);
+  assert.match(commandPaletteHandler, /if \(themeUi\.aboutDialog\.open\) themeUi\.aboutDialog\.close\(\);/);
+  assert.match(dismissHandler, /if \(themeUi\.aboutDialog\.open\)\s*\{\s*themeUi\.aboutDialog\.close\(\);/);
 });
 
 test('computer card button is joined to the theme selector with the same height and key style', () => {

@@ -5,6 +5,8 @@ import test from 'node:test';
 const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
 const guestView = await readFile(new URL('../../frontend/src/guest-view.ts', import.meta.url), 'utf8');
+const types = await readFile(new URL('../../frontend/src/types.ts', import.meta.url), 'utf8');
+const projectNotesUi = await readFile(new URL('../../frontend/src/project-notes-ui.ts', import.meta.url), 'utf8');
 
 test('project details provide admins an edit dialog for name, description, and status', () => {
   const projectView = html.slice(html.indexOf('id="project-view"'), html.indexOf('id="admin-view"'));
@@ -27,10 +29,10 @@ test('project details provide admins an edit dialog for name, description, and s
 
 test('project edit form explains each work state and archive selection', () => {
   assert.match(app, /function projectStatusHint\(status: Project\['status'\]\): string/);
-  assert.match(app, /active: 'Normal work\.'/);
-  assert.match(app, /paused: 'Temporarily on hold; it can be resumed/);
-  assert.match(app, /completed: 'Finished and read-only/);
-  assert.match(app, /archived: 'A housekeeping state that moves the project out of the active list/);
+  assert.match(types, /active: 'Normal work\.'/);
+  assert.match(types, /paused: 'Temporarily on hold; it can be resumed/);
+  assert.match(types, /completed: 'Finished and read-only/);
+  assert.match(types, /archived: 'A housekeeping state that moves the project out of the active list/);
   assert.match(app, /projectEditStatus\.addEventListener\('change', updateProjectStatusHint\)/);
   assert.match(app, /let hint = projectStatusHint\(status\)/);
   assert.match(app, /projectEditStatusHelp\.textContent = hint/);
@@ -54,7 +56,7 @@ test('project status labels reflect the selected lifecycle state', () => {
   assert.match(app, /function projectStatusLabel\(status: Project\['status'\]\): string[\s\S]*PROJECT_STATUS_LABELS\[status\]/);
   assert.match(app, /projectState\.textContent = projectStatusLabel\(result\.project\.status\)/);
   assert.match(app, /state\.textContent = projectStatusLabel\(project\.status\)/);
-  assert.match(app, /archived: 3/);
+  assert.match(types, /archived: 3/);
   assert.match(app, /const projects = \[\.\.\.result\.projects\]\.sort/);
 });
 
@@ -74,7 +76,8 @@ test('completed and archived project controls switch to read-only in the project
   assert.match(controls, /issueForm\.hidden = readOnly/);
   assert.match(controls, /issueDetailStatus\.disabled = readOnly/);
   assert.match(controls, /issueDiscussionInput\.disabled = readOnly/);
-  assert.match(controls, /projectNotesInput\.disabled = readOnly/);
+  assert.match(controls, /projectNotesUi\.setReadOnly\(readOnly\)/);
+  assert.match(projectNotesUi, /projectNotesInput\.disabled = readOnly/);
 });
 
 test('the guest portal keeps completed and archived projects readable without write actions', () => {

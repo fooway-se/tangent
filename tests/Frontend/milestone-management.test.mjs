@@ -4,6 +4,7 @@ import test from 'node:test';
 
 const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
+const milestoneUi = await readFile(new URL('../../frontend/src/milestone-ui.ts', import.meta.url), 'utf8');
 const css = await readFile(new URL('../../public/assets/app.css', import.meta.url), 'utf8');
 
 test('milestone management stays behind a button beside project progress', () => {
@@ -23,9 +24,9 @@ test('milestone dialog provides a list and compact create/edit form', () => {
 });
 
 test('milestone manager loads and saves project milestones through the existing API', () => {
-  assert.match(app, /function renderMilestoneList\(/);
-  assert.match(app, /method: editingId === null \? 'POST' : 'PATCH'/);
-  assert.match(app, /`\/projects\/\$\{projectId\}\/milestones\/\$\{editingId\}`/);
+  assert.match(milestoneUi, /function renderList\(/);
+  assert.match(milestoneUi, /method: editingId === null \? 'POST' : 'PATCH'/);
+  assert.match(milestoneUi, /`\/projects\/\$\{projectId\}\/milestones\/\$\{editingId\}`/);
 });
 
 test('issue board has separate current-work and history views for archived milestone issues', () => {
@@ -36,61 +37,61 @@ test('issue board has separate current-work and history views for archived miles
 });
 
 test('milestone manager offers archive and restore actions without deleting milestones', () => {
-  assert.match(app, /milestone\.archived_at !== null/);
-  assert.match(app, /Archive/);
-  assert.match(app, /Restore/);
-  assert.match(app, /async function setMilestoneArchived\(/);
+  assert.match(milestoneUi, /milestone\.archived_at !== null/);
+  assert.match(milestoneUi, /Archive/);
+  assert.match(milestoneUi, /Restore/);
+  assert.match(milestoneUi, /async function setArchived\(/);
 });
 
 test('saving a milestone refreshes issue labels and quick-add choices', () => {
-  const saveStart = app.indexOf('async function saveMilestone(');
-  const saveEnd = app.indexOf('\nasync function ', saveStart + 1);
-  const save = app.slice(saveStart, saveEnd === -1 ? undefined : saveEnd);
+  const saveStart = milestoneUi.indexOf('async function save(');
+  const saveEnd = milestoneUi.indexOf('\n  async function removeMilestone(', saveStart + 1);
+  const save = milestoneUi.slice(saveStart, saveEnd);
 
-  assert.match(save, /populateIssueMilestoneSelect\(issueQuickAddMilestone,/);
-  assert.match(save, /renderProjectIssueBoard\(\)/);
+  assert.match(save, /populateIssueMilestoneSelect\(quickAddMilestone,/);
+  assert.match(save, /options\.renderProjectIssueBoard\(\)/);
 });
 
 test('milestone list shows issue progress and a green completion indicator', () => {
-  assert.match(app, /milestoneProgress\(milestoneIssues\)/);
-  assert.match(app, /milestone-row-progress/);
-  assert.match(app, /✓ Complete/);
+  assert.match(milestoneUi, /milestoneProgress\(milestoneIssues\)/);
+  assert.match(milestoneUi, /milestone-row-progress/);
+  assert.match(milestoneUi, /✓ Complete/);
   assert.match(css, /\.milestone-row-progress\.is-complete[^\{]*\{[^}]*var\(--success\)/);
 });
 
 test('milestone deletion uses an in-app confirmation and explains linked issue behavior', () => {
-  assert.match(app, /remove\.setAttribute\('aria-label', `Delete milestone:/);
+  assert.match(milestoneUi, /remove\.setAttribute\('aria-label', `Delete milestone:/);
   assert.match(html, /<dialog id="milestone-delete-confirmation"[^>]*aria-labelledby="milestone-delete-heading"/);
   assert.match(html, /id="milestone-delete-description"/);
   assert.match(html, /id="milestone-delete-cancel"/);
   assert.match(html, /id="milestone-delete-confirm"/);
-  assert.match(app, /function openMilestoneDeleteConfirmation\(/);
-  assert.match(app, /milestoneDeleteConfirmation\.showModal\(\)/);
-  assert.match(app, /milestoneDeleteConfirm\.addEventListener\('click'/);
-  assert.doesNotMatch(app, /window\.(?:alert|confirm|prompt)\s*\(/);
-  assert.match(app, /async function deleteMilestone\(/);
-  assert.match(app, /api\(`\/projects\/\$\{projectId\}\/milestones\/\$\{milestone\.id\}`/);
-  assert.match(app, /method:\s*'DELETE'/);
-  assert.match(app, /projectMilestones = projectMilestones\.filter/);
-  assert.match(app, /projectIssues = projectIssues\.map/);
-  assert.match(app, /renderProjectIssueBoard\(\)/);
-  assert.match(app, /milestone_id === milestone\.id/);
-  assert.match(app, /populateIssueMilestoneSelect\(issueQuickAddMilestone,/);
+  assert.match(milestoneUi, /function openDeleteConfirmation\(/);
+  assert.match(milestoneUi, /deleteConfirmation\.showModal\(\)/);
+  assert.match(milestoneUi, /deleteConfirmButton\.addEventListener\('click'/);
+  assert.doesNotMatch(milestoneUi, /window\.(?:alert|confirm|prompt)\s*\(/);
+  assert.match(milestoneUi, /async function removeMilestone\(/);
+  assert.match(milestoneUi, /api\(`\/projects\/\$\{projectId\}\/milestones\/\$\{milestone\.id\}`/);
+  assert.match(milestoneUi, /method:\s*'DELETE'/);
+  assert.match(milestoneUi, /options\.setMilestones\(options\.getMilestones\(\)\.filter/);
+  assert.match(milestoneUi, /options\.setIssues\(options\.getIssues\(\)\.map/);
+  assert.match(milestoneUi, /options\.renderProjectIssueBoard\(\)/);
+  assert.match(milestoneUi, /milestone_id === milestone\.id/);
+  assert.match(milestoneUi, /populateIssueMilestoneSelect\(\s*quickAddMilestone,/);
 });
 
 test('milestone rows can be deleted from the keyboard when focused', () => {
-  assert.match(app, /row\.tabIndex = 0/);
-  assert.match(app, /row\.setAttribute\('aria-keyshortcuts', 'Delete'\)/);
-  assert.match(app, /row\.addEventListener\('keydown'/);
-  assert.match(app, /event\.key !== 'Delete'/);
-  assert.match(app, /if \(nextMilestoneRow === undefined\) milestoneNameInput\.focus\(\);\s*else nextMilestoneRow\.focus\(\);/);
+  assert.match(milestoneUi, /row\.tabIndex = 0/);
+  assert.match(milestoneUi, /row\.setAttribute\('aria-keyshortcuts', 'Delete'\)/);
+  assert.match(milestoneUi, /row\.addEventListener\('keydown'/);
+  assert.match(milestoneUi, /event\.key !== 'Delete'/);
+  assert.match(milestoneUi, /if \(nextMilestoneRow === undefined\) milestoneNameInput\.focus\(\);\s*else nextMilestoneRow\.focus\(\);/);
 });
 
 test('opening the milestone manager focuses a milestone when available', () => {
-  const openStart = app.indexOf('function openMilestoneManager(');
-  const openEnd = app.indexOf('\nfunction closeMilestoneManager(', openStart + 1);
-  const open = app.slice(openStart, openEnd);
-  assert.match(open, /milestoneManagerDialog\.showModal\(\)/);
+  const openStart = milestoneUi.indexOf('function open(): void');
+  const openEnd = milestoneUi.indexOf('\n  function close()', openStart + 1);
+  const open = milestoneUi.slice(openStart, openEnd);
+  assert.match(open, /managerDialog\.showModal\(\)/);
   assert.match(open, /const firstMilestoneRow = milestoneList\.querySelector/);
   assert.match(open, /if \(firstMilestoneRow === null\) milestoneNameInput\.focus\(\);\s*else firstMilestoneRow\.focus\(\);/);
 });

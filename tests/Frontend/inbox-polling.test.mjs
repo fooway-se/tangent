@@ -9,6 +9,7 @@ import {
 import { inboxEventPagePath, mergeInboxEventPage } from '../../public/assets/inbox-events.js';
 
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
+const dom = await readFile(new URL('../../frontend/src/dom.ts', import.meta.url), 'utf8');
 const inboxEventsSource = await readFile(new URL('../../frontend/src/inbox-events.ts', import.meta.url), 'utf8');
 
 test('inbox collection diff reports only changed, added, removed, and reordered rows', () => {
@@ -72,7 +73,7 @@ test('inbox event pages request the selected tab and merge without duplicates', 
     { id: 17 },
   ]);
   assert.match(app, /inboxEventPagePath\(inboxTab/);
-  assert.match(app, /inbox-load-more/);
+  assert.match(dom, /inbox-load-more/);
   assert.match(app, /loadMoreInboxEvents/);
 });
 

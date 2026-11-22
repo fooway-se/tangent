@@ -1,26 +1,30 @@
 import { INBOX_TABS, createEventRow, eventsForTab, inboxEventPagePath, mergeInboxEventPage, } from './inbox-events.js';
+import { api, apiBaseUrl, ApiFailure } from './api.js';
+import { ISSUE_STATUS_OPTIONS, ISSUE_TYPE_OPTIONS, PROJECT_STATUS_HINTS, PROJECT_STATUS_LABELS, PROJECT_STATUS_ORDER, } from './types.js';
 import { diffInboxCollections, nextInboxPollDelay, shouldDeferInboxUpdates, } from './inbox-polling.js';
-import { renderClientEmptyState, renderClientView } from './guest-view.js';
+import { initGuestUi } from './guest-ui.js';
 import { createLogoutController } from './logout.js';
 import { ProjectNavigationOwner, runOwnedRequest } from './project-navigation.js';
 import { ChatEventFeed, pollProjectChatEvents } from './chat-event-feed.js';
 import { githubRepositorySelectionValue, parseGitHubRepositorySelection } from './github-repository-selection.js';
 import { switchWorkspaceMembership } from './workspace-switch.js';
 import { credentialNeedsConfirmation, inviteCredentialPresentation } from './credential-flow.js';
-import { generateClientSummary } from './client-summary.js';
+import { initClientSummaryUi } from './client-summary-ui.js';
 import { filterMentionMembers, findMentionQuery, mentionEmptyMessage, nextMentionSelectionIndex, replaceMentionQuery, splitMentions, } from './chat-mentions.js';
 import { formatChatTimestamp } from './chat-time.js';
 import { resolveShortcut, shouldSubmitOnEnter } from './shortcuts.js';
-import { THEMES, applyTheme, loadTheme, nextTheme, themeLabel } from './theme.js';
-import { THEME_MACHINES } from './theme-machines.js';
-import { DEFAULT_PROJECT_NOTES_MODE, renderMarkdown } from './project-notes.js';
+import { nextTheme, themeLabel } from './theme.js';
+import { initThemeUi } from './theme-ui.js';
+import { initProjectNotesUi } from './project-notes-ui.js';
+import { initMilestoneUi } from './milestone-ui.js';
 import { parseQuickIssueInput } from './quick-issue.js';
 import { milestoneStatus } from './roadmap.js';
 import { formatIssueMarkdown, formatIssuePrompt } from './issue-export.js';
 import { groupMyWorkTasks } from './my-work.js';
-import { filterIssues, filterIssuesByMilestoneArchive, groupIssues, groupIssuesByMilestone, discussionIndicatorLabel, milestoneProgress, projectProgress, sortIssues, } from './issue-board.js';
+import { filterIssues, filterIssuesByMilestoneArchive, groupIssues, groupIssuesByMilestone, discussionIndicatorLabel, projectProgress, sortIssues, } from './issue-board.js';
 import { diffConditionalIssueCollections, loadIssueCollections, nextIssuePollDelay, refreshDeletedIssuesOnOpen, shouldDeferIssueUpdates, } from './issue-polling.js';
-const apiBaseUrl = new URL('../api/v1', import.meta.url).pathname.replace(/\/$/, '');
+import { dom } from './dom.js';
+const { project: { projectHeading, projectEditDialog, projectEditForm, projectEditClose, projectEditCancel, projectEditName, projectEditDescription, projectEditStatus, projectEditStatusHelp, projectReadOnlyNotice, projectEditMessage, projectEditSave, editProjectButton, projectGithubRepository, projectEditGithubRepository, githubProjectSelectionStatus, githubProjectEditStatus, connectGithubCreateButton, connectGithubEditButton, projectsNavButton, projectsView, projectView, projectForm, projectList, emptyProjects, projectFormPanel, projectDescription, projectState, projectChatColumn, projectSidebarList, projectSidebarEmpty, projectMain, projectTabs, projectKeyboardHints, }, auth: { loginPanel, loginShell, accountBar, currentUserLabel, loginAdminHelp, loginKeyboardHints, credentialFlow, credentialFlowHeading, credentialFlowDescription, credentialFlowError, credentialForm, credentialPasswordFields, credentialPasswordLabel, credentialVerificationField, credentialVerificationInput, credentialConfirmationField, credentialSubmit, credentialCancel, loginForm, loginStatusMessage, logoutButton, }, workspace: { workspacePanel, workspaceNav, workspaceSwitcher, workspaceSwitcherLabel, workspacePicker, workspacePickerCancel, workspacePickerConfirm, workspacePickerDescription, workspacePickerOptions, adminNavButton, adminView, adminHeading, workspaceAdminTabs, workspaceAdminMembersTab, workspaceAdminInvitesTab, workspaceAdminWorkspacesTab, workspaceAdminMembersPanel, workspaceAdminInvitesPanel, workspaceAdminWorkspacesPanel, workspaceMembersList, workspaceMembersEmpty, inviteForm, inviteRoleInput, inviteProjectSelection, inviteProjectOptions, workspaceInvitesList, workspaceInvitesEmpty, workspaceMemberDeactivationDialog, workspaceMemberDeactivationDescription, workspaceMemberDeactivationCancel, workspaceMemberDeactivationConfirm, workspaceMemberRoleDialog, workspaceMemberRoleHeading, workspaceMemberRoleDescription, workspaceMemberRoleCancel, workspaceMemberRoleConfirm, workspaceGuestProjectsDialog, workspaceGuestProjectsDescription, workspaceGuestProjectOptions, workspaceGuestProjectsEmpty, workspaceGuestProjectsStatus, workspaceGuestProjectsCancel, workspaceGuestProjectsSave, membersView, adminGoPrefixOption, workspaceSwitchHint, membersTabButton, memberList, memberForm, memberAddControls, memberAddStatus, memberSelect, memberRemovalConfirmation, memberRemovalDescription, memberRemovalCancel, memberRemovalConfirm, }, shell: { createWorkspaceForm, breadcrumbProjectsButton, breadcrumbDivider, breadcrumbCurrent, cancelProjectFormButton, linkPullRequestButton, notesTabButton, emptyIssues, addMemberButton, statusMessage, }, roadmap: { roadmapNavButton, roadmapView, roadmapHeading, roadmapSummary, roadmapMilestoneList, roadmapEmptyState, roadmapGoPrefixOption, }, inbox: { inboxNavButton, inboxView, inboxHeading, myWorkTabsElement, myWorkInboxTab, myWorkTasksTab, myWorkInboxPanel, myWorkTasksPanel, myWorkTasksSummary, myWorkTaskGroups, myWorkTasksEmptyState, inboxSummary, inboxIssueList, inboxEmptyState, inboxTabsElement, inboxMarkAllReadButton, inboxLoadMoreButton, }, lounge: { loungeNavButton, loungeNavPresenceBadge, loungeView, loungeHeading, loungePresence, loungeMessageList, loungeEmptyState, loungeForm, loungeInput, loungeMentionList, loungeReplyHint, loungeCancelReply, }, shortcuts: { toggleProjectFormButton, keyboardHints, goPrefixHint, goPrefixWorkspaceOption, goPrefixProjectOptions, commandPalette, commandPaletteClose, commandSearch, commandResults, shortcutHelp, shortcutHelpClose, }, chat: { chatView, }, issues: { issuesView, issueDetailView, issueDetailDisplay, issueDetailTitle, issueDetailPriority, issueDetailDueDate, issueDetailDescription, issueDetailBrief, issueDetailContextSection, issueDetailContext, issueDetailExpectedOutcomeSection, issueDetailExpectedOutcome, issueDetailAcceptanceCriteriaSection, issueDetailAcceptanceCriteria, issueDetailStatus, issueDetailStatusLabel, issueSourceLink, issuePullRequests, issuePullRequestsList, issuePullRequestsEmpty, issuePullRequestDialog, issuePullRequestForm, issuePullRequestClose, issuePullRequestCancel, issuePullRequestUrl, issuePullRequestMessage, issuePullRequestSubmit, issueDetailEditForm, issueDetailTitleInput, issueDetailDescriptionInput, issueDetailPriorityInput, issueDetailDueDateInput, issueDetailEditButton, issueAiPromptButton, issueAiPromptDialog, issueAiPromptCloseButton, issueAiPromptStepCount, issueAiPromptContext, issueAiPromptOutcome, issueAiPromptCriteria, issueAiPromptPreview, issueAiPromptStatus, issueAiPromptBackButton, issueAiPromptSkipButton, issueAiPromptNextButton, issueAiPromptActions, issueAiPromptSaveButton, issueAiPromptCopyButton, issueAiPromptCopyMarkdownButton, issueAiPromptDownloadButton, issueDetailDeleteButton, issueDetailSaveButton, issuesTabButton, issueBackButton, issueDetailCancelButton, issueForm, issueQuickAddTitle, issueQuickAddPriority, issueQuickAddDueDate, issueQuickAddAssignee, issueQuickAddMilestone, issueQuickAddOngoing, issueQuickAddShared, issueQuickAddApproval, issueQuickAddCancelButton, issueDetailType, issueDetailAssignee, issueDetailMilestone, issueDetailOngoingRow, issueDetailSharing, issueDetailApproval, issueDetailTypeInput, issueDetailAssigneeInput, issueDetailMilestoneInput, issueDetailOngoingInput, issueDetailSharedInput, issueDetailApprovalInput, issueStatusHistory, issueStatusHistoryCount, issueStatusHistoryEmpty, issueStatusHistoryList, issueDiscussionHeading, issueDiscussionCount, issueDiscussionStatus, issueDiscussionEmpty, issueDiscussionList, issueDiscussionForm, issueDiscussionInput, issueDiscussionSubmit, issueDiscussionReplyContext, issueDiscussionReplyLabel, issueDiscussionReplyCancel, issueDescriptionDetails, issueProgress, issueProgressLabel, issueFilter, issueGrouping, issueOrder, issueScope, issueCountSummary, issueBulkAssignToggle, issueBulkAssignToolbar, issueList, deletedIssuesDetails, deletedIssueCount, deletedIssueList, issueStatusPicker, issueStatusPickerClose, issueStatusPickerDescription, issueStatusPickerOptions, issueDeleteConfirmation, issueDeleteDescription, issueDeleteError, issueDeleteCancel, issueDeleteConfirm, }, guest: { guestWorkspaceSwitcher, guestWorkspaceSwitcherLabel, guestLogoutButton, }, } = dom;
 const KEYBOARD_HINTS_STORAGE_KEY = 'tangent.keyboard-hints-visible';
 function loadKeyboardHintsPreference() {
     try {
@@ -30,39 +34,6 @@ function loadKeyboardHintsPreference() {
         return true;
     }
 }
-const PROJECT_STATUS_LABELS = {
-    active: 'Active',
-    paused: 'Paused',
-    completed: 'Completed',
-    archived: 'Archived',
-};
-const PROJECT_STATUS_HINTS = {
-    active: 'Normal work.',
-    paused: 'Temporarily on hold; it can be resumed. The project and its history remain available.',
-    completed: 'Finished and read-only. An admin can reopen it. Small follow-up work can stay in this project; a distinct engagement can start a new one.',
-    archived: 'A housekeeping state that moves the project out of the active list while keeping its history. Existing members and guests can still view it read-only.',
-};
-const PROJECT_STATUS_ORDER = {
-    active: 0,
-    paused: 1,
-    completed: 2,
-    archived: 3,
-};
-const ISSUE_STATUS_OPTIONS = [
-    { value: 'backlog', label: 'Backlog' },
-    { value: 'todo', label: 'Todo' },
-    { value: 'doing', label: 'Doing' },
-    { value: 'testing', label: 'Testing' },
-    { value: 'done', label: 'Done' },
-    { value: 'cancelled', label: 'Cancelled' },
-];
-const ISSUE_TYPE_OPTIONS = [
-    { value: 'task', label: 'Task' },
-    { value: 'bug', label: 'Bug' },
-    { value: 'feature', label: 'Feature' },
-    { value: 'research', label: 'Research' },
-    { value: 'maintenance', label: 'Maintenance' },
-];
 function issueStatusLabel(status) {
     return ISSUE_STATUS_OPTIONS.find((option) => option.value === status)?.label ?? status;
 }
@@ -125,364 +96,16 @@ function populateIssueMilestoneSelect(select, selectedMilestoneId) {
     }
     select.value = selectedMilestoneId === null ? '' : String(selectedMilestoneId);
 }
-class ApiFailure extends Error {
-    status;
-    constructor(message, status) {
-        super(message);
-        this.status = status;
-    }
-}
-let activeTheme = loadTheme();
-const themeSelects = document.querySelectorAll('.theme-select');
-function focusThemeSelector() {
-    const selector = Array.from(themeSelects).find((select) => select.closest('[hidden]') === null && select.getClientRects().length > 0);
-    selector?.focus();
-}
-function setTheme(id) {
-    activeTheme = id;
-    applyTheme(id);
-    for (const select of themeSelects)
-        select.value = id;
-}
-for (const select of themeSelects) {
-    for (const theme of THEMES)
-        select.append(new Option(theme.label, theme.id));
-    select.value = activeTheme;
-    select.addEventListener('change', () => setTheme(select.value));
-}
-const themeAboutDialog = document.querySelector('#theme-about-dialog');
-const themeAboutHeading = document.querySelector('#theme-about-heading');
-const themeAboutEra = document.querySelector('#theme-about-era');
-const themeAboutImage = document.querySelector('#theme-about-image');
-const themeAboutImageFallback = document.querySelector('#theme-about-image-fallback');
-const themeAboutFacts = document.querySelector('#theme-about-facts');
-const themeAboutImageCredit = document.querySelector('#theme-about-image-credit');
-const themeAboutHistorySource = document.querySelector('#theme-about-history-source');
-const projectHeading = document.querySelector('#project-heading');
-const projectEditDialog = document.querySelector('#project-edit-dialog');
-const projectEditForm = document.querySelector('#project-edit-form');
-const projectEditClose = document.querySelector('#project-edit-close');
-const projectEditCancel = document.querySelector('#project-edit-cancel');
-const projectEditName = document.querySelector('#project-edit-name');
-const projectEditDescription = document.querySelector('#project-edit-description-input');
-const projectEditStatus = document.querySelector('#project-edit-status');
-const projectEditStatusHelp = document.querySelector('#project-edit-status-help');
-const projectReadOnlyNotice = document.querySelector('#project-read-only-notice');
-const projectEditMessage = document.querySelector('#project-edit-message');
-const projectEditSave = document.querySelector('#project-edit-save');
-const editProjectButton = document.querySelector('#edit-project-button');
-const projectGithubRepository = document.querySelector('#project-github-repository');
-const projectEditGithubRepository = document.querySelector('#project-edit-github-repository');
-const githubProjectSelectionStatus = document.querySelector('#github-project-selection-status');
-const githubProjectEditStatus = document.querySelector('#github-project-edit-status');
-const connectGithubCreateButton = document.querySelector('#connect-github-create-button');
-const connectGithubEditButton = document.querySelector('#connect-github-edit-button');
-function openThemeAbout() {
-    const machine = THEME_MACHINES[activeTheme];
-    themeAboutHeading.textContent = machine.model;
-    themeAboutEra.textContent = machine.year;
-    themeAboutFacts.replaceChildren(...machine.facts.map((fact) => {
-        const item = document.createElement('li');
-        item.textContent = fact;
-        return item;
-    }));
-    themeAboutImage.hidden = false;
-    themeAboutImageFallback.hidden = true;
-    themeAboutImage.alt = `${machine.illustration ? 'Illustration' : 'Photograph'} of the ${machine.model}`;
-    themeAboutImage.loading = 'eager';
-    themeAboutImage.src = machine.imageUrl;
-    themeAboutImageCredit.href = machine.imagePage;
-    themeAboutImageCredit.textContent = `${machine.illustration ? 'Illustration' : 'Photo'}: ${machine.photoCredit} · ${machine.license}`;
-    themeAboutHistorySource.href = machine.historyUrl;
-    themeAboutDialog.showModal();
-}
-document.querySelectorAll('[data-theme-about]').forEach((button) => {
-    button.addEventListener('click', openThemeAbout);
-});
-themeAboutImage.addEventListener('error', () => {
-    themeAboutImage.hidden = true;
-    themeAboutImageFallback.hidden = false;
-});
-document.querySelector('#theme-about-close').addEventListener('click', () => themeAboutDialog.close());
-const loginPanel = document.querySelector('#login-panel');
-const loginShell = document.querySelector('#login-shell');
-const workspacePanel = document.querySelector('#workspace-panel');
-const accountBar = document.querySelector('#account-bar');
-const currentUserLabel = document.querySelector('#current-user');
-const workspaceNav = document.querySelector('#workspace-nav');
-const workspaceSwitcher = document.querySelector('#workspace-switcher');
-const workspaceSwitcherLabel = document.querySelector('#workspace-switcher-label');
-const workspacePicker = document.querySelector('#workspace-picker');
-const workspacePickerCancel = document.querySelector('#workspace-picker-cancel');
-const workspacePickerConfirm = document.querySelector('#workspace-picker-confirm');
-const workspacePickerDescription = document.querySelector('#workspace-picker-description');
-const workspacePickerOptions = document.querySelector('#workspace-picker-options');
-const createWorkspaceForm = document.querySelector('#create-workspace-form');
-const breadcrumbProjectsButton = document.querySelector('#breadcrumb-projects');
-const breadcrumbDivider = document.querySelector('#breadcrumb-divider');
-const breadcrumbCurrent = document.querySelector('#breadcrumb-current');
-const projectsNavButton = document.querySelector('#projects-nav');
-const roadmapNavButton = document.querySelector('#roadmap-nav');
-const inboxNavButton = document.querySelector('#inbox-nav');
-const loungeNavButton = document.querySelector('#lounge-nav');
-const loungeNavPresenceBadge = document.querySelector('#lounge-nav-presence');
-const adminNavButton = document.querySelector('#admin-nav');
-const projectsView = document.querySelector('#projects-view');
-const roadmapView = document.querySelector('#roadmap-view');
-const roadmapHeading = document.querySelector('#roadmap-heading');
-const roadmapSummary = document.querySelector('#roadmap-summary');
-const roadmapMilestoneList = document.querySelector('#roadmap-milestone-list');
-const roadmapEmptyState = document.querySelector('#roadmap-empty-state');
-const inboxView = document.querySelector('#inbox-view');
-const loungeView = document.querySelector('#lounge-view');
-const inboxHeading = document.querySelector('#inbox-heading');
-const myWorkTabsElement = document.querySelector('#my-work-tabs');
-const myWorkInboxTab = document.querySelector('#my-work-tab-inbox');
-const myWorkTasksTab = document.querySelector('#my-work-tab-tasks');
-const myWorkInboxPanel = document.querySelector('#my-work-inbox-panel');
-const myWorkTasksPanel = document.querySelector('#my-work-tasks-panel');
-const myWorkTasksSummary = document.querySelector('#my-work-tasks-summary');
-const myWorkTaskGroups = document.querySelector('#my-work-task-groups');
-const myWorkTasksEmptyState = document.querySelector('#my-work-tasks-empty-state');
-const loungeHeading = document.querySelector('#lounge-heading');
-const loungePresence = document.querySelector('#lounge-presence');
-const loungeMessageList = document.querySelector('#lounge-message-list');
-const loungeEmptyState = document.querySelector('#lounge-empty-state');
-const loungeForm = document.querySelector('#lounge-form');
-const loungeInput = document.querySelector('#lounge-input');
-const loungeMentionList = document.querySelector('#lounge-mention-suggestions');
-const loungeReplyHint = document.querySelector('#lounge-reply-hint');
-const loungeCancelReply = document.querySelector('#lounge-cancel-reply');
-const inboxSummary = document.querySelector('#inbox-summary');
-const inboxIssueList = document.querySelector('#inbox-issue-list');
-const inboxEmptyState = document.querySelector('#inbox-empty-state');
-const projectView = document.querySelector('#project-view');
-const adminView = document.querySelector('#admin-view');
-const adminHeading = document.querySelector('#admin-heading');
-const workspaceAdminTabs = document.querySelector('#workspace-admin-tabs');
-const workspaceAdminMembersTab = document.querySelector('#workspace-admin-members-tab');
-const workspaceAdminInvitesTab = document.querySelector('#workspace-admin-invites-tab');
-const workspaceAdminWorkspacesTab = document.querySelector('#workspace-admin-workspaces-tab');
-const workspaceAdminMembersPanel = document.querySelector('#workspace-admin-members-panel');
-const workspaceAdminInvitesPanel = document.querySelector('#workspace-admin-invites-panel');
-const workspaceAdminWorkspacesPanel = document.querySelector('#workspace-admin-workspaces-panel');
-const workspaceMembersList = document.querySelector('#workspace-members-list');
-const workspaceMembersEmpty = document.querySelector('#workspace-members-empty');
-const inviteForm = document.querySelector('#invite-form');
-const inviteRoleInput = document.querySelector('#invite-role');
-const inviteProjectSelection = document.querySelector('#invite-project-selection');
-const inviteProjectOptions = document.querySelector('#invite-project-options');
-const workspaceInvitesList = document.querySelector('#workspace-invites-list');
-const workspaceInvitesEmpty = document.querySelector('#workspace-invites-empty');
-const workspaceMemberDeactivationDialog = document.querySelector('#workspace-member-deactivation-dialog');
-const workspaceMemberDeactivationDescription = document.querySelector('#workspace-member-deactivation-description');
-const workspaceMemberDeactivationCancel = document.querySelector('#workspace-member-deactivation-cancel');
-const workspaceMemberDeactivationConfirm = document.querySelector('#workspace-member-deactivation-confirm');
-const workspaceMemberRoleDialog = document.querySelector('#workspace-member-role-confirmation-dialog');
-const workspaceMemberRoleHeading = document.querySelector('#workspace-member-role-heading');
-const workspaceMemberRoleDescription = document.querySelector('#workspace-member-role-description');
-const workspaceMemberRoleCancel = document.querySelector('#workspace-member-role-cancel');
-const workspaceMemberRoleConfirm = document.querySelector('#workspace-member-role-confirm');
-const workspaceGuestProjectsDialog = document.querySelector('#workspace-guest-projects-dialog');
-const workspaceGuestProjectsDescription = document.querySelector('#workspace-guest-projects-description');
-const workspaceGuestProjectOptions = document.querySelector('#workspace-guest-project-options');
-const workspaceGuestProjectsEmpty = document.querySelector('#workspace-guest-projects-empty');
-const workspaceGuestProjectsStatus = document.querySelector('#workspace-guest-projects-status');
-const workspaceGuestProjectsCancel = document.querySelector('#workspace-guest-projects-cancel');
-const workspaceGuestProjectsSave = document.querySelector('#workspace-guest-projects-save');
-const loginAdminHelp = document.querySelector('#login-admin-help');
-const loginKeyboardHints = document.querySelector('.login-keyboard-hints');
-const credentialFlow = document.querySelector('#credential-flow');
-const credentialFlowHeading = document.querySelector('#credential-flow-heading');
-const credentialFlowDescription = document.querySelector('#credential-flow-description');
-const credentialFlowError = document.querySelector('#credential-flow-error');
-const credentialForm = document.querySelector('#credential-form');
-const credentialPasswordFields = document.querySelector('#credential-password-fields');
-const credentialPasswordLabel = document.querySelector('#credential-password-label-text');
-const credentialVerificationField = document.querySelector('#credential-verification-field');
-const credentialVerificationInput = document.querySelector('input[name="verification_code"]');
-const credentialConfirmationField = document.querySelector('#credential-confirmation-field');
-const credentialSubmit = document.querySelector('#credential-submit');
-const credentialCancel = document.querySelector('#credential-cancel');
-const projectForm = document.querySelector('#project-form');
-const toggleProjectFormButton = document.querySelector('#toggle-project-form');
-const cancelProjectFormButton = document.querySelector('#cancel-project-form');
-const loginForm = document.querySelector('#login-form');
-const projectList = document.querySelector('#project-list');
-const emptyProjects = document.querySelector('#empty-projects');
-const projectFormPanel = document.querySelector('#project-form-panel');
-const projectDescription = document.querySelector('#project-description');
-const projectState = document.querySelector('#project-state');
-const chatView = document.querySelector('#chat-view');
-const projectChatColumn = document.querySelector('#project-chat-column');
-const projectSidebarList = document.querySelector('#project-sidebar-list');
-const projectSidebarEmpty = document.querySelector('#project-sidebar-empty');
+const themeUi = initThemeUi();
 const projectSidebarSection = projectSidebarList.closest('.sidebar-projects');
 const projectSidebarMore = createScrollMoreIndicator();
 projectSidebarList.after(projectSidebarMore);
-const projectMain = document.querySelector('.project-main');
-const projectTabs = document.querySelector('.project-tabs');
-const issuesView = document.querySelector('#issues-view');
-const membersView = document.querySelector('#members-view');
-const projectNotesView = document.querySelector('#project-notes-view');
-const projectNotesForm = document.querySelector('#project-notes-form');
-const projectNotesInput = document.querySelector('#project-notes-input');
-const projectNotesPreview = document.querySelector('#project-notes-preview');
-const projectNotesStatus = document.querySelector('#project-notes-status');
-const projectNotesSave = document.querySelector('#project-notes-save');
-const projectNotesWrite = document.querySelector('#project-notes-write');
-const projectNotesPreviewToggle = document.querySelector('#project-notes-preview-toggle');
-const issueDetailView = document.querySelector('#issue-detail-view');
-const issueDetailDisplay = document.querySelector('#issue-detail-display');
-const issueDetailTitle = document.querySelector('#issue-detail-title');
-const issueDetailPriority = document.querySelector('#issue-detail-priority');
-const issueDetailDueDate = document.querySelector('#issue-detail-due-date');
-const issueDetailDescription = document.querySelector('#issue-detail-description');
-const issueDetailBrief = document.querySelector('#issue-detail-brief');
-const issueDetailContextSection = document.querySelector('#issue-detail-context-section');
-const issueDetailContext = document.querySelector('#issue-detail-context');
-const issueDetailExpectedOutcomeSection = document.querySelector('#issue-detail-expected-outcome-section');
-const issueDetailExpectedOutcome = document.querySelector('#issue-detail-expected-outcome');
-const issueDetailAcceptanceCriteriaSection = document.querySelector('#issue-detail-acceptance-criteria-section');
-const issueDetailAcceptanceCriteria = document.querySelector('#issue-detail-acceptance-criteria');
-const issueDetailStatus = document.querySelector('#issue-detail-status');
-const issueDetailStatusLabel = document.querySelector('#issue-detail-status-label');
-const issueSourceLink = document.querySelector('#issue-source-link');
-const issuePullRequests = document.querySelector('#issue-pull-requests');
-const issuePullRequestsList = document.querySelector('#issue-pull-requests-list');
-const issuePullRequestsEmpty = document.querySelector('#issue-pull-requests-empty');
-const linkPullRequestButton = document.querySelector('#link-pull-request-button');
-const issuePullRequestDialog = document.querySelector('#issue-pull-request-dialog');
-const issuePullRequestForm = document.querySelector('#issue-pull-request-form');
-const issuePullRequestClose = document.querySelector('#issue-pull-request-close');
-const issuePullRequestCancel = document.querySelector('#issue-pull-request-cancel');
-const issuePullRequestUrl = document.querySelector('#issue-pull-request-url');
-const issuePullRequestMessage = document.querySelector('#issue-pull-request-message');
-const issuePullRequestSubmit = document.querySelector('#issue-pull-request-submit');
-const issueDetailEditForm = document.querySelector('#issue-detail-edit-form');
-const issueDetailTitleInput = document.querySelector('#issue-detail-title-input');
-const issueDetailDescriptionInput = document.querySelector('#issue-detail-description-input');
-const issueDetailPriorityInput = document.querySelector('#issue-detail-priority-input');
-const issueDetailDueDateInput = document.querySelector('#issue-detail-due-date-input');
-const issueDetailEditButton = document.querySelector('#issue-detail-edit-button');
-const issueAiPromptButton = document.querySelector('#issue-ai-prompt-button');
-const issueAiPromptDialog = document.querySelector('#issue-ai-prompt-dialog');
-const issueAiPromptCloseButton = document.querySelector('#issue-ai-prompt-close');
-const issueAiPromptStepCount = document.querySelector('#issue-ai-prompt-step-count');
 const issueAiPromptSteps = [
     document.querySelector('#issue-ai-prompt-step-context'),
     document.querySelector('#issue-ai-prompt-step-outcome'),
     document.querySelector('#issue-ai-prompt-step-criteria'),
     document.querySelector('#issue-ai-prompt-step-preview'),
 ];
-const issueAiPromptContext = document.querySelector('#issue-ai-prompt-context');
-const issueAiPromptOutcome = document.querySelector('#issue-ai-prompt-outcome');
-const issueAiPromptCriteria = document.querySelector('#issue-ai-prompt-criteria');
-const issueAiPromptPreview = document.querySelector('#issue-ai-prompt-preview');
-const issueAiPromptStatus = document.querySelector('#issue-ai-prompt-status');
-const issueAiPromptBackButton = document.querySelector('#issue-ai-prompt-back');
-const issueAiPromptSkipButton = document.querySelector('#issue-ai-prompt-skip');
-const issueAiPromptNextButton = document.querySelector('#issue-ai-prompt-next');
-const issueAiPromptActions = document.querySelector('#issue-ai-prompt-actions');
-const issueAiPromptSaveButton = document.querySelector('#issue-ai-prompt-save');
-const issueAiPromptCopyButton = document.querySelector('#issue-ai-prompt-copy');
-const issueAiPromptCopyMarkdownButton = document.querySelector('#issue-ai-prompt-copy-markdown');
-const issueAiPromptDownloadButton = document.querySelector('#issue-ai-prompt-download');
-const issueDetailDeleteButton = document.querySelector('#issue-detail-delete-button');
-const issueDetailSaveButton = document.querySelector('#issue-detail-save-button');
-const keyboardHints = document.querySelector('#keyboard-hints');
-const projectKeyboardHints = document.querySelector('#project-keyboard-hints');
-const goPrefixHint = document.querySelector('#go-prefix-hint');
-const goPrefixWorkspaceOption = document.querySelector('#go-prefix-workspace-option');
-const goPrefixProjectOptions = document.querySelector('#go-prefix-project-options');
-const adminGoPrefixOption = document.querySelector('#admin-go-prefix-option');
-const roadmapGoPrefixOption = document.querySelector('#roadmap-go-prefix-option');
-const workspaceSwitchHint = document.querySelector('#workspace-switch-hint');
-const commandPalette = document.querySelector('#command-palette');
-const clientSummaryDialog = document.querySelector('#client-summary-dialog');
-const clientSummaryPeriod = document.querySelector('#client-summary-period');
-const clientSummaryCustomRange = document.querySelector('#client-summary-custom-range');
-const clientSummaryFrom = document.querySelector('#client-summary-from');
-const clientSummaryTo = document.querySelector('#client-summary-to');
-const clientSummaryGenerate = document.querySelector('#client-summary-generate');
-const clientSummaryPreview = document.querySelector('#client-summary-preview');
-const clientSummaryStatus = document.querySelector('#client-summary-status');
-const clientSummaryClose = document.querySelector('#client-summary-close');
-const clientSummaryCopy = document.querySelector('#client-summary-copy');
-const commandPaletteClose = document.querySelector('#command-palette-close');
-const commandSearch = document.querySelector('#command-search');
-const commandResults = document.querySelector('#command-results');
-const shortcutHelp = document.querySelector('#shortcut-help');
-const shortcutHelpClose = document.querySelector('#shortcut-help-close');
-const membersTabButton = document.querySelector('#members-tab');
-const issuesTabButton = document.querySelector('#issues-tab');
-const notesTabButton = document.querySelector('#notes-tab');
-const issueBackButton = document.querySelector('#issue-back-button');
-const issueDetailCancelButton = document.querySelector('#issue-detail-cancel-button');
-const issueForm = document.querySelector('#issue-form');
-const issueQuickAddTitle = document.querySelector('#issue-quick-add-title');
-const issueQuickAddPriority = document.querySelector('#issue-quick-add-priority');
-const issueQuickAddDueDate = document.querySelector('#issue-quick-add-due-date');
-const issueQuickAddAssignee = document.querySelector('#issue-quick-add-assignee');
-const issueQuickAddMilestone = document.querySelector('#issue-quick-add-milestone');
-const issueQuickAddOngoing = document.querySelector('#issue-quick-add-ongoing');
-const issueQuickAddShared = document.querySelector('#issue-quick-add-shared');
-const issueQuickAddApproval = document.querySelector('#issue-quick-add-approval');
-const issueQuickAddCancelButton = document.querySelector('#issue-quick-add-cancel');
-const issueDetailType = document.querySelector('#issue-detail-type');
-const issueDetailAssignee = document.querySelector('#issue-detail-assignee');
-const issueDetailMilestone = document.querySelector('#issue-detail-milestone');
-const issueDetailOngoingRow = document.querySelector('#issue-detail-ongoing-row');
-const issueDetailSharing = document.querySelector('#issue-detail-sharing');
-const issueDetailApproval = document.querySelector('#issue-detail-approval');
-const issueDetailTypeInput = document.querySelector('#issue-detail-type-input');
-const issueDetailAssigneeInput = document.querySelector('#issue-detail-assignee-input');
-const issueDetailMilestoneInput = document.querySelector('#issue-detail-milestone-input');
-const issueDetailOngoingInput = document.querySelector('#issue-detail-ongoing-input');
-const issueDetailSharedInput = document.querySelector('#issue-detail-shared-input');
-const issueDetailApprovalInput = document.querySelector('#issue-detail-approval-input');
-const issueStatusHistory = document.querySelector('#issue-status-history');
-const issueStatusHistoryCount = document.querySelector('#issue-status-history-count');
-const issueStatusHistoryEmpty = document.querySelector('#issue-status-history-empty');
-const issueStatusHistoryList = document.querySelector('#issue-status-history-list');
-const issueDiscussionHeading = document.querySelector('#issue-discussion-heading');
-const issueDiscussionCount = document.querySelector('#issue-discussion-count');
-const issueDiscussionStatus = document.querySelector('#issue-discussion-status');
-const issueDiscussionEmpty = document.querySelector('#issue-discussion-empty');
-const issueDiscussionList = document.querySelector('#issue-discussion-list');
-const issueDiscussionForm = document.querySelector('#issue-discussion-form');
-const issueDiscussionInput = document.querySelector('#issue-discussion-input');
-const issueDiscussionSubmit = document.querySelector('#issue-discussion-submit');
-const issueDiscussionReplyContext = document.querySelector('#issue-discussion-reply-context');
-const issueDiscussionReplyLabel = document.querySelector('#issue-discussion-reply-label');
-const issueDiscussionReplyCancel = document.querySelector('#issue-discussion-reply-cancel');
-const issueDescriptionDetails = document.querySelector('#issue-description-details');
-const issueProgress = document.querySelector('#issue-progress');
-const issueProgressLabel = document.querySelector('#issue-progress-label');
-const manageMilestonesButton = document.querySelector('#manage-milestones-button');
-const milestoneManagerDialog = document.querySelector('#milestone-manager-dialog');
-const milestoneDeleteConfirmation = document.querySelector('#milestone-delete-confirmation');
-const milestoneDeleteDescription = document.querySelector('#milestone-delete-description');
-const milestoneDeleteError = document.querySelector('#milestone-delete-error');
-const milestoneDeleteCancel = document.querySelector('#milestone-delete-cancel');
-const milestoneDeleteConfirm = document.querySelector('#milestone-delete-confirm');
-const milestoneManagerClose = document.querySelector('#milestone-manager-close');
-const milestoneList = document.querySelector('#milestone-list');
-const milestoneListEmpty = document.querySelector('#milestone-list-empty');
-const milestoneForm = document.querySelector('#milestone-form');
-const milestoneFormHeading = document.querySelector('#milestone-form-heading');
-const milestoneNameInput = document.querySelector('#milestone-name-input');
-const milestoneDueDateInput = document.querySelector('#milestone-due-date-input');
-const milestoneFormError = document.querySelector('#milestone-form-error');
-const milestoneFormCancel = document.querySelector('#milestone-form-cancel');
-const milestoneFormSubmit = document.querySelector('#milestone-form-submit');
-const issueFilter = document.querySelector('#issue-filter');
-const issueGrouping = document.querySelector('#issue-grouping');
-const issueOrder = document.querySelector('#issue-order');
-const issueScope = document.querySelector('#issue-scope');
-const issueCountSummary = document.querySelector('#issue-count-summary');
-const issueBulkAssignToggle = document.querySelector('#issue-bulk-assign-toggle');
-const issueBulkAssignToolbar = document.querySelector('#issue-bulk-assign-toolbar');
 const issueBulkAssignCount = issueBulkAssignToolbar.querySelector('.issue-bulk-assign-count');
 const issueBulkAssignSelectVisible = issueBulkAssignToolbar.querySelector('.issue-bulk-assign-select-visible');
 const issueBulkAssignTarget = issueBulkAssignToolbar.querySelector('.issue-bulk-assign-target');
@@ -490,33 +113,6 @@ const issueBulkAssignApply = issueBulkAssignToolbar.querySelector('.issue-bulk-a
 const issueBulkShareApply = issueBulkAssignToolbar.querySelector('.issue-bulk-share-apply');
 const issueBulkUnshareApply = issueBulkAssignToolbar.querySelector('.issue-bulk-unshare-apply');
 const issueBulkAssignCancel = issueBulkAssignToolbar.querySelector('.issue-bulk-assign-cancel');
-const issueList = document.querySelector('#issue-list');
-const deletedIssuesDetails = document.querySelector('#deleted-issues-details');
-const deletedIssueCount = document.querySelector('#deleted-issue-count');
-const deletedIssueList = document.querySelector('#deleted-issue-list');
-const issueStatusPicker = document.querySelector('#issue-status-picker');
-const issueStatusPickerClose = document.querySelector('#issue-status-picker-close');
-const issueStatusPickerDescription = document.querySelector('#issue-status-picker-description');
-const issueStatusPickerOptions = document.querySelector('#issue-status-picker-options');
-const issueDeleteConfirmation = document.querySelector('#issue-delete-confirmation');
-const issueDeleteDescription = document.querySelector('#issue-delete-description');
-const issueDeleteError = document.querySelector('#issue-delete-error');
-const issueDeleteCancel = document.querySelector('#issue-delete-cancel');
-const issueDeleteConfirm = document.querySelector('#issue-delete-confirm');
-const emptyIssues = document.querySelector('#empty-issues');
-const memberList = document.querySelector('#member-list');
-const memberForm = document.querySelector('#member-form');
-const memberAddControls = document.querySelector('#member-add-controls');
-const memberAddStatus = document.querySelector('#member-add-status');
-const memberSelect = document.querySelector('#member-select');
-const addMemberButton = document.querySelector('#add-member-button');
-const memberRemovalConfirmation = document.querySelector('#member-removal-confirmation');
-const memberRemovalDescription = document.querySelector('#member-removal-description');
-const memberRemovalCancel = document.querySelector('#member-removal-cancel');
-const memberRemovalConfirm = document.querySelector('#member-removal-confirm');
-const statusMessage = document.querySelector('#status-message');
-const loginStatusMessage = document.querySelector('#login-status-message');
-const logoutButton = document.querySelector('#logout-button');
 let activeUser = null;
 let keyboardHintsVisible = loadKeyboardHintsPreference();
 let credentialFragment = null;
@@ -528,18 +124,23 @@ let workspaceMemberRoleChangeTarget = null;
 let workspaceGuestProjectsTarget = null;
 let activeWorkspaces = [];
 let activeProject = null;
-let loadedProjectNotesId = null;
-let savedProjectNotes = '';
-let projectNotesMode = DEFAULT_PROJECT_NOTES_MODE;
 let projectReturnFocusId = null;
 let pendingWorkspaceId = null;
 let workspacePickerOptionIndex = 0;
 const workspaceViewHistory = [];
 const projectNavigation = new ProjectNavigationOwner();
+const clientSummaryUi = initClientSummaryUi({
+    getProject: () => activeProject,
+    canOpen: () => activeUser?.role === 'admin' && !projectView.hidden,
+    defaultReturnFocus: () => projectHeading,
+    onUnauthorized: () => showSignedOut(),
+});
+const projectNotesUi = initProjectNotesUi({
+    getProject: () => activeProject,
+    onUnauthorized: () => showSignedOut(),
+});
 let activeProjectMembers = [];
 let projectMilestones = [];
-let editingMilestoneId = null;
-let milestoneDeleteTarget = null;
 let projectIssues = [];
 let bulkMoveSelectionMode = false;
 let bulkMovePending = false;
@@ -569,25 +170,24 @@ let inboxPollRequestVersion = 0;
 let inboxPollHasDeferredChanges = false;
 let inboxMutationPending = 0;
 const inboxEventRowRenderSignatures = new WeakMap();
-const inboxTabsElement = document.querySelector('#inbox-tabs');
-const inboxMarkAllReadButton = document.querySelector('#inbox-mark-all-read');
-const inboxLoadMoreButton = document.querySelector('#inbox-load-more');
-const guestShell = document.querySelector('#guest-shell');
-const guestStatus = document.querySelector('#guest-status');
-const guestMain = document.querySelector('#guest-main');
-const guestTitle = document.querySelector('#guest-title');
-const guestUser = document.querySelector('#guest-user');
-const guestCap = document.querySelector('#guest-cap');
-const guestWorkspaceSwitcher = document.querySelector('#guest-workspace-switcher');
-const guestWorkspaceSwitcherLabel = document.querySelector('#guest-workspace-switcher-label');
-const guestProjectLabel = document.querySelector('#guest-project-label');
-const guestProjectSelect = document.querySelector('#guest-project-select');
-const guestPreviewMemberLabel = document.querySelector('#guest-preview-member-label');
-const guestPreviewMemberSelect = document.querySelector('#guest-preview-member-select');
-const guestPreviewReturnButton = document.querySelector('#guest-preview-return-button');
-const guestLogoutButton = document.querySelector('#guest-logout-button');
 let deletedProjectIssues = [];
 let selectedIssue = null;
+const milestoneUi = initMilestoneUi({
+    getProject: () => activeProject,
+    getMilestones: () => projectMilestones,
+    setMilestones: (milestones) => { projectMilestones = milestones; },
+    getIssues: () => projectIssues,
+    setIssues: (issues) => { projectIssues = issues; },
+    getSelectedIssue: () => selectedIssue,
+    setSelectedIssue: (issue) => { selectedIssue = issue; },
+    populateIssueMilestoneSelect,
+    renderProjectIssueBoard,
+    renderIssueDetail,
+    report,
+    onUnauthorized: () => showSignedOut(),
+    shouldRestoreFocus: () => !projectView.hidden && activeProject !== null
+        && !commandPalette.open && !shortcutHelp.open && !workspacePicker.open,
+});
 let linkedPullRequests = [];
 let issuePullRequestsRequestVersion = 0;
 let githubRepositories = [];
@@ -595,14 +195,6 @@ let issueAiPromptStepIndex = 0;
 let issueAiPromptReturnFocus = null;
 let activeChatProjectId = null;
 let loungeActive = false;
-let guestPreviewActive = false;
-let clientSummaryProjectId = null;
-let clientSummaryReturnFocus = null;
-let clientSummaryRequestVersion = 0;
-let guestPreviewReturnFocus = null;
-let guestPreviewProjectId = null;
-let guestPreviewMembers = [];
-let guestViewRequestVersion = 0;
 let loungePollTimer = null;
 let loungeCursor = 0;
 let loungeEtag = null;
@@ -677,35 +269,44 @@ let memberRemovalTarget = null;
 let paletteCommands = [];
 let visiblePaletteCommands = [];
 let activePaletteCommandIndex = 0;
-async function api(path, init = {}) {
-    const method = (init.method ?? 'GET').toUpperCase();
-    const headers = new Headers(init.headers);
-    if (init.body !== undefined && !headers.has('Content-Type')) {
-        headers.set('Content-Type', 'application/json');
-    }
-    if (!['GET', 'HEAD', 'OPTIONS'].includes(method) && path !== '/auth/login') {
-        const csrf = cookie('tangent_csrf');
-        if (csrf !== null)
-            headers.set('X-CSRF-Token', csrf);
-    }
-    const response = await fetch(`${apiBaseUrl}${path}`, {
-        ...init,
-        method,
-        headers,
-        credentials: 'same-origin',
-    });
-    if (response.status === 204)
-        return undefined;
-    const payload = await response.json();
-    if (!response.ok) {
-        throw new ApiFailure(payload.error?.message ?? 'The request could not be completed.', response.status);
-    }
-    return payload;
-}
-function cookie(name) {
-    const entry = document.cookie.split(';').map((value) => value.trim()).find((value) => value.startsWith(`${name}=`));
-    return entry === undefined ? null : decodeURIComponent(entry.slice(name.length + 1));
-}
+const guestUi = initGuestUi({
+    getUser: () => activeUser,
+    getProject: () => activeProject,
+    getProjectMembers: () => activeProjectMembers,
+    getProjectHeading: () => projectHeading,
+    onGuestMode: () => {
+        loginShell.hidden = true;
+        loginPanel.hidden = true;
+        workspacePanel.hidden = true;
+        accountBar.hidden = true;
+        guestWorkspaceSwitcher.hidden = false;
+        guestLogoutButton.hidden = false;
+        guestLogoutButton.textContent = 'Sign out';
+        updateKeyboardHintsVisibility();
+        document.body.classList.add('is-guest');
+    },
+    onPreviewOpened: () => {
+        workspacePanel.hidden = true;
+        accountBar.hidden = true;
+        guestWorkspaceSwitcher.hidden = true;
+        guestLogoutButton.hidden = true;
+        updateKeyboardHintsVisibility();
+        projectKeyboardHints.hidden = true;
+        document.body.classList.remove('is-project-view');
+        document.body.classList.add('is-guest');
+    },
+    onPreviewClosed: () => {
+        document.body.classList.remove('is-guest');
+        workspacePanel.hidden = false;
+        accountBar.hidden = false;
+        guestWorkspaceSwitcher.hidden = true;
+        guestLogoutButton.hidden = false;
+        updateKeyboardHintsVisibility();
+        showWorkspaceView('project');
+    },
+    onUnauthorized: () => showSignedOut(),
+    report,
+});
 function renderLoginTerminal(message, isError = false) {
     loginStatusMessage.replaceChildren();
     const label = document.createElement('span');
@@ -734,9 +335,8 @@ function renderLoginTerminal(message, isError = false) {
     return text;
 }
 function report(message, isError = false) {
-    if (!guestShell.hidden) {
-        guestStatus.textContent = message;
-        guestStatus.classList.toggle('error', isError);
+    if (guestUi.isShellVisible()) {
+        guestUi.setStatus(message, isError);
         return;
     }
     if (statusMessageTimer !== null)
@@ -819,8 +419,8 @@ function showSignedOut() {
     stopLoungePolling();
     stopWorkspaceLoungePresenceMonitor();
     renderLoungeNavigationPresence([]);
-    if (clientSummaryDialog.open)
-        clientSummaryDialog.close();
+    if (clientSummaryUi.dialog.open)
+        clientSummaryUi.close();
     activeUser = null;
     githubRepositories = [];
     projectGithubRepository.replaceChildren(new Option('No repository connected', ''));
@@ -851,20 +451,8 @@ function showSignedOut() {
     projectKeyboardHints.hidden = true;
     clearGoPrefix();
     document.body.classList.remove('is-project-view', 'is-guest');
-    guestShell.hidden = true;
-    guestPreviewActive = false;
-    guestPreviewReturnFocus = null;
-    guestViewRequestVersion += 1;
-    guestPreviewProjectId = null;
-    guestPreviewMembers = [];
-    guestPreviewMemberLabel.hidden = true;
-    guestPreviewMemberSelect.replaceChildren();
-    guestPreviewReturnButton.hidden = true;
+    guestUi.reset();
     guestLogoutButton.hidden = false;
-    guestCap.textContent = 'Read-only · guest';
-    guestUser.textContent = '';
-    guestStatus.textContent = '';
-    guestStatus.classList.remove('error');
     myWorkTab = 'inbox';
     inboxTab = 'unread';
     inboxIssues = [];
@@ -899,10 +487,10 @@ function showSignedIn(user) {
     roadmapNavButton.hidden = user.role === 'guest';
     resetPendingWorkspaceSwitch();
     if (user.role === 'guest') {
-        showGuestShell(user);
+        void guestUi.showGuestShell(user);
         return;
     }
-    guestShell.hidden = true;
+    guestUi.reset();
     loginShell.hidden = true;
     loginPanel.hidden = true;
     workspacePanel.hidden = false;
@@ -1510,7 +1098,7 @@ function currentWorkspaceLocation() {
         return {
             view: 'project',
             projectId: activeProject.id,
-            tab: !projectNotesView.hidden ? 'notes' : membersView.hidden ? 'issues' : 'members',
+            tab: !projectNotesUi.view.hidden ? 'notes' : membersView.hidden ? 'issues' : 'members',
         };
     }
     if (!inboxView.hidden)
@@ -2184,7 +1772,7 @@ function issueUpdatesAreDeferred() {
     const dialogOpen = issueStatusPicker.open || issueDeleteConfirmation.open
         || memberRemovalConfirmation.open || workspaceMemberDeactivationDialog.open
         || workspaceMemberRoleDialog.open || workspaceGuestProjectsDialog.open
-        || milestoneDeleteConfirmation.open || milestoneManagerDialog.open;
+        || milestoneUi.deleteConfirmation.open || milestoneUi.managerDialog.open;
     return shouldDeferIssueUpdates({
         issueEditorOpen: !issueDetailEditForm.hidden,
         quickAddActive: issueForm.classList.contains('is-active') || issueQuickAddHasDraft(),
@@ -2561,9 +2149,9 @@ function shortcutContext(target) {
         issueGroupFocused: target instanceof HTMLElement && target.closest('.issue-group > summary') !== null,
         statusHistoryFocused: issueStatusHistory.open && issueStatusHistory.contains(document.activeElement),
         textInputFocused: shouldBlurOnEscape(target),
-        modalOpen: commandPalette.open || clientSummaryDialog.open || shortcutHelp.open || issueAiPromptDialog.open || issueStatusPicker.open || issueDeleteConfirmation.open || themeAboutDialog.open || projectEditDialog.open
+        modalOpen: commandPalette.open || clientSummaryUi.dialog.open || shortcutHelp.open || issueAiPromptDialog.open || issueStatusPicker.open || issueDeleteConfirmation.open || themeUi.aboutDialog.open || projectEditDialog.open
             || memberRemovalConfirmation.open || workspaceMemberDeactivationDialog.open || workspaceMemberRoleDialog.open
-            || workspaceGuestProjectsDialog.open || milestoneDeleteConfirmation.open || milestoneManagerDialog.open
+            || workspaceGuestProjectsDialog.open || milestoneUi.deleteConfirmation.open || milestoneUi.managerDialog.open
             || workspacePicker.open,
         canDismiss: commandPalette.open || shortcutHelp.open || (!workspacePanel.hidden && (pendingWorkspaceId !== null
             || (!projectView.hidden && (!issueDetailView.hidden || !issueDetailEditForm.hidden
@@ -2883,12 +2471,12 @@ function getPaletteCommands() {
             label: 'Generate summary',
             detail: 'Prepare a client-safe summary for ' + activeProject.name,
             shortcut: '',
-            run: openClientSummaryDialog,
+            run: clientSummaryUi.open,
         }, {
             label: 'Preview guest view',
             detail: 'Preview the client portal for ' + activeProject.name,
             shortcut: '',
-            run: openGuestViewPreview,
+            run: () => { void guestUi.openPreview(); },
         });
     }
     if (activeProject !== null) {
@@ -2967,9 +2555,9 @@ function getPaletteCommands() {
     }
     commands.push({
         label: 'Switch theme',
-        detail: `Now ${themeLabel(activeTheme)}; next ${themeLabel(nextTheme(activeTheme))}`,
+        detail: `Now ${themeLabel(themeUi.getActiveTheme())}; next ${themeLabel(nextTheme(themeUi.getActiveTheme()))}`,
         shortcut: '',
-        run: () => setTheme(nextTheme(activeTheme)),
+        run: () => themeUi.setTheme(nextTheme(themeUi.getActiveTheme())),
     });
     commands.push({
         label: 'Sign out',
@@ -3027,22 +2615,22 @@ function runPaletteCommand(index) {
     command.run();
 }
 function openCommandPalette() {
-    if (activeUser === null || milestoneDeleteConfirm.disabled)
+    if (activeUser === null || milestoneUi.deleteConfirmButton.disabled)
         return;
-    if (themeAboutDialog.open)
-        themeAboutDialog.close();
+    if (themeUi.aboutDialog.open)
+        themeUi.aboutDialog.close();
     if (projectEditDialog.open)
         projectEditDialog.close();
     if (workspacePicker.open)
         resetPendingWorkspaceSwitch();
-    if (clientSummaryDialog.open)
-        closeClientSummaryDialog();
+    if (clientSummaryUi.dialog.open)
+        clientSummaryUi.close();
     if (issueAiPromptDialog.open)
         issueAiPromptDialog.close();
-    if (milestoneDeleteConfirmation.open)
-        closeMilestoneDeleteConfirmation();
-    if (milestoneManagerDialog.open)
-        closeMilestoneManager();
+    if (milestoneUi.deleteConfirmation.open)
+        milestoneUi.closeDeleteConfirmation();
+    if (milestoneUi.managerDialog.open)
+        milestoneUi.close();
     if (issueStatusPicker.open)
         closeIssueStatusPicker();
     if (issueDeleteConfirmation.open)
@@ -3069,18 +2657,18 @@ function openCommandPalette() {
     commandSearch.focus();
 }
 function showShortcutHelp() {
-    if (activeUser === null || milestoneDeleteConfirm.disabled)
+    if (activeUser === null || milestoneUi.deleteConfirmButton.disabled)
         return;
     if (workspacePicker.open)
         resetPendingWorkspaceSwitch();
-    if (clientSummaryDialog.open)
-        closeClientSummaryDialog();
+    if (clientSummaryUi.dialog.open)
+        clientSummaryUi.close();
     if (issueAiPromptDialog.open)
         issueAiPromptDialog.close();
-    if (milestoneDeleteConfirmation.open)
-        closeMilestoneDeleteConfirmation();
-    if (milestoneManagerDialog.open)
-        closeMilestoneManager();
+    if (milestoneUi.deleteConfirmation.open)
+        milestoneUi.closeDeleteConfirmation();
+    if (milestoneUi.managerDialog.open)
+        milestoneUi.close();
     if (issueStatusPicker.open)
         closeIssueStatusPicker();
     if (issueDeleteConfirmation.open)
@@ -3103,10 +2691,10 @@ function showShortcutHelp() {
     shortcutHelpClose.focus();
 }
 function dismissCurrentView() {
-    if (milestoneDeleteConfirm.disabled)
+    if (milestoneUi.deleteConfirmButton.disabled)
         return;
-    if (themeAboutDialog.open) {
-        themeAboutDialog.close();
+    if (themeUi.aboutDialog.open) {
+        themeUi.aboutDialog.close();
     }
     else if (projectEditDialog.open) {
         projectEditDialog.close();
@@ -3114,17 +2702,17 @@ function dismissCurrentView() {
     else if (workspacePicker.open) {
         resetPendingWorkspaceSwitch();
     }
-    else if (clientSummaryDialog.open) {
-        closeClientSummaryDialog();
+    else if (clientSummaryUi.dialog.open) {
+        clientSummaryUi.close();
     }
     else if (issueAiPromptDialog.open) {
         issueAiPromptDialog.close();
     }
-    else if (milestoneDeleteConfirmation.open) {
-        closeMilestoneDeleteConfirmation();
+    else if (milestoneUi.deleteConfirmation.open) {
+        milestoneUi.closeDeleteConfirmation();
     }
-    else if (milestoneManagerDialog.open) {
-        closeMilestoneManager();
+    else if (milestoneUi.managerDialog.open) {
+        milestoneUi.close();
     }
     else if (issueDeleteConfirmation.open) {
         closeIssueDeleteConfirmation();
@@ -3324,21 +2912,19 @@ function updateProjectReadOnlyNotice(status) {
     const readOnly = projectStatusIsReadOnly(status);
     projectReadOnlyNotice.hidden = !readOnly;
     issueForm.hidden = readOnly;
-    manageMilestonesButton.disabled = readOnly;
+    milestoneUi.manageButton.disabled = readOnly;
     issueDetailStatus.disabled = readOnly;
     issueDetailEditButton.disabled = readOnly;
     issueDetailDeleteButton.disabled = readOnly;
     issueDiscussionInput.disabled = readOnly;
     issueDiscussionSubmit.disabled = readOnly;
     issueDiscussionReplyCancel.disabled = readOnly;
-    projectNotesInput.disabled = readOnly;
-    projectNotesWrite.disabled = readOnly;
-    projectNotesSave.disabled = readOnly || projectNotesInput.value === savedProjectNotes;
+    projectNotesUi.setReadOnly(readOnly);
     memberForm.hidden = activeUser?.role !== 'admin' || readOnly;
     if (readOnly) {
         issueDetailEditForm.hidden = true;
         issueDetailDisplay.hidden = false;
-        setProjectNotesMode('preview');
+        projectNotesUi.setMode('preview');
     }
     if (chatInput !== null)
         chatInput.disabled = readOnly;
@@ -3522,7 +3108,7 @@ function executeShortcut(action) {
             toggleKeyboardHints();
             break;
         case 'theme-selector':
-            focusThemeSelector();
+            themeUi.focusSelector();
             break;
         case 'await-projects-key':
             startGoPrefix();
@@ -3661,12 +3247,12 @@ function executeShortcut(action) {
     }
 }
 function handleKeyboardShortcut(event) {
-    if (guestPreviewActive) {
+    if (guestUi.isPreviewActive()) {
         if (event.key === 'Escape')
-            closeGuestViewPreview();
+            guestUi.closePreview();
         return;
     }
-    if ((commandPalette.open || clientSummaryDialog.open || shortcutHelp.open || issueAiPromptDialog.open || issueStatusPicker.open || issueDeleteConfirmation.open || memberRemovalConfirmation.open || workspaceMemberDeactivationDialog.open || workspaceMemberRoleDialog.open || workspaceGuestProjectsDialog.open || milestoneDeleteConfirmation.open || milestoneManagerDialog.open || workspacePicker.open || themeAboutDialog.open || projectEditDialog.open)
+    if ((commandPalette.open || clientSummaryUi.dialog.open || shortcutHelp.open || issueAiPromptDialog.open || issueStatusPicker.open || issueDeleteConfirmation.open || memberRemovalConfirmation.open || workspaceMemberDeactivationDialog.open || workspaceMemberRoleDialog.open || workspaceGuestProjectsDialog.open || milestoneUi.deleteConfirmation.open || milestoneUi.managerDialog.open || workspacePicker.open || themeUi.aboutDialog.open || projectEditDialog.open)
         && event.key !== 'Escape'
         && !((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k'))
         return;
@@ -4466,33 +4052,6 @@ workspaceAdminTabs.addEventListener('keydown', (event) => {
     }
 });
 breadcrumbProjectsButton.addEventListener('click', goToProjects);
-manageMilestonesButton.addEventListener('click', openMilestoneManager);
-milestoneManagerClose.addEventListener('click', closeMilestoneManager);
-milestoneDeleteCancel.addEventListener('click', () => closeMilestoneDeleteConfirmation());
-milestoneDeleteConfirm.addEventListener('click', () => {
-    if (milestoneDeleteTarget !== null) {
-        void deleteMilestone(milestoneDeleteTarget.milestone, milestoneDeleteTarget.button);
-    }
-});
-milestoneDeleteConfirmation.addEventListener('cancel', (event) => {
-    event.preventDefault();
-    closeMilestoneDeleteConfirmation();
-});
-milestoneForm.addEventListener('submit', (event) => void saveMilestone(event));
-milestoneFormCancel.addEventListener('click', () => {
-    resetMilestoneForm();
-    milestoneNameInput.focus();
-});
-milestoneManagerDialog.addEventListener('cancel', (event) => {
-    event.preventDefault();
-    closeMilestoneManager();
-});
-milestoneManagerDialog.addEventListener('close', () => {
-    resetMilestoneForm();
-    if (!projectView.hidden && activeProject !== null && !commandPalette.open && !shortcutHelp.open && !workspacePicker.open) {
-        manageMilestonesButton.focus();
-    }
-});
 issuesTabButton.addEventListener('click', () => switchProjectTab('issues'));
 deletedIssuesDetails.addEventListener('toggle', () => {
     const projectId = activeProject?.id ?? null;
@@ -4500,10 +4059,6 @@ deletedIssuesDetails.addEventListener('toggle', () => {
 });
 membersTabButton.addEventListener('click', () => switchProjectTab('members'));
 notesTabButton.addEventListener('click', () => switchProjectTab('notes'));
-projectNotesWrite.addEventListener('click', () => setProjectNotesMode('write'));
-projectNotesPreviewToggle.addEventListener('click', () => setProjectNotesMode('preview'));
-projectNotesInput.addEventListener('input', updateProjectNotesDirtyState);
-projectNotesForm.addEventListener('submit', (event) => void saveProjectNotes(event));
 projectTabs.addEventListener('keydown', (event) => {
     const tabs = [issuesTabButton, membersTabButton, notesTabButton];
     const currentIndex = tabs.indexOf(event.target);
@@ -5522,310 +5077,13 @@ async function openInboxIssue(issue) {
     }
     openIssue(currentIssue);
 }
-function resetMilestoneForm() {
-    milestoneForm.reset();
-    editingMilestoneId = null;
-    milestoneFormHeading.textContent = 'Add a milestone';
-    milestoneFormSubmit.textContent = 'Add milestone';
-    milestoneFormCancel.hidden = true;
-    milestoneFormError.textContent = '';
-    milestoneFormError.hidden = true;
-}
-function renderMilestoneList() {
-    milestoneList.replaceChildren();
-    milestoneListEmpty.hidden = projectMilestones.length > 0;
-    for (const milestone of projectMilestones) {
-        const archived = milestone.archived_at !== null;
-        const row = document.createElement('li');
-        row.className = 'milestone-row';
-        row.classList.toggle('is-archived', archived);
-        row.tabIndex = 0;
-        row.setAttribute('aria-keyshortcuts', 'Delete');
-        const info = document.createElement('div');
-        info.className = 'milestone-row-info';
-        const name = document.createElement('strong');
-        name.textContent = milestone.name;
-        if (archived) {
-            const archivedLabel = document.createElement('span');
-            archivedLabel.className = 'milestone-row-archived';
-            archivedLabel.textContent = 'Archived';
-            info.append(name, archivedLabel);
-        }
-        else {
-            info.append(name);
-        }
-        const dueDate = document.createElement('span');
-        dueDate.textContent = milestone.due_date === null ? 'No due date' : `Due ${milestone.due_date}`;
-        const milestoneIssues = projectIssues.filter((issue) => issue.milestone_id === milestone.id);
-        const progress = milestoneProgress(milestoneIssues);
-        const progressLabel = document.createElement('span');
-        progressLabel.className = `milestone-row-progress${progress.complete ? ' is-complete' : ''}`;
-        if (progress.active === 0) {
-            progressLabel.textContent = progress.cancelled > 0
-                ? `No active issues · ${progress.cancelled} cancelled`
-                : 'No issues yet';
-        }
-        else {
-            const completion = progress.complete ? '✓ Complete · ' : '';
-            const cancelled = progress.cancelled > 0 ? ` · ${progress.cancelled} cancelled` : '';
-            progressLabel.textContent = `${completion}${progress.done}/${progress.active} issues done${cancelled}`;
-        }
-        info.append(dueDate, progressLabel);
-        const edit = document.createElement('button');
-        edit.type = 'button';
-        edit.className = 'button button-quiet';
-        edit.textContent = 'Edit';
-        edit.setAttribute('aria-label', `Edit milestone: ${milestone.name}`);
-        edit.addEventListener('click', () => {
-            editingMilestoneId = milestone.id;
-            milestoneNameInput.value = milestone.name;
-            milestoneDueDateInput.value = milestone.due_date ?? '';
-            milestoneFormHeading.textContent = 'Edit milestone';
-            milestoneFormSubmit.textContent = 'Save milestone';
-            milestoneFormCancel.hidden = false;
-            milestoneFormError.textContent = '';
-            milestoneFormError.hidden = true;
-            milestoneNameInput.focus();
-        });
-        const archive = document.createElement('button');
-        archive.type = 'button';
-        archive.className = 'button button-quiet';
-        archive.textContent = archived ? 'Restore' : 'Archive';
-        archive.dataset.milestoneId = String(milestone.id);
-        archive.setAttribute('aria-label', `${archived ? 'Restore' : 'Archive'} milestone: ${milestone.name}`);
-        archive.addEventListener('click', () => void setMilestoneArchived(milestone, !archived, archive));
-        const remove = document.createElement('button');
-        remove.type = 'button';
-        remove.className = 'button button-quiet button-danger';
-        remove.textContent = 'Delete';
-        remove.setAttribute('aria-label', `Delete milestone: ${milestone.name}`);
-        remove.addEventListener('click', () => openMilestoneDeleteConfirmation(milestone, remove));
-        row.addEventListener('keydown', (event) => {
-            if (event.key !== 'Delete' || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || event.repeat)
-                return;
-            event.preventDefault();
-            event.stopPropagation();
-            remove.click();
-        });
-        const actions = document.createElement('div');
-        actions.className = 'milestone-row-actions';
-        actions.append(edit, archive, remove);
-        row.append(info, actions);
-        milestoneList.append(row);
-    }
-}
-async function setMilestoneArchived(milestone, archived, button) {
-    const projectId = activeProject?.id;
-    if (projectId === undefined)
-        return;
-    const quickAddMilestoneId = issueQuickAddMilestone.value === '' ? null : Number(issueQuickAddMilestone.value);
-    const detailMilestoneId = issueDetailMilestoneInput.value === '' ? null : Number(issueDetailMilestoneInput.value);
-    button.disabled = true;
-    try {
-        await api(`/projects/${projectId}/milestones/${milestone.id}`, {
-            method: 'PATCH',
-            body: JSON.stringify({ archived }),
-        });
-        const result = await api(`/projects/${projectId}/milestones`);
-        if (activeProject?.id !== projectId)
-            return;
-        projectMilestones = result.milestones;
-        populateIssueMilestoneSelect(issueQuickAddMilestone, archived && quickAddMilestoneId === milestone.id ? null : quickAddMilestoneId);
-        populateIssueMilestoneSelect(issueDetailMilestoneInput, detailMilestoneId);
-        renderMilestoneList();
-        renderProjectIssueBoard();
-        if (selectedIssue !== null)
-            renderIssueDetail();
-        report(archived
-            ? 'Milestone archived. Its issues are in History.'
-            : 'Milestone restored to Current work.');
-        milestoneList.querySelector(`button[data-milestone-id="${milestone.id}"]`)?.focus();
-    }
-    catch (error) {
-        if (error instanceof ApiFailure && error.status === 401) {
-            closeMilestoneManager();
-            showSignedOut();
-            return;
-        }
-        report(error instanceof Error ? error.message : 'Could not update the milestone archive state.', true);
-    }
-    finally {
-        button.disabled = false;
-    }
-}
-function openMilestoneManager() {
-    if (activeProject === null)
-        return;
-    resetMilestoneForm();
-    renderMilestoneList();
-    milestoneManagerDialog.showModal();
-    const firstMilestoneRow = milestoneList.querySelector('.milestone-row');
-    if (firstMilestoneRow === null)
-        milestoneNameInput.focus();
-    else
-        firstMilestoneRow.focus();
-}
-function closeMilestoneManager() {
-    if (milestoneDeleteConfirm.disabled)
-        return;
-    if (milestoneDeleteConfirmation.open)
-        closeMilestoneDeleteConfirmation();
-    if (milestoneManagerDialog.open)
-        milestoneManagerDialog.close();
-}
-function openMilestoneDeleteConfirmation(milestone, button) {
-    milestoneDeleteTarget = { milestone, button };
-    milestoneDeleteDescription.textContent = `Deleting “${milestone.name}” leaves its issues in the project and removes their milestone assignment.`;
-    milestoneDeleteError.textContent = '';
-    milestoneDeleteError.hidden = true;
-    milestoneDeleteConfirmation.showModal();
-    milestoneDeleteCancel.focus();
-}
-function closeMilestoneDeleteConfirmation(force = false) {
-    if (milestoneDeleteConfirm.disabled && !force)
-        return;
-    const target = milestoneDeleteTarget;
-    if (milestoneDeleteConfirmation.open)
-        milestoneDeleteConfirmation.close();
-    milestoneDeleteTarget = null;
-    milestoneDeleteError.textContent = '';
-    milestoneDeleteError.hidden = true;
-    milestoneDeleteConfirm.disabled = false;
-    milestoneDeleteCancel.disabled = false;
-    if (target?.button.isConnected && milestoneManagerDialog.open)
-        target.button.focus();
-}
-async function saveMilestone(event) {
-    event.preventDefault();
-    const projectId = activeProject?.id;
-    if (projectId === undefined)
-        return;
-    const editingId = editingMilestoneId;
-    const quickAddMilestoneId = issueQuickAddMilestone.value === '' ? null : Number(issueQuickAddMilestone.value);
-    const detailMilestoneId = issueDetailMilestoneInput.value === '' ? null : Number(issueDetailMilestoneInput.value);
-    const path = editingId === null
-        ? `/projects/${projectId}/milestones`
-        : `/projects/${projectId}/milestones/${editingId}`;
-    const payload = {
-        name: milestoneNameInput.value.trim(),
-        due_date: milestoneDueDateInput.value === '' ? null : milestoneDueDateInput.value,
-    };
-    milestoneFormError.textContent = '';
-    milestoneFormError.hidden = true;
-    milestoneFormSubmit.disabled = true;
-    milestoneFormCancel.disabled = true;
-    milestoneManagerClose.disabled = true;
-    milestoneNameInput.disabled = true;
-    milestoneDueDateInput.disabled = true;
-    try {
-        await api(path, {
-            method: editingId === null ? 'POST' : 'PATCH',
-            body: JSON.stringify(payload),
-        });
-        const result = await api(`/projects/${projectId}/milestones`);
-        if (activeProject?.id !== projectId)
-            return;
-        projectMilestones = result.milestones;
-        renderMilestoneList();
-        populateIssueMilestoneSelect(issueQuickAddMilestone, quickAddMilestoneId);
-        populateIssueMilestoneSelect(issueDetailMilestoneInput, issueDetailEditForm.hidden ? selectedIssue?.milestone_id ?? null : detailMilestoneId);
-        renderProjectIssueBoard();
-        if (selectedIssue !== null)
-            renderIssueDetail();
-        resetMilestoneForm();
-        report(editingId === null ? 'Milestone created.' : 'Milestone updated.');
-        if (milestoneManagerDialog.open)
-            milestoneNameInput.focus();
-    }
-    catch (error) {
-        if (error instanceof ApiFailure && error.status === 401) {
-            closeMilestoneManager();
-            showSignedOut();
-            return;
-        }
-        milestoneFormError.textContent = error instanceof Error ? error.message : 'Could not save the milestone.';
-        milestoneFormError.hidden = false;
-        if (milestoneManagerDialog.open)
-            milestoneNameInput.focus();
-    }
-    finally {
-        milestoneFormSubmit.disabled = false;
-        milestoneFormCancel.disabled = false;
-        milestoneManagerClose.disabled = false;
-        milestoneNameInput.disabled = false;
-        milestoneDueDateInput.disabled = false;
-    }
-}
-async function deleteMilestone(milestone, button) {
-    const projectId = activeProject?.id;
-    if (projectId === undefined)
-        return;
-    const milestoneIndex = Math.max(0, projectMilestones.findIndex((candidate) => candidate.id === milestone.id));
-    const quickAddMilestoneId = issueQuickAddMilestone.value === '' ? null : Number(issueQuickAddMilestone.value);
-    const detailMilestoneId = issueDetailMilestoneInput.value === '' ? null : Number(issueDetailMilestoneInput.value);
-    button.disabled = true;
-    milestoneDeleteConfirm.disabled = true;
-    milestoneDeleteCancel.disabled = true;
-    milestoneManagerClose.disabled = true;
-    try {
-        await api(`/projects/${projectId}/milestones/${milestone.id}`, { method: 'DELETE' });
-        if (activeProject?.id !== projectId)
-            return;
-        closeMilestoneDeleteConfirmation(true);
-        projectMilestones = projectMilestones.filter((candidate) => candidate.id !== milestone.id);
-        projectIssues = projectIssues.map((issue) => issue.milestone_id === milestone.id
-            ? { ...issue, milestone_id: null }
-            : issue);
-        if (selectedIssue?.milestone_id === milestone.id) {
-            selectedIssue = { ...selectedIssue, milestone_id: null };
-        }
-        populateIssueMilestoneSelect(issueQuickAddMilestone, quickAddMilestoneId === milestone.id ? null : quickAddMilestoneId);
-        const nextDetailMilestoneId = issueDetailEditForm.hidden
-            ? selectedIssue?.milestone_id ?? null
-            : detailMilestoneId;
-        populateIssueMilestoneSelect(issueDetailMilestoneInput, nextDetailMilestoneId === milestone.id ? null : nextDetailMilestoneId);
-        if (editingMilestoneId === milestone.id)
-            resetMilestoneForm();
-        renderMilestoneList();
-        renderProjectIssueBoard();
-        if (selectedIssue !== null)
-            renderIssueDetail();
-        report('Milestone deleted. Its issues are now unassigned.');
-        if (milestoneManagerDialog.open) {
-            const remainingRows = Array.from(milestoneList.querySelectorAll('.milestone-row'));
-            const nextMilestoneRow = remainingRows[Math.min(milestoneIndex, remainingRows.length - 1)];
-            if (nextMilestoneRow === undefined)
-                milestoneNameInput.focus();
-            else
-                nextMilestoneRow.focus();
-        }
-    }
-    catch (error) {
-        if (error instanceof ApiFailure && error.status === 401) {
-            closeMilestoneDeleteConfirmation(true);
-            closeMilestoneManager();
-            showSignedOut();
-            return;
-        }
-        milestoneDeleteError.textContent = error instanceof Error ? error.message : 'Could not delete the milestone.';
-        milestoneDeleteError.hidden = false;
-        if (milestoneDeleteConfirmation.open)
-            milestoneDeleteConfirm.focus();
-    }
-    finally {
-        button.disabled = false;
-        milestoneDeleteConfirm.disabled = false;
-        milestoneDeleteCancel.disabled = false;
-        milestoneManagerClose.disabled = false;
-    }
-}
 async function loadProjectDetail(projectId, tab = 'issues', recordHistory = true) {
     const navigationTicket = projectNavigation.begin();
     clearBulkMoveSelection();
     clearBulkAssignSelection();
     const previousLocation = currentWorkspaceLocation();
-    if (milestoneManagerDialog.open)
-        closeMilestoneManager();
+    if (milestoneUi.managerDialog.open)
+        milestoneUi.close();
     stopChatPolling();
     stopIssuePolling();
     if (issueQuickAddSourceProjectId !== null && issueQuickAddSourceProjectId !== projectId) {
@@ -5840,12 +5098,7 @@ async function loadProjectDetail(projectId, tab = 'issues', recordHistory = true
         updateIssueQuickAddApproval();
     }
     selectedIssue = null;
-    loadedProjectNotesId = null;
-    savedProjectNotes = '';
-    projectNotesInput.value = '';
-    projectNotesStatus.textContent = 'Notes are private to the internal team.';
-    projectNotesSave.disabled = true;
-    setProjectNotesMode(DEFAULT_PROJECT_NOTES_MODE);
+    projectNotesUi.reset();
     issueDetailEditForm.hidden = true;
     issueDetailDisplay.hidden = false;
     await runOwnedRequest(projectNavigation, navigationTicket, async (signal) => {
@@ -5901,7 +5154,7 @@ function switchProjectTab(tab, returnFocusIssueId, loadIssues = true) {
     issuesView.hidden = tab !== 'issues' || showingIssueDetail;
     issueDetailView.hidden = !showingIssueDetail;
     membersView.hidden = tab !== 'members';
-    projectNotesView.hidden = tab !== 'notes';
+    projectNotesUi.view.hidden = tab !== 'notes';
     issuesTabButton.classList.toggle('is-active', tab === 'issues');
     membersTabButton.classList.toggle('is-active', tab === 'members');
     notesTabButton.classList.toggle('is-active', tab === 'notes');
@@ -5935,102 +5188,8 @@ function switchProjectTab(tab, returnFocusIssueId, loadIssues = true) {
         void loadProjectMembers(activeProject.id);
         return;
     }
-    if (loadedProjectNotesId !== activeProject.id)
-        void loadProjectNotes(activeProject.id);
-}
-function setProjectNotesMode(mode) {
-    projectNotesMode = mode;
-    const isWriting = mode === 'write';
-    projectNotesWrite.classList.toggle('is-active', isWriting);
-    projectNotesPreviewToggle.classList.toggle('is-active', !isWriting);
-    projectNotesWrite.setAttribute('aria-pressed', String(isWriting));
-    projectNotesPreviewToggle.setAttribute('aria-pressed', String(!isWriting));
-    projectNotesInput.hidden = !isWriting;
-    projectNotesPreview.hidden = isWriting;
-    projectNotesSave.hidden = !isWriting;
-    if (!isWriting) {
-        const markdown = projectNotesInput.value;
-        projectNotesPreview.innerHTML = markdown.trim() === ''
-            ? '<p class="markdown-empty">Nothing written yet.</p>'
-            : renderMarkdown(markdown);
-    }
-}
-function updateProjectNotesDirtyState() {
-    const changed = projectNotesInput.value !== savedProjectNotes;
-    projectNotesSave.disabled = !changed || projectNotesInput.disabled;
-    if (loadedProjectNotesId === activeProject?.id) {
-        projectNotesStatus.textContent = changed
-            ? 'Unsaved changes.'
-            : savedProjectNotes === ''
-                ? 'No notes yet. Notes are private to the internal team.'
-                : 'Saved. Notes are private to the internal team.';
-    }
-    if (projectNotesMode === 'preview')
-        setProjectNotesMode('preview');
-}
-async function loadProjectNotes(projectId) {
-    projectNotesStatus.textContent = 'Loading notes…';
-    projectNotesInput.disabled = true;
-    projectNotesSave.disabled = true;
-    try {
-        const result = await api(`/projects/${projectId}/notes`);
-        if (activeProject?.id !== projectId)
-            return;
-        projectNotesInput.value = result.notes;
-        savedProjectNotes = result.notes;
-        loadedProjectNotesId = projectId;
-        projectNotesInput.disabled = activeProject.status === 'completed' || activeProject.status === 'archived';
-        projectNotesStatus.textContent = result.updated_at === null ? 'No notes yet. Notes are private to the internal team.' : 'Saved. Notes are private to the internal team.';
-        updateProjectNotesDirtyState();
-        setProjectNotesMode(projectNotesMode);
-    }
-    catch (error) {
-        if (error instanceof ApiFailure && error.status === 401) {
-            showSignedOut();
-            return;
-        }
-        if (activeProject?.id === projectId) {
-            projectNotesStatus.textContent = error instanceof Error ? error.message : 'Could not load project notes.';
-            projectNotesInput.disabled = true;
-        }
-    }
-}
-async function saveProjectNotes(event) {
-    event.preventDefault();
-    const projectId = activeProject?.id;
-    if (projectId === undefined || loadedProjectNotesId !== projectId || projectNotesInput.disabled)
-        return;
-    const notes = projectNotesInput.value;
-    projectNotesInput.disabled = true;
-    projectNotesSave.disabled = true;
-    projectNotesStatus.textContent = 'Saving…';
-    try {
-        const result = await api(`/projects/${projectId}/notes`, {
-            method: 'PUT',
-            body: JSON.stringify({ notes }),
-        });
-        if (activeProject?.id !== projectId)
-            return;
-        savedProjectNotes = result.notes;
-        projectNotesInput.value = result.notes;
-        projectNotesStatus.textContent = 'Saved. Notes are private to the internal team.';
-        updateProjectNotesDirtyState();
-    }
-    catch (error) {
-        if (error instanceof ApiFailure && error.status === 401) {
-            showSignedOut();
-            return;
-        }
-        if (activeProject?.id === projectId) {
-            projectNotesStatus.textContent = error instanceof Error ? error.message : 'Could not save project notes.';
-        }
-    }
-    finally {
-        if (activeProject?.id === projectId) {
-            projectNotesInput.disabled = activeProject.status === 'completed' || activeProject.status === 'archived';
-            projectNotesSave.disabled = projectNotesInput.disabled || projectNotesInput.value === savedProjectNotes;
-        }
-    }
+    if (!projectNotesUi.isLoadedFor(activeProject.id))
+        void projectNotesUi.load(activeProject.id);
 }
 async function loadProjectIssues(projectId) {
     pauseIssuePolling();
@@ -8524,7 +7683,7 @@ workspacePicker.addEventListener('close', () => {
     pendingWorkspaceId = null;
     if (commandPalette.open || shortcutHelp.open || issueStatusPicker.open)
         return;
-    if (!guestShell.hidden && !guestWorkspaceSwitcher.hidden && !guestWorkspaceSwitcher.disabled) {
+    if (guestUi.isShellVisible() && !guestWorkspaceSwitcher.hidden && !guestWorkspaceSwitcher.disabled) {
         guestWorkspaceSwitcher.focus();
     }
     else if (!workspacePanel.hidden && !workspaceSwitcher.disabled) {
@@ -8621,297 +7780,6 @@ inviteForm.addEventListener('submit', async (event) => {
         report(error instanceof Error ? error.message : 'Could not send the invitation email.', true);
     }
 });
-function showGuestShell(user) {
-    guestPreviewActive = false;
-    guestPreviewProjectId = null;
-    guestPreviewMembers = [];
-    loginShell.hidden = true;
-    loginPanel.hidden = true;
-    workspacePanel.hidden = true;
-    accountBar.hidden = true;
-    updateKeyboardHintsVisibility();
-    guestShell.hidden = false;
-    guestWorkspaceSwitcher.hidden = false;
-    guestCap.textContent = 'Read-only · guest';
-    guestPreviewMemberLabel.hidden = true;
-    guestPreviewReturnButton.hidden = true;
-    guestLogoutButton.hidden = false;
-    guestLogoutButton.textContent = 'Sign out';
-    guestStatus.textContent = '';
-    guestStatus.classList.remove('error');
-    guestUser.textContent = user.email;
-    document.body.classList.add('is-guest');
-    void loadGuestProjects();
-}
-function openGuestViewPreview() {
-    if (activeUser?.role !== 'admin' || activeProject === null)
-        return;
-    const activeElement = document.activeElement;
-    guestPreviewReturnFocus = activeElement instanceof HTMLElement && activeElement !== document.body
-        ? activeElement
-        : projectHeading;
-    const projectId = activeProject.id;
-    guestPreviewActive = true;
-    guestPreviewProjectId = projectId;
-    guestPreviewMembers = activeProjectMembers.filter((member) => member.role === 'guest' && member.is_active !== false && member.is_active !== 0);
-    guestPreviewMemberSelect.replaceChildren(...guestPreviewMembers.map((member) => new Option(`${member.name} · ${member.email}`, String(member.id))));
-    guestPreviewMemberLabel.hidden = guestPreviewMembers.length < 2;
-    guestPreviewMemberSelect.value = guestPreviewMembers[0] === undefined ? '' : String(guestPreviewMembers[0].id);
-    guestProjectSelect.replaceChildren();
-    guestProjectLabel.hidden = true;
-    guestTitle.textContent = 'Client portal';
-    guestCap.textContent = 'Admin preview · read-only';
-    guestUser.textContent = guestPreviewMembers[0]?.email ?? 'No guest access';
-    guestStatus.classList.remove('error');
-    guestStatus.textContent = guestPreviewMembers.length === 0
-        ? 'No guest currently has access to this project.'
-        : '';
-    guestPreviewReturnButton.hidden = false;
-    guestLogoutButton.hidden = true;
-    guestWorkspaceSwitcher.hidden = true;
-    guestShell.hidden = false;
-    workspacePanel.hidden = true;
-    accountBar.hidden = true;
-    updateKeyboardHintsVisibility();
-    projectKeyboardHints.hidden = true;
-    document.body.classList.remove('is-project-view');
-    document.body.classList.add('is-guest');
-    guestPreviewReturnButton.focus();
-    void loadClientView(projectId, true, guestPreviewMembers[0]?.id ?? 0);
-}
-function closeGuestViewPreview() {
-    if (!guestPreviewActive)
-        return;
-    const returnFocus = guestPreviewReturnFocus ?? projectHeading;
-    guestPreviewActive = false;
-    guestPreviewReturnFocus = null;
-    guestViewRequestVersion += 1;
-    guestPreviewProjectId = null;
-    guestPreviewMembers = [];
-    guestPreviewMemberSelect.replaceChildren();
-    guestPreviewMemberLabel.hidden = true;
-    guestProjectSelect.replaceChildren();
-    guestProjectLabel.hidden = true;
-    guestCap.textContent = 'Read-only · guest';
-    guestUser.textContent = '';
-    guestStatus.textContent = '';
-    guestStatus.classList.remove('error');
-    guestPreviewReturnButton.hidden = true;
-    guestLogoutButton.hidden = false;
-    guestWorkspaceSwitcher.hidden = true;
-    guestShell.hidden = true;
-    document.body.classList.remove('is-guest');
-    workspacePanel.hidden = false;
-    accountBar.hidden = false;
-    updateKeyboardHintsVisibility();
-    showWorkspaceView('project');
-    returnFocus.focus();
-}
-function dateInputValue(date) {
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return String(date.getFullYear()) + '-' + month + '-' + day;
-}
-function setClientSummaryPeriod(days) {
-    const today = new Date();
-    const from = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    from.setDate(from.getDate() - (days - 1));
-    clientSummaryFrom.value = dateInputValue(from);
-    clientSummaryTo.value = dateInputValue(today);
-}
-function validClientSummaryRange(from, to) {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to))
-        return false;
-    const fromTime = Date.parse(from + 'T00:00:00Z');
-    const toTime = Date.parse(to + 'T00:00:00Z');
-    const dayDifference = (toTime - fromTime) / 86_400_000;
-    return Number.isFinite(dayDifference) && dayDifference >= 0 && dayDifference <= 365
-        && new Date(fromTime).toISOString().slice(0, 10) === from
-        && new Date(toTime).toISOString().slice(0, 10) === to;
-}
-function openClientSummaryDialog() {
-    if (activeUser?.role !== 'admin' || activeProject === null || projectView.hidden)
-        return;
-    const activeElement = document.activeElement;
-    clientSummaryReturnFocus = activeElement instanceof HTMLElement && activeElement !== document.body
-        ? activeElement
-        : projectHeading;
-    clientSummaryProjectId = activeProject.id;
-    clientSummaryPeriod.value = '7';
-    clientSummaryCustomRange.hidden = true;
-    setClientSummaryPeriod(7);
-    clientSummaryPreview.value = '';
-    clientSummaryCopy.disabled = true;
-    clientSummaryStatus.classList.remove('is-error');
-    clientSummaryStatus.textContent = 'Generating summary…';
-    clientSummaryGenerate.disabled = false;
-    clientSummaryDialog.showModal();
-    clientSummaryPeriod.focus();
-    void refreshClientSummary();
-}
-function closeClientSummaryDialog() {
-    if (clientSummaryDialog.open)
-        clientSummaryDialog.close();
-}
-async function refreshClientSummary() {
-    const projectId = clientSummaryProjectId;
-    const from = clientSummaryFrom.value;
-    const to = clientSummaryTo.value;
-    if (projectId === null)
-        return;
-    if (!validClientSummaryRange(from, to)) {
-        clientSummaryCopy.disabled = true;
-        clientSummaryStatus.classList.add('is-error');
-        clientSummaryStatus.textContent = 'Choose a valid date range of no more than 366 days.';
-        return;
-    }
-    const requestVersion = ++clientSummaryRequestVersion;
-    clientSummaryGenerate.disabled = true;
-    clientSummaryCopy.disabled = true;
-    clientSummaryStatus.classList.remove('is-error');
-    clientSummaryStatus.textContent = 'Generating summary…';
-    try {
-        const activityPath = '/projects/' + projectId + '/client-summary-updates?from='
-            + encodeURIComponent(from) + '&to=' + encodeURIComponent(to);
-        const [view, activity] = await Promise.all([
-            api('/projects/' + projectId + '/client-view'),
-            api(activityPath),
-        ]);
-        if (!clientSummaryDialog.open || requestVersion !== clientSummaryRequestVersion
-            || clientSummaryProjectId !== projectId)
-            return;
-        clientSummaryPreview.value = generateClientSummary(view, activity, from, to);
-        clientSummaryCopy.disabled = clientSummaryPreview.value.trim() === '';
-        clientSummaryStatus.textContent = 'Review or edit the summary, then copy it.';
-    }
-    catch (error) {
-        if (error instanceof ApiFailure && error.status === 401) {
-            closeClientSummaryDialog();
-            showSignedOut();
-            return;
-        }
-        clientSummaryStatus.classList.add('is-error');
-        clientSummaryStatus.textContent = error instanceof Error ? error.message : 'Could not generate the project summary.';
-    }
-    finally {
-        if (requestVersion === clientSummaryRequestVersion)
-            clientSummaryGenerate.disabled = false;
-    }
-}
-async function copyClientSummary() {
-    const summary = clientSummaryPreview.value.trim();
-    if (summary === '')
-        return;
-    try {
-        await navigator.clipboard.writeText(clientSummaryPreview.value);
-        clientSummaryStatus.classList.remove('is-error');
-        clientSummaryStatus.textContent = 'Summary copied.';
-    }
-    catch {
-        clientSummaryPreview.focus();
-        clientSummaryPreview.select();
-        clientSummaryStatus.classList.remove('is-error');
-        clientSummaryStatus.textContent = 'Clipboard unavailable. The summary is selected for copying.';
-    }
-}
-clientSummaryPeriod.addEventListener('change', () => {
-    clientSummaryCustomRange.hidden = clientSummaryPeriod.value !== 'custom';
-    if (clientSummaryPeriod.value === '7') {
-        setClientSummaryPeriod(7);
-        void refreshClientSummary();
-    }
-    else if (clientSummaryPeriod.value === '30') {
-        setClientSummaryPeriod(30);
-        void refreshClientSummary();
-    }
-});
-for (const field of [clientSummaryFrom, clientSummaryTo]) {
-    field.addEventListener('change', () => {
-        if (clientSummaryPeriod.value === 'custom')
-            void refreshClientSummary();
-    });
-}
-clientSummaryGenerate.addEventListener('click', () => { void refreshClientSummary(); });
-clientSummaryClose.addEventListener('click', closeClientSummaryDialog);
-clientSummaryCopy.addEventListener('click', () => { void copyClientSummary(); });
-clientSummaryDialog.addEventListener('close', () => {
-    clientSummaryRequestVersion += 1;
-    clientSummaryProjectId = null;
-    clientSummaryCustomRange.hidden = true;
-    const target = clientSummaryReturnFocus;
-    clientSummaryReturnFocus = null;
-    if (target !== null && target.isConnected && target.closest('[hidden]') === null
-        && document.querySelector('dialog[open]') === null)
-        target.focus();
-});
-async function loadGuestProjects() {
-    try {
-        const result = await api('/projects');
-        guestProjectSelect.replaceChildren(...result.projects.map((project) => {
-            const option = document.createElement('option');
-            option.value = String(project.id);
-            option.textContent = project.name;
-            return option;
-        }));
-        guestProjectLabel.hidden = result.projects.length < 2;
-        if (result.projects.length === 0) {
-            renderClientEmptyState(guestMain, 'No projects have been shared with you yet.');
-            return;
-        }
-        await loadClientView(result.projects[0].id);
-    }
-    catch (error) {
-        if (error instanceof ApiFailure && error.status === 401) {
-            showSignedOut();
-            return;
-        }
-        report(error instanceof Error ? error.message : 'Could not load your projects.', true);
-    }
-}
-async function loadClientView(projectId, previewMode = false, viewerUserId = activeUser?.id ?? 0) {
-    const requestVersion = ++guestViewRequestVersion;
-    try {
-        const view = await api(`/projects/${projectId}/client-view`);
-        if (requestVersion !== guestViewRequestVersion || (previewMode && !guestPreviewActive))
-            return;
-        guestTitle.textContent = 'Client portal';
-        renderClientView(guestMain, view, {
-            userId: viewerUserId,
-            approve: async (approvalId) => {
-                if (previewMode)
-                    return;
-                await api(`/approvals/${approvalId}/approve`, { method: 'POST' });
-                await loadClientView(projectId);
-            },
-            comment: async (body) => {
-                if (previewMode)
-                    return;
-                await api(`/projects/${projectId}/client-comments`, { method: 'POST', body: JSON.stringify({ body }) });
-                await loadClientView(projectId);
-            },
-        }, { previewMode });
-    }
-    catch (error) {
-        if (requestVersion !== guestViewRequestVersion || (previewMode && !guestPreviewActive))
-            return;
-        if (error instanceof ApiFailure && error.status === 401) {
-            showSignedOut();
-            return;
-        }
-        report(error instanceof Error ? error.message : 'Could not load the client view.', true);
-    }
-}
-guestProjectSelect.addEventListener('change', () => { void loadClientView(Number(guestProjectSelect.value)); });
-guestPreviewMemberSelect.addEventListener('change', () => {
-    if (!guestPreviewActive || guestPreviewProjectId === null)
-        return;
-    const viewer = guestPreviewMembers.find((member) => member.id === Number(guestPreviewMemberSelect.value));
-    if (viewer === undefined)
-        return;
-    guestUser.textContent = viewer.email;
-    void loadClientView(guestPreviewProjectId, true, viewer.id);
-});
-guestPreviewReturnButton.addEventListener('click', closeGuestViewPreview);
 guestLogoutButton.addEventListener('click', () => { void signOut(); });
 inboxMarkAllReadButton.addEventListener('click', () => { void markAllInboxEventsRead(); });
 inboxLoadMoreButton.addEventListener('click', () => { void loadMoreInboxEvents(); });

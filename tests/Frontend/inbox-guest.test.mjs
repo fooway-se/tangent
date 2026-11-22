@@ -9,6 +9,7 @@ const html = await readFile(new URL('../../public/app.html', import.meta.url), '
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
 const css = await readFile(new URL('../../public/assets/app.css', import.meta.url), 'utf8');
 const guestSource = await readFile(new URL('../../frontend/src/guest-view.ts', import.meta.url), 'utf8');
+const guestUi = await readFile(new URL('../../frontend/src/guest-ui.ts', import.meta.url), 'utf8');
 
 const event = (id, type, read, done) => ({ id, type, read, done, actor_name: 'a', summary: 's', detail: null, project_id: 1, project_name: 'P', issue_id: null, message_id: null, created_at: '2026-11-17T10:00:00Z' });
 
@@ -85,7 +86,7 @@ test('guest view renders its shared conversation alongside the composer', () => 
   assert.match(guestSource, /guest-conversation-list/);
   assert.match(guestSource, /message\.author_id === handlers\.userId/);
   assert.match(guestSource, /message\.author_name/);
-  assert.match(app, /await api\(`\/projects\/\$\{projectId\}\/client-comments`[\s\S]*?await loadClientView\(projectId\)/);
+  assert.match(guestUi, /await request\(`\/projects\/\$\{projectId\}\/client-comments`[\s\S]*?await loadClientView\(projectId\)/);
   assert.match(app, /Your reply will be visible to the guest/);
   assert.doesNotMatch(app, /Message sent to the team/);
   assert.match(css, /\.guest-conversation-message\.is-own\s*\{[^}]*margin-left:\s*0/);
@@ -139,7 +140,7 @@ test('sending a chat message returns the conversation to the latest message', ()
 });
 
 test('guest with no projects gets the same framed customer screen', () => {
-  assert.match(app, /renderClientEmptyState\(guestMain/);
+  assert.match(guestUi, /renderEmptyState\(guestMain/);
   assert.match(guestSource, /export function renderClientEmptyState\(/);
 });
 

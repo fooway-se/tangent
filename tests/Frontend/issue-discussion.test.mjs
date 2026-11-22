@@ -4,6 +4,8 @@ import test from 'node:test';
 
 const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
+const dom = await readFile(new URL('../../frontend/src/dom.ts', import.meta.url), 'utf8');
+const types = await readFile(new URL('../../frontend/src/types.ts', import.meta.url), 'utf8');
 const css = await readFile(new URL('../../public/assets/app.css', import.meta.url), 'utf8');
 
 test('issue detail contains a separate discussion timeline and composer', () => {
@@ -21,7 +23,7 @@ test('issue detail contains a separate discussion timeline and composer', () => 
 });
 
 test('issue discussions load for the selected issue and post issue-scoped replies', () => {
-  assert.match(app, /interface IssueDiscussionMessage/);
+  assert.match(types, /interface IssueDiscussionMessage/);
   assert.match(app, /async function loadIssueDiscussion\(issueId: number/);
   assert.match(app, /`\/issues\/\$\{issueId\}\/discussion`/);
   assert.match(app, /function createIssueDiscussionMessage\(/);
@@ -65,7 +67,7 @@ test('issue discussion messages reuse the chat avatar and thread styling', () =>
 
 test('issue discussion replies remain within the selected issue and show their parent context', () => {
   assert.match(app, /issueDiscussionParent/);
-  assert.match(app, /issue-discussion-reply-context/);
+  assert.match(dom, /issue-discussion-reply-context/);
   assert.match(app, /function setIssueDiscussionReply\(/);
   assert.match(app, /function clearIssueDiscussionReply\(/);
   assert.match(app, /selectedIssue\?\.id !== issueId/);

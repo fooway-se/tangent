@@ -4,6 +4,7 @@ import test from 'node:test';
 
 const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
+const summaryUi = await readFile(new URL('../../frontend/src/client-summary-ui.ts', import.meta.url), 'utf8');
 const api = await readFile(new URL('../../docs/openapi.yaml', import.meta.url), 'utf8');
 
 test('summary is project-scoped in the command palette, not a persistent project-header control', () => {
@@ -23,11 +24,11 @@ test('summary dialog offers a period, custom dates, editable preview, and copy a
   assert.match(html, /id="client-summary-to"[^>]*type="date"/);
   assert.match(html, /<textarea id="client-summary-preview"/);
   assert.match(html, /id="client-summary-copy"/);
-  assert.match(app, /navigator\.clipboard\.writeText\(clientSummaryPreview\.value\)/);
+  assert.match(summaryUi, /navigator\.clipboard\.writeText\(preview\.value\)/);
 });
 
 test('summary activity comes from an admin-only client-safe endpoint with a selected date range', () => {
-  assert.match(app, /client-summary-updates\?from=/);
+  assert.match(summaryUi, /client-summary-updates\?from=/);
   assert.match(api, /\/projects\/\{id\}\/client-summary-updates/);
   assert.match(api, /Only workspace admins can request client summary activity/);
 });

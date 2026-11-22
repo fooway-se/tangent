@@ -4,6 +4,7 @@ import test from 'node:test';
 
 const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
+const api = await readFile(new URL('../../frontend/src/api.ts', import.meta.url), 'utf8');
 const index = await readFile(new URL('../../public/index.php', import.meta.url), 'utf8');
 const installer = await readFile(new URL('../../public/install.php', import.meta.url), 'utf8');
 const upgrade = await readFile(new URL('../../public/upgrade.php', import.meta.url), 'utf8');
@@ -18,7 +19,7 @@ test('public assets and navigation links resolve relative to Tangent’s subdire
 });
 
 test('frontend API requests use the current app directory as their base', () => {
-  assert.match(app, /new URL\('\.\.\/api\/v1', import\.meta\.url\)/);
+  assert.match(api, /new URL\('\.\.\/api\/v1', import\.meta\.url\)/);
   assert.doesNotMatch(app, /fetch\(`\/api\/v1/);
 });
 

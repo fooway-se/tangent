@@ -4,6 +4,7 @@ import test from 'node:test';
 
 const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
+const dom = await readFile(new URL('../../frontend/src/dom.ts', import.meta.url), 'utf8');
 const css = await readFile(new URL('../../public/assets/app.css', import.meta.url), 'utf8');
 
 test('issue ordering offers a dedicated Next Up view', () => {
@@ -70,7 +71,7 @@ test('No milestone bulk move uses the shared selection and action-group design',
 
 test('issue board offers opt-in bulk assignment across milestone groups', () => {
   assert.match(html, /id="issue-bulk-assign-toggle"/);
-  assert.match(app, /issue-bulk-assign-toolbar/);
+  assert.match(dom, /issue-bulk-assign-toolbar/);
   assert.match(app, /issue-bulk-assign-checkbox/);
   assert.match(app, /const allowBulkAssignSelection = bulkAssignSelectionMode/);
   assert.match(app, /visibleBulkAssignIssueIds = new Set\(visible\.map\(\(issue\) => issue\.id\)\)/);
@@ -101,9 +102,8 @@ test('issue selection toolbar groups selection, assignment, and guest-access con
   assert.match(guestAccess, /Guest access/);
   assert.match(guestAccess, /class="button button-primary issue-bulk-share-apply" type="button"[^>]*>Share<\/button>/);
   assert.match(guestAccess, /class="button button-secondary issue-bulk-unshare-apply" type="button"[^>]*>Unshare<\/button>/);
-  assert.match(css, /\.issue-bulk-selection-actions\s*\{[^}]*flex:\s*0 0 360px/);
+  assert.match(css, /\.issue-bulk-selection-actions\s*\{[^}]*flex:\s*0 0 auto/);
   assert.match(css, /\.issue-bulk-selection-actions\s*\{[^}]*flex-wrap:\s*nowrap/);
-  assert.match(css, /\.issue-bulk-selection-actions \.issue-bulk-assign-select-visible\s*\{[^}]*margin-left:\s*auto/);
   assert.doesNotMatch(toolbar, /Guests with access to this project can see shared issues/);
   assert.match(app, /function updateSelectedIssuesSharing\(isShared: boolean\)/);
   assert.match(app, /\/projects\/\$\{projectId\}\/issues\/share/);

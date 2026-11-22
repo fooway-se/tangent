@@ -4,6 +4,7 @@ import test from 'node:test';
 
 const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
+const types = await readFile(new URL('../../frontend/src/types.ts', import.meta.url), 'utf8');
 const css = await readFile(new URL('../../public/assets/app.css', import.meta.url), 'utf8');
 const openapi = await readFile(new URL('../../docs/openapi.yaml', import.meta.url), 'utf8');
 const compose = await readFile(new URL('../../compose.yaml', import.meta.url), 'utf8');
@@ -63,7 +64,7 @@ test('invite and password reset fragments are removed before public requests', (
   assert.match(app, /history\.replaceState\(null, '', location\.pathname \+ location\.search\)/);
   assert.match(app, /'\/auth\/invites\/inspect'/);
   assert.match(app, /'\/auth\/invites\/accept'/);
-  assert.match(app, /workspace_name: string/);
+  assert.match(types, /workspace_name: string/);
   const inviteFlow = app.slice(
     app.indexOf("credentialFlowHeading.textContent = 'Accept workspace invite';"),
     app.indexOf("credentialCancel.addEventListener('click'"),
@@ -75,7 +76,7 @@ test('invite and password reset fragments are removed before public requests', (
   assert.match(inviteCopy, /result\.invite\.workspace_name/);
   assert.doesNotMatch(inviteCopy, /result\.invite\.email/);
   assert.match(inviteFlow, /inviteCredentialPresentation\([\s\S]*result\.invite\.password_setup_required[\s\S]*result\.invite\.email_verification_required/);
-  assert.match(app, /password_setup_required: boolean/);
+  assert.match(types, /password_setup_required: boolean/);
   assert.match(app, /verification_code: values\.get\('verification_code'\)/);
   assert.match(app, /api\('\/auth\/password-reset\/complete'/);
   assert.match(app, /const credentialState = consumeCredentialFragment\(\)/);

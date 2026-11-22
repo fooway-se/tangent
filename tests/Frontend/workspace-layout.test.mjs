@@ -6,6 +6,7 @@ import { switchWorkspaceMembership } from '../../public/assets/workspace-switch.
 const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
 const css = await readFile(new URL('../../public/assets/app.css', import.meta.url), 'utf8');
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
+const guestUi = await readFile(new URL('../../frontend/src/guest-ui.ts', import.meta.url), 'utf8');
 const tokens = await readFile(new URL('../../public/assets/tokens.css', import.meta.url), 'utf8');
 const workspaceStart = html.indexOf('id="workspace-panel"');
 const sidebarStart = html.indexOf('class="workspace-sidebar"', workspaceStart);
@@ -41,8 +42,8 @@ test('guest view can switch workspaces through the shared picker and return to a
   assert.match(guestShell, /id="guest-workspace-switcher"/);
   assert.match(app, /guestWorkspaceSwitcher\.addEventListener\('click', \(\) => openWorkspacePicker\(\)\)/);
   assert.match(app, /switchWorkspaceMembership\(/);
-  const guestStartup = app.slice(app.indexOf('function showGuestShell('), app.indexOf('function openGuestViewPreview('));
-  assert.match(guestStartup, /void loadGuestProjects\(\)/);
+  assert.match(app, /if \(user\.role === 'guest'\) \{\s*void guestUi\.showGuestShell\(user\)/);
+  assert.match(guestUi, /await loadGuestProjects\(guestModeVersion\)/);
   assert.match(app, /workspacePicker\.addEventListener\('close',[\s\S]*guestWorkspaceSwitcher\.focus\(\)/);
 });
 

@@ -5,6 +5,9 @@ import { resolveShortcut, shouldSendChatOnEnter } from '../../public/assets/shor
 
 const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
+const themeUi = await readFile(new URL('../../frontend/src/theme-ui.ts', import.meta.url), 'utf8');
+const milestoneUi = await readFile(new URL('../../frontend/src/milestone-ui.ts', import.meta.url), 'utf8');
+const summaryUi = await readFile(new URL('../../frontend/src/client-summary-ui.ts', import.meta.url), 'utf8');
 const baseContext = {
   targetIsEditable: false,
   goPrefixPending: false,
@@ -48,8 +51,8 @@ test('t focuses the theme selector from any view and stays inactive while typing
   assert.equal(resolve('t', { hasWorkspace: false }), 'theme-selector');
   assert.equal(resolve('T', { hasWorkspace: true, projectListVisible: true }), 'theme-selector');
   assert.equal(resolve('t', { hasWorkspace: false, targetIsEditable: true }), null);
-  assert.match(app, /case 'theme-selector':\s*focusThemeSelector\(\);/);
-  assert.match(app, /function focusThemeSelector\(\)[\s\S]*closest\('\[hidden\]'\)[\s\S]*getClientRects\(\)\.length/);
+  assert.match(app, /case 'theme-selector':\s*themeUi\.focusSelector\(\);/);
+  assert.match(themeUi, /function focusSelector\(\)[\s\S]*closest\('\[hidden\]'\)[\s\S]*getClientRects\(\)\.length/);
   assert.equal((html.match(/class="theme-select" aria-label="Theme" aria-keyshortcuts="t"/g) ?? []).length, 3);
   assert.match(html, /<dt><kbd>t<\/kbd><\/dt><dd>Focus the theme selector<\/dd>/);
   assert.ok((html.match(/<kbd>t<\/kbd> Theme/g) ?? []).length >= 2);
@@ -160,15 +163,15 @@ test('the AI prompt dialog participates in modal keyboard handling', () => {
   const dismiss = app.slice(app.indexOf('function dismissCurrentView'), app.indexOf('function focusIssueQuickAddReturnTarget'));
   assert.match(dismiss, /issueAiPromptDialog\.open[\s\S]*issueAiPromptDialog\.close\(\)/);
   assert.match(app, /issueAiPromptDialog\.addEventListener\('close'/);
-  assert.match(app, /commandPalette\.open \|\| clientSummaryDialog\.open \|\| shortcutHelp\.open \|\| issueAiPromptDialog\.open/);
+  assert.match(app, /commandPalette\.open \|\| clientSummaryUi\.dialog\.open \|\| shortcutHelp\.open \|\| issueAiPromptDialog\.open/);
 });
 
 test('the generated summary dialog participates in modal keyboard handling', () => {
   const context = app.slice(app.indexOf('function shortcutContext'), app.indexOf('function clearGoPrefix'));
-  assert.match(context, /modalOpen:[\s\S]*clientSummaryDialog\.open/);
+  assert.match(context, /modalOpen:[\s\S]*clientSummaryUi\.dialog\.open/);
   const dismiss = app.slice(app.indexOf('function dismissCurrentView'), app.indexOf('function focusIssueQuickAddReturnTarget'));
-  assert.match(dismiss, /clientSummaryDialog\.open[\s\S]*closeClientSummaryDialog\(\)/);
-  assert.match(app, /clientSummaryDialog\.addEventListener\('close'/);
+  assert.match(dismiss, /clientSummaryUi\.dialog\.open[\s\S]*clientSummaryUi\.close\(\)/);
+  assert.match(summaryUi, /dialog\.addEventListener\('close'/);
 });
 
 test('Escape from a Workspace Admin field returns to its tab bar for section switching', () => {
@@ -193,14 +196,14 @@ test('Inbox tabs use the same arrow and Home/End navigation as other tab bars', 
 test('Escape dismisses the milestone dialog before blurring its focused field', () => {
   assert.equal(resolve('Escape', { modalOpen: true, textInputFocused: true, canDismiss: true }), 'dismiss');
   const context = app.slice(app.indexOf('function shortcutContext'), app.indexOf('function clearGoPrefix'));
-  assert.match(context, /modalOpen:[\s\S]*milestoneDeleteConfirmation\.open[\s\S]*milestoneManagerDialog\.open/);
+  assert.match(context, /modalOpen:[\s\S]*milestoneUi\.deleteConfirmation\.open[\s\S]*milestoneUi\.managerDialog\.open/);
   const dismiss = app.slice(app.indexOf('function dismissCurrentView'), app.indexOf('function handleKeyboardShortcut'));
-  assert.ok(dismiss.indexOf('milestoneDeleteConfirmation.open') < dismiss.indexOf('milestoneManagerDialog.open'));
-  const closeHandler = app.slice(
-    app.indexOf("milestoneManagerDialog.addEventListener('close'"),
-    app.indexOf("issuesTabButton.addEventListener('click'", app.indexOf("milestoneManagerDialog.addEventListener('close'")),
+  assert.ok(dismiss.indexOf('milestoneUi.deleteConfirmation.open') < dismiss.indexOf('milestoneUi.managerDialog.open'));
+  const closeHandler = milestoneUi.slice(
+    milestoneUi.indexOf("managerDialog.addEventListener('close'"),
+    milestoneUi.indexOf('return {', milestoneUi.indexOf("managerDialog.addEventListener('close'")),
   );
-  assert.match(closeHandler, /manageMilestonesButton\.focus\(\)/);
+  assert.match(closeHandler, /manageButton\.focus\(\)/);
 });
 
 test('chat message selection supports navigation, reply, issue creation, and composer focus', () => {

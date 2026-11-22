@@ -5,6 +5,7 @@ import * as chatEventModule from '../../public/assets/chat-event-feed.js';
 import { ChatEventFeed } from '../../public/assets/chat-event-feed.js';
 
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
+const types = await readFile(new URL('../../frontend/src/types.ts', import.meta.url), 'utf8');
 
 test('chat polling resumes from the commit-ordered cursor', () => {
   const feed = new ChatEventFeed();
@@ -80,7 +81,7 @@ test('project chat consumes commit cursors and uses its rendered-message map for
   const poll = app.slice(app.indexOf('async function pollProjectChat('), app.indexOf('async function loadProjectChatHistory('));
   assert.match(poll, /chatEventFeed\.requestQuery\(\)/);
   assert.match(poll, /chatEventFeed\.consume\([\s\S]*chatMessagesById\.has\(messageId\)/);
-  assert.match(app, /interface ChatEvent extends ChatMessage, ChatFeedEvent/);
+  assert.match(types, /interface ChatEvent extends ChatMessage, ChatFeedEvent/);
   const append = app.slice(app.indexOf('function appendChatMessage('), app.indexOf('function updateChatMessageReplyCount('));
   assert.match(append, /chatMessagesById\.set\(message\.id, message\)/);
 });
