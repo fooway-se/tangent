@@ -4,8 +4,8 @@ A keyboard-first, self-hosted workspace for small dev teams and freelancers: pro
 
 ![Project issues grouped by milestone with project chat](assets/screenshots/project-issues.webp)
 
-> [!WARNING]
-> **Tangent is in limited alpha.** Use it only for low-risk pilot testing; avoid sensitive or important work. The database schema may change, and future upgrades may require a fresh install. There is no production release or upgrade guarantee.
+> [!NOTE]
+> **Tangent is an actively developed, usable workspace for small teams.** Core project, issue, collaboration, client portal, and installation workflows are implemented. Installation and upgrades have been verified on one shared server; additional hosting environments are still being checked. Back up the database and uploaded files before applying updates.
 
 ## Why Tangent
 
@@ -64,9 +64,9 @@ Open [http://localhost:8081](http://localhost:8081). The seed command prompts yo
 
 ## Status
 
-Implemented: authentication and invites, workspaces, project chat with viewer presence, the workspace-wide Lounge for internal off-topic conversation, issue tracking, My Work with inbox events and assigned tasks, the internal team roadmap, the restricted client guest view and the shared-host installer.
+Implemented: authentication and invites, workspaces, project chat with viewer presence, the workspace-wide Lounge for internal off-topic conversation, issue tracking, My Work with inbox events and assigned tasks, the internal team roadmap, the restricted client guest view, the shared-host installer, and admin-generated client summaries.
 
-Planned: GitLab links, weekly client summaries, and agent-friendly API access. See [ROADMAP.md](ROADMAP.md).
+Planned: expanded GitHub and GitLab integrations and agent-focused API tooling. See [ROADMAP.md](ROADMAP.md).
 
 ## Documentation
 

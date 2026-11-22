@@ -1,6 +1,6 @@
 # Roadmap
 
-Planned work, in no fixed order. Tangent is in limited alpha, so this list will change. See the [README](README.md) for what already works.
+Planned work, in no fixed order. Tangent is actively developed, so this list will change. See the [README](README.md) for implemented features and current project status.
 
 ## Chat
 
