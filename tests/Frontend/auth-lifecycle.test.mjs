@@ -139,6 +139,17 @@ test('workspace administrators can manage a guest member project access', () => 
   assert.match(app, /function saveWorkspaceGuestProjectAccess\(/);
 });
 
+test('guest access editor shows existing read-only memberships so admins can revoke them', () => {
+  const editor = app.slice(
+    app.indexOf('async function openWorkspaceGuestProjectAccess('),
+    app.indexOf('function closeWorkspaceGuestProjectAccess('),
+  );
+  assert.match(editor, /project_ids: number\[\];[\s\S]*projects: Array<Pick<Project, 'id' \| 'name' \| 'status'>>/);
+  assert.match(editor, /for \(const project of result\.projects\)/);
+  assert.match(editor, /project\.status === 'completed' \|\| project\.status === 'archived'/);
+  assert.match(editor, /remove access only/);
+});
+
 test('guest project checkboxes have compact layout and visible keyboard focus', () => {
   assert.match(html, /workspace-guest-projects-keyboard-hint/);
   assert.match(html, /Tab between projects[\s\S]*Space toggles/);

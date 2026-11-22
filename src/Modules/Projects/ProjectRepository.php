@@ -82,6 +82,34 @@ final class ProjectRepository
         return array_map('intval', $statement->fetchAll(PDO::FETCH_COLUMN));
     }
 
+    public function assignableProjectIdsForWorkspaceForUpdate(int $workspaceId): array
+    {
+        $statement = $this->pdo->prepare(
+            "SELECT id FROM projects
+             WHERE workspace_id = :workspace_id AND status IN ('active', 'paused')
+             ORDER BY id FOR UPDATE"
+        );
+        $statement->execute(['workspace_id' => $workspaceId]);
+        return array_map('intval', $statement->fetchAll(PDO::FETCH_COLUMN));
+    }
+
+    public function guestProjectMemberships(int $workspaceId, int $userId): array
+    {
+        $statement = $this->pdo->prepare(
+            'SELECT p.id, p.name, p.status
+             FROM project_memberships pm
+             INNER JOIN projects p ON p.workspace_id = pm.workspace_id AND p.id = pm.project_id
+             WHERE pm.workspace_id = :workspace_id AND pm.user_id = :user_id
+             ORDER BY p.name, p.id'
+        );
+        $statement->execute(['workspace_id' => $workspaceId, 'user_id' => $userId]);
+        return array_map(static fn (array $project): array => [
+            'id' => (int) $project['id'],
+            'name' => (string) $project['name'],
+            'status' => (string) $project['status'],
+        ], $statement->fetchAll(PDO::FETCH_ASSOC));
+    }
+
     public function visibilityForUser(int $workspaceId, int $userId): array
     {
         $statement = $this->pdo->prepare(

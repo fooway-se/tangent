@@ -286,7 +286,25 @@ final class ProjectService
             throw new ApiException(409, 'not_guest', 'Project access can only be managed for guest members.');
         }
 
-        return ['project_ids' => $this->projects->assignableProjectIdsForMember($actor->workspaceId, $memberId)];
+        $currentProjects = $this->projects->guestProjectMemberships($actor->workspaceId, $memberId);
+        $projectsById = [];
+        foreach ($this->projects->listForWorkspace($actor->workspaceId) as $project) {
+            if (in_array($project['status'], ['active', 'paused'], true)) {
+                $projectsById[$project['id']] = [
+                    'id' => $project['id'],
+                    'name' => $project['name'],
+                    'status' => $project['status'],
+                ];
+            }
+        }
+        foreach ($currentProjects as $project) $projectsById[$project['id']] = $project;
+        $projects = array_values($projectsById);
+        usort($projects, static fn (array $left, array $right): int => [$left['name'], $left['id']] <=> [$right['name'], $right['id']]);
+
+        return [
+            'project_ids' => array_column($currentProjects, 'id'),
+            'projects' => $projects,
+        ];
     }
 
     public function updateGuestProjectAccess(AuthenticatedUser $actor, int $memberId, array $body): array
@@ -322,18 +340,16 @@ final class ProjectService
                 throw new ApiException(409, 'not_guest', 'Project access can only be managed for guest members.');
             }
 
-            $assignableProjects = array_values(array_filter(
-                $this->projects->listForWorkspace($actor->workspaceId),
-                static fn (array $project): bool => in_array($project['status'], ['active', 'paused'], true),
-            ));
-            $assignableProjectIds = array_column($assignableProjects, 'id');
+            $assignableProjectIds = $this->projects->assignableProjectIdsForWorkspaceForUpdate($actor->workspaceId);
+            $currentProjects = $this->projects->guestProjectMemberships($actor->workspaceId, $memberId);
+            $currentProjectIds = array_column($currentProjects, 'id');
             foreach ($projectIds as $projectId) {
-                if (!in_array($projectId, $assignableProjectIds, true)) {
+                if (!in_array($projectId, $assignableProjectIds, true)
+                    && !in_array($projectId, $currentProjectIds, true)) {
                     throw new ApiException(422, 'validation_failed', 'Choose active or paused projects in this workspace.');
                 }
             }
 
-            $currentProjectIds = $this->projects->assignableProjectIdsForMember($actor->workspaceId, $memberId);
             foreach (array_diff($currentProjectIds, $projectIds) as $projectId) {
                 if ($this->projects->removeMember($actor->workspaceId, (int) $projectId, $memberId)) {
                     $this->issues->unassignRemovedMember($actor, (int) $projectId, $memberId);
@@ -344,7 +360,10 @@ final class ProjectService
             }
 
             if ($ownsTransaction) $this->pdo->commit();
-            return ['project_ids' => $this->projects->assignableProjectIdsForMember($actor->workspaceId, $memberId)];
+            return ['project_ids' => array_column(
+                $this->projects->guestProjectMemberships($actor->workspaceId, $memberId),
+                'id',
+            )];
         } catch (Throwable $exception) {
             if ($ownsTransaction && $this->pdo->inTransaction()) $this->pdo->rollBack();
             throw $exception;

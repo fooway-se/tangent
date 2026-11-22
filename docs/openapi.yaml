@@ -584,28 +584,37 @@ paths:
         '422': { $ref: '#/components/responses/ValidationFailed' }
   /users/{id}/projects:
     get:
-      summary: List assignable projects available to a guest member (admin only)
-      description: Returns the guest's memberships in active and paused projects. Completed and archived project memberships are retained but omitted.
+      summary: List project access options for a guest member (admin only)
+      description: Returns active and paused projects plus any completed or archived projects the guest already belongs to. Existing read-only memberships can be removed but cannot be newly granted.
       parameters:
         - $ref: '#/components/parameters/Id'
       responses:
         '200':
-          description: The guest member's assignable project IDs.
+          description: Project IDs the guest currently belongs to and the options displayed in the access editor.
           content:
             application/json:
               schema:
                 type: object
-                required: [project_ids]
+                required: [project_ids, projects]
                 properties:
                   project_ids:
                     type: array
                     items: { type: integer }
+                  projects:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, name, status]
+                      properties:
+                        id: { type: integer }
+                        name: { type: string }
+                        status: { type: string, enum: [active, paused, completed, archived] }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
     put:
-      summary: Replace a guest member's assignable project access (admin only)
-      description: Updates memberships for active and paused projects in the current workspace. An empty list removes access to every assignable project. Completed and archived memberships are preserved.
+      summary: Replace a guest member's project access (admin only)
+      description: New memberships can be granted only for active or paused projects in the current workspace. Existing completed or archived memberships may be retained or removed, but cannot be newly granted. An empty list removes all project access.
       parameters:
         - $ref: '#/components/parameters/Id'
         - $ref: '#/components/parameters/CsrfToken'
@@ -622,7 +631,7 @@ paths:
                   items: { type: integer, minimum: 1 }
       responses:
         '200':
-          description: The guest member's assignable project IDs after the update.
+          description: The guest member's project IDs after the update, including any retained read-only memberships.
           content:
             application/json:
               schema:

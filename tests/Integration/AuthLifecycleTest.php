@@ -371,19 +371,26 @@ final class AuthLifecycleTest extends ApiTestCase
         $firstProjectId = $this->insertProject('First guest project', 'first-guest-project', $this->adminId);
         $secondProjectId = $this->insertProject('Second guest project', 'second-guest-project', $this->adminId);
         $archivedProjectId = $this->insertProject('Archived guest project', 'archived-guest-project', $this->adminId);
+        $completedProjectId = $this->insertProject('Completed guest project', 'completed-guest-project', $this->adminId);
         $archive = $this->pdo->prepare('UPDATE projects SET status = :status WHERE workspace_id = :workspace_id AND id = :id');
         $archive->execute(['status' => 'archived', 'workspace_id' => $this->workspaceId, 'id' => $archivedProjectId]);
+        $archive->execute(['status' => 'completed', 'workspace_id' => $this->workspaceId, 'id' => $completedProjectId]);
         $memberships = $this->pdo->prepare(
             'INSERT INTO project_memberships (workspace_id, project_id, user_id)
              VALUES (:workspace_id, :project_id, :user_id)'
         );
-        foreach ([$firstProjectId, $archivedProjectId] as $projectId) {
+        foreach ([$firstProjectId, $archivedProjectId, $completedProjectId] as $projectId) {
             $memberships->execute(['workspace_id' => $this->workspaceId, 'project_id' => $projectId, 'user_id' => $guestId]);
         }
 
         $read = $this->cookieRequest('GET', '/api/v1/users/' . $guestId . '/projects', $admin['cookie']);
         self::assertSame(200, $read->status, json_encode($read->body));
-        self::assertSame([$firstProjectId], $read->body['project_ids']);
+        self::assertEqualsCanonicalizing([$firstProjectId, $archivedProjectId, $completedProjectId], $read->body['project_ids']);
+        self::assertEqualsCanonicalizing(
+            [$firstProjectId, $secondProjectId, $archivedProjectId, $completedProjectId],
+            array_column($read->body['projects'], 'id'),
+        );
+        $guest = $this->login('guest-access@example.test', 'a calm guest access password phrase');
 
         $updated = $this->cookieRequest('PUT', '/api/v1/users/' . $guestId . '/projects', $admin['cookie'], [
             'project_ids' => [$secondProjectId],
@@ -392,7 +399,13 @@ final class AuthLifecycleTest extends ApiTestCase
         self::assertSame([$secondProjectId], $updated->body['project_ids']);
         self::assertFalse($this->projectHasMember($firstProjectId, $guestId));
         self::assertTrue($this->projectHasMember($secondProjectId, $guestId));
-        self::assertTrue($this->projectHasMember($archivedProjectId, $guestId), 'Archived project access is preserved.');
+        self::assertFalse($this->projectHasMember($archivedProjectId, $guestId));
+        self::assertFalse($this->projectHasMember($completedProjectId, $guestId));
+        self::assertSame(404, $this->cookieRequest(
+            'GET',
+            '/api/v1/projects/' . $archivedProjectId . '/client-view',
+            $guest['cookie'],
+        )->status);
 
         $empty = $this->cookieRequest('PUT', '/api/v1/users/' . $guestId . '/projects', $admin['cookie'], [
             'project_ids' => [],

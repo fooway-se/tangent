@@ -1580,7 +1580,7 @@ async function setWorkspaceMemberRole(member: WorkspaceMember, role: Role, selec
 
 async function openWorkspaceGuestProjectAccess(member: WorkspaceMember, button: HTMLButtonElement): Promise<void> {
   workspaceGuestProjectsTarget = { member, button };
-  workspaceGuestProjectsDescription.textContent = `Choose the active or paused projects ${member.name} can access. An empty selection removes access to every available project.`;
+  workspaceGuestProjectsDescription.textContent = `Choose active or paused projects ${member.name} can access. Existing access to completed or archived projects can be removed.`;
   workspaceGuestProjectOptions.replaceChildren();
   workspaceGuestProjectsEmpty.hidden = true;
   workspaceGuestProjectsStatus.textContent = 'Loading project access…';
@@ -1588,15 +1588,18 @@ async function openWorkspaceGuestProjectAccess(member: WorkspaceMember, button: 
   workspaceGuestProjectsDialog.showModal();
   workspaceGuestProjectsCancel.focus();
   try {
-    const result = await api<{ project_ids: number[] }>(`/users/${member.id}/projects`);
+    const result = await api<{
+      project_ids: number[];
+      projects: Array<Pick<Project, 'id' | 'name' | 'status'>>;
+    }>(`/users/${member.id}/projects`);
     if (!workspaceGuestProjectsDialog.open || workspaceGuestProjectsTarget?.member.id !== member.id) return;
     workspaceGuestProjectOptions.replaceChildren();
     workspaceGuestProjectsStatus.textContent = '';
-    workspaceGuestProjectsEmpty.hidden = adminProjects.length > 0;
-    if (adminProjects.length === 0) {
+    workspaceGuestProjectsEmpty.hidden = result.projects.length > 0;
+    if (result.projects.length === 0) {
       workspaceGuestProjectsEmpty.textContent = 'There are no active or paused projects. This guest will have no project access.';
     }
-    for (const project of adminProjects) {
+    for (const project of result.projects) {
       const label = document.createElement('label');
       label.className = 'admin-project-option';
       const checkbox = document.createElement('input');
@@ -1604,7 +1607,9 @@ async function openWorkspaceGuestProjectAccess(member: WorkspaceMember, button: 
       checkbox.name = 'guest_project_ids';
       checkbox.value = String(project.id);
       checkbox.checked = result.project_ids.includes(project.id);
-      label.append(checkbox, document.createTextNode(project.name));
+      const readOnly = project.status === 'completed' || project.status === 'archived';
+      const description = readOnly ? `${project.name} (${project.status}; remove access only)` : project.name;
+      label.append(checkbox, document.createTextNode(description));
       workspaceGuestProjectOptions.append(label);
     }
     const firstProjectCheckbox = workspaceGuestProjectOptions.querySelector<HTMLInputElement>('input[type="checkbox"]');
