@@ -40,14 +40,21 @@ test('milestone groups are collapsible and their headings show issue counts', ()
   assert.match(app, /reconcileIssueBoardGroups\(groups\)/);
 });
 
-test('No milestone group offers opt-in bulk selection and a grouped milestone move action', () => {
+test('No milestone bulk move uses the shared selection and action-group design', () => {
   assert.match(app, /allowBulkMove: group\.milestoneId === null/);
   assert.match(app, /issue-bulk-select-toggle/);
   assert.match(app, /issue-bulk-move-toolbar/);
-  assert.match(app, /Select all/);
-  assert.match(app, /Move selected/);
+  assert.match(app, /selectionActions\.className = 'issue-bulk-move-selection-actions'/);
+  assert.match(app, /selectionLabel\.textContent = 'Selection'/);
+  assert.match(app, /actionGroup\.className = 'issue-bulk-move-action-group'/);
+  assert.match(app, /milestoneLabel\.textContent = 'Milestone'/);
+  assert.match(app, /selectAll\.textContent = 'Select all'/);
+  assert.match(app, /moveButton\.textContent = 'Move'/);
+  assert.match(app, /moveButton\.setAttribute\('aria-label', 'Move selected issues'\)/);
   assert.match(app, /\/projects\/\$\{projectId\}\/issues\/move-to-milestone/);
   assert.match(css, /\.issue-bulk-move-toolbar\s*\{/);
+  assert.match(css, /\.issue-bulk-move-selection-actions\s*\{/);
+  assert.match(css, /\.issue-bulk-move-action-group\s*\{/);
 });
 
 test('issue board offers opt-in bulk assignment across milestone groups', () => {

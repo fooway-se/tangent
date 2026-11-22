@@ -6144,6 +6144,15 @@ function createIssueBulkMoveToolbar(issues: Issue[]): HTMLDivElement {
   toolbar.setAttribute('role', 'group');
   toolbar.setAttribute('aria-label', 'Move unassigned issues to a milestone');
 
+  const selectionActions = document.createElement('div');
+  selectionActions.className = 'issue-bulk-move-selection-actions';
+  selectionActions.setAttribute('role', 'group');
+  selectionActions.setAttribute('aria-label', 'Selection');
+
+  const selectionLabel = document.createElement('span');
+  selectionLabel.className = 'issue-bulk-action-label';
+  selectionLabel.textContent = 'Selection';
+
   const count = document.createElement('span');
   count.className = 'issue-bulk-move-count';
   count.setAttribute('aria-live', 'polite');
@@ -6164,6 +6173,17 @@ function createIssueBulkMoveToolbar(issues: Issue[]): HTMLDivElement {
     renderProjectIssueBoard();
   });
 
+  selectionActions.append(selectionLabel, count, selectAll);
+
+  const actionGroup = document.createElement('div');
+  actionGroup.className = 'issue-bulk-move-action-group';
+  actionGroup.setAttribute('role', 'group');
+  actionGroup.setAttribute('aria-label', 'Milestone');
+
+  const milestoneLabel = document.createElement('span');
+  milestoneLabel.className = 'issue-bulk-action-label';
+  milestoneLabel.textContent = 'Milestone';
+
   const milestoneSelect = document.createElement('select');
   milestoneSelect.className = 'issue-bulk-move-milestone';
   milestoneSelect.setAttribute('aria-label', 'Move selected issues to milestone');
@@ -6179,10 +6199,12 @@ function createIssueBulkMoveToolbar(issues: Issue[]): HTMLDivElement {
   const moveButton = document.createElement('button');
   moveButton.type = 'button';
   moveButton.className = 'button button-primary issue-bulk-move-button';
-  moveButton.textContent = 'Move selected';
+  moveButton.textContent = 'Move';
+  moveButton.setAttribute('aria-label', 'Move selected issues');
   moveButton.addEventListener('click', () => void moveSelectedIssuesToMilestone());
 
-  toolbar.append(count, selectAll, milestoneSelect, moveButton);
+  actionGroup.append(milestoneLabel, milestoneSelect, moveButton);
+  toolbar.append(selectionActions, actionGroup);
   syncIssueBulkMoveToolbar(toolbar, issues);
   return toolbar;
 }
