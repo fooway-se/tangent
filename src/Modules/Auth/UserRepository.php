@@ -190,6 +190,16 @@ final class UserRepository
         $statement->execute(['password_hash' => $this->passwords->hash($password), 'id' => $accountId]);
     }
 
+    public function findAccountPasswordForUpdate(int $accountId): ?array
+    {
+        $statement = $this->pdo->prepare(
+            'SELECT id, password_hash FROM user_accounts WHERE id = :id LIMIT 1 FOR UPDATE'
+        );
+        $statement->execute(['id' => $accountId]);
+        $account = $statement->fetch(PDO::FETCH_ASSOC);
+        return $account === false ? null : $account;
+    }
+
     private function createAccountAndMembership(int $workspaceId, string $name, string $email, string $password, string $role): array
     {
         $normalizedEmail = self::normalizeEmail($email);

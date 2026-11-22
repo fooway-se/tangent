@@ -61,10 +61,24 @@ final class AuthService
         if ($user === null || !(bool) $user['is_active'] || !$this->passwords->verify($password, (string) $user['password_hash'])) {
             throw new ApiException(401, 'invalid_credentials', 'Email or password is incorrect.');
         }
-        if ($this->passwords->needsRehash((string) $user['password_hash'])) {
-            $this->users->updateAccountPassword((int) $user['account_id'], $password);
+
+        $ownsTransaction = !$this->pdo->inTransaction();
+        if ($ownsTransaction) $this->pdo->beginTransaction();
+        try {
+            $credential = $this->users->findAccountPasswordForUpdate((int) $user['account_id']);
+            if ($credential === null || !$this->passwords->verify($password, (string) $credential['password_hash'])) {
+                throw new ApiException(401, 'invalid_credentials', 'Email or password is incorrect.');
+            }
+            if ($this->passwords->needsRehash((string) $credential['password_hash'])) {
+                $this->users->updateAccountPassword((int) $credential['id'], $password);
+            }
+            $session = $this->createSessionForMember($this->config->workspaceId, (int) $user['id']);
+            if ($ownsTransaction) $this->pdo->commit();
+            return $session;
+        } catch (Throwable $exception) {
+            if ($ownsTransaction && $this->pdo->inTransaction()) $this->pdo->rollBack();
+            throw $exception;
         }
-        return $this->createSessionForMember($this->config->workspaceId, (int) $user['id']);
     }
 
     public function createSessionForMember(int $workspaceId, int $userId): array
