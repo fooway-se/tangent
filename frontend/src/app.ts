@@ -7,6 +7,7 @@ import {
   shouldDeferInboxUpdates,
 } from './inbox-polling.js';
 import { renderClientEmptyState, renderClientView, type ClientView } from './guest-view.js';
+import { createLogoutController } from './logout.js';
 import { generateClientSummary, type ClientSummaryActivity } from './client-summary.js';
 import {
   filterMentionMembers,
@@ -8662,13 +8663,16 @@ window.addEventListener('storage', (event) => {
   if (event.key === 'tangent-github-connected' && activeUser?.role === 'admin') void loadGithubRepositories();
 });
 
-async function signOut(): Promise<void> {
-  try {
-    await api('/auth/logout', { method: 'POST' });
-  } finally {
-    showSignedOut();
-  }
-}
+const signOut = createLogoutController({
+  logout: () => api('/auth/logout', { method: 'POST' }),
+  onSignedOut: showSignedOut,
+  onFailure: () => report('Could not sign out. Check your connection and try again.', true),
+  onPending: (pending) => {
+    logoutButton.disabled = pending;
+    guestLogoutButton.disabled = pending;
+  },
+  isExpiredSession: (error) => error instanceof ApiFailure && error.status === 401,
+});
 
 logoutButton.addEventListener('click', () => { void signOut(); });
 

@@ -1,6 +1,7 @@
 import { INBOX_TABS, createEventRow, eventsForTab, tabCount, } from './inbox-events.js';
 import { diffInboxCollections, nextInboxPollDelay, shouldDeferInboxUpdates, } from './inbox-polling.js';
 import { renderClientEmptyState, renderClientView } from './guest-view.js';
+import { createLogoutController } from './logout.js';
 import { generateClientSummary } from './client-summary.js';
 import { filterMentionMembers, findMentionQuery, mentionEmptyMessage, nextMentionSelectionIndex, replaceMentionQuery, splitMentions, } from './chat-mentions.js';
 import { formatChatTimestamp } from './chat-time.js';
@@ -8560,14 +8561,16 @@ window.addEventListener('storage', (event) => {
     if (event.key === 'tangent-github-connected' && activeUser?.role === 'admin')
         void loadGithubRepositories();
 });
-async function signOut() {
-    try {
-        await api('/auth/logout', { method: 'POST' });
-    }
-    finally {
-        showSignedOut();
-    }
-}
+const signOut = createLogoutController({
+    logout: () => api('/auth/logout', { method: 'POST' }),
+    onSignedOut: showSignedOut,
+    onFailure: () => report('Could not sign out. Check your connection and try again.', true),
+    onPending: (pending) => {
+        logoutButton.disabled = pending;
+        guestLogoutButton.disabled = pending;
+    },
+    isExpiredSession: (error) => error instanceof ApiFailure && error.status === 401,
+});
 logoutButton.addEventListener('click', () => { void signOut(); });
 async function start() {
     const url = new URL(window.location.href);
