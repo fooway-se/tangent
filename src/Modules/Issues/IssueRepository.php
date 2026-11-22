@@ -81,6 +81,18 @@ final class IssueRepository
         return array_map(self::normalize(...), $statement->fetchAll(PDO::FETCH_ASSOC));
     }
 
+    public function projectListRevision(int $workspaceId, int $projectId, bool $deleted): int
+    {
+        $column = $deleted ? 'deleted_revision' : 'active_revision';
+        $statement = $this->pdo->prepare(
+            'SELECT ' . $column . ' FROM project_issue_revisions
+             WHERE workspace_id = :workspace_id AND project_id = :project_id LIMIT 1'
+        );
+        $statement->execute(['workspace_id' => $workspaceId, 'project_id' => $projectId]);
+        $revision = $statement->fetchColumn();
+        return $revision === false ? 0 : (int) $revision;
+    }
+
     public function create(
         int $workspaceId,
         int $projectId,
@@ -140,6 +152,7 @@ final class IssueRepository
             'UPDATE issues SET sort_order = :sort_order WHERE workspace_id = :workspace_id AND id = :id'
         );
         $rank->execute(['workspace_id' => $workspaceId, 'id' => $issueId, 'sort_order' => $sortOrder]);
+        $this->bumpProjectRevisions($workspaceId, $projectId, true, false, true);
         return $this->find($workspaceId, $issueId) ?? [];
     }
 
@@ -245,7 +258,11 @@ final class IssueRepository
             'approved_at' => $issue['approved_at'],
         ]);
 
-        if ($statement->rowCount() > 0) return true;
+        if ($statement->rowCount() > 0) {
+            $projectId = $this->projectIdForIssue($workspaceId, $issueId);
+            if ($projectId !== null) $this->bumpProjectRevisions($workspaceId, $projectId, true, false, true);
+            return true;
+        }
 
         $exists = $this->pdo->prepare(
             'SELECT 1 FROM issues
@@ -273,6 +290,7 @@ final class IssueRepository
             'current_is_shared' => $isShared ? 1 : 0,
             ...$idParameters,
         ]);
+        if ($statement->rowCount() > 0) $this->bumpProjectRevisions($workspaceId, $projectId, true, false, true);
         return $statement->rowCount();
     }
 
@@ -293,6 +311,7 @@ final class IssueRepository
             'current_assignee_id' => $assigneeId,
             ...$idParameters,
         ]);
+        if ($statement->rowCount() > 0) $this->bumpProjectRevisions($workspaceId, $projectId, true, false, true);
         return $statement->rowCount();
     }
 
@@ -328,6 +347,7 @@ final class IssueRepository
             ...$idParameters,
             ...$caseParameters,
         ]);
+        if ($statement->rowCount() > 0) $this->bumpProjectRevisions($workspaceId, $projectId, true, false, true);
         return $statement->rowCount();
     }
 
@@ -388,6 +408,7 @@ final class IssueRepository
             'id' => (int) $neighbor['id'],
             'sort_order' => (int) $current['sort_order'],
         ]);
+        $this->bumpProjectRevisions($workspaceId, $projectId, true, false, true);
     }
 
     public function recordStatusTransition(int $workspaceId, int $issueId, ?int $actorId, string $from, string $to): void
@@ -455,6 +476,7 @@ final class IssueRepository
             'target_project_id' => $projectId,
             'target_milestone_id' => $milestoneId,
         ]);
+        if ($statement->rowCount() > 0) $this->bumpProjectRevisions($workspaceId, $projectId, true, true, true);
     }
 
     public function sharedItems(int $workspaceId, int $projectId): array
@@ -625,7 +647,12 @@ final class IssueRepository
                AND approval_requested_at IS NOT NULL AND approved_at IS NULL AND status <> 'cancelled'"
         );
         $statement->execute(['workspace_id' => $workspaceId, 'id' => $issueId, 'approver_id' => $approverId]);
-        return $statement->rowCount() === 1;
+        $changed = $statement->rowCount() === 1;
+        if ($changed) {
+            $projectId = $this->projectIdForIssue($workspaceId, $issueId);
+            if ($projectId !== null) $this->bumpProjectRevisions($workspaceId, $projectId, true, false, true);
+        }
+        return $changed;
     }
 
     public function softDelete(int $workspaceId, int $issueId): void
@@ -635,6 +662,10 @@ final class IssueRepository
              WHERE workspace_id = :workspace_id AND id = :id AND deleted_at IS NULL'
         );
         $statement->execute(['workspace_id' => $workspaceId, 'id' => $issueId]);
+        if ($statement->rowCount() > 0) {
+            $projectId = $this->projectIdForIssue($workspaceId, $issueId);
+            if ($projectId !== null) $this->bumpProjectRevisions($workspaceId, $projectId, true, true, true);
+        }
     }
 
     public function restore(int $workspaceId, int $issueId): void
@@ -644,6 +675,10 @@ final class IssueRepository
              WHERE workspace_id = :workspace_id AND id = :id AND deleted_at IS NOT NULL'
         );
         $statement->execute(['workspace_id' => $workspaceId, 'id' => $issueId]);
+        if ($statement->rowCount() > 0) {
+            $projectId = $this->projectIdForIssue($workspaceId, $issueId);
+            if ($projectId !== null) $this->bumpProjectRevisions($workspaceId, $projectId, true, true, true);
+        }
     }
 
     public function unassignMember(int $workspaceId, int $projectId, int $userId): void
@@ -656,6 +691,47 @@ final class IssueRepository
             'workspace_id' => $workspaceId,
             'project_id' => $projectId,
             'user_id' => $userId,
+        ]);
+        if ($statement->rowCount() > 0) $this->bumpProjectRevisions($workspaceId, $projectId, true, true, true);
+    }
+
+    public function bumpDiscussionRevision(int $workspaceId, int $projectId): void
+    {
+        $this->bumpProjectRevisions($workspaceId, $projectId, true, false, true);
+    }
+
+    private function projectIdForIssue(int $workspaceId, int $issueId): ?int
+    {
+        $statement = $this->pdo->prepare(
+            'SELECT project_id FROM issues WHERE workspace_id = :workspace_id AND id = :id LIMIT 1'
+        );
+        $statement->execute(['workspace_id' => $workspaceId, 'id' => $issueId]);
+        $projectId = $statement->fetchColumn();
+        return $projectId === false ? null : (int) $projectId;
+    }
+
+    private function bumpProjectRevisions(
+        int $workspaceId,
+        int $projectId,
+        bool $active,
+        bool $deleted,
+        bool $tasks,
+    ): void {
+        $statement = $this->pdo->prepare(
+            'INSERT INTO project_issue_revisions
+                (workspace_id, project_id, active_revision, deleted_revision, task_revision)
+             VALUES (:workspace_id, :project_id, :active_revision, :deleted_revision, :task_revision)
+             ON DUPLICATE KEY UPDATE
+                active_revision = active_revision + VALUES(active_revision),
+                deleted_revision = deleted_revision + VALUES(deleted_revision),
+                task_revision = task_revision + VALUES(task_revision)'
+        );
+        $statement->execute([
+            'workspace_id' => $workspaceId,
+            'project_id' => $projectId,
+            'active_revision' => $active ? 1 : 0,
+            'deleted_revision' => $deleted ? 1 : 0,
+            'task_revision' => $tasks ? 1 : 0,
         ]);
     }
 

@@ -37,6 +37,12 @@ final class IssuesService
         return $this->issues->listForProject($user->workspaceId, $projectId);
     }
 
+    public function listRevision(AuthenticatedUser $user, int $projectId, bool $deleted = false): int
+    {
+        $this->requireProjectAccess($user, $projectId, 'issues.read');
+        return $this->issues->projectListRevision($user->workspaceId, $projectId, $deleted);
+    }
+
     public function listDeleted(AuthenticatedUser $user, int $projectId): array
     {
         $this->requireProjectAccess($user, $projectId, 'issues.read');
@@ -86,6 +92,7 @@ final class IssuesService
                 throw new ApiException(404, 'not_found', 'The discussion message was not found.');
             }
             $message = $this->discussion->create($user->workspaceId, $issueId, $user->id, $parentId, $body);
+            $this->issues->bumpDiscussionRevision($user->workspaceId, (int) $issue['project_id']);
             if ($ownsTransaction) $this->pdo->commit();
             return $message;
         } catch (Throwable $exception) {
@@ -117,6 +124,7 @@ final class IssuesService
             $this->requireLastDiscussionMessage($user->workspaceId, $issueId, $messageId);
 
             $updated = $this->discussion->updateBody($user->workspaceId, $issueId, $messageId, $body);
+            $this->issues->bumpDiscussionRevision($user->workspaceId, (int) $issue['project_id']);
             if ($ownsTransaction) $this->pdo->commit();
             return $updated;
         } catch (Throwable $exception) {
@@ -143,6 +151,7 @@ final class IssuesService
             $this->requireLastDiscussionMessage($user->workspaceId, $issueId, $messageId);
 
             $this->discussion->delete($user->workspaceId, $issueId, $messageId);
+            $this->issues->bumpDiscussionRevision($user->workspaceId, (int) $issue['project_id']);
             if ($ownsTransaction) $this->pdo->commit();
         } catch (Throwable $exception) {
             if ($ownsTransaction && $this->pdo->inTransaction()) $this->pdo->rollBack();

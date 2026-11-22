@@ -42,9 +42,12 @@ final class IssuesRoutes
             array $params,
             AuthenticatedUser $user,
         ): Response {
-            return self::issueListResponse(
+            $projectId = self::positiveId($params['id']);
+            $revision = $this->service->listRevision($user, $projectId);
+            return IssueListResponse::conditional(
                 $request,
-                $this->service->list($user, self::positiveId($params['id'])),
+                IssueListResponse::etagForRevision($user->workspaceId . ':' . $projectId . ':active:' . $revision),
+                fn (): array => $this->service->list($user, $projectId),
             );
         });
 

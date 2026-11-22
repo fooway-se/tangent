@@ -208,6 +208,11 @@ final class IssueDiscussionTest extends ApiTestCase
         $initial = $this->apiCookieRequest('GET', $listPath, $admin['cookie']);
         self::assertSame(200, $initial->status);
         self::assertSame(0, $this->listedIssue($initial->body['issues'], $issueId)['discussion_count']);
+        $initialEtag = $initial->headers['etag'] ?? null;
+        self::assertIsString($initialEtag);
+        self::assertSame(304, $this->apiCookieRequest(
+            'GET', $listPath, $admin['cookie'], [], null, ['If-None-Match' => $initialEtag],
+        )->status);
 
         $root = $this->apiCookieRequest(
             'POST',
@@ -226,9 +231,34 @@ final class IssueDiscussionTest extends ApiTestCase
         );
         self::assertSame(201, $reply->status);
 
-        $updated = $this->apiCookieRequest('GET', $listPath, $admin['cookie']);
+        $updated = $this->apiCookieRequest(
+            'GET', $listPath, $admin['cookie'], [], null, ['If-None-Match' => $initialEtag],
+        );
         self::assertSame(200, $updated->status);
         self::assertSame(2, $this->listedIssue($updated->body['issues'], $issueId)['discussion_count']);
+        self::assertNotSame($initialEtag, $updated->headers['etag'] ?? null);
+
+        $renamed = $this->apiCookieRequest(
+            'PATCH', "/api/v1/issues/{$issueId}", $admin['cookie'], ['title' => 'Renamed issue'], $admin['csrf'],
+        );
+        self::assertSame(200, $renamed->status, json_encode($renamed->body));
+        $afterRename = $this->apiCookieRequest(
+            'GET', $listPath, $admin['cookie'], [], null, ['If-None-Match' => $updated->headers['etag']],
+        );
+        self::assertSame(200, $afterRename->status);
+        self::assertSame('Renamed issue', $this->listedIssue($afterRename->body['issues'], $issueId)['title']);
+        self::assertNotSame($updated->headers['etag'], $afterRename->headers['etag'] ?? null);
+
+        $deleted = $this->apiCookieRequest(
+            'DELETE', "/api/v1/issues/{$issueId}", $admin['cookie'], [], $admin['csrf'],
+        );
+        self::assertSame(204, $deleted->status);
+        $afterDelete = $this->apiCookieRequest(
+            'GET', $listPath, $admin['cookie'], [], null, ['If-None-Match' => $afterRename->headers['etag']],
+        );
+        self::assertSame(200, $afterDelete->status);
+        self::assertSame([], $afterDelete->body['issues']);
+        self::assertNotSame($afterRename->headers['etag'], $afterDelete->headers['etag'] ?? null);
     }
 
     private function listedIssue(array $issues, int $issueId): array
@@ -281,8 +311,9 @@ final class IssueDiscussionTest extends ApiTestCase
         string $cookie,
         array $body = [],
         ?string $csrf = null,
+        array $extraHeaders = [],
     ): Response {
-        $headers = [];
+        $headers = $extraHeaders;
         if ($csrf !== null) $headers['X-CSRF-Token'] = $csrf;
         return $this->application->handle(Request::json(
             $method,
