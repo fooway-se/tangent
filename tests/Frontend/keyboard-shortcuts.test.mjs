@@ -55,6 +55,13 @@ test('t focuses the theme selector from any view and stays inactive while typing
   assert.ok((html.match(/<kbd>t<\/kbd> Theme/g) ?? []).length >= 2);
 });
 
+test('keyboard hint toggling does not announce redundant status text', () => {
+  const toggle = app.slice(app.indexOf('function toggleKeyboardHints'), app.indexOf('function showSignedOut'));
+  assert.match(toggle, /keyboardHintsVisible = !keyboardHintsVisible/);
+  assert.match(toggle, /updateKeyboardHintsVisibility\(\)/);
+  assert.doesNotMatch(toggle, /report\(/);
+});
+
 test('workspace shortcuts are unavailable on the sign-in screen', () => {
   assert.equal(resolve('k', { hasWorkspace: false }, { ctrlKey: true }), null);
   assert.equal(resolve('?', { hasWorkspace: false }), null);

@@ -1043,7 +1043,6 @@ function toggleKeyboardHints(): void {
     /* Storage can be blocked; the choice then lasts for this page only. */
   }
   updateKeyboardHintsVisibility();
-  report(keyboardHintsVisible ? 'Keyboard hints shown.' : 'Keyboard hints hidden.');
 }
 
 function showSignedOut(): void {
