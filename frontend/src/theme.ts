@@ -1,4 +1,4 @@
-export type ThemeId = 'putty' | 'rainbow' | 'breadbin' | 'broadcast' | 'cassette' | 'mono' | 'stripe' | 'paper' | 'desk' | 'silver' | 'blue' | 'cartridge' | 'nordic' | 'desktop' | 'copper' | 'clean' | 'clean-dark';
+export type ThemeId = 'putty' | 'rainbow' | 'breadbin' | 'broadcast' | 'cassette' | 'mono' | 'stripe' | 'paper' | 'desk' | 'silver' | 'blue' | 'cartridge' | 'nordic' | 'desktop' | 'copper' | 'altair' | 'atari-st' | 'x68000' | 'clean' | 'clean-dark';
 
 export interface ThemeOption {
   id: ThemeId;
@@ -23,6 +23,9 @@ export const THEMES: readonly ThemeOption[] = [
   { id: 'nordic', label: 'Nordic & Phosphor' },
   { id: 'desktop', label: 'Icon & Mouse' },
   { id: 'copper', label: 'Copper & Chroma' },
+  { id: 'altair', label: 'Switches & Steel' },
+  { id: 'atari-st', label: 'Studio & Sound' },
+  { id: 'x68000', label: 'Arcade & Towers' },
   { id: 'clean', label: 'Clean' },
   { id: 'clean-dark', label: 'Clean (dark)' },
 ];

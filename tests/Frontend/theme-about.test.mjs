@@ -51,6 +51,21 @@ test('every theme has a locally hosted, credited computer photo and two short fa
   }
 });
 
+test('Altair, Atari ST, and X68000 themes have sourced machine cards', () => {
+  assert.equal(THEME_MACHINES.altair.model, 'MITS Altair 8800');
+  assert.equal(THEME_MACHINES.altair.year, '1975');
+  assert.equal(THEME_MACHINES.altair.photoCredit, 'Michael Holley / Swtpc6800');
+  assert.equal(THEME_MACHINES.altair.license, 'Public domain');
+  assert.equal(THEME_MACHINES['atari-st'].model, 'Atari 520ST');
+  assert.equal(THEME_MACHINES['atari-st'].year, '1985');
+  assert.equal(THEME_MACHINES['atari-st'].photoCredit, 'Blake Patterson');
+  assert.equal(THEME_MACHINES['atari-st'].license, 'CC BY 2.0');
+  assert.equal(THEME_MACHINES.x68000.model, 'Sharp X68000 XVI');
+  assert.equal(THEME_MACHINES.x68000.year, '1991');
+  assert.equal(THEME_MACHINES.x68000.photoCredit, 'htomari');
+  assert.equal(THEME_MACHINES.x68000.license, 'CC BY-SA 2.0');
+});
+
 test('theme selectors have a silent computer icon that opens the accessible card', () => {
   assert.equal((html.match(/data-theme-about\b/g) ?? []).length, 2);
   assert.equal((html.match(/class="theme-about-button"/g) ?? []).length, 2);

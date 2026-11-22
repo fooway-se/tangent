@@ -996,6 +996,192 @@
   --signal-stripe: linear-gradient(to bottom, #65d3cc 0 25%, #8975ff 25% 50%, #ed69c3 50% 75%, #f7a64a 75% 100%);
 }
 
+:root[data-theme="altair"] {
+  --night: #101923;
+  --night-glow: #253b4b;
+  --night-muted: #c4d0d3;
+
+  --case-top: #c8ced0;
+  --case-mid: #b8c0c4;
+  --case-bottom: #a8b0b6;
+  --case-shade: #848e97;
+  --case-edge: #707a84;
+  --case-light: #e2e6e8;
+  --case-ink: #1c252d;
+  --case-muted: #35414b;
+  --case-error: #932f25;
+  --vent-dark: #8a949b;
+  --vent-light: #d9dee0;
+  --footer-top: #bfc7cb;
+  --footer-bottom: #aeb7bc;
+
+  --key-top: #dce1e3;
+  --key-bottom: #bec7cc;
+  --key-highlight: #f1f4f5;
+
+  --cap-top: #303b44;
+  --cap-bottom: #202930;
+  --cap-edge: #10171d;
+  --plate: #17212a;
+  --plate-ink: #edf2f2;
+  --plate-muted: #bac6ca;
+
+  --screen: #0d1720;
+  --screen-rim: #090f14;
+  --screen-glow: rgba(88, 165, 192, 0.13);
+  --screen-vignette: rgba(34, 130, 167, 0.10);
+  --screen-ink: #edf1e8;
+  --screen-muted: #a9bdc2;
+  --screen-header: rgba(255, 255, 255, 0.04);
+  --screen-highlight: rgba(255, 255, 255, 0.07);
+  --backdrop: rgba(8, 14, 20, 0.74);
+  --screen-panel: #172732;
+  --screen-control-top: #223b48;
+  --screen-inset: #081116;
+  --screen-field: #0b1319;
+  --screen-border: #34505d;
+  --screen-line: #233b47;
+  --screen-hover: #233b46;
+  --screen-track: #081117;
+  --screen-group: #13242e;
+  --screen-group-top: #29404a;
+  --screen-group-bottom: #1d313b;
+
+  --accent: #ff8a55;
+  --accent-edge: #a33f2a;
+  --accent-ink: #25140f;
+  --accent-shine: rgba(255, 255, 255, 0.48);
+  --success: #81c779;
+  --danger: #ff9784;
+  --power-light: #e34b36;
+  --focus-ring: rgba(255, 138, 85, 0.5);
+  --signal-stripe: linear-gradient(to bottom, #e34b36 0 25%, #ff9b38 25% 50%, #e8c34b 50% 75%, #67ad74 75% 100%);
+}
+
+:root[data-theme="atari-st"] {
+  --night: #171c20;
+  --night-glow: #35434a;
+  --night-muted: #d7d4cb;
+
+  --case-top: #d8d2c3;
+  --case-mid: #c9c3b5;
+  --case-bottom: #b8b3a7;
+  --case-shade: #969182;
+  --case-edge: #817e72;
+  --case-light: #ece7da;
+  --case-ink: #2b2924;
+  --case-muted: #4a453b;
+  --case-error: #96372c;
+  --vent-dark: #a09a8b;
+  --vent-light: #e7e1d3;
+  --footer-top: #cfc9ba;
+  --footer-bottom: #bab5a8;
+
+  --key-top: #e3ddcf;
+  --key-bottom: #c9c4b8;
+  --key-highlight: #f4efe4;
+
+  --cap-top: #45443e;
+  --cap-bottom: #302f2b;
+  --cap-edge: #1b1b19;
+  --plate: #252a2c;
+  --plate-ink: #f0ede5;
+  --plate-muted: #c4c6bf;
+
+  --screen: #101b21;
+  --screen-rim: #0b1115;
+  --screen-glow: rgba(95, 201, 187, 0.12);
+  --screen-vignette: rgba(65, 150, 169, 0.11);
+  --screen-ink: #eff2e8;
+  --screen-muted: #a7bfbb;
+  --screen-header: rgba(255, 255, 255, 0.04);
+  --screen-highlight: rgba(255, 255, 255, 0.07);
+  --backdrop: rgba(15, 20, 24, 0.72);
+  --screen-panel: #192b31;
+  --screen-control-top: #294047;
+  --screen-inset: #091216;
+  --screen-field: #0b1418;
+  --screen-border: #3a5960;
+  --screen-line: #29464c;
+  --screen-hover: #20383e;
+  --screen-track: #091216;
+  --screen-group: #15272e;
+  --screen-group-top: #2b444b;
+  --screen-group-bottom: #20363d;
+
+  --accent: #68cbbb;
+  --accent-edge: #368c81;
+  --accent-ink: #132a29;
+  --accent-shine: rgba(255, 255, 255, 0.48);
+  --success: #83c86b;
+  --danger: #ed887b;
+  --power-light: #dc654e;
+  --focus-ring: rgba(104, 203, 187, 0.48);
+  --signal-stripe: linear-gradient(to bottom, #e65350 0 25%, #f2b342 25% 50%, #72b955 50% 75%, #68cbbb 75% 100%);
+}
+
+:root[data-theme="x68000"] {
+  --night: #090d13;
+  --night-glow: #252e3e;
+  --night-muted: #c2cad7;
+
+  --case-top: #292e36;
+  --case-mid: #242930;
+  --case-bottom: #1f242b;
+  --case-shade: #15191f;
+  --case-edge: #10141a;
+  --case-light: #383f49;
+  --case-ink: #eef1f4;
+  --case-muted: #bcc4ce;
+  --case-error: #ff8a80;
+  --vent-dark: #151a21;
+  --vent-light: #343b45;
+  --footer-top: #252b32;
+  --footer-bottom: #1f242b;
+
+  --key-top: #353c46;
+  --key-bottom: #2b313a;
+  --key-highlight: #4a5360;
+
+  --cap-top: #12171e;
+  --cap-bottom: #080c11;
+  --cap-edge: #030609;
+  --plate: #0d1117;
+  --plate-ink: #edf1f4;
+  --plate-muted: #adb7c4;
+
+  --screen: #0b1018;
+  --screen-rim: #05080d;
+  --screen-glow: rgba(76, 183, 220, 0.12);
+  --screen-vignette: rgba(227, 65, 69, 0.09);
+  --screen-ink: #edf1f4;
+  --screen-muted: #a0adbd;
+  --screen-header: rgba(255, 255, 255, 0.04);
+  --screen-highlight: rgba(255, 255, 255, 0.06);
+  --backdrop: rgba(3, 6, 10, 0.78);
+  --screen-panel: #171f2a;
+  --screen-control-top: #222d3c;
+  --screen-inset: #060a10;
+  --screen-field: #080d13;
+  --screen-border: #344356;
+  --screen-line: #252f3d;
+  --screen-hover: #202b39;
+  --screen-track: #060a10;
+  --screen-group: #121a24;
+  --screen-group-top: #263342;
+  --screen-group-bottom: #1b2633;
+
+  --accent: #ff706b;
+  --accent-edge: #b33e44;
+  --accent-ink: #281416;
+  --accent-shine: rgba(255, 255, 255, 0.48);
+  --success: #77d39b;
+  --danger: #ff887e;
+  --power-light: #55d9e7;
+  --focus-ring: rgba(255, 112, 107, 0.5);
+  --signal-stripe: linear-gradient(to bottom, #ff625c 0 25%, #f8b744 25% 50%, #52c77c 50% 75%, #55d9e7 75% 100%);
+}
+
 /*
  * Clean: a neutral, modern light theme for people who would rather not use a
  * retro computer. Same layout as every other theme; it only flattens the

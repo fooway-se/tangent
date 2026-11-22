@@ -24,7 +24,7 @@ themes.putty = base;
 
 test('classic computer themes use the chosen indirect names', () => {
   assert.deepEqual(
-    THEMES.filter(({ id }) => ['broadcast', 'cassette', 'mono', 'stripe', 'paper', 'desk', 'silver', 'blue', 'cartridge', 'nordic', 'desktop', 'copper'].includes(id)).map(({ id, label }) => [id, label]),
+    THEMES.filter(({ id }) => ['broadcast', 'cassette', 'mono', 'stripe', 'paper', 'desk', 'silver', 'blue', 'cartridge', 'nordic', 'desktop', 'copper', 'altair', 'atari-st', 'x68000'].includes(id)).map(({ id, label }) => [id, label]),
     [
       ['broadcast', 'Broadcast & Beige'],
       ['cassette', 'Cassette & Colour'],
@@ -38,6 +38,9 @@ test('classic computer themes use the chosen indirect names', () => {
       ['nordic', 'Nordic & Phosphor'],
       ['desktop', 'Icon & Mouse'],
       ['copper', 'Copper & Chroma'],
+      ['altair', 'Switches & Steel'],
+      ['atari-st', 'Studio & Sound'],
+      ['x68000', 'Arcade & Towers'],
     ],
   );
 });
@@ -56,6 +59,9 @@ test('theme helpers normalise and cycle', () => {
   assert.equal(normalizeTheme('nordic'), 'nordic');
   assert.equal(normalizeTheme('desktop'), 'desktop');
   assert.equal(normalizeTheme('copper'), 'copper');
+  assert.equal(normalizeTheme('altair'), 'altair');
+  assert.equal(normalizeTheme('atari-st'), 'atari-st');
+  assert.equal(normalizeTheme('x68000'), 'x68000');
   assert.equal(normalizeTheme('unknown'), 'putty');
   assert.equal(normalizeTheme(null), 'putty');
   assert.equal(nextTheme('putty'), 'rainbow');
@@ -64,11 +70,21 @@ test('theme helpers normalise and cycle', () => {
   assert.equal(nextTheme('blue'), 'cartridge');
   assert.equal(nextTheme('nordic'), 'desktop');
   assert.equal(nextTheme('desktop'), 'copper');
-  assert.equal(nextTheme('copper'), 'clean');
+  assert.equal(nextTheme('copper'), 'altair');
+  assert.equal(nextTheme('altair'), 'atari-st');
+  assert.equal(nextTheme('atari-st'), 'x68000');
+  assert.equal(nextTheme('x68000'), 'clean');
   assert.equal(nextTheme('clean'), 'clean-dark');
   assert.equal(nextTheme('clean-dark'), 'putty');
   assert.equal(normalizeTheme('clean-dark'), 'clean-dark');
   assert.equal(normalizeTheme('clean'), 'clean');
+});
+
+test('Clean and Clean (dark) remain the last options in the theme selector', () => {
+  assert.deepEqual(THEMES.slice(-2).map(({ id, label }) => [id, label]), [
+    ['clean', 'Clean'],
+    ['clean-dark', 'Clean (dark)'],
+  ]);
 });
 
 test('every theme defines every colour token of the default theme', () => {

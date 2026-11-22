@@ -15,6 +15,9 @@ export const THEMES = [
     { id: 'nordic', label: 'Nordic & Phosphor' },
     { id: 'desktop', label: 'Icon & Mouse' },
     { id: 'copper', label: 'Copper & Chroma' },
+    { id: 'altair', label: 'Switches & Steel' },
+    { id: 'atari-st', label: 'Studio & Sound' },
+    { id: 'x68000', label: 'Arcade & Towers' },
     { id: 'clean', label: 'Clean' },
     { id: 'clean-dark', label: 'Clean (dark)' },
 ];
