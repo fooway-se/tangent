@@ -118,9 +118,8 @@ final class ChatService
         $parentId = null;
         if (array_key_exists('parent_id', $input) && $input['parent_id'] !== null) {
             $parentId = self::positiveInteger($input['parent_id']);
-            if ($this->chat->threadRoot($user->workspaceId, $channelId, $parentId) === null) {
-                throw new ApiException(404, 'not_found', 'The parent message was not found.');
-            }
+            $root = $this->threadRootOrThrow($user->workspaceId, $channelId, $parentId);
+            $this->assertReplyDepthAllowed($root);
         }
 
         return $this->chat->createMessage($user->workspaceId, $channelId, $user->id, $parentId, $body);
@@ -201,10 +200,8 @@ final class ChatService
         $threadParticipants = [];
         $clientVisible = false;
         if ($parentId !== null) {
-            $root = $this->chat->threadRoot($user->workspaceId, $channelId, $parentId);
-            if ($root === null) {
-                throw new ApiException(404, 'not_found', 'The parent message was not found.');
-            }
+            $root = $this->threadRootOrThrow($user->workspaceId, $channelId, $parentId);
+            $this->assertReplyDepthAllowed($root);
             $threadParticipants = $this->chat->threadParticipantIds($user->workspaceId, $channelId, $root['id']);
             $clientVisible = $root['is_client_visible'];
         }
@@ -267,10 +264,7 @@ final class ChatService
         }
 
         $this->visibleProjectChannel($user, $message['project_id']);
-        $root = $this->chat->threadRoot($user->workspaceId, $message['channel_id'], $message['id']);
-        if ($root === null) {
-            throw new ApiException(404, 'not_found', 'The message was not found.');
-        }
+        $root = $this->threadRootOrThrow($user->workspaceId, $message['channel_id'], $message['id']);
         return [
             'project_id' => $message['project_id'],
             'channel_id' => $message['channel_id'],
@@ -299,6 +293,33 @@ final class ChatService
         }
 
         return $channelId;
+    }
+
+    private function threadRootOrThrow(int $workspaceId, int $channelId, int $messageId): array
+    {
+        $root = $this->chat->threadRoot($workspaceId, $channelId, $messageId);
+        if ($root === null) {
+            throw new ApiException(404, 'not_found', 'The parent message was not found.');
+        }
+        if ($root['over_depth']) {
+            throw new ApiException(
+                422,
+                'validation_failed',
+                'This existing thread exceeds the supported depth of ' . ChatRepository::MAX_THREAD_DEPTH . ' messages and must be repaired.',
+            );
+        }
+        return $root;
+    }
+
+    private function assertReplyDepthAllowed(array $root): void
+    {
+        if ($root['depth'] >= ChatRepository::MAX_THREAD_DEPTH) {
+            throw new ApiException(
+                422,
+                'validation_failed',
+                'Chat threads support a maximum depth of ' . ChatRepository::MAX_THREAD_DEPTH . ' messages, including the root.',
+            );
+        }
     }
 
     private static function positiveInteger(mixed $value): int

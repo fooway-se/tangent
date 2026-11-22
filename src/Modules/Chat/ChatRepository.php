@@ -8,6 +8,8 @@ use PDO;
 
 final class ChatRepository
 {
+    public const MAX_THREAD_DEPTH = 32;
+
     public function __construct(private readonly PDO $pdo)
     {
     }
@@ -438,16 +440,17 @@ final class ChatRepository
     public function threadRoot(int $workspaceId, int $channelId, int $messageId): ?array
     {
         $statement = $this->pdo->prepare(
-            'WITH RECURSIVE thread_ancestors (id, parent_id, is_client_visible) AS (
-                SELECT id, parent_id, is_client_visible FROM messages
+            'WITH RECURSIVE thread_ancestors (id, parent_id, is_client_visible, depth) AS (
+                SELECT id, parent_id, is_client_visible, 1 FROM messages
                 WHERE workspace_id = :workspace_id AND channel_id = :channel_id AND id = :message_id
                 UNION ALL
-                SELECT parent.id, parent.parent_id, parent.is_client_visible FROM messages parent
+                SELECT parent.id, parent.parent_id, parent.is_client_visible, child.depth + 1 FROM messages parent
                 INNER JOIN thread_ancestors child ON parent.id = child.parent_id
                 WHERE parent.workspace_id = :parent_workspace_id AND parent.channel_id = :parent_channel_id
+                  AND child.depth < :max_depth
             )
-            SELECT id, is_client_visible FROM thread_ancestors
-            WHERE parent_id IS NULL
+            SELECT id, parent_id, is_client_visible, depth FROM thread_ancestors
+            ORDER BY depth DESC
             LIMIT 1'
         );
         $statement->execute([
@@ -456,6 +459,7 @@ final class ChatRepository
             'message_id' => $messageId,
             'parent_workspace_id' => $workspaceId,
             'parent_channel_id' => $channelId,
+            'max_depth' => self::MAX_THREAD_DEPTH + 1,
         ]);
         $root = $statement->fetch(PDO::FETCH_ASSOC);
         if ($root === false) {
@@ -464,6 +468,8 @@ final class ChatRepository
         return [
             'id' => (int) $root['id'],
             'is_client_visible' => (bool) $root['is_client_visible'],
+            'depth' => (int) $root['depth'],
+            'over_depth' => $root['parent_id'] !== null || (int) $root['depth'] > self::MAX_THREAD_DEPTH,
         ];
     }
 

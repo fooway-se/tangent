@@ -65,6 +65,7 @@ Project states include **Active**, **Paused**, **Completed**, and **Archived**. 
 Project chat keeps team conversation close to the work. Select a project to open its chat, then use the composer to send a message.
 
 - Reply to a message to keep a discussion in a thread. Replies stay with their parent message.
+- Threads support up to 32 messages, including the root message.
 - Type `@` followed by a member name to mention someone. Select the matching suggestion to insert the mention and notify that person.
 - The small presence indicator shows that another authorized viewer is active. It does not show names or a count.
 - Select a chat message and create an issue from it when the message describes work to track. The issue keeps a link back to the source thread.

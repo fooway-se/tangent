@@ -140,6 +140,75 @@ final class ProjectChatTest extends ApiTestCase
         self::assertSame($reply->body['message']['id'], $parentEvent['first_reply_id']);
     }
 
+    public function testSupportedThreadDepthLoadsFromHistoryAndEventsAndRejectsOneDeeperReply(): void
+    {
+        $admin = $this->login($this->adminEmail);
+        $projectId = $this->createProject($admin, 'Maximum depth thread');
+        $parentId = null;
+        $maxDepth = 32;
+
+        for ($depth = 1; $depth <= $maxDepth; $depth++) {
+            $input = ['body' => 'Thread depth ' . $depth];
+            if ($parentId !== null) $input['parent_id'] = $parentId;
+            $message = $this->postMessage($projectId, $admin, $input);
+            self::assertSame(201, $message->status, json_encode($message->body));
+            $parentId = $message->body['message']['id'];
+        }
+
+        $history = $this->getMessages($projectId, $admin['cookie'], ['since' => '0']);
+        self::assertSame(200, $history->status, json_encode($history->body));
+        self::assertCount($maxDepth, $history->body['messages']);
+        self::assertSame('Thread depth 1', $history->body['messages'][0]['body']);
+        self::assertSame('Thread depth 32', $history->body['messages'][31]['body']);
+
+        $events = $this->getEvents($admin['cookie']);
+        self::assertSame(200, $events->status, json_encode($events->body));
+        self::assertCount($maxDepth, $events->body['events']);
+        self::assertSame('Thread depth 32', $events->body['events'][31]['body']);
+
+        $tooDeep = $this->postMessage($projectId, $admin, [
+            'body' => 'Thread depth 33',
+            'parent_id' => $parentId,
+        ]);
+        self::assertSame(422, $tooDeep->status, json_encode($tooDeep->body));
+        self::assertSame('validation_failed', $tooDeep->body['error']['code']);
+
+        $this->pdo->prepare(
+            'UPDATE chat_event_sequences SET last_cursor = last_cursor + 1 WHERE workspace_id = :workspace_id'
+        )->execute(['workspace_id' => $this->workspaceId]);
+        $legacyCursor = $this->pdo->prepare(
+            'SELECT last_cursor FROM chat_event_sequences WHERE workspace_id = :workspace_id'
+        );
+        $legacyCursor->execute(['workspace_id' => $this->workspaceId]);
+        $legacyInsert = $this->pdo->prepare(
+            'INSERT INTO messages (workspace_id, channel_id, author_id, parent_id, body, is_client_visible, feed_cursor)
+             VALUES (:workspace_id, :channel_id, :author_id, :parent_id, :body, 0, :feed_cursor)'
+        );
+        $legacyInsert->execute([
+            'workspace_id' => $this->workspaceId,
+            'channel_id' => $history->body['messages'][0]['channel_id'],
+            'author_id' => $this->adminId,
+            'parent_id' => $parentId,
+            'body' => 'Legacy thread depth 33',
+            'feed_cursor' => (int) $legacyCursor->fetchColumn(),
+        ]);
+        $legacyMessageId = (int) $this->pdo->lastInsertId();
+
+        $legacyHistory = $this->getMessages($projectId, $admin['cookie'], ['since' => '0']);
+        self::assertSame(200, $legacyHistory->status, json_encode($legacyHistory->body));
+        self::assertCount($maxDepth + 1, $legacyHistory->body['messages']);
+        $legacyEvents = $this->getEvents($admin['cookie']);
+        self::assertSame(200, $legacyEvents->status, json_encode($legacyEvents->body));
+        self::assertCount($maxDepth + 1, $legacyEvents->body['events']);
+
+        $legacyReply = $this->postMessage($projectId, $admin, [
+            'body' => 'Reply to a legacy over-depth thread',
+            'parent_id' => $legacyMessageId,
+        ]);
+        self::assertSame(422, $legacyReply->status, json_encode($legacyReply->body));
+        self::assertSame('validation_failed', $legacyReply->body['error']['code']);
+    }
+
     public function testNonMembersCannotReadOrPostProjectMessages(): void
     {
         $admin = $this->login($this->adminEmail);

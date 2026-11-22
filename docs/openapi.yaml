@@ -866,7 +866,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
     post:
       summary: Post to the workspace Lounge
-      description: Cookie-authenticated requests must include X-CSRF-Token. The Lounge is internal to the workspace and does not create project inbox events.
+      description: Cookie-authenticated requests must include X-CSRF-Token. The Lounge is internal to the workspace and does not create project inbox events. Threads support at most 32 messages including the root; deeper replies return 422.
       parameters:
         - $ref: '#/components/parameters/CsrfToken'
       requestBody:
@@ -994,7 +994,7 @@ paths:
         '422': { $ref: '#/components/responses/ValidationFailed' }
     post:
       summary: Post to a project channel or reply to a message
-      description: Cookie-authenticated requests must include X-CSRF-Token. Message bodies are plain text.
+      description: Cookie-authenticated requests must include X-CSRF-Token. Message bodies are plain text. Threads support at most 32 messages including the root; deeper replies return 422.
       parameters:
         - $ref: '#/components/parameters/Id'
         - $ref: '#/components/parameters/CsrfToken'
