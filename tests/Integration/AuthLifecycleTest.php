@@ -614,10 +614,12 @@ final class AuthLifecycleTest extends ApiTestCase
         self::assertSame(401, $this->request('GET', '/api/v1/auth/me', cookies: [
             'tangent_session' => $developer['cookie'],
         ])->status);
-        self::assertSame(401, $this->request('POST', '/api/v1/auth/login', [
+        $secondaryLogin = $this->request('POST', '/api/v1/auth/login', [
             'email' => $this->developerEmail,
             'password' => $this->password,
-        ])->status);
+        ]);
+        self::assertSame(200, $secondaryLogin->status, json_encode($secondaryLogin->body));
+        self::assertSame($otherWorkspaceId, $secondaryLogin->body['user']['workspace_id']);
 
         $tokens = $this->pdo->prepare(
             'SELECT COUNT(*) FROM api_tokens

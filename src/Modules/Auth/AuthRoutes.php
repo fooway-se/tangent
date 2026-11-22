@@ -27,7 +27,7 @@ final class AuthRoutes
     {
         $router->add('POST', '/api/v1/auth/login', function (Request $request): Response {
             $login = $this->service->login($request);
-            return $this->sessionResponse($login, $this->defaultWorkspaceId);
+            return $this->sessionResponse($login, (int) $login['user']['workspace_id']);
         }, false);
 
         $router->add('POST', '/api/v1/auth/invites/inspect', function (Request $request): Response {

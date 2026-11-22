@@ -57,22 +57,45 @@ final class AuthService
             throw new ApiException(429, 'rate_limited', 'Too many login attempts. Try again later.');
         }
 
-        $user = $this->users->findByEmail($this->config->workspaceId, $email);
-        if ($user === null || !(bool) $user['is_active'] || !$this->passwords->verify($password, (string) $user['password_hash'])) {
+        $account = $this->users->findAccountByEmail($email);
+        if ($account === null || !$this->passwords->verify($password, (string) $account['password_hash'])) {
             throw new ApiException(401, 'invalid_credentials', 'Email or password is incorrect.');
         }
 
         $ownsTransaction = !$this->pdo->inTransaction();
         if ($ownsTransaction) $this->pdo->beginTransaction();
         try {
-            $credential = $this->users->findAccountPasswordForUpdate((int) $user['account_id']);
+            $credential = $this->users->findAccountPasswordForUpdate((int) $account['account_id']);
             if ($credential === null || !$this->passwords->verify($password, (string) $credential['password_hash'])) {
                 throw new ApiException(401, 'invalid_credentials', 'Email or password is incorrect.');
             }
             if ($this->passwords->needsRehash((string) $credential['password_hash'])) {
                 $this->users->updateAccountPassword((int) $credential['id'], $password);
             }
-            $session = $this->createSessionForMember($this->config->workspaceId, (int) $user['id']);
+
+            $member = $this->users->findAccountMemberForUpdate(
+                $this->config->workspaceId,
+                (int) $credential['id'],
+            );
+            if ($member === null || !(bool) $member['is_active']) {
+                $member = null;
+                foreach ($this->workspaces->listForAccount((int) $credential['id']) as $workspace) {
+                    if ((int) $workspace['id'] === $this->config->workspaceId) continue;
+                    $candidate = $this->users->findAccountMemberForUpdate(
+                        (int) $workspace['id'],
+                        (int) $credential['id'],
+                    );
+                    if ($candidate !== null && (bool) $candidate['is_active']) {
+                        $member = $candidate;
+                        break;
+                    }
+                }
+            }
+            if ($member === null) {
+                throw new ApiException(401, 'invalid_credentials', 'Email or password is incorrect.');
+            }
+
+            $session = $this->createSessionForMember((int) $member['workspace_id'], (int) $member['id']);
             if ($ownsTransaction) $this->pdo->commit();
             return $session;
         } catch (Throwable $exception) {

@@ -32,6 +32,7 @@ Tangent brings project conversation, issue tracking, planning, and client update
 
 ### Sign in and choose a workspace
 
+- Sign in opens your active default workspace when you belong to it. If that membership is inactive or missing, Tangent opens the first active workspace by name. You need an active membership in at least one workspace.
 - Use the invite link from your workspace admin to join. For a new account, enter the separate verification code Tangent emails to the invited address. If you already have an account, enter its current password to accept.
 - If your account belongs to more than one workspace, use the workspace picker at the top of the sidebar to switch.
 - If **New project** is available to your role, select it from **Projects**, enter a name and optional description, then create the project.

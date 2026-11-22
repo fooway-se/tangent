@@ -117,6 +117,19 @@ final class UserRepository
         return $user === false ? null : $user;
     }
 
+    public function findAccountMemberForUpdate(int $workspaceId, int $accountId): ?array
+    {
+        $statement = $this->pdo->prepare(
+            'SELECT id, workspace_id, account_id, name, email, role, is_active
+             FROM users
+             WHERE workspace_id = :workspace_id AND account_id = :account_id
+             LIMIT 1 FOR UPDATE'
+        );
+        $statement->execute(['workspace_id' => $workspaceId, 'account_id' => $accountId]);
+        $user = $statement->fetch(PDO::FETCH_ASSOC);
+        return $user === false ? null : $user;
+    }
+
     public function copyAdminMembership(int $sourceWorkspaceId, int $sourceUserId, int $targetWorkspaceId, int $accountId): int
     {
         $statement = $this->pdo->prepare(
