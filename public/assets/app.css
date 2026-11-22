@@ -262,7 +262,7 @@ select { padding-right: 28px; background: var(--screen-inset) url("data:image/sv
 .button-secondary { color: var(--accent); }
 .button-quiet { border-color: transparent; padding: 6px 8px; color: var(--screen-muted); background: transparent; }
 .form-actions { display: flex; justify-content: flex-end; gap: 8px; }
-.empty-state { border: 1px dashed var(--screen-border); border-radius: var(--radius-panel); padding: 14px; color: var(--screen-muted); background: var(--screen-panel); }
+.empty-state { margin: 14px 0; color: var(--screen-muted); }
 .inbox-empty-state { margin: 0; padding: 10px 0; color: var(--screen-muted); font-size: 12px; line-height: 1.5; }
 
 /* Projects list and admin */
