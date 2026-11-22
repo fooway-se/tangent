@@ -67,7 +67,7 @@ final class GitHubPullRequestRepository
         return array_map(self::normalize(...), $statement->fetchAll(PDO::FETCH_ASSOC));
     }
 
-    public function findForWebhook(int $repositoryId, int $pullNumber): ?array
+    public function findForWebhook(int $repositoryId, int $pullNumber, int $installationId): ?array
     {
         $statement = $this->pdo->prepare(
             'SELECT pr.*, p.github_repository_id AS connected_repository_id,
@@ -75,9 +75,16 @@ final class GitHubPullRequestRepository
              FROM issue_pull_requests pr
              INNER JOIN projects p ON p.workspace_id = pr.workspace_id AND p.id = pr.project_id
              WHERE pr.github_repository_id = :repository_id AND pr.pull_number = :pull_number
+               AND pr.github_installation_id = :installation_id
+               AND p.github_repository_id = pr.github_repository_id
+               AND p.github_installation_id = pr.github_installation_id
              LIMIT 1'
         );
-        $statement->execute(['repository_id' => $repositoryId, 'pull_number' => $pullNumber]);
+        $statement->execute([
+            'repository_id' => $repositoryId,
+            'pull_number' => $pullNumber,
+            'installation_id' => $installationId,
+        ]);
         $row = $statement->fetch(PDO::FETCH_ASSOC);
         if ($row === false) return null;
         $row = self::normalize($row);

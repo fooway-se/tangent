@@ -235,6 +235,7 @@ final class GitHubTrackingTest extends ApiTestCase
             $admin['csrf'],
         );
         self::assertSame(422, $wrongRepository->status);
+        $historicalTarget = $this->createHistoricalPullRequestTarget(7654321, 17, 556677);
         $linked = $this->cookieRequest(
             'POST',
             "/api/v1/issues/{$issueId}/pull-requests",
@@ -271,6 +272,9 @@ final class GitHubTrackingTest extends ApiTestCase
         self::assertSame(202, $webhook->status, json_encode($webhook->body));
         $reloaded = $this->cookieRequest('GET', "/api/v1/issues/{$issueId}/pull-requests", $admin['cookie']);
         self::assertSame('merged', $reloaded->body['pull_requests'][0]['state']);
+        $historicalState = $this->pdo->prepare('SELECT state FROM issue_pull_requests WHERE id = :id');
+        $historicalState->execute(['id' => $historicalTarget['pull_request_id']]);
+        self::assertSame('open', $historicalState->fetchColumn(), 'A webhook from the current installation must not update an old workspace link.');
         $eventCount = $this->pdo->prepare(
             "SELECT COUNT(*) FROM inbox_events WHERE workspace_id = :workspace_id AND recipient_id = :recipient_id AND event_type = 'pr'"
         );
@@ -468,6 +472,89 @@ final class GitHubTrackingTest extends ApiTestCase
         $response = $this->cookieRequest('POST', '/api/v1/projects', $admin['cookie'], ['name' => $name], $admin['csrf']);
         self::assertSame(201, $response->status, json_encode($response->body));
         return (int) $response->body['project']['id'];
+    }
+
+    private function createHistoricalPullRequestTarget(int $repositoryId, int $pullNumber, int $installationId): array
+    {
+        $workspaceSlug = 'historical-github-' . bin2hex(random_bytes(4));
+        $workspace = $this->pdo->prepare('INSERT INTO workspaces (name, slug) VALUES (:name, :slug)');
+        $workspace->execute(['name' => 'Historical GitHub workspace', 'slug' => $workspaceSlug]);
+        $workspaceId = (int) $this->pdo->lastInsertId();
+        $email = $workspaceSlug . '@example.test';
+        $account = $this->pdo->prepare('INSERT INTO user_accounts (email, password_hash) VALUES (:email, :password_hash)');
+        $account->execute([
+            'email' => $email,
+            'password_hash' => password_hash('historical account password', PASSWORD_ARGON2ID),
+        ]);
+        $accountId = (int) $this->pdo->lastInsertId();
+        $user = $this->pdo->prepare(
+            "INSERT INTO users (workspace_id, account_id, name, email, role, is_active)
+             VALUES (:workspace_id, :account_id, 'Historical admin', :email, 'admin', 1)",
+        );
+        $user->execute(['workspace_id' => $workspaceId, 'account_id' => $accountId, 'email' => $email]);
+        $userId = (int) $this->pdo->lastInsertId();
+        $installation = $this->pdo->prepare(
+            'INSERT INTO github_installations (workspace_id, installation_id, account_login, connected_by)
+             VALUES (:workspace_id, :installation_id, :account_login, :connected_by)',
+        );
+        $installation->execute([
+            'workspace_id' => $workspaceId,
+            'installation_id' => $installationId,
+            'account_login' => 'old-owner',
+            'connected_by' => $userId,
+        ]);
+        $project = $this->pdo->prepare(
+            'INSERT INTO projects
+                (workspace_id, name, slug, description, status, created_by, github_installation_id,
+                 github_repository_id, github_repository_owner, github_repository_name,
+                 github_repository_full_name, github_repository_url)
+             VALUES
+                (:workspace_id, :name, :slug, :description, :status, :created_by, :installation_id,
+                 :repository_id, :owner, :repository, :full_name, :url)',
+        );
+        $project->execute([
+            'workspace_id' => $workspaceId,
+            'name' => 'Historical repository project',
+            'slug' => 'historical-repository',
+            'description' => '',
+            'status' => 'active',
+            'created_by' => $userId,
+            'installation_id' => $installationId,
+            'repository_id' => $repositoryId,
+            'owner' => 'test-org',
+            'repository' => 'test-repo',
+            'full_name' => 'test-org/test-repo',
+            'url' => 'https://github.com/test-org/test-repo',
+        ]);
+        $projectId = (int) $this->pdo->lastInsertId();
+        $issue = $this->pdo->prepare(
+            "INSERT INTO issues (workspace_id, project_id, title, description, status, created_by)
+             VALUES (:workspace_id, :project_id, 'Old linked issue', '', 'backlog', :created_by)",
+        );
+        $issue->execute(['workspace_id' => $workspaceId, 'project_id' => $projectId, 'created_by' => $userId]);
+        $issueId = (int) $this->pdo->lastInsertId();
+        $pullRequest = $this->pdo->prepare(
+            "INSERT INTO issue_pull_requests
+                (workspace_id, project_id, issue_id, github_installation_id, github_repository_id,
+                 repository_owner, repository_name, repository_full_name, pull_number, title, html_url,
+                 state, is_draft, author_login, github_updated_at, linked_by)
+             VALUES
+                (:workspace_id, :project_id, :issue_id, :installation_id, :repository_id,
+                 'test-org', 'test-repo', 'test-org/test-repo', :pull_number, 'Outdated pull request',
+                 :html_url, 'open', 0, 'historical-author', '2026-11-18 09:00:00', :linked_by)",
+        );
+        $pullRequest->execute([
+            'workspace_id' => $workspaceId,
+            'project_id' => $projectId,
+            'issue_id' => $issueId,
+            'installation_id' => $installationId,
+            'repository_id' => $repositoryId,
+            'pull_number' => $pullNumber,
+            'html_url' => 'https://github.com/test-org/test-repo/pull/' . $pullNumber,
+            'linked_by' => $userId,
+        ]);
+
+        return ['workspace_id' => $workspaceId, 'pull_request_id' => (int) $this->pdo->lastInsertId()];
     }
 
     private function createUser(array $admin, string $name, string $email, string $role): int

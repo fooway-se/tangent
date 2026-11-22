@@ -240,13 +240,15 @@ final class GitHubService
         $repository = $payload['repository'] ?? null;
         $remotePullRequest = $payload['pull_request'] ?? null;
         $repositoryId = is_array($repository) ? (int) ($repository['id'] ?? 0) : 0;
+        $installationId = is_array($payload['installation'] ?? null) ? (int) ($payload['installation']['id'] ?? 0) : 0;
         $number = is_array($remotePullRequest) ? (int) ($remotePullRequest['number'] ?? $payload['number'] ?? 0) : 0;
-        if (!is_string($action) || $repositoryId < 1 || $number < 1 || !is_array($repository) || !is_array($remotePullRequest)) return;
+        if (!is_string($action) || $repositoryId < 1 || $installationId < 1 || $number < 1
+            || !is_array($repository) || !is_array($remotePullRequest)) return;
 
-        $linked = $this->pullRequests->findForWebhook($repositoryId, $number);
+        $linked = $this->pullRequests->findForWebhook($repositoryId, $number, $installationId);
         if ($linked === null || $linked['connected_repository_id'] !== $repositoryId
             || $linked['connected_installation_id'] !== $linked['github_installation_id']) return;
-        if (isset($payload['installation']['id']) && (int) $payload['installation']['id'] !== $linked['github_installation_id']) return;
+        if ($installationId !== $linked['github_installation_id']) return;
         if (strcasecmp((string) ($repository['full_name'] ?? ''), (string) $linked['repository_full_name']) !== 0) return;
 
         $pullRequest = self::normalizePullRequest($remotePullRequest, $number, (string) $linked['repository_full_name']);
