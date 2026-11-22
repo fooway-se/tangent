@@ -951,6 +951,16 @@ dialog::backdrop { background: var(--backdrop); }
 .sidebar-account .theme-picker-controls { order: 3; flex: 1 1 100%; }
 .sidebar-account .theme-select { flex: 1 1 auto; max-width: none; }
 .guest-header .theme-picker-controls { margin-left: 0; }
+.client-summary-dialog { width: min(680px, calc(100vw - 32px)); max-height: min(820px, calc(100dvh - 32px)); overflow: auto; }
+.client-summary-content { display: grid; gap: 12px; padding: 0 18px 18px; }
+.client-summary-content .dialog-heading { margin: 0 -18px 4px; }
+.client-summary-intro, .client-summary-status { margin: 0; color: var(--screen-muted); font-size: 12px; line-height: 1.5; }
+.client-summary-content > label, .client-summary-custom-range label { display: grid; gap: 6px; color: var(--screen-ink); font-size: 12px; }
+.client-summary-custom-range { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.client-summary-refresh-row { display: flex; justify-content: flex-end; }
+#client-summary-preview { width: 100%; min-height: 260px; color: var(--screen-ink); font: 12px/1.5 var(--font-mono); }
+.client-summary-content .form-actions { margin: 0; }
+.client-summary-status.is-error { color: var(--danger); }
 .theme-about-dialog { width: min(680px, calc(100vw - 32px)); max-width: none; max-height: min(820px, calc(100dvh - 32px)); overflow: auto; border: 2px solid var(--screen-rim); border-radius: var(--radius-panel); padding: 0; color: var(--screen-ink); background: var(--screen); box-shadow: 0 0 0 5px var(--vent-dark), 0 18px 60px rgba(0, 0, 0, 0.45); }
 .theme-about-dialog::backdrop { background: rgba(0, 0, 0, 0.62); }
 .theme-about-content { padding: 0 18px 16px; }
@@ -995,6 +1005,8 @@ dialog::backdrop { background: var(--backdrop); }
 .issue-pull-request-message:empty { display: none; }
 .issue-pull-request-message.is-error { color: var(--danger); }
 @media (max-width: 560px) {
+  .client-summary-dialog { width: calc(100vw - 24px); max-height: calc(100dvh - 24px); }
+  .client-summary-custom-range { grid-template-columns: minmax(0, 1fr); }
   .theme-about-machine { grid-template-columns: minmax(0, 1fr); }
   .theme-about-dialog { width: calc(100vw - 24px); max-height: calc(100dvh - 24px); }
   .project-edit-dialog { width: calc(100vw - 24px); max-height: calc(100dvh - 24px); }

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tangent\Modules\Projects;
 
+use DateTimeImmutable;
+use DateTimeZone;
 use Tangent\Core\ApiException;
 use Tangent\Core\AuthenticatedUser;
 use Tangent\Core\Permissions;
@@ -18,6 +20,39 @@ final class ClientViewService
         private readonly IssueRepository $issues,
         private readonly ChatService $chat,
     ) {
+    }
+
+    public function summaryUpdates(AuthenticatedUser $user, int $projectId, string $from, string $to): array
+    {
+        if ($user->role !== 'admin') {
+            throw new ApiException(403, 'forbidden', 'Only workspace admins can request client summary activity.');
+        }
+
+        if ($this->projects->find($user->workspaceId, $projectId) === null) {
+            throw new ApiException(404, 'not_found', 'The project was not found.');
+        }
+
+        $fromDate = self::summaryDate($from);
+        $toDate = self::summaryDate($to);
+        if ($fromDate === null || $toDate === null || $fromDate > $toDate || $fromDate->diff($toDate)->days > 365) {
+            throw new ApiException(422, 'validation_failed', 'Choose a valid summary date range of no more than 366 days.');
+        }
+
+        return $this->issues->sharedStatusUpdatesBetween(
+            $user->workspaceId,
+            $projectId,
+            $fromDate->format('Y-m-d'),
+            $toDate->format('Y-m-d'),
+        );
+    }
+
+    private static function summaryDate(string $value): ?DateTimeImmutable
+    {
+        $date = DateTimeImmutable::createFromFormat('!Y-m-d', $value, new DateTimeZone('UTC'));
+        if ($date === false || $date->format('Y-m-d') !== $value) return null;
+        $errors = DateTimeImmutable::getLastErrors();
+        if ($errors !== false && ($errors['warning_count'] > 0 || $errors['error_count'] > 0)) return null;
+        return $date;
     }
 
     public function get(AuthenticatedUser $user, int $projectId): array

@@ -1248,6 +1248,43 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+  /projects/{id}/client-summary-updates:
+    get:
+      summary: List guest-visible issue updates for an admin-generated summary
+      description: Only workspace admins can request client summary activity. The response uses the guest visibility filters and returns the total count plus the five most recent updates in the requested date range.
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - name: from
+          in: query
+          required: true
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          required: true
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          description: Client-visible summary updates.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [total_count, updates]
+                properties:
+                  total_count: { type: integer, minimum: 0 }
+                  updates:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, text, created_at]
+                      properties:
+                        id: { type: integer }
+                        text: { type: string }
+                        created_at: { type: string, format: date-time }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
   /projects/{id}/client-comments:
     post:
       summary: Guest writes to the team (project channel)

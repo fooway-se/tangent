@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tangent\Modules\Issues;
 
+use DateTimeImmutable;
+use DateTimeZone;
 use PDO;
 
 final class IssueRepository
@@ -546,6 +548,40 @@ final class IssueRepository
                 : 'Updated: ' . $row['title'] . ' (' . $label . ')';
             return ['id' => (int) $row['id'], 'text' => $text, 'created_at' => (string) $row['created_at']];
         }, $statement->fetchAll(PDO::FETCH_ASSOC));
+    }
+
+    public function sharedStatusUpdatesBetween(int $workspaceId, int $projectId, string $from, string $to): array
+    {
+        $until = (new DateTimeImmutable($to, new DateTimeZone('UTC')))->modify('+1 day')->format('Y-m-d 00:00:00');
+        $statement = $this->pdo->prepare(
+            "SELECT h.id, h.to_status, h.created_at, i.title, COUNT(*) OVER() AS total_count
+             FROM issue_status_history h FORCE INDEX (ix_issue_status_history_workspace_recent)
+             INNER JOIN issues i ON i.workspace_id = h.workspace_id AND i.id = h.issue_id
+             WHERE h.workspace_id = :workspace_id AND i.project_id = :project_id AND i.is_shared = 1
+               AND i.is_ongoing = 0 AND i.deleted_at IS NULL AND i.status <> 'cancelled'
+               AND h.created_at >= :from_at AND h.created_at < :until_at
+             ORDER BY h.id DESC LIMIT 5"
+        );
+        $statement->execute([
+            'workspace_id' => $workspaceId,
+            'project_id' => $projectId,
+            'from_at' => $from . ' 00:00:00',
+            'until_at' => $until,
+        ]);
+        $rows = $statement->fetchAll(PDO::FETCH_ASSOC);
+        $totalCount = $rows === [] ? 0 : (int) $rows[0]['total_count'];
+        $updates = array_map(static function (array $row): array {
+            $label = match ($row['to_status']) {
+                'backlog' => 'planned', 'todo' => 'to do', 'doing' => 'in progress', 'testing' => 'testing', 'done' => 'done', 'cancelled' => 'cancelled',
+                default => 'updated',
+            };
+            $text = $row['to_status'] === 'done'
+                ? 'Completed: ' . $row['title']
+                : 'Updated: ' . $row['title'] . ' (' . $label . ')';
+            return ['id' => (int) $row['id'], 'text' => $text, 'created_at' => (string) $row['created_at']];
+        }, $rows);
+
+        return ['total_count' => $totalCount, 'updates' => $updates];
     }
 
     public function approvalIssue(int $workspaceId, int $issueId): ?array

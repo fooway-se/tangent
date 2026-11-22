@@ -729,6 +729,41 @@
       </section>
     </dialog>
 
+    <dialog id="client-summary-dialog" class="client-summary-dialog" aria-labelledby="client-summary-heading" aria-describedby="client-summary-intro">
+      <section class="client-summary-content">
+        <header class="dialog-heading">
+          <h2 id="client-summary-heading">Generate project summary</h2>
+        </header>
+        <p id="client-summary-intro" class="client-summary-intro">Uses only information visible in the guest view. Review and edit the text before copying.</p>
+        <label>Period
+          <select id="client-summary-period">
+            <option value="7">Last 7 days</option>
+            <option value="30">Last 30 days</option>
+            <option value="custom">Custom dates</option>
+          </select>
+        </label>
+        <div id="client-summary-custom-range" class="client-summary-custom-range" hidden>
+          <label>From
+            <input id="client-summary-from" type="date">
+          </label>
+          <label>To
+            <input id="client-summary-to" type="date">
+          </label>
+        </div>
+        <div class="client-summary-refresh-row">
+          <button id="client-summary-generate" class="button button-quiet" type="button">Regenerate summary</button>
+        </div>
+        <label>Summary preview
+          <textarea id="client-summary-preview" rows="14" maxlength="20000" spellcheck="false" aria-label="Generated project summary"></textarea>
+        </label>
+        <p id="client-summary-status" class="client-summary-status" role="status" aria-live="polite"></p>
+        <div class="form-actions">
+          <button id="client-summary-close" class="button button-quiet" type="button">Close</button>
+          <button id="client-summary-copy" class="button button-primary" type="button" disabled>Copy summary</button>
+        </div>
+      </section>
+    </dialog>
+
     <dialog id="theme-about-dialog" class="theme-about-dialog" aria-labelledby="theme-about-heading">
       <section class="theme-about-content">
         <header class="dialog-heading">

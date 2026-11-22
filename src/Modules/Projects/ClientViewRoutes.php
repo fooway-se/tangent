@@ -22,6 +22,14 @@ final class ClientViewRoutes
         $router->add('GET', '/api/v1/projects/{id}/client-view', function (Request $request, array $params, AuthenticatedUser $user): Response {
             return Response::json(200, $this->view->get($user, self::positiveId($params['id'])));
         });
+        $router->add('GET', '/api/v1/projects/{id}/client-summary-updates', function (Request $request, array $params, AuthenticatedUser $user): Response {
+            $from = $request->query['from'] ?? null;
+            $to = $request->query['to'] ?? null;
+            if (!is_string($from) || !is_string($to)) {
+                throw new ApiException(422, 'validation_failed', 'Summary from and to dates are required.');
+            }
+            return Response::json(200, $this->view->summaryUpdates($user, self::positiveId($params['id']), $from, $to));
+        });
         $router->add('POST', '/api/v1/projects/{id}/client-comments', function (Request $request, array $params, AuthenticatedUser $user): Response {
             return Response::json(201, ['message' => $this->chat->sendClientComment($user, self::positiveId($params['id']), $request->body)]);
         });

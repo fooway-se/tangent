@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tangent\Tests\Integration;
 
 use DateTimeImmutable;
+use Tangent\Core\Request;
 use Tangent\Tests\Support\ApiTestCase;
 
 final class GuestViewTest extends ApiTestCase
@@ -78,6 +79,51 @@ final class GuestViewTest extends ApiTestCase
         $projects = $this->cookieRequest('GET', '/api/v1/projects', $guest['cookie']);
         self::assertSame(200, $projects->status);
         self::assertSame([['id' => $projectId, 'name' => 'Client project', 'slug' => 'client-project']], $projects->body['projects']);
+    }
+
+    public function testAdminSummaryActivityUsesGuestVisibleUpdatesAndRejectsGuests(): void
+    {
+        $admin = $this->login($this->adminEmail);
+        $projectId = $this->createProject($admin, 'Client summary activity');
+        $guestId = $this->createUser($admin, 'Customer', 'summary-customer@example.test', 'guest');
+        $this->addMember($admin, $projectId, $guestId);
+
+        $shared = $this->createIssue($admin, $projectId, 'Shared client milestone');
+        $this->updateIssue($admin, $shared, ['status' => 'done', 'is_shared' => true]);
+        $internal = $this->createIssue($admin, $projectId, 'Private internal issue');
+        $this->updateIssue($admin, $internal, ['status' => 'done']);
+
+        $from = gmdate('Y-m-d', time() - 86_400);
+        $to = gmdate('Y-m-d', time() + 86_400);
+        $path = "/api/v1/projects/{$projectId}/client-summary-updates";
+        $summary = $this->application->handle(Request::json(
+            'GET',
+            $path,
+            cookies: ['tangent_session' => $admin['cookie']],
+            query: ['from' => $from, 'to' => $to],
+        ));
+
+        self::assertSame(200, $summary->status, json_encode($summary->body));
+        self::assertSame(1, $summary->body['total_count']);
+        self::assertStringContainsString('Shared client milestone', $summary->body['updates'][0]['text']);
+        self::assertStringNotContainsString('Private internal issue', json_encode($summary->body));
+
+        $guest = $this->login('summary-customer@example.test');
+        $denied = $this->application->handle(Request::json(
+            'GET',
+            $path,
+            cookies: ['tangent_session' => $guest['cookie']],
+            query: ['from' => $from, 'to' => $to],
+        ));
+        self::assertSame(403, $denied->status);
+
+        $invalidRange = $this->application->handle(Request::json(
+            'GET',
+            $path,
+            cookies: ['tangent_session' => $admin['cookie']],
+            query: ['from' => '2026-02-30', 'to' => $to],
+        ));
+        self::assertSame(422, $invalidRange->status);
     }
 
     public function testBulkSharingSelectedIssuesControlsGuestVisibilityAndCanBeUndone(): void

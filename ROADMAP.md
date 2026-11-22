@@ -15,10 +15,6 @@ The project chat header has a privacy-preserving presence light: it shows whethe
 - Add GitLab support through a provider-neutral integration interface.
 - Expand the GitHub App integration beyond manual pull-request links. Two-way issue and comment sync is deferred.
 
-## Client updates
-
-- Let admins generate and copy a client-safe project summary.
-
 ## AI and API
 
 - Define agent identities, permissions and any agent-specific issue statuses.

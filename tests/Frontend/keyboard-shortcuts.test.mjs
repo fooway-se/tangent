@@ -153,7 +153,15 @@ test('the AI prompt dialog participates in modal keyboard handling', () => {
   const dismiss = app.slice(app.indexOf('function dismissCurrentView'), app.indexOf('function focusIssueQuickAddReturnTarget'));
   assert.match(dismiss, /issueAiPromptDialog\.open[\s\S]*issueAiPromptDialog\.close\(\)/);
   assert.match(app, /issueAiPromptDialog\.addEventListener\('close'/);
-  assert.match(app, /commandPalette\.open \|\| shortcutHelp\.open \|\| issueAiPromptDialog\.open/);
+  assert.match(app, /commandPalette\.open \|\| clientSummaryDialog\.open \|\| shortcutHelp\.open \|\| issueAiPromptDialog\.open/);
+});
+
+test('the generated summary dialog participates in modal keyboard handling', () => {
+  const context = app.slice(app.indexOf('function shortcutContext'), app.indexOf('function clearGoPrefix'));
+  assert.match(context, /modalOpen:[\s\S]*clientSummaryDialog\.open/);
+  const dismiss = app.slice(app.indexOf('function dismissCurrentView'), app.indexOf('function focusIssueQuickAddReturnTarget'));
+  assert.match(dismiss, /clientSummaryDialog\.open[\s\S]*closeClientSummaryDialog\(\)/);
+  assert.match(app, /clientSummaryDialog\.addEventListener\('close'/);
 });
 
 test('Escape from a Workspace Admin field returns to its tab bar for section switching', () => {

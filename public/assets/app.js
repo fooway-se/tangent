@@ -1,6 +1,7 @@
 import { INBOX_TABS, createEventRow, eventsForTab, tabCount, } from './inbox-events.js';
 import { diffInboxCollections, nextInboxPollDelay, shouldDeferInboxUpdates, } from './inbox-polling.js';
 import { renderClientEmptyState, renderClientView } from './guest-view.js';
+import { generateClientSummary } from './client-summary.js';
 import { filterMentionMembers, findMentionQuery, mentionEmptyMessage, nextMentionSelectionIndex, replaceMentionQuery, splitMentions, } from './chat-mentions.js';
 import { formatChatTimestamp } from './chat-time.js';
 import { resolveShortcut, shouldSubmitOnEnter } from './shortcuts.js';
@@ -389,6 +390,16 @@ const adminGoPrefixOption = document.querySelector('#admin-go-prefix-option');
 const roadmapGoPrefixOption = document.querySelector('#roadmap-go-prefix-option');
 const workspaceSwitchHint = document.querySelector('#workspace-switch-hint');
 const commandPalette = document.querySelector('#command-palette');
+const clientSummaryDialog = document.querySelector('#client-summary-dialog');
+const clientSummaryPeriod = document.querySelector('#client-summary-period');
+const clientSummaryCustomRange = document.querySelector('#client-summary-custom-range');
+const clientSummaryFrom = document.querySelector('#client-summary-from');
+const clientSummaryTo = document.querySelector('#client-summary-to');
+const clientSummaryGenerate = document.querySelector('#client-summary-generate');
+const clientSummaryPreview = document.querySelector('#client-summary-preview');
+const clientSummaryStatus = document.querySelector('#client-summary-status');
+const clientSummaryClose = document.querySelector('#client-summary-close');
+const clientSummaryCopy = document.querySelector('#client-summary-copy');
 const commandPaletteClose = document.querySelector('#command-palette-close');
 const commandSearch = document.querySelector('#command-search');
 const commandResults = document.querySelector('#command-results');
@@ -568,6 +579,9 @@ let issueAiPromptReturnFocus = null;
 let activeChatProjectId = null;
 let loungeActive = false;
 let guestPreviewActive = false;
+let clientSummaryProjectId = null;
+let clientSummaryReturnFocus = null;
+let clientSummaryRequestVersion = 0;
 let guestPreviewReturnFocus = null;
 let guestPreviewProjectId = null;
 let guestPreviewMembers = [];
@@ -776,6 +790,8 @@ function showSignedOut() {
     stopLoungePolling();
     stopWorkspaceLoungePresenceMonitor();
     renderLoungeNavigationPresence([]);
+    if (clientSummaryDialog.open)
+        clientSummaryDialog.close();
     activeUser = null;
     githubRepositories = [];
     projectGithubRepository.replaceChildren(new Option('No repository connected', ''));
@@ -2363,7 +2379,7 @@ function shortcutContext(target) {
         issueGroupFocused: target instanceof HTMLElement && target.closest('.issue-group > summary') !== null,
         statusHistoryFocused: issueStatusHistory.open && issueStatusHistory.contains(document.activeElement),
         textInputFocused: shouldBlurOnEscape(target),
-        modalOpen: commandPalette.open || shortcutHelp.open || issueAiPromptDialog.open || issueStatusPicker.open || issueDeleteConfirmation.open || themeAboutDialog.open || projectEditDialog.open
+        modalOpen: commandPalette.open || clientSummaryDialog.open || shortcutHelp.open || issueAiPromptDialog.open || issueStatusPicker.open || issueDeleteConfirmation.open || themeAboutDialog.open || projectEditDialog.open
             || memberRemovalConfirmation.open || workspaceMemberDeactivationDialog.open || workspaceMemberRoleDialog.open
             || workspaceGuestProjectsDialog.open || milestoneDeleteConfirmation.open || milestoneManagerDialog.open
             || workspacePicker.open,
@@ -2681,6 +2697,11 @@ function getPaletteCommands() {
     }
     if (activeProject !== null && activeUser.role === 'admin' && !projectView.hidden) {
         commands.splice(1, 0, {
+            label: 'Generate summary',
+            detail: 'Prepare a client-safe summary for ' + activeProject.name,
+            shortcut: '',
+            run: openClientSummaryDialog,
+        }, {
             label: 'Preview guest view',
             detail: 'Preview the client portal for ' + activeProject.name,
             shortcut: '',
@@ -2831,6 +2852,8 @@ function openCommandPalette() {
         projectEditDialog.close();
     if (workspacePicker.open)
         resetPendingWorkspaceSwitch();
+    if (clientSummaryDialog.open)
+        closeClientSummaryDialog();
     if (issueAiPromptDialog.open)
         issueAiPromptDialog.close();
     if (milestoneDeleteConfirmation.open)
@@ -2867,6 +2890,8 @@ function showShortcutHelp() {
         return;
     if (workspacePicker.open)
         resetPendingWorkspaceSwitch();
+    if (clientSummaryDialog.open)
+        closeClientSummaryDialog();
     if (issueAiPromptDialog.open)
         issueAiPromptDialog.close();
     if (milestoneDeleteConfirmation.open)
@@ -2905,6 +2930,9 @@ function dismissCurrentView() {
     }
     else if (workspacePicker.open) {
         resetPendingWorkspaceSwitch();
+    }
+    else if (clientSummaryDialog.open) {
+        closeClientSummaryDialog();
     }
     else if (issueAiPromptDialog.open) {
         issueAiPromptDialog.close();
@@ -3425,7 +3453,7 @@ function handleKeyboardShortcut(event) {
             closeGuestViewPreview();
         return;
     }
-    if ((commandPalette.open || shortcutHelp.open || issueAiPromptDialog.open || issueStatusPicker.open || issueDeleteConfirmation.open || memberRemovalConfirmation.open || workspaceMemberDeactivationDialog.open || workspaceMemberRoleDialog.open || workspaceGuestProjectsDialog.open || milestoneDeleteConfirmation.open || milestoneManagerDialog.open || workspacePicker.open || themeAboutDialog.open || projectEditDialog.open)
+    if ((commandPalette.open || clientSummaryDialog.open || shortcutHelp.open || issueAiPromptDialog.open || issueStatusPicker.open || issueDeleteConfirmation.open || memberRemovalConfirmation.open || workspaceMemberDeactivationDialog.open || workspaceMemberRoleDialog.open || workspaceGuestProjectsDialog.open || milestoneDeleteConfirmation.open || milestoneManagerDialog.open || workspacePicker.open || themeAboutDialog.open || projectEditDialog.open)
         && event.key !== 'Escape'
         && !((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k'))
         return;
@@ -8310,6 +8338,143 @@ function closeGuestViewPreview() {
     showWorkspaceView('project');
     returnFocus.focus();
 }
+function dateInputValue(date) {
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return String(date.getFullYear()) + '-' + month + '-' + day;
+}
+function setClientSummaryPeriod(days) {
+    const today = new Date();
+    const from = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    from.setDate(from.getDate() - (days - 1));
+    clientSummaryFrom.value = dateInputValue(from);
+    clientSummaryTo.value = dateInputValue(today);
+}
+function validClientSummaryRange(from, to) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to))
+        return false;
+    const fromTime = Date.parse(from + 'T00:00:00Z');
+    const toTime = Date.parse(to + 'T00:00:00Z');
+    const dayDifference = (toTime - fromTime) / 86_400_000;
+    return Number.isFinite(dayDifference) && dayDifference >= 0 && dayDifference <= 365
+        && new Date(fromTime).toISOString().slice(0, 10) === from
+        && new Date(toTime).toISOString().slice(0, 10) === to;
+}
+function openClientSummaryDialog() {
+    if (activeUser?.role !== 'admin' || activeProject === null || projectView.hidden)
+        return;
+    const activeElement = document.activeElement;
+    clientSummaryReturnFocus = activeElement instanceof HTMLElement && activeElement !== document.body
+        ? activeElement
+        : projectHeading;
+    clientSummaryProjectId = activeProject.id;
+    clientSummaryPeriod.value = '7';
+    clientSummaryCustomRange.hidden = true;
+    setClientSummaryPeriod(7);
+    clientSummaryPreview.value = '';
+    clientSummaryCopy.disabled = true;
+    clientSummaryStatus.classList.remove('is-error');
+    clientSummaryStatus.textContent = 'Generating summary…';
+    clientSummaryGenerate.disabled = false;
+    clientSummaryDialog.showModal();
+    clientSummaryPeriod.focus();
+    void refreshClientSummary();
+}
+function closeClientSummaryDialog() {
+    if (clientSummaryDialog.open)
+        clientSummaryDialog.close();
+}
+async function refreshClientSummary() {
+    const projectId = clientSummaryProjectId;
+    const from = clientSummaryFrom.value;
+    const to = clientSummaryTo.value;
+    if (projectId === null)
+        return;
+    if (!validClientSummaryRange(from, to)) {
+        clientSummaryCopy.disabled = true;
+        clientSummaryStatus.classList.add('is-error');
+        clientSummaryStatus.textContent = 'Choose a valid date range of no more than 366 days.';
+        return;
+    }
+    const requestVersion = ++clientSummaryRequestVersion;
+    clientSummaryGenerate.disabled = true;
+    clientSummaryCopy.disabled = true;
+    clientSummaryStatus.classList.remove('is-error');
+    clientSummaryStatus.textContent = 'Generating summary…';
+    try {
+        const activityPath = '/projects/' + projectId + '/client-summary-updates?from='
+            + encodeURIComponent(from) + '&to=' + encodeURIComponent(to);
+        const [view, activity] = await Promise.all([
+            api('/projects/' + projectId + '/client-view'),
+            api(activityPath),
+        ]);
+        if (!clientSummaryDialog.open || requestVersion !== clientSummaryRequestVersion
+            || clientSummaryProjectId !== projectId)
+            return;
+        clientSummaryPreview.value = generateClientSummary(view, activity, from, to);
+        clientSummaryCopy.disabled = clientSummaryPreview.value.trim() === '';
+        clientSummaryStatus.textContent = 'Review or edit the summary, then copy it.';
+    }
+    catch (error) {
+        if (error instanceof ApiFailure && error.status === 401) {
+            closeClientSummaryDialog();
+            showSignedOut();
+            return;
+        }
+        clientSummaryStatus.classList.add('is-error');
+        clientSummaryStatus.textContent = error instanceof Error ? error.message : 'Could not generate the project summary.';
+    }
+    finally {
+        if (requestVersion === clientSummaryRequestVersion)
+            clientSummaryGenerate.disabled = false;
+    }
+}
+async function copyClientSummary() {
+    const summary = clientSummaryPreview.value.trim();
+    if (summary === '')
+        return;
+    try {
+        await navigator.clipboard.writeText(clientSummaryPreview.value);
+        clientSummaryStatus.classList.remove('is-error');
+        clientSummaryStatus.textContent = 'Summary copied.';
+    }
+    catch {
+        clientSummaryPreview.focus();
+        clientSummaryPreview.select();
+        clientSummaryStatus.classList.remove('is-error');
+        clientSummaryStatus.textContent = 'Clipboard unavailable. The summary is selected for copying.';
+    }
+}
+clientSummaryPeriod.addEventListener('change', () => {
+    clientSummaryCustomRange.hidden = clientSummaryPeriod.value !== 'custom';
+    if (clientSummaryPeriod.value === '7') {
+        setClientSummaryPeriod(7);
+        void refreshClientSummary();
+    }
+    else if (clientSummaryPeriod.value === '30') {
+        setClientSummaryPeriod(30);
+        void refreshClientSummary();
+    }
+});
+for (const field of [clientSummaryFrom, clientSummaryTo]) {
+    field.addEventListener('change', () => {
+        if (clientSummaryPeriod.value === 'custom')
+            void refreshClientSummary();
+    });
+}
+clientSummaryGenerate.addEventListener('click', () => { void refreshClientSummary(); });
+clientSummaryClose.addEventListener('click', closeClientSummaryDialog);
+clientSummaryCopy.addEventListener('click', () => { void copyClientSummary(); });
+clientSummaryDialog.addEventListener('close', () => {
+    clientSummaryRequestVersion += 1;
+    clientSummaryProjectId = null;
+    clientSummaryCustomRange.hidden = true;
+    const target = clientSummaryReturnFocus;
+    clientSummaryReturnFocus = null;
+    if (target !== null && target.isConnected && target.closest('[hidden]') === null
+        && document.querySelector('dialog[open]') === null)
+        target.focus();
+});
 async function loadGuestProjects() {
     try {
         const result = await api('/projects');

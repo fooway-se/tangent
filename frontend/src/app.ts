@@ -7,6 +7,7 @@ import {
   shouldDeferInboxUpdates,
 } from './inbox-polling.js';
 import { renderClientEmptyState, renderClientView, type ClientView } from './guest-view.js';
+import { generateClientSummary, type ClientSummaryActivity } from './client-summary.js';
 import {
   filterMentionMembers,
   findMentionQuery,
@@ -653,6 +654,16 @@ const adminGoPrefixOption = document.querySelector<HTMLElement>('#admin-go-prefi
 const roadmapGoPrefixOption = document.querySelector<HTMLElement>('#roadmap-go-prefix-option')!;
 const workspaceSwitchHint = document.querySelector<HTMLElement>('#workspace-switch-hint')!;
 const commandPalette = document.querySelector<HTMLDialogElement>('#command-palette')!;
+const clientSummaryDialog = document.querySelector<HTMLDialogElement>('#client-summary-dialog')!;
+const clientSummaryPeriod = document.querySelector<HTMLSelectElement>('#client-summary-period')!;
+const clientSummaryCustomRange = document.querySelector<HTMLElement>('#client-summary-custom-range')!;
+const clientSummaryFrom = document.querySelector<HTMLInputElement>('#client-summary-from')!;
+const clientSummaryTo = document.querySelector<HTMLInputElement>('#client-summary-to')!;
+const clientSummaryGenerate = document.querySelector<HTMLButtonElement>('#client-summary-generate')!;
+const clientSummaryPreview = document.querySelector<HTMLTextAreaElement>('#client-summary-preview')!;
+const clientSummaryStatus = document.querySelector<HTMLElement>('#client-summary-status')!;
+const clientSummaryClose = document.querySelector<HTMLButtonElement>('#client-summary-close')!;
+const clientSummaryCopy = document.querySelector<HTMLButtonElement>('#client-summary-copy')!;
 const commandPaletteClose = document.querySelector<HTMLButtonElement>('#command-palette-close')!;
 const commandSearch = document.querySelector<HTMLInputElement>('#command-search')!;
 const commandResults = document.querySelector<HTMLUListElement>('#command-results')!;
@@ -839,6 +850,9 @@ let issueAiPromptReturnFocus: HTMLElement | null = null;
 let activeChatProjectId: number | null = null;
 let loungeActive = false;
 let guestPreviewActive = false;
+let clientSummaryProjectId: number | null = null;
+let clientSummaryReturnFocus: HTMLElement | null = null;
+let clientSummaryRequestVersion = 0;
 let guestPreviewReturnFocus: HTMLElement | null = null;
 let guestPreviewProjectId: number | null = null;
 let guestPreviewMembers: Member[] = [];
@@ -1047,6 +1061,7 @@ function showSignedOut(): void {
   stopLoungePolling();
   stopWorkspaceLoungePresenceMonitor();
   renderLoungeNavigationPresence([]);
+  if (clientSummaryDialog.open) clientSummaryDialog.close();
   activeUser = null;
   githubRepositories = [];
   projectGithubRepository.replaceChildren(new Option('No repository connected', ''));
@@ -2618,7 +2633,7 @@ function shortcutContext(target: EventTarget | null) {
     issueGroupFocused: target instanceof HTMLElement && target.closest('.issue-group > summary') !== null,
     statusHistoryFocused: issueStatusHistory.open && issueStatusHistory.contains(document.activeElement),
     textInputFocused: shouldBlurOnEscape(target),
-    modalOpen: commandPalette.open || shortcutHelp.open || issueAiPromptDialog.open || issueStatusPicker.open || issueDeleteConfirmation.open || themeAboutDialog.open || projectEditDialog.open
+    modalOpen: commandPalette.open || clientSummaryDialog.open || shortcutHelp.open || issueAiPromptDialog.open || issueStatusPicker.open || issueDeleteConfirmation.open || themeAboutDialog.open || projectEditDialog.open
       || memberRemovalConfirmation.open || workspaceMemberDeactivationDialog.open || workspaceMemberRoleDialog.open
       || workspaceGuestProjectsDialog.open || milestoneDeleteConfirmation.open || milestoneManagerDialog.open
       || workspacePicker.open,
@@ -2949,6 +2964,11 @@ function getPaletteCommands(): PaletteCommand[] {
   }
   if (activeProject !== null && activeUser.role === 'admin' && !projectView.hidden) {
     commands.splice(1, 0, {
+      label: 'Generate summary',
+      detail: 'Prepare a client-safe summary for ' + activeProject.name,
+      shortcut: '',
+      run: openClientSummaryDialog,
+    }, {
       label: 'Preview guest view',
       detail: 'Preview the client portal for ' + activeProject.name,
       shortcut: '',
@@ -3105,6 +3125,7 @@ function openCommandPalette(): void {
   if (themeAboutDialog.open) themeAboutDialog.close();
   if (projectEditDialog.open) projectEditDialog.close();
   if (workspacePicker.open) resetPendingWorkspaceSwitch();
+  if (clientSummaryDialog.open) closeClientSummaryDialog();
   if (issueAiPromptDialog.open) issueAiPromptDialog.close();
   if (milestoneDeleteConfirmation.open) closeMilestoneDeleteConfirmation();
   if (milestoneManagerDialog.open) closeMilestoneManager();
@@ -3130,6 +3151,7 @@ function openCommandPalette(): void {
 function showShortcutHelp(): void {
   if (activeUser === null || milestoneDeleteConfirm.disabled) return;
   if (workspacePicker.open) resetPendingWorkspaceSwitch();
+  if (clientSummaryDialog.open) closeClientSummaryDialog();
   if (issueAiPromptDialog.open) issueAiPromptDialog.close();
   if (milestoneDeleteConfirmation.open) closeMilestoneDeleteConfirmation();
   if (milestoneManagerDialog.open) closeMilestoneManager();
@@ -3156,6 +3178,8 @@ function dismissCurrentView(): void {
     projectEditDialog.close();
   } else if (workspacePicker.open) {
     resetPendingWorkspaceSwitch();
+  } else if (clientSummaryDialog.open) {
+    closeClientSummaryDialog();
   } else if (issueAiPromptDialog.open) {
     issueAiPromptDialog.close();
   } else if (milestoneDeleteConfirmation.open) {
@@ -3556,7 +3580,7 @@ function handleKeyboardShortcut(event: KeyboardEvent): void {
     if (event.key === 'Escape') closeGuestViewPreview();
     return;
   }
-  if ((commandPalette.open || shortcutHelp.open || issueAiPromptDialog.open || issueStatusPicker.open || issueDeleteConfirmation.open || memberRemovalConfirmation.open || workspaceMemberDeactivationDialog.open || workspaceMemberRoleDialog.open || workspaceGuestProjectsDialog.open || milestoneDeleteConfirmation.open || milestoneManagerDialog.open || workspacePicker.open || themeAboutDialog.open || projectEditDialog.open)
+  if ((commandPalette.open || clientSummaryDialog.open || shortcutHelp.open || issueAiPromptDialog.open || issueStatusPicker.open || issueDeleteConfirmation.open || memberRemovalConfirmation.open || workspaceMemberDeactivationDialog.open || workspaceMemberRoleDialog.open || workspaceGuestProjectsDialog.open || milestoneDeleteConfirmation.open || milestoneManagerDialog.open || workspacePicker.open || themeAboutDialog.open || projectEditDialog.open)
     && event.key !== 'Escape'
     && !((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k')) return;
   const context = shortcutContext(event.target);
@@ -8426,6 +8450,139 @@ function closeGuestViewPreview(): void {
   showWorkspaceView('project');
   returnFocus.focus();
 }
+
+function dateInputValue(date: Date): string {
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return String(date.getFullYear()) + '-' + month + '-' + day;
+}
+
+function setClientSummaryPeriod(days: number): void {
+  const today = new Date();
+  const from = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  from.setDate(from.getDate() - (days - 1));
+  clientSummaryFrom.value = dateInputValue(from);
+  clientSummaryTo.value = dateInputValue(today);
+}
+
+function validClientSummaryRange(from: string, to: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) return false;
+  const fromTime = Date.parse(from + 'T00:00:00Z');
+  const toTime = Date.parse(to + 'T00:00:00Z');
+  const dayDifference = (toTime - fromTime) / 86_400_000;
+  return Number.isFinite(dayDifference) && dayDifference >= 0 && dayDifference <= 365
+    && new Date(fromTime).toISOString().slice(0, 10) === from
+    && new Date(toTime).toISOString().slice(0, 10) === to;
+}
+
+function openClientSummaryDialog(): void {
+  if (activeUser?.role !== 'admin' || activeProject === null || projectView.hidden) return;
+  const activeElement = document.activeElement;
+  clientSummaryReturnFocus = activeElement instanceof HTMLElement && activeElement !== document.body
+    ? activeElement
+    : projectHeading;
+  clientSummaryProjectId = activeProject.id;
+  clientSummaryPeriod.value = '7';
+  clientSummaryCustomRange.hidden = true;
+  setClientSummaryPeriod(7);
+  clientSummaryPreview.value = '';
+  clientSummaryCopy.disabled = true;
+  clientSummaryStatus.classList.remove('is-error');
+  clientSummaryStatus.textContent = 'Generating summary…';
+  clientSummaryGenerate.disabled = false;
+  clientSummaryDialog.showModal();
+  clientSummaryPeriod.focus();
+  void refreshClientSummary();
+}
+
+function closeClientSummaryDialog(): void {
+  if (clientSummaryDialog.open) clientSummaryDialog.close();
+}
+
+async function refreshClientSummary(): Promise<void> {
+  const projectId = clientSummaryProjectId;
+  const from = clientSummaryFrom.value;
+  const to = clientSummaryTo.value;
+  if (projectId === null) return;
+  if (!validClientSummaryRange(from, to)) {
+    clientSummaryCopy.disabled = true;
+    clientSummaryStatus.classList.add('is-error');
+    clientSummaryStatus.textContent = 'Choose a valid date range of no more than 366 days.';
+    return;
+  }
+
+  const requestVersion = ++clientSummaryRequestVersion;
+  clientSummaryGenerate.disabled = true;
+  clientSummaryCopy.disabled = true;
+  clientSummaryStatus.classList.remove('is-error');
+  clientSummaryStatus.textContent = 'Generating summary…';
+  try {
+    const activityPath = '/projects/' + projectId + '/client-summary-updates?from='
+      + encodeURIComponent(from) + '&to=' + encodeURIComponent(to);
+    const [view, activity] = await Promise.all([
+      api<ClientView>('/projects/' + projectId + '/client-view'),
+      api<ClientSummaryActivity>(activityPath),
+    ]);
+    if (!clientSummaryDialog.open || requestVersion !== clientSummaryRequestVersion
+      || clientSummaryProjectId !== projectId) return;
+    clientSummaryPreview.value = generateClientSummary(view, activity, from, to);
+    clientSummaryCopy.disabled = clientSummaryPreview.value.trim() === '';
+    clientSummaryStatus.textContent = 'Review or edit the summary, then copy it.';
+  } catch (error) {
+    if (error instanceof ApiFailure && error.status === 401) {
+      closeClientSummaryDialog();
+      showSignedOut();
+      return;
+    }
+    clientSummaryStatus.classList.add('is-error');
+    clientSummaryStatus.textContent = error instanceof Error ? error.message : 'Could not generate the project summary.';
+  } finally {
+    if (requestVersion === clientSummaryRequestVersion) clientSummaryGenerate.disabled = false;
+  }
+}
+
+async function copyClientSummary(): Promise<void> {
+  const summary = clientSummaryPreview.value.trim();
+  if (summary === '') return;
+  try {
+    await navigator.clipboard.writeText(clientSummaryPreview.value);
+    clientSummaryStatus.classList.remove('is-error');
+    clientSummaryStatus.textContent = 'Summary copied.';
+  } catch {
+    clientSummaryPreview.focus();
+    clientSummaryPreview.select();
+    clientSummaryStatus.classList.remove('is-error');
+    clientSummaryStatus.textContent = 'Clipboard unavailable. The summary is selected for copying.';
+  }
+}
+
+clientSummaryPeriod.addEventListener('change', () => {
+  clientSummaryCustomRange.hidden = clientSummaryPeriod.value !== 'custom';
+  if (clientSummaryPeriod.value === '7') {
+    setClientSummaryPeriod(7);
+    void refreshClientSummary();
+  } else if (clientSummaryPeriod.value === '30') {
+    setClientSummaryPeriod(30);
+    void refreshClientSummary();
+  }
+});
+for (const field of [clientSummaryFrom, clientSummaryTo]) {
+  field.addEventListener('change', () => {
+    if (clientSummaryPeriod.value === 'custom') void refreshClientSummary();
+  });
+}
+clientSummaryGenerate.addEventListener('click', () => { void refreshClientSummary(); });
+clientSummaryClose.addEventListener('click', closeClientSummaryDialog);
+clientSummaryCopy.addEventListener('click', () => { void copyClientSummary(); });
+clientSummaryDialog.addEventListener('close', () => {
+  clientSummaryRequestVersion += 1;
+  clientSummaryProjectId = null;
+  clientSummaryCustomRange.hidden = true;
+  const target = clientSummaryReturnFocus;
+  clientSummaryReturnFocus = null;
+  if (target !== null && target.isConnected && target.closest('[hidden]') === null
+    && document.querySelector('dialog[open]') === null) target.focus();
+});
 
 async function loadGuestProjects(): Promise<void> {
   try {
