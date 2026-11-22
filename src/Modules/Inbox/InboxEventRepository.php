@@ -8,6 +8,8 @@ use PDO;
 
 final class InboxEventRepository
 {
+    public const EVENT_PAGE_SIZE = 50;
+
     public function __construct(private readonly PDO $pdo)
     {
     }
@@ -104,6 +106,58 @@ final class InboxEventRepository
         );
         $statement->execute(['workspace_id' => $workspaceId, 'recipient_id' => $userId, ...$parameters]);
         return array_map(self::normalize(...), $statement->fetchAll(PDO::FETCH_ASSOC));
+    }
+
+    public function listPageForUser(int $workspaceId, int $userId, array $projectIds, string $tab, ?int $beforeId): array
+    {
+        if ($projectIds === []) {
+            return ['events' => [], 'has_more' => false, 'next_cursor' => null, 'counts' => ['unread' => 0, 'mentions' => 0]];
+        }
+        [$filter, $parameters] = self::idFilter($projectIds, 'project');
+        $tabFilter = match ($tab) {
+            'unread' => 'e.read_at IS NULL AND e.done_at IS NULL',
+            'all' => 'e.done_at IS NULL',
+            'mentions' => 'e.event_type = \'mention\' AND e.done_at IS NULL',
+            'done' => 'e.done_at IS NOT NULL',
+        };
+        $cursorFilter = $beforeId === null ? '' : ' AND e.id < :before_id';
+        if ($beforeId !== null) $parameters['before_id'] = $beforeId;
+        $statement = $this->pdo->prepare(
+            'SELECT e.id, e.event_type AS type, COALESCE(actor.name, \'\') AS actor_name,
+                    e.summary, e.detail, e.project_id, p.name AS project_name, e.issue_id, e.message_id,
+                    e.read_at IS NOT NULL AS `read`, e.done_at IS NOT NULL AS done, e.created_at
+             FROM inbox_events e
+             INNER JOIN projects p ON p.workspace_id = e.workspace_id AND p.id = e.project_id
+             LEFT JOIN users actor ON actor.workspace_id = e.workspace_id AND actor.id = e.actor_id
+             WHERE e.workspace_id = :workspace_id AND e.recipient_id = :recipient_id
+               AND e.project_id IN (' . $filter . ') AND ' . $tabFilter . $cursorFilter . '
+             ORDER BY e.id DESC LIMIT ' . (self::EVENT_PAGE_SIZE + 1)
+        );
+        $statement->execute(['workspace_id' => $workspaceId, 'recipient_id' => $userId, ...$parameters]);
+        $rows = $statement->fetchAll(PDO::FETCH_ASSOC);
+        $hasMore = count($rows) > self::EVENT_PAGE_SIZE;
+        if ($hasMore) array_pop($rows);
+        $events = array_map(self::normalize(...), $rows);
+        $nextCursor = $hasMore && $events !== [] ? $events[array_key_last($events)]['id'] : null;
+
+        $counts = $this->countsForUser($workspaceId, $userId, $projectIds);
+        return ['events' => $events, 'has_more' => $hasMore, 'next_cursor' => $nextCursor, 'counts' => $counts];
+    }
+
+    private function countsForUser(int $workspaceId, int $userId, array $projectIds): array
+    {
+        [$filter, $parameters] = self::idFilter($projectIds, 'count_project');
+        $statement = $this->pdo->prepare(
+            'SELECT COALESCE(SUM(e.read_at IS NULL AND e.done_at IS NULL), 0) AS unread_count,
+                    COALESCE(SUM(e.event_type = \'mention\' AND e.done_at IS NULL), 0) AS mention_count
+             FROM inbox_events e
+             INNER JOIN projects p ON p.workspace_id = e.workspace_id AND p.id = e.project_id
+             WHERE e.workspace_id = :workspace_id AND e.recipient_id = :recipient_id
+               AND e.project_id IN (' . $filter . ')'
+        );
+        $statement->execute(['workspace_id' => $workspaceId, 'recipient_id' => $userId, ...$parameters]);
+        $counts = $statement->fetch(PDO::FETCH_ASSOC) ?: [];
+        return ['unread' => (int) ($counts['unread_count'] ?? 0), 'mentions' => (int) ($counts['mention_count'] ?? 0)];
     }
 
     public function updateForUser(int $workspaceId, int $userId, int $eventId, array $changes, array $projectIds): ?array

@@ -44,6 +44,17 @@ export function eventsForTab(events: readonly InboxEvent[], tab: InboxTab): Inbo
   }
 }
 
+export function inboxEventPagePath(tab: InboxTab, beforeId?: number): string {
+  const cursor = beforeId === undefined ? '' : `&before_id=${beforeId}`;
+  return `/inbox/events?tab=${tab}${cursor}`;
+}
+
+export function mergeInboxEventPage<T extends { id: number }>(existing: readonly T[], incoming: readonly T[]): T[] {
+  const byId = new Map(existing.map((event) => [event.id, event]));
+  for (const event of incoming) byId.set(event.id, event);
+  return Array.from(byId.values()).sort((left, right) => right.id - left.id);
+}
+
 export function tabCount(events: readonly InboxEvent[], tab: InboxTab): number | null {
   if (tab === 'done' || tab === 'all') return null;
   return eventsForTab(events, tab).length;

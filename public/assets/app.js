@@ -1,4 +1,4 @@
-import { INBOX_TABS, createEventRow, eventsForTab, tabCount, } from './inbox-events.js';
+import { INBOX_TABS, createEventRow, eventsForTab, inboxEventPagePath, mergeInboxEventPage, } from './inbox-events.js';
 import { diffInboxCollections, nextInboxPollDelay, shouldDeferInboxUpdates, } from './inbox-polling.js';
 import { renderClientEmptyState, renderClientView } from './guest-view.js';
 import { createLogoutController } from './logout.js';
@@ -555,6 +555,10 @@ let issueGroupingBeforeNextUp = 'status';
 let issueGroupingForcedByNextUp = false;
 let inboxIssues = [];
 let inboxEvents = [];
+let inboxEventCounts = { unread: 0, mentions: 0 };
+let inboxEventsHasMore = false;
+let inboxEventsNextCursor = null;
+let inboxMorePageLoading = false;
 let myWorkTab = 'inbox';
 let inboxTab = 'unread';
 let inboxIssuesEtag = null;
@@ -568,6 +572,7 @@ let inboxMutationPending = 0;
 const inboxEventRowRenderSignatures = new WeakMap();
 const inboxTabsElement = document.querySelector('#inbox-tabs');
 const inboxMarkAllReadButton = document.querySelector('#inbox-mark-all-read');
+const inboxLoadMoreButton = document.querySelector('#inbox-load-more');
 const guestShell = document.querySelector('#guest-shell');
 const guestStatus = document.querySelector('#guest-status');
 const guestMain = document.querySelector('#guest-main');
@@ -865,6 +870,9 @@ function showSignedOut() {
     inboxTab = 'unread';
     inboxIssues = [];
     inboxEvents = [];
+    inboxEventCounts = { unread: 0, mentions: 0 };
+    inboxEventsHasMore = false;
+    inboxEventsNextCursor = null;
     inboxIssueList.replaceChildren();
     myWorkTaskGroups.replaceChildren();
     inboxEmptyState.hidden = false;
@@ -1044,6 +1052,9 @@ function showWorkspaceView(view) {
         stopInboxPolling();
         inboxIssues = [];
         inboxEvents = [];
+        inboxEventCounts = { unread: 0, mentions: 0 };
+        inboxEventsHasMore = false;
+        inboxEventsNextCursor = null;
     }
     if (view !== 'lounge')
         stopLoungePolling();
@@ -4781,7 +4792,13 @@ async function fetchConditionalInboxCollection(path, key, etag) {
     if (!response.ok) {
         throw new ApiFailure(payload.error?.message ?? 'Could not refresh your inbox.', response.status);
     }
-    return { items: payload[key] ?? [], etag: responseEtag };
+    return {
+        items: Array.isArray(payload[key]) ? payload[key] : [],
+        etag: responseEtag,
+        hasMore: payload.has_more,
+        nextCursor: payload.next_cursor,
+        counts: payload.counts,
+    };
 }
 function inboxPollingIsActive() {
     return !workspacePanel.hidden && !inboxView.hidden;
@@ -4837,19 +4854,24 @@ async function pollInbox() {
     try {
         const [issuesResult, eventsResult] = await Promise.all([
             fetchConditionalInboxCollection('/inbox', 'issues', forceDeferredRefresh ? null : inboxIssuesEtag),
-            fetchConditionalInboxCollection('/inbox/events', 'events', forceDeferredRefresh ? null : inboxEventsEtag),
+            fetchConditionalInboxCollection(inboxEventPagePath(inboxTab), 'events', forceDeferredRefresh ? null : inboxEventsEtag),
         ]);
         if (requestVersion !== inboxPollRequestVersion || !inboxPollingIsActive())
             return;
         const incomingIssues = issuesResult.items ?? inboxIssues;
-        const incomingEvents = eventsResult.items ?? inboxEvents;
+        const incomingEvents = eventsResult.items === null
+            ? inboxEvents
+            : mergeInboxEventPage(inboxEvents, eventsResult.items);
         const issuesDiff = diffInboxCollections(inboxIssues, incomingIssues);
         const eventsDiff = diffInboxCollections(inboxEvents, incomingEvents);
         const issuesChanged = issuesDiff.added.length > 0 || issuesDiff.changed.length > 0
             || issuesDiff.removed.length > 0 || issuesDiff.orderChanged;
         const eventsChanged = eventsDiff.added.length > 0 || eventsDiff.changed.length > 0
             || eventsDiff.removed.length > 0 || eventsDiff.orderChanged;
-        changed = issuesChanged || eventsChanged;
+        const incomingCounts = eventsResult.counts ?? inboxEventCounts;
+        const countsChanged = incomingCounts.unread !== inboxEventCounts.unread
+            || incomingCounts.mentions !== inboxEventCounts.mentions;
+        changed = issuesChanged || eventsChanged || countsChanged;
         inboxIssuesEtag = issuesResult.etag;
         inboxEventsEtag = eventsResult.etag;
         const deferUpdates = deferUpdatesAtStart || inboxUpdatesAreDeferred();
@@ -4857,6 +4879,11 @@ async function pollInbox() {
             inboxPollHasDeferredChanges = true;
         }
         else if (!deferUpdates) {
+            inboxEventCounts = incomingCounts;
+            if (eventsResult.hasMore !== undefined)
+                inboxEventsHasMore = eventsResult.hasMore;
+            if (eventsResult.nextCursor !== undefined)
+                inboxEventsNextCursor = eventsResult.nextCursor;
             if (issuesChanged)
                 inboxIssues = incomingIssues;
             if (eventsChanged)
@@ -4864,7 +4891,7 @@ async function pollInbox() {
             inboxPollHasDeferredChanges = false;
             if (issuesChanged && myWorkTab === 'tasks')
                 renderInboxIssues();
-            if (eventsChanged) {
+            if (eventsChanged || countsChanged) {
                 renderInboxTabs();
                 if (myWorkTab === 'inbox')
                     renderInboxEvents();
@@ -4933,7 +4960,9 @@ function renderInboxTabs() {
         button.classList.toggle('is-active', tab.id === inboxTab);
         button.setAttribute('aria-selected', String(tab.id === inboxTab));
         button.tabIndex = tab.id === inboxTab ? 0 : -1;
-        const count = tabCount(inboxEvents, tab.id);
+        const count = tab.id === 'unread' ? inboxEventCounts.unread
+            : tab.id === 'mentions' ? inboxEventCounts.mentions
+                : null;
         button.textContent = count === null || count === 0 ? tab.label : `${tab.label} ${count}`;
         placeNodeAtPosition(inboxTabsElement, button, index);
         existing.delete(tab.id);
@@ -4944,6 +4973,13 @@ function renderInboxTabs() {
 }
 function selectInboxTab(tab) {
     inboxTab = tab;
+    inboxEvents = [];
+    inboxEventsEtag = null;
+    inboxEventsHasMore = false;
+    inboxEventsNextCursor = null;
+    inboxLoadMoreButton.hidden = true;
+    inboxPollRequestVersion += 1;
+    inboxPollInFlight = false;
     renderInboxTabs();
     renderInboxEvents();
     scheduleInboxPoll(0);
@@ -5060,8 +5096,8 @@ function inboxItemSignature(item) {
     return JSON.stringify(Object.entries(item).sort(([left], [right]) => left.localeCompare(right)));
 }
 function renderInboxEvents() {
-    const events = eventsForTab(inboxEvents, inboxTab);
-    const unread = inboxEvents.filter((event) => !event.done && !event.read).length;
+    const events = inboxEvents;
+    const unread = inboxEventCounts.unread;
     inboxSummary.textContent = `${unread} unread ${unread === 1 ? 'event' : 'events'}.`;
     reconcileInboxRows(inboxIssueList, events, 'eventId', inboxEventRowRenderSignatures, (event) => createEventRow(event, {
         open: (target) => void openInboxEvent(target),
@@ -5070,6 +5106,43 @@ function renderInboxEvents() {
     }));
     inboxEmptyState.textContent = 'Nothing here.';
     inboxEmptyState.hidden = events.length > 0;
+    inboxLoadMoreButton.hidden = !inboxEventsHasMore;
+    inboxLoadMoreButton.disabled = inboxMorePageLoading;
+}
+async function loadMoreInboxEvents() {
+    if (inboxMorePageLoading || !inboxEventsHasMore || inboxEventsNextCursor === null)
+        return;
+    inboxMorePageLoading = true;
+    const requestVersion = ++inboxPollRequestVersion;
+    inboxPollInFlight = true;
+    renderInboxEvents();
+    try {
+        const page = await fetchConditionalInboxCollection(inboxEventPagePath(inboxTab, inboxEventsNextCursor), 'events', null);
+        if (requestVersion !== inboxPollRequestVersion || !inboxPollingIsActive() || page.items === null)
+            return;
+        inboxEvents = mergeInboxEventPage(inboxEvents, page.items);
+        inboxEventCounts = page.counts ?? inboxEventCounts;
+        inboxEventsHasMore = page.hasMore ?? false;
+        inboxEventsNextCursor = page.nextCursor ?? null;
+        renderInboxTabs();
+        renderInboxEvents();
+    }
+    catch (error) {
+        if (error instanceof ApiFailure && error.status === 401) {
+            showSignedOut();
+            return;
+        }
+        report(error instanceof Error ? error.message : 'Could not load older inbox events.', true);
+    }
+    finally {
+        inboxMorePageLoading = false;
+        if (requestVersion === inboxPollRequestVersion) {
+            inboxPollInFlight = false;
+            if (inboxPollingIsActive())
+                scheduleInboxPoll(1000);
+        }
+        renderInboxEvents();
+    }
 }
 async function updateInboxEvent(event, change) {
     inboxMutationPending += 1;
@@ -5079,6 +5152,7 @@ async function updateInboxEvent(event, change) {
             body: JSON.stringify(change),
         });
         inboxEvents = inboxEvents.map((candidate) => (candidate.id === event.id ? result.event : candidate));
+        inboxEvents = eventsForTab(inboxEvents, inboxTab);
         inboxEventsEtag = null;
         inboxPollDelay = 1000;
         renderInboxTabs();
@@ -5100,6 +5174,12 @@ async function markAllInboxEventsRead() {
     try {
         await api('/inbox/events/read-all', { method: 'POST' });
         inboxEvents = inboxEvents.map((event) => ({ ...event, read: true }));
+        if (inboxTab === 'unread') {
+            inboxEvents = [];
+            inboxEventsHasMore = false;
+            inboxEventsNextCursor = null;
+        }
+        inboxEventCounts = { ...inboxEventCounts, unread: 0 };
         inboxEventsEtag = null;
         inboxPollDelay = 1000;
         renderInboxTabs();
@@ -8678,6 +8758,7 @@ guestPreviewMemberSelect.addEventListener('change', () => {
 guestPreviewReturnButton.addEventListener('click', closeGuestViewPreview);
 guestLogoutButton.addEventListener('click', () => { void signOut(); });
 inboxMarkAllReadButton.addEventListener('click', () => { void markAllInboxEventsRead(); });
+inboxLoadMoreButton.addEventListener('click', () => { void loadMoreInboxEvents(); });
 window.addEventListener('storage', (event) => {
     if (event.key === 'tangent-github-connected' && activeUser?.role === 'admin')
         void loadGithubRepositories();

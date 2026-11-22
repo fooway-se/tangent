@@ -26,6 +26,10 @@ final class InboxRoutes
         });
 
         $router->add('GET', '/api/v1/inbox/events', function (Request $request, array $params, AuthenticatedUser $user): Response {
+            if (array_key_exists('tab', $request->query) || array_key_exists('before_id', $request->query)) {
+                $page = $this->events->page($user, $request->query['tab'] ?? null, $request->query['before_id'] ?? null);
+                return self::conditionalResponse($request, $page);
+            }
             return self::conditionalListResponse($request, 'events', $this->events->list($user));
         });
 
@@ -41,14 +45,19 @@ final class InboxRoutes
 
     private static function conditionalListResponse(Request $request, string $key, array $items): Response
     {
-        $etag = '"' . hash('sha256', json_encode($items, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR)) . '"';
+        return self::conditionalResponse($request, [$key => $items]);
+    }
+
+    private static function conditionalResponse(Request $request, array $body): Response
+    {
+        $etag = '"' . hash('sha256', json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR)) . '"';
         $headers = ['ETag' => $etag, 'Cache-Control' => 'no-cache'];
         $ifNoneMatch = $request->header('If-None-Match');
         if ($ifNoneMatch !== null && self::matchesEtag($ifNoneMatch, $etag)) {
             return Response::notModified($headers);
         }
 
-        return Response::json(200, [$key => $items], $headers);
+        return Response::json(200, $body, $headers);
     }
 
     private static function matchesEtag(string $header, string $etag): bool

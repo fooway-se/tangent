@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tangent\Tests\Integration;
 
+use Tangent\Core\Request;
 use Tangent\Core\Response;
 use Tangent\Tests\Support\ApiTestCase;
 
@@ -271,6 +272,80 @@ final class InboxEventsTest extends ApiTestCase
         self::assertSame(200, $updated->status, json_encode($updated->body));
         self::assertSame($oldestEventId, $updated->body['event']['id']);
         self::assertTrue($updated->body['event']['read']);
+    }
+
+    public function testEventTabsFilterBeforeThePageLimitAndUseStableIdCursors(): void
+    {
+        $admin = $this->login($this->adminEmail);
+        $projectId = $this->createProject($admin, 'Inbox pages');
+        $hiddenProjectId = $this->createProject($admin, 'Inbox hidden project');
+        $this->addMember($admin, $projectId, $this->developerId);
+        $developer = $this->login($this->developerEmail);
+
+        $insert = $this->pdo->prepare(
+            "INSERT INTO inbox_events
+                (workspace_id, recipient_id, actor_id, event_type, project_id, summary, read_at, done_at)
+             VALUES (:workspace_id, :recipient_id, :actor_id, :event_type, :project_id, :summary, :read_at, :done_at)"
+        );
+        for ($index = 1; $index <= 205; $index++) {
+            $insert->execute([
+                'workspace_id' => $this->workspaceId,
+                'recipient_id' => $this->developerId,
+                'actor_id' => $this->adminId,
+                'event_type' => $index === 1 ? 'mention' : 'assigned',
+                'project_id' => $projectId,
+                'summary' => 'Seed event ' . $index,
+                'read_at' => $index > 105 ? '2026-01-01 00:00:00' : null,
+                'done_at' => $index > 1 && $index <= 105 ? '2026-01-01 00:00:00' : null,
+            ]);
+        }
+        $insert->execute([
+            'workspace_id' => $this->workspaceId,
+            'recipient_id' => $this->developerId,
+            'actor_id' => $this->adminId,
+            'event_type' => 'mention',
+            'project_id' => $hiddenProjectId,
+            'summary' => 'Hidden event',
+            'read_at' => null,
+            'done_at' => null,
+        ]);
+
+        $unread = $this->eventPage($developer['cookie'], ['tab' => 'unread']);
+        self::assertSame(200, $unread->status, json_encode($unread->body));
+        self::assertCount(1, $unread->body['events']);
+        self::assertSame('Seed event 1', $unread->body['events'][0]['summary']);
+        self::assertSame(1, $unread->body['counts']['unread']);
+        self::assertSame(1, $unread->body['counts']['mentions']);
+
+        $allFirstPage = $this->eventPage($developer['cookie'], ['tab' => 'all']);
+        self::assertCount(50, $allFirstPage->body['events']);
+        self::assertTrue($allFirstPage->body['has_more']);
+        $allSecondPage = $this->eventPage($developer['cookie'], [
+            'tab' => 'all',
+            'before_id' => (string) $allFirstPage->body['next_cursor'],
+        ]);
+        self::assertCount(50, $allSecondPage->body['events']);
+        self::assertSame([], array_values(array_intersect(
+            array_column($allFirstPage->body['events'], 'id'),
+            array_column($allSecondPage->body['events'], 'id'),
+        )));
+        self::assertLessThan(
+            $allFirstPage->body['events'][49]['id'],
+            $allSecondPage->body['events'][0]['id'],
+        );
+    }
+
+    private function eventPage(string $cookie, array $query): Response
+    {
+        return $this->application->handle(Request::json(
+            'GET',
+            '/api/v1/inbox/events',
+            [],
+            [],
+            ['tangent_session' => $cookie],
+            '127.0.0.1',
+            $query,
+        ));
     }
 
     public function testEventsFromProjectsTheRecipientLeftAreHidden(): void

@@ -1206,8 +1206,16 @@ paths:
   /inbox/events:
     get:
       summary: List inbox events for the authenticated user
-      description: Mentions, assignments, thread replies, status changes and PR events addressed to the user. Includes read and done events; clients filter by tab. Matching If-None-Match returns 304.
+      description: Mentions, assignments, thread replies, status changes and PR events addressed to the user. Without tab or before_id, returns the legacy newest 200 events. With tab, filters before limiting to 50 events and uses before_id as an exclusive stable ID cursor. Counts cover all currently visible projects. Matching If-None-Match returns 304.
       parameters:
+        - name: tab
+          in: query
+          required: false
+          schema: { type: string, enum: [unread, all, mentions, done] }
+        - name: before_id
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1 }
         - name: If-None-Match
           in: header
           required: false
@@ -1226,6 +1234,13 @@ paths:
                   events:
                     type: array
                     items: { $ref: '#/components/schemas/InboxEvent' }
+                  has_more: { type: boolean, description: Present for tab-filtered pages. }
+                  next_cursor: { type: [integer, 'null'], description: Exclusive before_id cursor for the next page. }
+                  counts:
+                    type: object
+                    properties:
+                      unread: { type: integer, minimum: 0 }
+                      mentions: { type: integer, minimum: 0 }
         '304':
           description: No inbox events changed since the supplied ETag.
           headers:
@@ -1262,6 +1277,7 @@ paths:
   /inbox/events/read-all:
     post:
       summary: Mark all of the user's inbox events read
+      description: Marks every unread event in projects currently visible to the user, including events on pages they have not loaded.
       parameters:
         - $ref: '#/components/parameters/CsrfToken'
       responses:

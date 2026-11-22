@@ -6,6 +6,7 @@ import {
   nextInboxPollDelay,
   shouldDeferInboxUpdates,
 } from '../../public/assets/inbox-polling.js';
+import { inboxEventPagePath, mergeInboxEventPage } from '../../public/assets/inbox-events.js';
 
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
 const inboxEventsSource = await readFile(new URL('../../frontend/src/inbox-events.ts', import.meta.url), 'utf8');
@@ -48,7 +49,7 @@ test('inbox polling uses conditional requests and reconciles rows in place', () 
   assert.match(app, /headers\.set\('If-None-Match', etag\)/);
   assert.match(app, /response\.status === 304/);
   assert.match(app, /fetchConditionalInboxCollection<InboxIssue>\('\/inbox', 'issues'/);
-  assert.match(app, /fetchConditionalInboxCollection<InboxEvent>\('\/inbox\/events', 'events'/);
+  assert.match(app, /fetchConditionalInboxCollection<InboxEvent>\(inboxEventPagePath\(inboxTab\), 'events'/);
   assert.match(app, /function scheduleInboxPoll\(/);
   assert.match(app, /function stopInboxPolling\(/);
   assert.match(app, /function resumeDeferredInboxPolling\(/);
@@ -57,6 +58,22 @@ test('inbox polling uses conditional requests and reconciles rows in place', () 
   assert.doesNotMatch(app, /inboxIssueList\.replaceChildren\(\.\.\.inboxIssues\.map/);
   assert.doesNotMatch(app, /inboxIssueList\.replaceChildren\(\.\.\.events\.map/);
   assert.doesNotMatch(app, /inboxTabsElement\.replaceChildren/);
+});
+
+test('inbox event pages request the selected tab and merge without duplicates', () => {
+  const pageOne = [{ id: 20 }, { id: 19 }];
+  const pageTwo = [{ id: 18 }, { id: 17 }];
+  assert.equal(inboxEventPagePath('all'), '/inbox/events?tab=all');
+  assert.equal(inboxEventPagePath('all', 19), '/inbox/events?tab=all&before_id=19');
+  assert.deepEqual(mergeInboxEventPage(pageOne, [{ id: 20, title: 'Updated' }, ...pageTwo]), [
+    { id: 20, title: 'Updated' },
+    { id: 19 },
+    { id: 18 },
+    { id: 17 },
+  ]);
+  assert.match(app, /inboxEventPagePath\(inboxTab/);
+  assert.match(app, /inbox-load-more/);
+  assert.match(app, /loadMoreInboxEvents/);
 });
 
 test('inbox row reconciliation preserves focus on event actions', () => {

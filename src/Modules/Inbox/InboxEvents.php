@@ -25,6 +25,31 @@ final class InboxEvents
         return $this->events->listForUser($user->workspaceId, $user->id, $this->visibleProjectIds($user));
     }
 
+    public function page(AuthenticatedUser $user, mixed $tab, mixed $beforeId): array
+    {
+        $this->requireRead($user);
+        if (!is_string($tab) || !in_array($tab, ['unread', 'all', 'mentions', 'done'], true)) {
+            throw new ApiException(422, 'validation_failed', 'A valid inbox tab is required.');
+        }
+        $parsedBeforeId = null;
+        if ($beforeId !== null) {
+            if ((!is_int($beforeId) && !is_string($beforeId)) || !ctype_digit((string) $beforeId)) {
+                throw new ApiException(422, 'validation_failed', 'The inbox cursor must be a positive event ID.');
+            }
+            $parsedBeforeId = filter_var((string) $beforeId, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+            if ($parsedBeforeId === false) {
+                throw new ApiException(422, 'validation_failed', 'The inbox cursor must be a positive event ID.');
+            }
+        }
+        return $this->events->listPageForUser(
+            $user->workspaceId,
+            $user->id,
+            $this->visibleProjectIds($user),
+            $tab,
+            $parsedBeforeId,
+        );
+    }
+
     public function update(AuthenticatedUser $user, int $eventId, array $changes): array
     {
         $this->requireRead($user);

@@ -203,7 +203,7 @@
                 <p class="eyebrow">Workspace</p>
                 <h1 id="inbox-heading" tabindex="-1">My Work</h1>
               </div>
-              <button id="inbox-mark-all-read" class="button button-quiet" type="button" hidden>Mark all read</button>
+              <button id="inbox-mark-all-read" class="button button-quiet" type="button" aria-label="Mark all visible unread events as read" title="Marks every unread event in projects you can access, including older pages." hidden>Mark all visible unread as read</button>
             </header>
             <div id="my-work-tabs" class="my-work-tabs" role="tablist" aria-label="My Work">
               <button id="my-work-tab-inbox" class="my-work-tab is-active" type="button" role="tab" aria-selected="true" aria-controls="my-work-inbox-panel" tabindex="0">Inbox</button>
@@ -214,6 +214,7 @@
               <p id="inbox-summary" class="inbox-summary">Updates and mentions from your projects.</p>
               <ul id="inbox-issue-list" class="issue-list inbox-issue-list" aria-live="polite"></ul>
               <p id="inbox-empty-state" class="inbox-empty-state" hidden>Nothing here.</p>
+              <button id="inbox-load-more" class="button button-quiet" type="button" hidden>Load older events</button>
             </section>
             <section id="my-work-tasks-panel" class="my-work-panel" role="tabpanel" aria-labelledby="my-work-tab-tasks" hidden>
               <p id="my-work-tasks-summary" class="inbox-summary">Open issues assigned to you across your projects.</p>
