@@ -5,6 +5,7 @@ import { formatIssueMarkdown, formatIssuePrompt } from '../../public/assets/issu
 
 const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
+const promptUi = await readFile(new URL('../../frontend/src/issue-ai-prompt-ui.ts', import.meta.url), 'utf8');
 const openapi = await readFile(new URL('../../docs/openapi.yaml', import.meta.url), 'utf8');
 
 test('guided AI prompt builder keeps the issue forms compact', () => {
@@ -43,17 +44,17 @@ test('guided AI prompt builder keeps the issue forms compact', () => {
   assert.match(html, /What should someone be able to observe when this is done\?/);
   assert.match(html, /How will you verify the result\?/);
   assert.match(html, /List specific, testable outcomes, one per line\./);
-  assert.match(app, /issueAiPromptContext\.value = selectedIssue\.context/);
-  assert.match(app, /issueAiPromptOutcome\.value = selectedIssue\.expected_outcome/);
-  assert.match(app, /issueAiPromptCriteria\.value = selectedIssue\.acceptance_criteria/);
-  assert.match(app, /context:\s*draft\.context/);
-  assert.match(app, /expected_outcome:\s*draft\.expected_outcome/);
-  assert.match(app, /acceptance_criteria:\s*draft\.acceptance_criteria/);
-  assert.match(app, /formatIssueMarkdown\(issueAiPromptDraft\(selectedIssue\)\)/);
-  assert.match(app, /formatIssuePrompt\(issueAiPromptDraft\(selectedIssue\)\)/);
-  assert.match(app, /navigator\.clipboard\.writeText\(text\)/);
-  assert.match(app, /issueAiPromptPreview\.select\(\)/);
-  assert.match(app, /new Blob\(\[markdown\], \{ type: 'text\/markdown;charset=utf-8' \}\)/);
+  assert.match(promptUi, /issueAiPromptContext\.value = issue\.context/);
+  assert.match(promptUi, /issueAiPromptOutcome\.value = issue\.expected_outcome/);
+  assert.match(promptUi, /issueAiPromptCriteria\.value = issue\.acceptance_criteria/);
+  assert.match(promptUi, /context:\s*draft\.context/);
+  assert.match(promptUi, /expected_outcome:\s*draft\.expected_outcome/);
+  assert.match(promptUi, /acceptance_criteria:\s*draft\.acceptance_criteria/);
+  assert.match(promptUi, /formatIssueMarkdown\(draftIssue\(issue\)\)/);
+  assert.match(promptUi, /formatIssuePrompt\(draftIssue\(issue\)\)/);
+  assert.match(promptUi, /navigator\.clipboard\.writeText\(text\)/);
+  assert.match(promptUi, /issueAiPromptPreview\.select\(\)/);
+  assert.match(promptUi, /new Blob\(\[markdown\], \{ type: 'text\/markdown;charset=utf-8' \}\)/);
   assert.match(openapi, /context: \{ type: string, maxLength: 10000/);
   assert.match(openapi, /expected_outcome: \{ type: string, maxLength: 10000/);
   assert.match(openapi, /acceptance_criteria: \{ type: string, maxLength: 10000/);

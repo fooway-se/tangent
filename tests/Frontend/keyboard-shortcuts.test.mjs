@@ -13,6 +13,7 @@ const themeUi = await readFile(new URL('../../frontend/src/theme-ui.ts', import.
 const milestoneUi = await readFile(new URL('../../frontend/src/milestone-ui.ts', import.meta.url), 'utf8');
 const summaryUi = await readFile(new URL('../../frontend/src/client-summary-ui.ts', import.meta.url), 'utf8');
 const workspacePickerUi = await readFile(new URL('../../frontend/src/workspace-picker-ui.ts', import.meta.url), 'utf8');
+const issueAiPromptUi = await readFile(new URL('../../frontend/src/issue-ai-prompt-ui.ts', import.meta.url), 'utf8');
 const baseContext = {
   targetIsEditable: false,
   goPrefixPending: false,
@@ -164,11 +165,11 @@ test('g then w focuses the workspace switcher', () => {
 
 test('the AI prompt dialog participates in modal keyboard handling', () => {
   const context = app.slice(app.indexOf('function shortcutContext'), app.indexOf('function clearGoPrefix'));
-  assert.match(context, /modalOpen:[\s\S]*issueAiPromptDialog\.open/);
+  assert.match(context, /modalOpen:[\s\S]*issueAiPromptUi\.isOpen\(\)/);
   const dismiss = app.slice(app.indexOf('function dismissCurrentView'), app.indexOf('function focusIssueQuickAddReturnTarget'));
-  assert.match(dismiss, /issueAiPromptDialog\.open[\s\S]*issueAiPromptDialog\.close\(\)/);
-  assert.match(app, /issueAiPromptDialog\.addEventListener\('close'/);
-  assert.match(app, /commandPaletteUi\.isPaletteOpen\(\) \|\| clientSummaryUi\.dialog\.open \|\| commandPaletteUi\.isShortcutHelpOpen\(\) \|\| issueAiPromptDialog\.open/);
+  assert.match(dismiss, /issueAiPromptUi\.isOpen\(\)[\s\S]*issueAiPromptUi\.close\(\)/);
+  assert.match(issueAiPromptUi, /issueAiPromptDialog\.addEventListener\('close'/);
+  assert.match(app, /commandPaletteUi\.isPaletteOpen\(\) \|\| clientSummaryUi\.dialog\.open \|\| commandPaletteUi\.isShortcutHelpOpen\(\) \|\| issueAiPromptUi\.isOpen\(\)/);
 });
 
 test('the generated summary dialog participates in modal keyboard handling', () => {

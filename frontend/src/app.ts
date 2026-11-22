@@ -30,9 +30,9 @@ import { initProjectChatUi } from './project-chat-ui.js';
 import { initCommandPaletteUi, type PaletteCommand } from './command-palette-ui.js';
 import { initWorkspacePickerUi } from './workspace-picker-ui.js';
 import { initIssueBoardUi } from './issue-board-ui.js';
+import { initIssueAiPromptUi } from './issue-ai-prompt-ui.js';
 import { parseQuickIssueInput } from './quick-issue.js';
 import { milestoneStatus, type RoadmapMilestone } from './roadmap.js';
-import { formatIssueMarkdown, formatIssuePrompt } from './issue-export.js';
 import {
   filterIssues,
   filterIssuesByMilestoneArchive,
@@ -106,11 +106,7 @@ const {
     issuePullRequestsEmpty, issuePullRequestDialog, issuePullRequestForm, issuePullRequestClose,
     issuePullRequestCancel, issuePullRequestUrl, issuePullRequestMessage, issuePullRequestSubmit,
     issueDetailEditForm, issueDetailTitleInput, issueDetailDescriptionInput, issueDetailPriorityInput,
-    issueDetailDueDateInput, issueDetailEditButton, issueAiPromptButton, issueAiPromptDialog,
-    issueAiPromptCloseButton, issueAiPromptStepCount, issueAiPromptContext, issueAiPromptOutcome,
-    issueAiPromptCriteria, issueAiPromptPreview, issueAiPromptStatus, issueAiPromptBackButton,
-    issueAiPromptSkipButton, issueAiPromptNextButton, issueAiPromptActions, issueAiPromptSaveButton,
-    issueAiPromptCopyButton, issueAiPromptCopyMarkdownButton, issueAiPromptDownloadButton,
+    issueDetailDueDateInput, issueDetailEditButton,
     issueDetailDeleteButton, issueDetailSaveButton, issuesTabButton, issueBackButton,
     issueDetailCancelButton, issueForm, issueQuickAddTitle, issueQuickAddPriority, issueQuickAddDueDate,
     issueQuickAddAssignee, issueQuickAddMilestone, issueQuickAddOngoing, issueQuickAddShared,
@@ -389,13 +385,6 @@ projectSidebarList.after(projectSidebarMore);
 
 
 
-const issueAiPromptSteps = [
-  document.querySelector<HTMLElement>('#issue-ai-prompt-step-context')!,
-  document.querySelector<HTMLElement>('#issue-ai-prompt-step-outcome')!,
-  document.querySelector<HTMLElement>('#issue-ai-prompt-step-criteria')!,
-  document.querySelector<HTMLElement>('#issue-ai-prompt-step-preview')!,
-];
-
 
 
 
@@ -579,8 +568,6 @@ const milestoneUi = initMilestoneUi({
 let linkedPullRequests: LinkedPullRequest[] = [];
 let issuePullRequestsRequestVersion = 0;
 let githubRepositories: GitHubRepository[] = [];
-let issueAiPromptStepIndex = 0;
-let issueAiPromptReturnFocus: HTMLElement | null = null;
 let loungeActive = false;
 let issuePollTimer: number | null = null;
 let issuePollDelay = 1000;
@@ -625,6 +612,17 @@ const issueBoardUi = initIssueBoardUi({
   setTextContentIfChanged,
   placeNodeAtPosition,
   replaceIssueRowPreservingFocus,
+});
+const issueAiPromptUi = initIssueAiPromptUi({
+  getIssue: () => selectedIssue,
+  isIssueCurrent: (issue) => selectedIssue?.id === issue.id && activeProject?.id === issue.project_id,
+  onSaved: (issue) => {
+    selectedIssue = issue;
+    projectIssues = projectIssues.map((candidate) => candidate.id === issue.id ? issue : candidate);
+    renderIssueDetail();
+    renderProjectIssueBoard();
+  },
+  onUnauthorized: () => showSignedOut(),
 });
 let selectedChatMessageId: number | null = null;
 let issueQuickAddEscapePending = false;
@@ -1516,7 +1514,7 @@ function shortcutContext(target: EventTarget | null) {
     issueGroupFocused: target instanceof HTMLElement && target.closest('.issue-group > summary') !== null,
     statusHistoryFocused: issueStatusHistory.open && issueStatusHistory.contains(document.activeElement),
     textInputFocused: shouldBlurOnEscape(target),
-    modalOpen: commandPaletteUi.isPaletteOpen() || clientSummaryUi.dialog.open || commandPaletteUi.isShortcutHelpOpen() || issueAiPromptDialog.open || issueStatusPicker.open || issueDeleteConfirmation.open || themeUi.aboutDialog.open || projectEditDialog.open
+    modalOpen: commandPaletteUi.isPaletteOpen() || clientSummaryUi.dialog.open || commandPaletteUi.isShortcutHelpOpen() || issueAiPromptUi.isOpen() || issueStatusPicker.open || issueDeleteConfirmation.open || themeUi.aboutDialog.open || projectEditDialog.open
       || memberRemovalConfirmation.open || workspaceAdminUi.hasOpenDialog() || milestoneUi.deleteConfirmation.open || milestoneUi.managerDialog.open
       || workspacePickerUi.isOpen(),
     canDismiss: commandPaletteUi.isPaletteOpen() || commandPaletteUi.isShortcutHelpOpen() || (!workspacePanel.hidden && (
@@ -1968,7 +1966,7 @@ function openCommandPalette(): void {
   if (projectEditDialog.open) projectEditDialog.close();
   if (workspacePickerUi.isOpen()) workspacePickerUi.resetPendingSwitch();
   if (clientSummaryUi.dialog.open) clientSummaryUi.close();
-  if (issueAiPromptDialog.open) issueAiPromptDialog.close();
+  if (issueAiPromptUi.isOpen()) issueAiPromptUi.close();
   if (milestoneUi.deleteConfirmation.open) milestoneUi.closeDeleteConfirmation();
   if (milestoneUi.managerDialog.open) milestoneUi.close();
   if (issueStatusPicker.open) closeIssueStatusPicker();
@@ -1982,7 +1980,7 @@ function showShortcutHelp(): void {
   if (activeUser === null || milestoneUi.deleteConfirmButton.disabled) return;
   if (workspacePickerUi.isOpen()) workspacePickerUi.resetPendingSwitch();
   if (clientSummaryUi.dialog.open) clientSummaryUi.close();
-  if (issueAiPromptDialog.open) issueAiPromptDialog.close();
+  if (issueAiPromptUi.isOpen()) issueAiPromptUi.close();
   if (milestoneUi.deleteConfirmation.open) milestoneUi.closeDeleteConfirmation();
   if (milestoneUi.managerDialog.open) milestoneUi.close();
   if (issueStatusPicker.open) closeIssueStatusPicker();
@@ -2002,8 +2000,8 @@ function dismissCurrentView(): void {
     workspacePickerUi.resetPendingSwitch();
   } else if (clientSummaryUi.dialog.open) {
     clientSummaryUi.close();
-  } else if (issueAiPromptDialog.open) {
-    issueAiPromptDialog.close();
+  } else if (issueAiPromptUi.isOpen()) {
+    issueAiPromptUi.close();
   } else if (milestoneUi.deleteConfirmation.open) {
     milestoneUi.closeDeleteConfirmation();
   } else if (milestoneUi.managerDialog.open) {
@@ -2430,7 +2428,7 @@ function handleKeyboardShortcut(event: KeyboardEvent): void {
     if (event.key === 'Escape') guestUi.closePreview();
     return;
   }
-  if ((commandPaletteUi.isPaletteOpen() || clientSummaryUi.dialog.open || commandPaletteUi.isShortcutHelpOpen() || issueAiPromptDialog.open || issueStatusPicker.open || issueDeleteConfirmation.open || memberRemovalConfirmation.open || workspaceAdminUi.hasOpenDialog() || milestoneUi.deleteConfirmation.open || milestoneUi.managerDialog.open || workspacePickerUi.isOpen() || themeUi.aboutDialog.open || projectEditDialog.open)
+  if ((commandPaletteUi.isPaletteOpen() || clientSummaryUi.dialog.open || commandPaletteUi.isShortcutHelpOpen() || issueAiPromptUi.isOpen() || issueStatusPicker.open || issueDeleteConfirmation.open || memberRemovalConfirmation.open || workspaceAdminUi.hasOpenDialog() || milestoneUi.deleteConfirmation.open || milestoneUi.managerDialog.open || workspacePickerUi.isOpen() || themeUi.aboutDialog.open || projectEditDialog.open)
     && event.key !== 'Escape'
     && !((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k')) return;
   const context = shortcutContext(event.target);
@@ -4779,173 +4777,6 @@ async function moveIssue(issue: Issue, direction: 'up' | 'down', button: HTMLBut
     button.disabled = false;
   }
 }
-
-function issueAiPromptDraft(issue: Issue): Issue {
-  return {
-    ...issue,
-    context: issueAiPromptContext.value.trim(),
-    expected_outcome: issueAiPromptOutcome.value.trim(),
-    acceptance_criteria: issueAiPromptCriteria.value.trim(),
-  };
-}
-
-function issueAiPromptHasChanges(issue: Issue): boolean {
-  return issueAiPromptContext.value.trim() !== issue.context
-    || issueAiPromptOutcome.value.trim() !== issue.expected_outcome
-    || issueAiPromptCriteria.value.trim() !== issue.acceptance_criteria;
-}
-
-function renderIssueAiPromptStep(): void {
-  issueAiPromptSteps.forEach((step, index) => { step.hidden = index !== issueAiPromptStepIndex; });
-  const isPreview = issueAiPromptStepIndex === issueAiPromptSteps.length - 1;
-  issueAiPromptStepCount.textContent = `Step ${issueAiPromptStepIndex + 1} of ${issueAiPromptSteps.length}`;
-  issueAiPromptBackButton.hidden = issueAiPromptStepIndex === 0;
-  issueAiPromptSkipButton.hidden = isPreview;
-  issueAiPromptNextButton.hidden = isPreview;
-  issueAiPromptActions.hidden = !isPreview;
-  if (isPreview && selectedIssue !== null) {
-    issueAiPromptPreview.value = formatIssuePrompt(issueAiPromptDraft(selectedIssue));
-    issueAiPromptSaveButton.disabled = !issueAiPromptHasChanges(selectedIssue);
-  }
-}
-
-function updateIssueAiPromptDraft(): void {
-  if (selectedIssue === null) return;
-  issueAiPromptStatus.textContent = issueAiPromptHasChanges(selectedIssue) ? 'Unsaved context changes.' : '';
-  issueAiPromptStatus.classList.remove('is-error');
-  issueAiPromptSaveButton.disabled = !issueAiPromptHasChanges(selectedIssue);
-  if (issueAiPromptStepIndex === issueAiPromptSteps.length - 1) renderIssueAiPromptStep();
-}
-
-function openIssueAiPrompt(): void {
-  if (selectedIssue === null) return;
-  issueAiPromptReturnFocus = document.activeElement instanceof HTMLElement
-    ? document.activeElement
-    : issueAiPromptButton;
-  issueAiPromptContext.value = selectedIssue.context;
-  issueAiPromptOutcome.value = selectedIssue.expected_outcome;
-  issueAiPromptCriteria.value = selectedIssue.acceptance_criteria;
-  issueAiPromptStepIndex = 0;
-  issueAiPromptStatus.textContent = '';
-  issueAiPromptStatus.classList.remove('is-error');
-  renderIssueAiPromptStep();
-  issueAiPromptDialog.showModal();
-  issueAiPromptContext.focus();
-}
-
-async function saveIssueAiPromptContext(): Promise<void> {
-  const issue = selectedIssue;
-  if (issue === null || !issueAiPromptHasChanges(issue)) return;
-  const draft = issueAiPromptDraft(issue);
-  issueAiPromptSaveButton.disabled = true;
-  issueAiPromptStatus.classList.remove('is-error');
-  issueAiPromptStatus.textContent = 'Saving prompt context…';
-  try {
-    const result = await api<{ issue: Issue }>(`/issues/${issue.id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({
-        context: draft.context,
-        expected_outcome: draft.expected_outcome,
-        acceptance_criteria: draft.acceptance_criteria,
-      }),
-    });
-    if (selectedIssue?.id !== issue.id || activeProject?.id !== issue.project_id) return;
-    selectedIssue = result.issue;
-    projectIssues = projectIssues.map((candidate) => candidate.id === issue.id ? result.issue : candidate);
-    renderIssueDetail();
-    renderProjectIssueBoard();
-    issueAiPromptSaveButton.disabled = true;
-    issueAiPromptStatus.textContent = 'Prompt context saved to this issue.';
-  } catch (error) {
-    if (error instanceof ApiFailure && error.status === 401) {
-      issueAiPromptDialog.close();
-      showSignedOut();
-      return;
-    }
-    issueAiPromptStatus.classList.add('is-error');
-    issueAiPromptStatus.textContent = error instanceof Error ? error.message : 'Could not save prompt context.';
-    issueAiPromptSaveButton.disabled = false;
-  }
-}
-
-async function copyIssueAiPrompt(text: string, message: string): Promise<void> {
-  try {
-    await navigator.clipboard.writeText(text);
-    issueAiPromptStatus.classList.remove('is-error');
-    issueAiPromptStatus.textContent = message;
-  } catch {
-    issueAiPromptPreview.value = text;
-    issueAiPromptPreview.focus();
-    issueAiPromptPreview.select();
-    issueAiPromptStatus.classList.remove('is-error');
-    issueAiPromptStatus.textContent = 'Clipboard unavailable. Export text selected for copying.';
-  }
-}
-
-function downloadIssueMarkdown(issue: Issue): void {
-  const markdown = formatIssueMarkdown(issue);
-  const blobUrl = URL.createObjectURL(new Blob([markdown], { type: 'text/markdown;charset=utf-8' }));
-  const titleSlug = issue.title.toLocaleLowerCase()
-    .normalize('NFKD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
-    .slice(0, 60) || 'issue';
-  const download = document.createElement('a');
-  download.href = blobUrl;
-  download.download = `issue-${issue.id}-${titleSlug}.md`;
-  document.body.append(download);
-  download.click();
-  download.remove();
-  window.setTimeout(() => URL.revokeObjectURL(blobUrl), 0);
-}
-
-issueAiPromptButton.addEventListener('click', openIssueAiPrompt);
-issueAiPromptCloseButton.addEventListener('click', () => issueAiPromptDialog.close());
-issueAiPromptDialog.addEventListener('close', () => {
-  const target = issueAiPromptReturnFocus;
-  issueAiPromptReturnFocus = null;
-  if (target !== null && target.isConnected && target.closest('[hidden]') === null
-    && document.querySelector('dialog[open]') === null) {
-    target.focus();
-  }
-});
-issueAiPromptNextButton.addEventListener('click', () => {
-  issueAiPromptStepIndex = Math.min(issueAiPromptStepIndex + 1, issueAiPromptSteps.length - 1);
-  renderIssueAiPromptStep();
-  const nextField = [issueAiPromptOutcome, issueAiPromptCriteria, issueAiPromptPreview][issueAiPromptStepIndex - 1];
-  nextField?.focus();
-});
-issueAiPromptBackButton.addEventListener('click', () => {
-  issueAiPromptStepIndex = Math.max(issueAiPromptStepIndex - 1, 0);
-  renderIssueAiPromptStep();
-  [issueAiPromptContext, issueAiPromptOutcome, issueAiPromptCriteria][issueAiPromptStepIndex]?.focus();
-});
-issueAiPromptSkipButton.addEventListener('click', () => {
-  issueAiPromptStepIndex = issueAiPromptSteps.length - 1;
-  renderIssueAiPromptStep();
-  issueAiPromptPreview.focus();
-});
-for (const field of [issueAiPromptContext, issueAiPromptOutcome, issueAiPromptCriteria]) {
-  field.addEventListener('input', updateIssueAiPromptDraft);
-}
-issueAiPromptSaveButton.addEventListener('click', () => void saveIssueAiPromptContext());
-issueAiPromptCopyButton.addEventListener('click', () => {
-  if (selectedIssue === null) return;
-  const prompt = formatIssuePrompt(issueAiPromptDraft(selectedIssue));
-  issueAiPromptPreview.value = prompt;
-  void copyIssueAiPrompt(prompt, 'Prompt copied.');
-});
-issueAiPromptCopyMarkdownButton.addEventListener('click', () => {
-  if (selectedIssue === null) return;
-  void copyIssueAiPrompt(formatIssueMarkdown(issueAiPromptDraft(selectedIssue)), 'Markdown copied.');
-});
-issueAiPromptDownloadButton.addEventListener('click', () => {
-  if (selectedIssue === null) return;
-  downloadIssueMarkdown(issueAiPromptDraft(selectedIssue));
-  issueAiPromptStatus.classList.remove('is-error');
-  issueAiPromptStatus.textContent = 'Markdown downloaded.';
-});
 
 issueDetailEditButton.addEventListener('click', () => {
   if (selectedIssue === null) return;
