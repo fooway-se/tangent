@@ -18,6 +18,8 @@ test('project creation and editing can connect an available GitHub repository', 
   assert.match(app, /api<\{ repositories: GitHubRepository\[\]; connected: boolean; configured: boolean; can_connect: boolean \}>\('\/github\/repositories'\)/);
   assert.match(app, /github_installation_id: githubRepositorySelection\?\.installation_id \?\? null/);
   assert.match(app, /github_repository_id: githubRepositorySelection\?\.repository_id \?\? null/);
+  assert.match(app, /github_repository_owner: githubRepositorySelection\?\.owner \?\? null/);
+  assert.match(app, /github_repository_name: githubRepositorySelection\?\.name \?\? null/);
   assert.match(app, /githubRepositorySelectionValue\(repository\)/);
 });
 

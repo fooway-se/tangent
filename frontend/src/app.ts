@@ -114,7 +114,7 @@ interface GitHubRepository {
   html_url: string;
 }
 
-type GitHubRepositoryOptionSelection = { installation_id: number } & (
+type GitHubRepositoryOptionSelection = { installation_id: number; owner: string; name: string } & (
   { id: number } | { repository_id: number }
 );
 
@@ -3381,7 +3381,12 @@ function populateGithubRepositorySelect(
     }
   }
   select.replaceChildren(...options);
-  select.value = selected === null ? '' : `${selected.installation_id}:${selectedRepositoryId}`;
+  select.value = selected === null ? '' : githubRepositorySelectionValue({
+    installation_id: selected.installation_id,
+    id: selectedRepositoryId ?? 0,
+    owner: selected.owner,
+    name: selected.name,
+  });
 }
 
 async function loadGithubRepositories(): Promise<void> {
@@ -3522,6 +3527,8 @@ async function saveProjectEdit(event: SubmitEvent): Promise<void> {
         status: projectEditStatus.value,
         github_installation_id: githubRepositorySelection?.installation_id ?? null,
         github_repository_id: githubRepositorySelection?.repository_id ?? null,
+        github_repository_owner: githubRepositorySelection?.owner ?? null,
+        github_repository_name: githubRepositorySelection?.name ?? null,
       }),
     });
     if (activeProject?.id !== projectId) return;
@@ -8561,6 +8568,8 @@ projectForm.addEventListener('submit', async (event) => {
         description: values.get('description'),
         github_installation_id: githubRepositorySelection?.installation_id ?? null,
         github_repository_id: githubRepositorySelection?.repository_id ?? null,
+        github_repository_owner: githubRepositorySelection?.owner ?? null,
+        github_repository_name: githubRepositorySelection?.name ?? null,
       }),
     });
     closeProjectForm();

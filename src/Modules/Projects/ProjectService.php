@@ -412,7 +412,18 @@ final class ProjectService
         if (!is_int($installationId) || $installationId < 1) {
             throw new ApiException(422, 'validation_failed', 'GitHub installation ID must be a positive integer.');
         }
-        return $this->github->repositoryForInstallation($user->workspaceId, $installationId, $repositoryId);
+        $owner = $body['github_repository_owner'] ?? null;
+        $repositoryName = $body['github_repository_name'] ?? null;
+        if (!is_string($owner) || trim($owner) === '' || !is_string($repositoryName) || trim($repositoryName) === '') {
+            throw new ApiException(422, 'validation_failed', 'Choose a GitHub repository with a valid owner and name.');
+        }
+        return $this->github->repositoryForInstallation(
+            $user->workspaceId,
+            $installationId,
+            $repositoryId,
+            $owner,
+            $repositoryName,
+        );
     }
 
     private static function slug(string $name): string

@@ -95,11 +95,11 @@ final class GitHubAppClient implements GitHubApiClient
         return $repositories;
     }
 
-    public function repositoryById(int $installationId, int $repositoryId): array
+    public function repositoryById(int $installationId, int $repositoryId, string $owner, string $repositoryName): array
     {
         $repository = $this->request(
             'GET',
-            '/repositories/' . $repositoryId,
+            '/repos/' . rawurlencode($owner) . '/' . rawurlencode($repositoryName),
             $this->installationToken($installationId, $repositoryId),
         );
         $owner = $repository['owner']['login'] ?? null;

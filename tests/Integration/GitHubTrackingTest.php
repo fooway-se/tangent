@@ -47,24 +47,32 @@ final class GitHubTrackingTest extends ApiTestCase
             'name' => 'Targeted GitHub project',
             'github_installation_id' => 445566,
             'github_repository_id' => 7654321,
+            'github_repository_owner' => 'test-org',
+            'github_repository_name' => 'test-repo',
         ], $admin['csrf']);
         self::assertSame(201, $created->status, json_encode($created->body));
         self::assertSame(0, $client->repositoryCatalogueCalls);
         self::assertSame(1, $client->targetedRepositoryCalls);
+        self::assertSame([445566, 7654321, 'test-org', 'test-repo'], $client->targetedRepositoryLookups[0]);
 
         $projectId = (int) $created->body['project']['id'];
         $updated = $this->cookieRequest('PATCH', "/api/v1/projects/{$projectId}", $admin['cookie'], [
             'github_installation_id' => 445566,
             'github_repository_id' => 7654321,
+            'github_repository_owner' => 'test-org',
+            'github_repository_name' => 'test-repo',
         ], $admin['csrf']);
         self::assertSame(200, $updated->status, json_encode($updated->body));
         self::assertSame(2, $client->targetedRepositoryCalls);
+        self::assertSame([445566, 7654321, 'test-org', 'test-repo'], $client->targetedRepositoryLookups[1]);
         self::assertSame(0, $client->repositoryCatalogueCalls);
 
         $unavailableInstallation = $this->cookieRequest('POST', '/api/v1/projects', $admin['cookie'], [
             'name' => 'Unauthorized GitHub project',
             'github_installation_id' => 445567,
             'github_repository_id' => 7654321,
+            'github_repository_owner' => 'test-org',
+            'github_repository_name' => 'test-repo',
         ], $admin['csrf']);
         self::assertSame(422, $unavailableInstallation->status, json_encode($unavailableInstallation->body));
         self::assertSame(2, $client->targetedRepositoryCalls, 'An unconnected installation is rejected before GitHub is contacted.');
@@ -74,6 +82,8 @@ final class GitHubTrackingTest extends ApiTestCase
             'name' => 'Unavailable GitHub repository',
             'github_installation_id' => 445566,
             'github_repository_id' => 7654322,
+            'github_repository_owner' => 'other-org',
+            'github_repository_name' => 'other-repo',
         ], $admin['csrf']);
         self::assertSame(422, $unavailableRepository->status, json_encode($unavailableRepository->body));
         self::assertSame(3, $client->targetedRepositoryCalls);
@@ -854,6 +864,7 @@ final class FakeGitHubApiClient implements GitHubApiClient
     public int $repositoryCatalogueCalls = 0;
     public int $targetedRepositoryCalls = 0;
     public bool $repositoryAvailable = true;
+    public array $targetedRepositoryLookups = [];
 
     public function __construct(private readonly array $repository, private readonly array $pullRequest)
     {
@@ -895,10 +906,12 @@ final class FakeGitHubApiClient implements GitHubApiClient
         return [array_merge($this->repository, ['installation_id' => $installationId])];
     }
 
-    public function repositoryById(int $installationId, int $repositoryId): array
+    public function repositoryById(int $installationId, int $repositoryId, string $owner, string $repositoryName): array
     {
         $this->targetedRepositoryCalls++;
-        if (!$this->repositoryAvailable || (int) ($this->repository['id'] ?? 0) !== $repositoryId) {
+        $this->targetedRepositoryLookups[] = [$installationId, $repositoryId, $owner, $repositoryName];
+        if (!$this->repositoryAvailable || (int) ($this->repository['id'] ?? 0) !== $repositoryId
+            || ($this->repository['owner'] ?? null) !== $owner || ($this->repository['name'] ?? null) !== $repositoryName) {
             throw new ApiException(404, 'github_resource_not_found', 'The repository was not found.');
         }
         return array_merge($this->repository, ['installation_id' => $installationId]);

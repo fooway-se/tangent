@@ -1,13 +1,26 @@
 export function githubRepositorySelectionValue(repository) {
-    return `${repository.installation_id}:${repository.id}`;
+    return JSON.stringify([repository.installation_id, repository.id, repository.owner, repository.name]);
 }
 export function parseGitHubRepositorySelection(value) {
-    const match = /^([1-9]\d*):([1-9]\d*)$/.exec(value);
-    if (match === null)
+    let selection;
+    try {
+        selection = JSON.parse(value);
+    }
+    catch {
         return null;
-    const installationId = Number(match[1]);
-    const repositoryId = Number(match[2]);
-    if (!Number.isSafeInteger(installationId) || !Number.isSafeInteger(repositoryId))
+    }
+    if (!Array.isArray(selection) || selection.length !== 4)
         return null;
-    return { installation_id: installationId, repository_id: repositoryId };
+    const [installationId, repositoryId, owner, name] = selection;
+    if (typeof installationId !== 'number' || !Number.isSafeInteger(installationId) || installationId < 1
+        || typeof repositoryId !== 'number' || !Number.isSafeInteger(repositoryId) || repositoryId < 1
+        || typeof owner !== 'string' || owner.trim() === ''
+        || typeof name !== 'string' || name.trim() === '')
+        return null;
+    return {
+        installation_id: installationId,
+        repository_id: repositoryId,
+        owner,
+        name,
+    };
 }

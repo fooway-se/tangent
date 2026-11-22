@@ -18,7 +18,7 @@ interface GitHubApiClient
 
     public function repositories(int $installationId): array;
 
-    public function repositoryById(int $installationId, int $repositoryId): array;
+    public function repositoryById(int $installationId, int $repositoryId, string $owner, string $repository): array;
 
     public function pullRequest(int $installationId, int $repositoryId, string $owner, string $repository, int $number): array;
 }

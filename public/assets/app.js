@@ -3118,7 +3118,12 @@ function populateGithubRepositorySelect(select, selected = null, unavailableRepo
         }
     }
     select.replaceChildren(...options);
-    select.value = selected === null ? '' : `${selected.installation_id}:${selectedRepositoryId}`;
+    select.value = selected === null ? '' : githubRepositorySelectionValue({
+        installation_id: selected.installation_id,
+        id: selectedRepositoryId ?? 0,
+        owner: selected.owner,
+        name: selected.name,
+    });
 }
 async function loadGithubRepositories() {
     if (activeUser?.role !== 'admin')
@@ -3261,6 +3266,8 @@ async function saveProjectEdit(event) {
                 status: projectEditStatus.value,
                 github_installation_id: githubRepositorySelection?.installation_id ?? null,
                 github_repository_id: githubRepositorySelection?.repository_id ?? null,
+                github_repository_owner: githubRepositorySelection?.owner ?? null,
+                github_repository_name: githubRepositorySelection?.name ?? null,
             }),
         });
         if (activeProject?.id !== projectId)
@@ -8399,6 +8406,8 @@ projectForm.addEventListener('submit', async (event) => {
                 description: values.get('description'),
                 github_installation_id: githubRepositorySelection?.installation_id ?? null,
                 github_repository_id: githubRepositorySelection?.repository_id ?? null,
+                github_repository_owner: githubRepositorySelection?.owner ?? null,
+                github_repository_name: githubRepositorySelection?.name ?? null,
             }),
         });
         closeProjectForm();

@@ -143,15 +143,21 @@ final class GitHubService
         throw new ApiException(422, 'validation_failed', 'Choose a GitHub repository connected to this workspace.');
     }
 
-    public function repositoryForInstallation(int $workspaceId, int $installationId, int $repositoryId): array
+    public function repositoryForInstallation(
+        int $workspaceId,
+        int $installationId,
+        int $repositoryId,
+        string $owner,
+        string $repositoryName,
+    ): array
     {
-        if ($installationId < 1 || $repositoryId < 1
+        if ($installationId < 1 || $repositoryId < 1 || trim($owner) === '' || trim($repositoryName) === ''
             || !$this->installations->isConnectedForWorkspace($workspaceId, $installationId)) {
             throw new ApiException(422, 'validation_failed', 'Choose a GitHub repository connected to this workspace.');
         }
 
         try {
-            $repository = $this->client->repositoryById($installationId, $repositoryId);
+            $repository = $this->client->repositoryById($installationId, $repositoryId, $owner, $repositoryName);
         } catch (ApiException $exception) {
             if (!in_array($exception->status, [403, 404], true)) throw $exception;
             throw new ApiException(422, 'validation_failed', 'Choose a GitHub repository connected to this workspace.');

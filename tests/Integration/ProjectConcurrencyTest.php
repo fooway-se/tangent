@@ -215,7 +215,7 @@ final class ProjectRaceGitHubApiClient implements GitHubApiClient
         ]];
     }
 
-    public function repositoryById(int $installationId, int $repositoryId): array
+    public function repositoryById(int $installationId, int $repositoryId, string $owner, string $repository): array
     {
         return $this->repositories($installationId)[0];
     }

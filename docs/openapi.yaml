@@ -788,6 +788,8 @@ paths:
                 description: { type: string, maxLength: 5000 }
                 github_installation_id: { type: [integer, 'null'], minimum: 1, description: Installation from this workspace that exposes the selected repository. Omitted installation IDs retain support for older clients. }
                 github_repository_id: { type: [integer, 'null'], minimum: 1, description: Optional repository connected to this project. }
+                github_repository_owner: { type: [string, 'null'], description: Selected repository owner; checked against GitHub when installation_id is supplied. }
+                github_repository_name: { type: [string, 'null'], description: Selected repository name; checked against GitHub when installation_id is supplied. }
       responses:
         '201':
           description: Project created; creator becomes a member.
@@ -1781,6 +1783,8 @@ paths:
                 status: { type: string, enum: [active, paused, completed, archived] }
                 github_installation_id: { type: [integer, 'null'], minimum: 1, description: Installation from this workspace that exposes the selected repository. Omitted installation IDs retain support for older clients. }
                 github_repository_id: { type: [integer, 'null'], minimum: 1, description: Select or disconnect the project repository. }
+                github_repository_owner: { type: [string, 'null'], description: Selected repository owner; checked against GitHub when installation_id is supplied. }
+                github_repository_name: { type: [string, 'null'], description: Selected repository name; checked against GitHub when installation_id is supplied. }
       responses:
         '200': { description: Updated project. }
         '403': { $ref: '#/components/responses/Forbidden' }
