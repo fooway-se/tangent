@@ -384,7 +384,6 @@ final class GuestViewTest extends ApiTestCase
         foreach ([
             '/api/v1/users',
             '/api/v1/tokens',
-            '/api/v1/workspaces',
             "/api/v1/projects/{$projectId}/members",
             "/api/v1/projects/{$projectId}/issues",
             "/api/v1/projects/{$projectId}/messages",
@@ -395,6 +394,11 @@ final class GuestViewTest extends ApiTestCase
             $response = $this->cookieRequest('GET', $path, $guest['cookie']);
             self::assertContains($response->status, [403, 404], $path);
         }
+
+        $workspaces = $this->cookieRequest('GET', '/api/v1/workspaces', $guest['cookie']);
+        self::assertSame(200, $workspaces->status, json_encode($workspaces->body));
+        self::assertNotEmpty($workspaces->body['workspaces']);
+        self::assertContains($this->workspaceId, array_column($workspaces->body['workspaces'], 'id'));
 
         self::assertSame(403, $this->cookieRequest(
             'POST', '/api/v1/tokens', $guest['cookie'], ['label' => 'Guest token'], $guest['csrf'],

@@ -44,7 +44,7 @@ final class PermissionsTest extends TestCase
         $guest = new AuthenticatedUser(3, 1, 'Guest', 'guest@example.test', 'guest', 'cookie', 3, null, 9);
         $internalActions = [
             'users.list', 'users.create', 'projects.create', 'projects.update', 'projects.manage_members',
-            'workspaces.create', 'workspaces.list', 'workspaces.switch', 'projects.view',
+            'workspaces.create', 'projects.view',
             'chat.read', 'chat.send', 'issues.read', 'issues.create', 'issues.update',
             'issues.share', 'milestones.manage', 'tokens.create', 'tokens.list', 'inbox.read',
         ];
@@ -55,6 +55,12 @@ final class PermissionsTest extends TestCase
                 'user_id' => $guest->id,
             ]), "Guest must not have {$action}");
         }
+
+        self::assertTrue(Permissions::can($guest, 'workspaces.list'));
+        self::assertTrue(Permissions::can($guest, 'workspaces.switch'));
+        $unownedAccount = new AuthenticatedUser(3, 1, 'Guest', 'guest@example.test', 'guest', 'cookie', 0, null);
+        self::assertFalse(Permissions::can($unownedAccount, 'workspaces.list'));
+        self::assertFalse(Permissions::can($unownedAccount, 'workspaces.switch'));
     }
 
     public function testGuestClientPermissionsRequireProjectMembership(): void

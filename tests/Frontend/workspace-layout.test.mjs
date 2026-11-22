@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
+import { switchWorkspaceMembership } from '../../public/assets/workspace-switch.js';
 
 const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
 const css = await readFile(new URL('../../public/assets/app.css', import.meta.url), 'utf8');
@@ -33,6 +34,44 @@ test('workspace notifications attach to the active page heading without shifting
 test('the sidebar can switch workspaces and workspace admins can create one', () => {
   assert.match(html, /id="workspace-switcher"/);
   assert.match(html, /id="create-workspace-form"/);
+});
+
+test('guest view can switch workspaces through the shared picker and return to an internal role', () => {
+  const guestShell = html.slice(html.indexOf('id="guest-shell"'), html.indexOf('id="workspace-panel"'));
+  assert.match(guestShell, /id="guest-workspace-switcher"/);
+  assert.match(app, /guestWorkspaceSwitcher\.addEventListener\('click', \(\) => openWorkspacePicker\(\)\)/);
+  assert.match(app, /switchWorkspaceMembership\(/);
+  const guestStartup = app.slice(app.indexOf('function showGuestShell('), app.indexOf('function openGuestViewPreview('));
+  assert.match(guestStartup, /void loadGuestProjects\(\)/);
+  assert.match(app, /workspacePicker\.addEventListener\('close',[\s\S]*guestWorkspaceSwitcher\.focus\(\)/);
+});
+
+test('workspace selector round trip loads role-scoped views from each switch response', async () => {
+  const internalUser = { id: 14, role: 'admin', workspace_id: 3 };
+  const guestUser = { id: 27, role: 'guest', workspace_id: 8 };
+  let activeUser = internalUser;
+  const events = [];
+  const request = async (workspaceId) => {
+    events.push(`request:${workspaceId}`);
+    if (workspaceId === guestUser.workspace_id) return { user: guestUser, workspace: { id: 8, name: 'Client' } };
+    assert.equal(workspaceId, internalUser.workspace_id);
+    return { user: internalUser, workspace: { id: 3, name: 'Internal' } };
+  };
+  const showSignedIn = (user) => {
+    activeUser = user;
+    events.push(`view:${user.role}`);
+  };
+  const loadWorkspaces = async () => events.push(`workspaces:${activeUser.role}`);
+  const loadProjects = async () => events.push(`projects:${activeUser.role}`);
+
+  await switchWorkspaceMembership(activeUser, guestUser.workspace_id, request, showSignedIn, loadWorkspaces, loadProjects);
+  assert.equal(activeUser, guestUser);
+  await switchWorkspaceMembership(activeUser, internalUser.workspace_id, request, showSignedIn, loadWorkspaces, loadProjects);
+  assert.equal(activeUser, internalUser);
+  assert.deepEqual(events, [
+    'request:8', 'view:guest', 'workspaces:guest',
+    'request:3', 'view:admin', 'workspaces:admin', 'projects:admin',
+  ]);
 });
 
 test('workspace UI uses the beige case, dark screens and shared rounded controls', () => {

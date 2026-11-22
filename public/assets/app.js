@@ -3,6 +3,7 @@ import { diffInboxCollections, nextInboxPollDelay, shouldDeferInboxUpdates, } fr
 import { renderClientEmptyState, renderClientView } from './guest-view.js';
 import { createLogoutController } from './logout.js';
 import { ProjectNavigationOwner, runOwnedRequest } from './project-navigation.js';
+import { switchWorkspaceMembership } from './workspace-switch.js';
 import { credentialNeedsConfirmation, inviteCredentialPresentation } from './credential-flow.js';
 import { generateClientSummary } from './client-summary.js';
 import { filterMentionMembers, findMentionQuery, mentionEmptyMessage, nextMentionSelectionIndex, replaceMentionQuery, splitMentions, } from './chat-mentions.js';
@@ -572,6 +573,8 @@ const guestMain = document.querySelector('#guest-main');
 const guestTitle = document.querySelector('#guest-title');
 const guestUser = document.querySelector('#guest-user');
 const guestCap = document.querySelector('#guest-cap');
+const guestWorkspaceSwitcher = document.querySelector('#guest-workspace-switcher');
+const guestWorkspaceSwitcherLabel = document.querySelector('#guest-workspace-switcher-label');
 const guestProjectLabel = document.querySelector('#guest-project-label');
 const guestProjectSelect = document.querySelector('#guest-project-select');
 const guestPreviewMemberLabel = document.querySelector('#guest-preview-member-label');
@@ -831,6 +834,10 @@ function showSignedOut() {
     workspaceSwitcherLabel.textContent = 'Choose workspace';
     workspaceSwitcher.setAttribute('aria-label', 'Choose workspace');
     workspaceSwitcher.disabled = true;
+    guestWorkspaceSwitcherLabel.textContent = 'Choose workspace';
+    guestWorkspaceSwitcher.setAttribute('aria-label', 'Choose workspace');
+    guestWorkspaceSwitcher.disabled = true;
+    guestWorkspaceSwitcher.hidden = true;
     loginShell.hidden = false;
     loginPanel.hidden = false;
     workspacePanel.hidden = true;
@@ -879,6 +886,7 @@ function showSignedIn(user) {
     stopWorkspaceLoungePresenceMonitor();
     renderLoungeNavigationPresence([]);
     activeUser = user;
+    guestWorkspaceSwitcher.hidden = user.role !== 'guest';
     editProjectButton.hidden = user.role !== 'admin';
     roadmapNavButton.hidden = user.role === 'guest';
     resetPendingWorkspaceSwitch();
@@ -912,16 +920,14 @@ async function switchWorkspace(workspaceId, restoreSwitcherFocus = false) {
     if (activeUser === null || workspaceId === activeUser.workspace_id)
         return;
     workspaceSwitcher.disabled = true;
+    guestWorkspaceSwitcher.disabled = true;
     try {
-        const result = await api(`/workspaces/${workspaceId}/switch`, {
+        const result = await switchWorkspaceMembership(activeUser, workspaceId, (targetWorkspaceId) => api(`/workspaces/${targetWorkspaceId}/switch`, {
             method: 'POST',
             body: JSON.stringify({}),
-        });
-        showSignedIn(result.user);
-        if (result.user.role === 'guest')
+        }), showSignedIn, loadWorkspaces, loadProjects);
+        if (result === null)
             return;
-        await loadWorkspaces();
-        await loadProjects();
         report(`Switched to ${result.workspace.name}.`);
     }
     catch (error) {
@@ -930,8 +936,9 @@ async function switchWorkspace(workspaceId, restoreSwitcherFocus = false) {
     }
     finally {
         renderWorkspaceSwitcher();
-        if (restoreSwitcherFocus && !workspaceSwitcher.disabled)
-            workspaceSwitcher.focus();
+        const switcher = activeUser?.role === 'guest' ? guestWorkspaceSwitcher : workspaceSwitcher;
+        if (restoreSwitcherFocus && !switcher.disabled)
+            switcher.focus();
     }
 }
 function renderWorkspaceSwitcher() {
@@ -940,6 +947,9 @@ function renderWorkspaceSwitcher() {
     workspaceSwitcherLabel.textContent = currentName;
     workspaceSwitcher.setAttribute('aria-label', `Choose workspace. Current workspace: ${currentName}.`);
     workspaceSwitcher.disabled = activeWorkspaces.length < 2;
+    guestWorkspaceSwitcherLabel.textContent = currentName;
+    guestWorkspaceSwitcher.setAttribute('aria-label', `Choose workspace. Current workspace: ${currentName}.`);
+    guestWorkspaceSwitcher.disabled = activeWorkspaces.length < 2;
     workspaceSwitchHint.hidden = activeWorkspaces.length < 2;
 }
 function resetPendingWorkspaceSwitch() {
@@ -8231,10 +8241,9 @@ credentialForm.addEventListener('submit', async (event) => {
             });
             credentialFragment = null;
             showSignedIn(result.user);
-            if (result.user.role !== 'guest') {
-                await loadWorkspaces();
+            await loadWorkspaces();
+            if (result.user.role !== 'guest')
                 await loadProjects();
-            }
         }
         else {
             await api('/auth/password-reset/complete', {
@@ -8264,9 +8273,9 @@ loginForm.addEventListener('submit', async (event) => {
             body: JSON.stringify({ email: values.get('email'), password: values.get('password') }),
         });
         showSignedIn(result.user);
+        await loadWorkspaces();
         if (result.user.role === 'guest')
             return;
-        await loadWorkspaces();
         await loadProjects();
     }
     catch (error) {
@@ -8277,13 +8286,19 @@ loginForm.addEventListener('submit', async (event) => {
     }
 });
 workspaceSwitcher.addEventListener('click', () => openWorkspacePicker());
+guestWorkspaceSwitcher.addEventListener('click', () => openWorkspacePicker());
 workspacePickerCancel.addEventListener('click', () => resetPendingWorkspaceSwitch());
 workspacePickerConfirm.addEventListener('click', commitPendingWorkspaceSwitch);
 workspacePicker.addEventListener('close', () => {
     pendingWorkspaceId = null;
-    if (!workspacePanel.hidden && !workspaceSwitcher.disabled
-        && !commandPalette.open && !shortcutHelp.open && !issueStatusPicker.open)
+    if (commandPalette.open || shortcutHelp.open || issueStatusPicker.open)
+        return;
+    if (!guestShell.hidden && !guestWorkspaceSwitcher.hidden && !guestWorkspaceSwitcher.disabled) {
+        guestWorkspaceSwitcher.focus();
+    }
+    else if (!workspacePanel.hidden && !workspaceSwitcher.disabled) {
         workspaceSwitcher.focus();
+    }
 });
 workspacePicker.addEventListener('keydown', (event) => {
     if (!(event.target instanceof HTMLElement) || !event.target.matches('.workspace-picker-option'))
@@ -8384,6 +8399,7 @@ function showGuestShell(user) {
     accountBar.hidden = true;
     updateKeyboardHintsVisibility();
     guestShell.hidden = false;
+    guestWorkspaceSwitcher.hidden = false;
     guestCap.textContent = 'Read-only · guest';
     guestPreviewMemberLabel.hidden = true;
     guestPreviewReturnButton.hidden = true;
@@ -8420,6 +8436,7 @@ function openGuestViewPreview() {
         : '';
     guestPreviewReturnButton.hidden = false;
     guestLogoutButton.hidden = true;
+    guestWorkspaceSwitcher.hidden = true;
     guestShell.hidden = false;
     workspacePanel.hidden = true;
     accountBar.hidden = true;
@@ -8449,6 +8466,7 @@ function closeGuestViewPreview() {
     guestStatus.classList.remove('error');
     guestPreviewReturnButton.hidden = true;
     guestLogoutButton.hidden = false;
+    guestWorkspaceSwitcher.hidden = true;
     guestShell.hidden = true;
     document.body.classList.remove('is-guest');
     workspacePanel.hidden = false;
@@ -8706,9 +8724,9 @@ async function start() {
     try {
         const result = await api('/auth/me');
         showSignedIn(result.user);
+        await loadWorkspaces();
         if (result.user.role === 'guest')
             return;
-        await loadWorkspaces();
         await loadProjects();
         if (githubConnected)
             report('GitHub connected. Choose a repository in project settings.');

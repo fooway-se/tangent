@@ -176,14 +176,14 @@ test('new views never use innerHTML', async () => {
   }
 });
 
-test('guest startup does not request workspace or internal project data', () => {
+test('guest startup loads workspace choices without requesting internal project data', () => {
   const startup = app.slice(app.indexOf('async function start()'), app.indexOf('void start();'));
-  assert.match(startup, /showSignedIn\(result\.user\);\s*if \(result\.user\.role === 'guest'\) return;/);
+  assert.match(startup, /showSignedIn\(result\.user\);\s*await loadWorkspaces\(\);\s*if \(result\.user\.role === 'guest'\) return;\s*await loadProjects\(\);/);
 });
 
-test('guest sign-in skips workspace and developer project loading', () => {
+test('guest sign-in loads workspace choices and skips internal project loading', () => {
   const signIn = app.slice(app.indexOf("loginForm.addEventListener('submit'"), app.indexOf("workspaceSwitcher.addEventListener('click'"));
-  assert.match(signIn, /showSignedIn\(result\.user\);\s*if \(result\.user\.role === 'guest'\) return;\s*await loadWorkspaces\(\);\s*await loadProjects\(\);/);
+  assert.match(signIn, /showSignedIn\(result\.user\);\s*await loadWorkspaces\(\);\s*if \(result\.user\.role === 'guest'\) return;\s*await loadProjects\(\);/);
 });
 
 test('inbox message events select their source chat message', () => {

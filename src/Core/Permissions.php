@@ -12,6 +12,7 @@ final class Permissions
             return match ($action) {
                 'client_view.read', 'client_comments.create', 'approvals.approve'
                     => ($resource['is_member'] ?? false) === true,
+                'workspaces.list', 'workspaces.switch' => $user->accountId > 0,
                 default => false,
             };
         }

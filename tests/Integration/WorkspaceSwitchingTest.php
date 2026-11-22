@@ -9,6 +9,111 @@ use Tangent\Tests\Support\ApiTestCase;
 
 final class WorkspaceSwitchingTest extends ApiTestCase
 {
+    public function testAccountCanSwitchFromInternalMembershipIntoAndBackFromGuestWorkspace(): void
+    {
+        $accountIdQuery = $this->pdo->prepare('SELECT account_id FROM users WHERE workspace_id = :workspace_id AND id = :id');
+        $accountIdQuery->execute(['workspace_id' => $this->workspaceId, 'id' => $this->adminId]);
+        $accountId = (int) $accountIdQuery->fetchColumn();
+        $guestWorkspaceId = $this->insertWorkspace('Guest client workspace');
+        $guestMemberId = $this->insertWorkspaceMembership(
+            $guestWorkspaceId,
+            $accountId,
+            'Client Admin Account',
+            $this->adminEmail,
+            'guest',
+        );
+        $inactiveWorkspaceId = $this->insertWorkspace('Inactive membership workspace');
+        $inactiveMemberId = $this->insertWorkspaceMembership(
+            $inactiveWorkspaceId,
+            $accountId,
+            'Inactive Admin Account',
+            $this->adminEmail,
+            'developer',
+        );
+        $this->pdo->prepare('UPDATE users SET is_active = 0 WHERE workspace_id = :workspace_id AND id = :id')
+            ->execute(['workspace_id' => $inactiveWorkspaceId, 'id' => $inactiveMemberId]);
+
+        $projectId = $this->insertProjectInWorkspace($guestWorkspaceId, 'Guest accessible project', $guestMemberId);
+        $this->pdo->prepare(
+            'INSERT INTO project_memberships (workspace_id, project_id, user_id)
+             VALUES (:workspace_id, :project_id, :user_id)'
+        )->execute(['workspace_id' => $guestWorkspaceId, 'project_id' => $projectId, 'user_id' => $guestMemberId]);
+        $this->pdo->prepare(
+            "INSERT INTO channels (workspace_id, project_id, channel_type) VALUES (:workspace_id, :project_id, 'project')"
+        )->execute(['workspace_id' => $guestWorkspaceId, 'project_id' => $projectId]);
+
+        $admin = $this->login($this->adminEmail);
+        $workspaces = $this->requestForWorkspace('GET', '/api/v1/workspaces', $admin['cookie'], $this->workspaceId);
+
+        self::assertSame(200, $workspaces->status, json_encode($workspaces->body));
+        self::assertEqualsCanonicalizing(
+            [$this->workspaceId, $guestWorkspaceId],
+            array_column($workspaces->body['workspaces'], 'id'),
+        );
+        self::assertNotContains($inactiveWorkspaceId, array_column($workspaces->body['workspaces'], 'id'));
+
+        $toGuest = $this->requestForWorkspace(
+            'POST',
+            '/api/v1/workspaces/' . $guestWorkspaceId . '/switch',
+            $admin['cookie'],
+            $this->workspaceId,
+            ['csrf' => $admin['csrf']],
+        );
+        self::assertSame(200, $toGuest->status, json_encode($toGuest->body));
+        self::assertSame('guest', $toGuest->body['user']['role']);
+        self::assertSame($guestWorkspaceId, $toGuest->body['user']['workspace_id']);
+        $guestSession = $this->cookieValue($toGuest, 'tangent_session');
+        $guestCsrf = $this->cookieValue($toGuest, 'tangent_csrf');
+
+        $guestWorkspaceList = $this->requestForWorkspace(
+            'GET',
+            '/api/v1/workspaces',
+            $guestSession,
+            $guestWorkspaceId,
+        );
+        self::assertSame(200, $guestWorkspaceList->status, json_encode($guestWorkspaceList->body));
+        self::assertEqualsCanonicalizing(
+            [$this->workspaceId, $guestWorkspaceId],
+            array_column($guestWorkspaceList->body['workspaces'], 'id'),
+        );
+        self::assertSame(200, $this->requestForWorkspace(
+            'GET',
+            '/api/v1/projects/' . $projectId . '/client-view',
+            $guestSession,
+            $guestWorkspaceId,
+        )->status);
+        self::assertSame(403, $this->requestForWorkspace(
+            'GET',
+            '/api/v1/users',
+            $guestSession,
+            $guestWorkspaceId,
+        )->status);
+
+        $backToInternal = $this->requestForWorkspace(
+            'POST',
+            '/api/v1/workspaces/' . $this->workspaceId . '/switch',
+            $guestSession,
+            $guestWorkspaceId,
+            ['csrf' => $guestCsrf],
+        );
+        self::assertSame(200, $backToInternal->status, json_encode($backToInternal->body));
+        self::assertSame('admin', $backToInternal->body['user']['role']);
+        self::assertSame($this->workspaceId, $backToInternal->body['user']['workspace_id']);
+        $internalSession = $this->cookieValue($backToInternal, 'tangent_session');
+        self::assertSame(200, $this->requestForWorkspace(
+            'GET',
+            '/api/v1/users',
+            $internalSession,
+            $this->workspaceId,
+        )->status);
+        self::assertSame(401, $this->requestForWorkspace(
+            'GET',
+            '/api/v1/auth/me',
+            $guestSession,
+            $guestWorkspaceId,
+        )->status);
+    }
+
     public function testAdminCanCreateAndSwitchWorkspaceWithoutCrossingDataScopes(): void
     {
         $admin = $this->login($this->adminEmail);
@@ -140,6 +245,46 @@ final class WorkspaceSwitchingTest extends ApiTestCase
             $headers,
             ['tangent_session' => $session, 'tangent_workspace' => (string) $workspaceId],
         );
+    }
+
+    private function insertWorkspace(string $name): int
+    {
+        $statement = $this->pdo->prepare('INSERT INTO workspaces (name, slug) VALUES (:name, :slug)');
+        $statement->execute(['name' => $name, 'slug' => 'switch-' . bin2hex(random_bytes(6))]);
+        return (int) $this->pdo->lastInsertId();
+    }
+
+    private function insertWorkspaceMembership(int $workspaceId, int $accountId, string $name, string $email, string $role): int
+    {
+        $statement = $this->pdo->prepare(
+            'INSERT INTO users (workspace_id, account_id, name, email, role, is_active)
+             VALUES (:workspace_id, :account_id, :name, :email, :role, 1)'
+        );
+        $statement->execute([
+            'workspace_id' => $workspaceId,
+            'account_id' => $accountId,
+            'name' => $name,
+            'email' => $email,
+            'role' => $role,
+        ]);
+        return (int) $this->pdo->lastInsertId();
+    }
+
+    private function insertProjectInWorkspace(int $workspaceId, string $name, int $createdBy): int
+    {
+        $statement = $this->pdo->prepare(
+            'INSERT INTO projects (workspace_id, name, slug, description, status, created_by)
+             VALUES (:workspace_id, :name, :slug, :description, :status, :created_by)'
+        );
+        $statement->execute([
+            'workspace_id' => $workspaceId,
+            'name' => $name,
+            'slug' => 'switch-' . bin2hex(random_bytes(6)),
+            'description' => '',
+            'status' => 'active',
+            'created_by' => $createdBy,
+        ]);
+        return (int) $this->pdo->lastInsertId();
     }
 
     private function cookieValue(Response $response, string $name): string

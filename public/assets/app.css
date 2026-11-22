@@ -811,6 +811,9 @@ dialog::backdrop { background: var(--backdrop); }
 .guest-header { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 14px; min-height: 64px; padding: 8px 5vw; border-bottom: 2px solid var(--case-shade); }
 .guest-header::after { position: absolute; right: 0; bottom: -10px; left: 0; height: 8px; background: var(--signal-stripe); content: ""; }
 .guest-header .brand { flex: 0 0 auto; padding: 8px 14px; border-radius: var(--radius-cap); background: var(--plate); color: var(--plate-ink); }
+.guest-workspace-switcher { display: flex; max-width: min(220px, 28vw); align-items: center; justify-content: space-between; gap: 8px; }
+.guest-workspace-switcher[hidden] { display: none; }
+.guest-workspace-switcher > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .guest-title { flex: 1; min-width: 140px; margin: 0; color: var(--case-ink); font: 800 18px var(--font-display); }
 .guest-project-label { display: flex; align-items: center; gap: 6px; font-size: 12px; white-space: nowrap; }
 .guest-project-label select { width: auto; min-width: 120px; max-width: 240px; padding: 5px 28px 5px 8px; font-size: 11px; }
