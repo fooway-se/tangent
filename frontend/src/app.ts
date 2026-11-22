@@ -1,7 +1,7 @@
 import type { InboxEvent } from './inbox-events.js';
 import { api, apiBaseUrl, ApiFailure } from './api.js';
 import {
-  ISSUE_STATUS_OPTIONS, ISSUE_TYPE_OPTIONS, PROJECT_STATUS_HINTS, PROJECT_STATUS_LABELS, PROJECT_STATUS_ORDER,
+  ISSUE_STATUS_OPTIONS, ISSUE_TYPE_OPTIONS, PROJECT_STATUS_LABELS, PROJECT_STATUS_ORDER,
   type ChatMessage, type ConditionalIssueList,
   type GitHubRepository, type GitHubRepositoryOptionSelection,
   type InboxIssue, type Issue,
@@ -36,6 +36,7 @@ import { initIssueRelatedUi } from './issue-related-ui.js';
 import { initIssueStatusPickerUi } from './issue-status-picker-ui.js';
 import { initIssueDeleteUi } from './issue-delete-ui.js';
 import { initProjectMembersUi } from './project-members-ui.js';
+import { initProjectEditUi } from './project-edit-ui.js';
 import { parseQuickIssueInput } from './quick-issue.js';
 import { milestoneStatus, type RoadmapMilestone } from './roadmap.js';
 import {
@@ -62,9 +63,7 @@ import { dom } from './dom.js';
 
 const {
   project: {
-    projectHeading, projectEditDialog, projectEditForm, projectEditClose, projectEditCancel,
-    projectEditName, projectEditDescription, projectEditStatus, projectEditStatusHelp,
-    projectReadOnlyNotice, projectEditMessage, projectEditSave, editProjectButton, projectGithubRepository,
+    projectHeading, projectEditDialog, projectReadOnlyNotice, editProjectButton, projectGithubRepository,
     projectEditGithubRepository, githubProjectSelectionStatus, githubProjectEditStatus,
     connectGithubCreateButton, connectGithubEditButton, projectsNavButton, projectsView, projectView,
     projectForm, projectList, emptyProjects, projectFormPanel, projectDescription, projectState,
@@ -531,6 +530,16 @@ const projectMembersUi = initProjectMembersUi({
   isViewVisible: () => !membersView.hidden,
   api,
   onRefresh: loadProjectDetail,
+  report,
+});
+const projectEditUi = initProjectEditUi({
+  getRole: () => activeUser?.role,
+  getProject: () => activeProject,
+  isProjectViewVisible: () => !projectView.hidden,
+  populateRepositorySelect: populateGithubRepositorySelect,
+  api,
+  onUpdated: applyEditedProject,
+  refreshProjects: loadProjects,
   report,
 });
 let projectMilestones: Milestone[] = [];
@@ -2223,23 +2232,6 @@ async function connectGithub(): Promise<void> {
   }
 }
 
-function openProjectEditDialog(): void {
-  if (activeUser?.role !== 'admin' || activeProject === null) return;
-  projectEditName.value = activeProject.name;
-  projectEditDescription.value = activeProject.description;
-  projectEditStatus.value = activeProject.status;
-  populateGithubRepositorySelect(projectEditGithubRepository, activeProject.github_repository, activeProject.github_repository);
-  updateProjectStatusHint();
-  projectEditMessage.textContent = '';
-  projectEditMessage.classList.remove('is-error');
-  projectEditDialog.showModal();
-  projectEditName.focus();
-}
-
-function projectStatusHint(status: Project['status']): string {
-  return PROJECT_STATUS_HINTS[status];
-}
-
 function projectStatusIsReadOnly(status: Project['status']): boolean {
   return status === 'completed' || status === 'archived';
 }
@@ -2270,87 +2262,21 @@ function updateProjectReadOnlyNotice(status: Project['status']): void {
   }
 }
 
-function updateProjectStatusHint(): void {
-  const status = projectEditStatus.value as Project['status'];
-  let hint = projectStatusHint(status);
-  const completedLocked = activeProject?.status === 'completed' && !['active', 'paused'].includes(status);
-  const archivedLocked = activeProject?.status === 'archived' && status === 'archived';
-  projectEditName.disabled = completedLocked || archivedLocked;
-  projectEditDescription.disabled = completedLocked || archivedLocked;
-  projectEditGithubRepository.disabled = completedLocked || archivedLocked;
-  const archivedFromStatus = activeProject?.status === 'archived' ? activeProject.archived_from_status : null;
-  if (activeProject?.status === 'archived' && archivedFromStatus !== null && status === 'archived') {
-    const previousState = PROJECT_STATUS_LABELS[archivedFromStatus];
-    hint += ` This project was ${previousState.toLowerCase()} before archiving; select ${previousState} to restore it.`;
-  } else if (activeProject?.status === 'archived' && status !== 'archived') {
-    hint += status === archivedFromStatus
-      ? ' Saving will restore the previous work state.'
-      : ` Saving will unarchive the project as ${PROJECT_STATUS_LABELS[status].toLowerCase()}.`;
+function applyEditedProject(project: Project): void {
+  activeProject = project;
+  projectHeading.textContent = project.name;
+  projectDescription.textContent = project.description;
+  projectDescription.hidden = project.description.trim() === '';
+  projectState.textContent = projectStatusLabel(project.status);
+  projectState.classList.toggle('is-paused', project.status === 'paused');
+  projectState.classList.toggle('is-read-only', project.status === 'completed' || project.status === 'archived');
+  updateProjectReadOnlyNotice(project.status);
+  if (selectedIssue !== null) {
+    renderIssueDetail();
+    issueDiscussionUi.render();
   }
-  projectEditStatusHelp.textContent = hint;
+  breadcrumbCurrent.textContent = project.name;
 }
-
-async function saveProjectEdit(event: SubmitEvent): Promise<void> {
-  event.preventDefault();
-  if (activeUser?.role !== 'admin' || activeProject === null) return;
-  const projectId = activeProject.id;
-  projectEditSave.disabled = true;
-  projectEditMessage.textContent = '';
-  projectEditMessage.classList.remove('is-error');
-  try {
-    const githubRepositorySelection = parseGitHubRepositorySelection(projectEditGithubRepository.value);
-    const result = await api<{ project: Project }>(`/projects/${projectId}`, {
-      method: 'PATCH',
-      body: JSON.stringify({
-        name: projectEditName.value,
-        description: projectEditDescription.value,
-        status: projectEditStatus.value,
-        github_installation_id: githubRepositorySelection?.installation_id ?? null,
-        github_repository_id: githubRepositorySelection?.repository_id ?? null,
-        github_repository_owner: githubRepositorySelection?.owner ?? null,
-        github_repository_name: githubRepositorySelection?.name ?? null,
-      }),
-    });
-    if (activeProject?.id !== projectId) return;
-    activeProject = result.project;
-    projectHeading.textContent = result.project.name;
-    projectDescription.textContent = result.project.description;
-    projectDescription.hidden = result.project.description.trim() === '';
-    projectState.textContent = projectStatusLabel(result.project.status);
-    projectState.classList.toggle('is-paused', result.project.status === 'paused');
-    projectState.classList.toggle('is-read-only', result.project.status === 'completed' || result.project.status === 'archived');
-    updateProjectReadOnlyNotice(result.project.status);
-    if (selectedIssue !== null) {
-      renderIssueDetail();
-      issueDiscussionUi.render();
-    }
-    breadcrumbCurrent.textContent = result.project.name;
-    report('Project updated.');
-    projectEditDialog.close();
-    try {
-      await loadProjects();
-    } catch (error) {
-      report(error instanceof Error ? error.message : 'Project updated, but the project list could not be refreshed.', true);
-    }
-  } catch (error) {
-    projectEditMessage.textContent = error instanceof Error ? error.message : 'Could not update the project.';
-    projectEditMessage.classList.add('is-error');
-    projectEditName.focus();
-  } finally {
-    projectEditSave.disabled = false;
-  }
-}
-
-projectEditClose.addEventListener('click', () => projectEditDialog.close());
-projectEditCancel.addEventListener('click', () => projectEditDialog.close());
-projectEditForm.addEventListener('submit', (event) => void saveProjectEdit(event));
-projectEditDialog.addEventListener('close', () => {
-  projectEditForm.reset();
-  projectEditMessage.textContent = '';
-  projectEditMessage.classList.remove('is-error');
-  projectEditSave.disabled = false;
-  if (activeUser?.role === 'admin' && !projectView.hidden) editProjectButton.focus();
-});
 
 function submitFormOnEnter(event: KeyboardEvent, form: HTMLFormElement): void {
   if (!shouldSubmitOnEnter(event.key, event.shiftKey, event.isComposing)) return;
@@ -2630,10 +2556,8 @@ toggleProjectFormButton.addEventListener('click', () => {
   projectFormPanel.hidden = false;
   projectForm.querySelector<HTMLInputElement>('input[name="name"]')?.focus();
 });
-editProjectButton.addEventListener('click', openProjectEditDialog);
 connectGithubCreateButton.addEventListener('click', () => void connectGithub());
 connectGithubEditButton.addEventListener('click', () => void connectGithub());
-projectEditStatus.addEventListener('change', updateProjectStatusHint);
 cancelProjectFormButton.addEventListener('click', closeProjectForm);
 issueForm.addEventListener('submit', async (event) => {
   event.preventDefault();

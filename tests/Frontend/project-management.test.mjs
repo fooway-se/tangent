@@ -7,6 +7,7 @@ const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url)
 const guestView = await readFile(new URL('../../frontend/src/guest-view.ts', import.meta.url), 'utf8');
 const types = await readFile(new URL('../../frontend/src/types.ts', import.meta.url), 'utf8');
 const projectNotesUi = await readFile(new URL('../../frontend/src/project-notes-ui.ts', import.meta.url), 'utf8');
+const projectEditUi = await readFile(new URL('../../frontend/src/project-edit-ui.ts', import.meta.url), 'utf8');
 
 test('project details provide admins an edit dialog for name, description, and status', () => {
   const projectView = html.slice(html.indexOf('id="project-view"'), html.indexOf('id="admin-view"'));
@@ -24,37 +25,36 @@ test('project details provide admins an edit dialog for name, description, and s
   assert.match(html, /id="project-edit-status-help"[^>]*aria-live="polite"/);
   assert.match(html, /id="project-read-only-notice"[^>]*role="status" hidden/);
   assert.match(app, /editProjectButton\.hidden = user\.role !== 'admin'/);
-  assert.match(app, /editProjectButton\.addEventListener\('click', openProjectEditDialog\)/);
+  assert.match(projectEditUi, /editButton\.addEventListener\('click', open,/);
 });
 
 test('project edit form explains each work state and archive selection', () => {
-  assert.match(app, /function projectStatusHint\(status: Project\['status'\]\): string/);
   assert.match(types, /active: 'Normal work\.'/);
   assert.match(types, /paused: 'Temporarily on hold; it can be resumed/);
   assert.match(types, /completed: 'Finished and read-only/);
   assert.match(types, /archived: 'A housekeeping state that moves the project out of the active list/);
-  assert.match(app, /projectEditStatus\.addEventListener\('change', updateProjectStatusHint\)/);
-  assert.match(app, /let hint = projectStatusHint\(status\)/);
-  assert.match(app, /projectEditStatusHelp\.textContent = hint/);
+  assert.match(projectEditUi, /statusSelect\.addEventListener\('change', updateStatusHint,/);
+  assert.match(projectEditUi, /let hint = PROJECT_STATUS_HINTS\[status\]/);
+  assert.match(projectEditUi, /statusHelp\.textContent = hint/);
 });
 
 test('archived project details stay locked until the project is restored', () => {
-  assert.match(app, /const archivedLocked = activeProject\?\.status === 'archived' && status === 'archived'/);
-  assert.match(app, /projectEditName\.disabled = completedLocked \|\| archivedLocked/);
-  assert.match(app, /projectEditDescription\.disabled = completedLocked \|\| archivedLocked/);
+  assert.match(projectEditUi, /const archivedLocked = project\?\.status === 'archived' && status === 'archived'/);
+  assert.match(projectEditUi, /nameInput\.disabled = completedLocked \|\| archivedLocked/);
+  assert.match(projectEditUi, /descriptionInput\.disabled = completedLocked \|\| archivedLocked/);
 });
 
 test('saving project details uses the existing PATCH endpoint and refreshes visible details', () => {
-  assert.match(app, /api<\{ project: Project \}>\(`\/projects\/\$\{projectId\}`,\s*\{\s*method: 'PATCH'/);
-  assert.match(app, /name: projectEditName\.value[\s\S]*description: projectEditDescription\.value[\s\S]*status: projectEditStatus\.value/);
-  assert.match(app, /projectDescription\.textContent = result\.project\.description/);
-  assert.match(app, /projectHeading\.textContent = result\.project\.name/);
-  assert.match(app, /breadcrumbCurrent\.textContent = result\.project\.name/);
+  assert.match(projectEditUi, /api<\{ project: Project \}>\(`\/projects\/\$\{projectId\}`,\s*\{\s*method: 'PATCH'/);
+  assert.match(projectEditUi, /name: nameInput\.value[\s\S]*description: descriptionInput\.value[\s\S]*status: statusSelect\.value/);
+  assert.match(app, /projectDescription\.textContent = project\.description/);
+  assert.match(app, /projectHeading\.textContent = project\.name/);
+  assert.match(app, /breadcrumbCurrent\.textContent = project\.name/);
 });
 
 test('project status labels reflect the selected lifecycle state', () => {
   assert.match(app, /function projectStatusLabel\(status: Project\['status'\]\): string[\s\S]*PROJECT_STATUS_LABELS\[status\]/);
-  assert.match(app, /projectState\.textContent = projectStatusLabel\(result\.project\.status\)/);
+  assert.match(app, /projectState\.textContent = projectStatusLabel\(project\.status\)/);
   assert.match(app, /state\.textContent = projectStatusLabel\(project\.status\)/);
   assert.match(types, /archived: 3/);
   assert.match(app, /const projects = \[\.\.\.result\.projects\]\.sort/);
@@ -72,7 +72,7 @@ test('empty project lists explain missing membership in the sidebar and main vie
 
 test('completed and archived project controls switch to read-only in the project view', () => {
   assert.match(app, /function projectStatusIsReadOnly\(status: Project\['status'\]\): boolean/);
-  const controls = app.slice(app.indexOf('function updateProjectReadOnlyNotice'), app.indexOf('function updateProjectStatusHint'));
+  const controls = app.slice(app.indexOf('function updateProjectReadOnlyNotice'), app.indexOf('function applyEditedProject'));
   assert.match(controls, /issueForm\.hidden = readOnly/);
   assert.match(controls, /issueDetailStatus\.disabled = readOnly/);
   assert.match(controls, /issueDiscussionUi\.setReadOnly\(readOnly\)/);
