@@ -16,6 +16,188 @@ use Tangent\Tests\Support\ApiTestCase;
 
 final class GitHubTrackingTest extends ApiTestCase
 {
+    public function testRejectedStaleWebhookUpdateDoesNotCreateAnInboxEvent(): void
+    {
+        $pdo = Database::connect(
+            getenv('TANGENT_TEST_DB_HOST') ?: '127.0.0.1',
+            (int) (getenv('TANGENT_TEST_DB_PORT') ?: 3306),
+            getenv('TANGENT_TEST_DB_NAME') ?: 'tangent_test_suite',
+            getenv('TANGENT_TEST_DB_USER') ?: 'tangent',
+            getenv('TANGENT_TEST_DB_PASSWORD') ?: 'tangent_dev_password',
+        )->pdo();
+        $suffix = bin2hex(random_bytes(5));
+        $slug = 'webhook-race-' . $suffix;
+        $secret = 'webhook-race-secret';
+        $installationId = random_int(7000000, 7999999);
+        $repositoryId = random_int(8000000, 8999999);
+        $pdo->beginTransaction();
+        $workspace = $pdo->prepare('INSERT INTO workspaces (name, slug) VALUES (:name, :slug)');
+        $workspace->execute(['name' => 'Webhook race test', 'slug' => $slug]);
+        $workspaceId = (int) $pdo->lastInsertId();
+        $email = $slug . '@example.test';
+        $account = $pdo->prepare('INSERT INTO user_accounts (email, password_hash) VALUES (:email, :password_hash)');
+        $account->execute(['email' => $email, 'password_hash' => password_hash('webhook race password', PASSWORD_ARGON2ID)]);
+        $accountId = (int) $pdo->lastInsertId();
+        $user = $pdo->prepare(
+            "INSERT INTO users (workspace_id, account_id, name, email, role, is_active)
+             VALUES (:workspace_id, :account_id, 'Webhook race admin', :email, 'admin', 1)",
+        );
+        $user->execute(['workspace_id' => $workspaceId, 'account_id' => $accountId, 'email' => $email]);
+        $userId = (int) $pdo->lastInsertId();
+        $installation = $pdo->prepare(
+            'INSERT INTO github_installations (workspace_id, installation_id, account_login, connected_by)
+             VALUES (:workspace_id, :installation_id, :account_login, :connected_by)',
+        );
+        $installation->execute([
+            'workspace_id' => $workspaceId,
+            'installation_id' => $installationId,
+            'account_login' => 'webhook-race-org',
+            'connected_by' => $userId,
+        ]);
+        $project = $pdo->prepare(
+            'INSERT INTO projects
+                (workspace_id, name, slug, description, status, created_by, github_installation_id,
+                 github_repository_id, github_repository_owner, github_repository_name,
+                 github_repository_full_name, github_repository_url)
+             VALUES (:workspace_id, :name, :slug, :description, :status, :created_by, :installation_id,
+                 :repository_id, :owner, :repository, :full_name, :url)',
+        );
+        $project->execute([
+            'workspace_id' => $workspaceId,
+            'name' => 'Webhook race project',
+            'slug' => 'webhook-race-project',
+            'description' => '',
+            'status' => 'active',
+            'created_by' => $userId,
+            'installation_id' => $installationId,
+            'repository_id' => $repositoryId,
+            'owner' => 'webhook-race-org',
+            'repository' => 'webhook-race-repo',
+            'full_name' => 'webhook-race-org/webhook-race-repo',
+            'url' => 'https://github.com/webhook-race-org/webhook-race-repo',
+        ]);
+        $projectId = (int) $pdo->lastInsertId();
+        $issue = $pdo->prepare(
+            "INSERT INTO issues (workspace_id, project_id, title, description, status, created_by)
+             VALUES (:workspace_id, :project_id, 'Webhook race issue', '', 'backlog', :created_by)",
+        );
+        $issue->execute(['workspace_id' => $workspaceId, 'project_id' => $projectId, 'created_by' => $userId]);
+        $issueId = (int) $pdo->lastInsertId();
+        $pullRequest = $pdo->prepare(
+            "INSERT INTO issue_pull_requests
+                (workspace_id, project_id, issue_id, github_installation_id, github_repository_id,
+                 repository_owner, repository_name, repository_full_name, pull_number, title, html_url,
+                 state, is_draft, author_login, github_updated_at, linked_by)
+             VALUES (:workspace_id, :project_id, :issue_id, :installation_id, :repository_id,
+                 'webhook-race-org', 'webhook-race-repo', 'webhook-race-org/webhook-race-repo', 9,
+                 'Initial title', 'https://github.com/webhook-race-org/webhook-race-repo/pull/9',
+                 'open', 0, 'author', '2026-11-18 10:00:00', :linked_by)",
+        );
+        $pullRequest->execute([
+            'workspace_id' => $workspaceId,
+            'project_id' => $projectId,
+            'issue_id' => $issueId,
+            'installation_id' => $installationId,
+            'repository_id' => $repositoryId,
+            'linked_by' => $userId,
+        ]);
+        $pullRequestId = (int) $pdo->lastInsertId();
+        $pdo->commit();
+
+        $pdo->beginTransaction();
+        $advanceTimestamp = $pdo->prepare(
+            'UPDATE issue_pull_requests SET github_updated_at = :updated_at WHERE id = :id',
+        );
+        $advanceTimestamp->execute(['updated_at' => '2026-11-18 10:13:00', 'id' => $pullRequestId]);
+
+        $directory = sys_get_temp_dir() . '/github-webhook-race-' . $suffix;
+        mkdir($directory, 0700, true);
+        $payloadPath = $directory . '/payload.json';
+        $resultPath = $directory . '/result.json';
+        $connectionPath = $directory . '/connection-id';
+        $payload = [
+            'action' => 'closed',
+            'installation' => ['id' => $installationId],
+            'repository' => ['id' => $repositoryId, 'full_name' => 'webhook-race-org/webhook-race-repo'],
+            'pull_request' => [
+                'number' => 9,
+                'title' => 'Stale webhook title',
+                'html_url' => 'https://github.com/webhook-race-org/webhook-race-repo/pull/9',
+                'state' => 'closed',
+                'merged_at' => null,
+                'draft' => false,
+                'user' => ['login' => 'author'],
+                'updated_at' => '2026-11-18T10:12:00Z',
+            ],
+        ];
+        $rawBody = json_encode($payload, JSON_THROW_ON_ERROR);
+        file_put_contents($payloadPath, $rawBody);
+        $childCode = <<<'PHP'
+require getcwd() . '/vendor/autoload.php';
+$database = Tangent\Core\Database::connect(
+    getenv('TANGENT_TEST_DB_HOST') ?: '127.0.0.1',
+    (int) (getenv('TANGENT_TEST_DB_PORT') ?: 3306),
+    getenv('TANGENT_TEST_DB_NAME') ?: 'tangent_test_suite',
+    getenv('TANGENT_TEST_DB_USER') ?: 'tangent',
+    getenv('TANGENT_TEST_DB_PASSWORD') ?: 'tangent_dev_password',
+);
+$pdo = $database->pdo();
+file_put_contents($argv[4], (string) $pdo->query('SELECT CONNECTION_ID()')->fetchColumn());
+$rawBody = file_get_contents($argv[2]);
+$payload = json_decode($rawBody, true, flags: JSON_THROW_ON_ERROR);
+$config = new Tangent\Core\AppConfig((int) $argv[1], false, 43200, 'http://localhost:8080', false, '', '', '', $argv[3]);
+$app = Tangent\Core\Application::create($pdo, $config);
+$response = $app->handle(Tangent\Core\Request::json('POST', '/api/v1/github/webhook', $payload, [
+    'X-Hub-Signature-256' => 'sha256=' . hash_hmac('sha256', $rawBody, $argv[3]),
+    'X-GitHub-Delivery' => 'race-' . bin2hex(random_bytes(8)),
+    'X-GitHub-Event' => 'pull_request',
+], [], '127.0.0.1', [], $rawBody));
+file_put_contents($argv[5], json_encode(['status' => $response->status, 'body' => $response->body], JSON_THROW_ON_ERROR));
+PHP;
+        $pipes = [];
+        $child = proc_open(
+            [PHP_BINARY, '-r', $childCode, (string) $workspaceId, $payloadPath, $secret, $connectionPath, $resultPath],
+            [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
+            $pipes,
+            dirname(__DIR__, 2),
+        );
+
+        try {
+            self::assertIsResource($child, 'Could not start the webhook process.');
+            fclose($pipes[0]);
+            $this->waitForWebhookUpdateStatement($pdo, $connectionPath);
+            $pdo->commit();
+            $output = stream_get_contents($pipes[1]);
+            $error = stream_get_contents($pipes[2]);
+            fclose($pipes[1]);
+            fclose($pipes[2]);
+            self::assertSame(0, proc_close($child), trim($output . "\n" . $error));
+            $response = json_decode((string) file_get_contents($resultPath), true, flags: JSON_THROW_ON_ERROR);
+            self::assertSame(202, $response['status']);
+            $events = $pdo->prepare(
+                "SELECT COUNT(*) FROM inbox_events WHERE workspace_id = :workspace_id AND event_type = 'pr'",
+            );
+            $events->execute(['workspace_id' => $workspaceId]);
+            self::assertSame(0, (int) $events->fetchColumn(), 'A rejected timestamp-guarded write must not notify users.');
+        } finally {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            if (is_resource($child)) {
+                proc_terminate($child);
+                fclose($pipes[1]);
+                fclose($pipes[2]);
+                proc_close($child);
+            }
+            $pdo->prepare('DELETE FROM inbox_events WHERE workspace_id = :workspace_id')->execute(['workspace_id' => $workspaceId]);
+            $pdo->prepare('DELETE FROM github_installations WHERE workspace_id = :workspace_id')->execute(['workspace_id' => $workspaceId]);
+            $pdo->prepare('DELETE FROM projects WHERE workspace_id = :workspace_id')->execute(['workspace_id' => $workspaceId]);
+            $pdo->prepare('DELETE FROM users WHERE workspace_id = :workspace_id')->execute(['workspace_id' => $workspaceId]);
+            $pdo->prepare('DELETE FROM workspaces WHERE id = :workspace_id')->execute(['workspace_id' => $workspaceId]);
+            $pdo->prepare('DELETE FROM user_accounts WHERE id = :account_id')->execute(['account_id' => $accountId]);
+            foreach (glob($directory . '/*') ?: [] as $file) @unlink($file);
+            @rmdir($directory);
+        }
+    }
+
     public function testGitHubInstallationCallbackDoesNotAssociateBeforeUserAuthorization(): void
     {
         [$state, $installationCallback] = $this->startGitHubInstallationSetup(new FakeGitHubApiClient([], []));
@@ -555,6 +737,25 @@ final class GitHubTrackingTest extends ApiTestCase
         ]);
 
         return ['workspace_id' => $workspaceId, 'pull_request_id' => (int) $this->pdo->lastInsertId()];
+    }
+
+    private function waitForWebhookUpdateStatement(\PDO $pdo, string $connectionPath): void
+    {
+        $deadline = microtime(true) + 10;
+        do {
+            if (is_file($connectionPath)) {
+                $connectionId = (int) file_get_contents($connectionPath);
+                $statement = $pdo->prepare(
+                    "SELECT COUNT(*) FROM information_schema.PROCESSLIST
+                     WHERE ID = :id AND INFO LIKE 'UPDATE issue_pull_requests%'",
+                );
+                $statement->execute(['id' => $connectionId]);
+                if ((int) $statement->fetchColumn() === 1) return;
+            }
+            usleep(10000);
+        } while (microtime(true) < $deadline);
+
+        self::fail('The webhook process did not reach its guarded pull request update.');
     }
 
     private function createUser(array $admin, string $name, string $email, string $role): int

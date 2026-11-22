@@ -98,7 +98,7 @@ final class GitHubPullRequestRepository
         return $row;
     }
 
-    public function updateFromWebhook(int $id, array $pullRequest): void
+    public function updateFromWebhook(int $id, array $pullRequest): bool
     {
         $statement = $this->pdo->prepare(
             'UPDATE issue_pull_requests
@@ -116,6 +116,19 @@ final class GitHubPullRequestRepository
             'github_updated_at' => $pullRequest['updated_at'],
             'github_updated_at_compare' => $pullRequest['updated_at'],
         ]);
+
+        if ($statement->rowCount() === 1) {
+            return true;
+        }
+
+        $current = $this->pdo->prepare(
+            'SELECT github_updated_at FROM issue_pull_requests WHERE id = :id FOR UPDATE',
+        );
+        $current->execute(['id' => $id]);
+        $currentTimestamp = $current->fetchColumn();
+
+        return $currentTimestamp !== false
+            && strtotime((string) $currentTimestamp) <= strtotime((string) $pullRequest['updated_at']);
     }
 
     public function recordDelivery(string $deliveryId, string $eventType): bool

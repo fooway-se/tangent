@@ -255,7 +255,7 @@ final class GitHubService
         if (strtotime($pullRequest['updated_at']) < strtotime((string) $linked['github_updated_at'])) return;
         $oldState = $linked['state'];
         $oldDraft = $linked['is_draft'];
-        $this->pullRequests->updateFromWebhook((int) $linked['id'], $pullRequest);
+        if (!$this->pullRequests->updateFromWebhook((int) $linked['id'], $pullRequest)) return;
         if ($oldState === $pullRequest['state'] && $oldDraft === $pullRequest['is_draft']
             && !in_array($action, ['opened', 'reopened', 'closed', 'ready_for_review', 'converted_to_draft', 'review_requested'], true)) return;
 
