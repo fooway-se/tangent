@@ -17,17 +17,13 @@ The project chat header has a privacy-preserving presence light: it shows whethe
 
 ## Client updates
 
-- Add an automatic weekly summary and a shareable project status link.
+- Let admins generate a client-safe project summary and open it in their email client to address and send manually.
 
 ## AI and API
 
 - Define agent identities, permissions and any agent-specific issue statuses.
 - Consider a CLI or MCP server for agents. The REST API is described in [docs/openapi.yaml](docs/openapi.yaml).
 - Choose how browser credentials are stored, balancing local storage against secure cookies and CSRF protection.
-
-## Workspaces and teams
-
-- Add first-run workspace setup and basic workspace administration so developers can create a workspace and manage its members. Keep single-workspace setup simple; revisit shared-hosting needs later.
 
 ## Installation and hosting
 
