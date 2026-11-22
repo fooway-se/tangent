@@ -271,10 +271,11 @@ final class CredentialService
 
         $plainToken = bin2hex(random_bytes(32));
         $expiresAt = gmdate('Y-m-d H:i:s', time() + self::RESET_LIFETIME_SECONDS);
+        $resetUrl = $this->credentialUrl('reset', $plainToken);
         $ownsTransaction = !$this->pdo->inTransaction();
         if ($ownsTransaction) $this->pdo->beginTransaction();
         try {
-            $this->credentialTokens->createPasswordReset(
+            $tokenId = $this->credentialTokens->createPasswordReset(
                 $actor->workspaceId,
                 (int) $member['account_id'],
                 (string) $member['email'],
@@ -288,7 +289,17 @@ final class CredentialService
             throw $exception;
         }
 
-        return ['reset_url' => $this->credentialUrl('reset', $plainToken), 'expires_at' => $expiresAt];
+        if (!$this->sendPasswordResetEmail(
+            (string) $member['email'],
+            (string) $member['name'],
+            $resetUrl,
+            $expiresAt,
+        )) {
+            $this->credentialTokens->revokePasswordReset((int) $member['account_id'], $tokenId);
+            throw $this->emailDeliveryFailure();
+        }
+
+        return ['expires_at' => $expiresAt];
     }
 
     public function completePasswordReset(Request $request): void
@@ -365,6 +376,19 @@ final class CredentialService
             . "The code expires with the invitation at {$expiresAt} UTC. If you did not expect this invitation, you can ignore this message.\n";
         try {
             return $this->mailer->send($email, 'Tangent invitation email verification', $body);
+        } catch (Throwable) {
+            return false;
+        }
+    }
+
+    private function sendPasswordResetEmail(string $email, string $name, string $resetUrl, string $expiresAt): bool
+    {
+        $body = "Hello {$name},\n\n"
+            . "Use this one-time link to reset your Tangent password:\n\n"
+            . "{$resetUrl}\n\n"
+            . "The link expires at {$expiresAt} UTC. It will change the password for your Tangent account and sign out all active sessions. If you did not request recovery, you can ignore this message.\n";
+        try {
+            return $this->mailer->send($email, 'Tangent password recovery', $body);
         } catch (Throwable) {
             return false;
         }

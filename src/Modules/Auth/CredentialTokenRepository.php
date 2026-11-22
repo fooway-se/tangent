@@ -123,7 +123,7 @@ final class CredentialTokenRepository
         string $name,
         string $tokenHash,
         string $expiresAt,
-    ): void {
+    ): int {
         $this->revokePasswordResets($accountId);
         $statement = $this->pdo->prepare(
             'INSERT INTO credential_tokens
@@ -139,6 +139,22 @@ final class CredentialTokenRepository
             'name' => $name,
             'expires_at' => $expiresAt,
         ]);
+        return (int) $this->pdo->lastInsertId();
+    }
+
+    public function revokePasswordReset(int $accountId, int $tokenId): bool
+    {
+        $statement = $this->pdo->prepare(
+            'UPDATE credential_tokens SET revoked_at = UTC_TIMESTAMP()
+             WHERE account_id = :account_id AND id = :id AND token_type = :token_type
+               AND used_at IS NULL AND revoked_at IS NULL'
+        );
+        $statement->execute([
+            'account_id' => $accountId,
+            'id' => $tokenId,
+            'token_type' => 'password_reset',
+        ]);
+        return $statement->rowCount() === 1;
     }
 
     public function findValid(string $tokenHash, string $type, bool $forUpdate = false): ?array

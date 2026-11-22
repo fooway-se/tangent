@@ -620,25 +620,25 @@ paths:
         '422': { $ref: '#/components/responses/ValidationFailed' }
   /users/{id}/password-reset:
     post:
-      summary: Generate a one-use password reset link (admin only)
-      description: The link is returned only in this response; copy and send it manually. It expires after one hour. Successful completion changes the account-wide password and revokes all active sessions and API tokens across workspaces.
+      summary: Send a one-use password recovery email (admin only)
+      description: Workspace admins can initiate delivery, but the reset link is sent only to the target account's email and is never returned to the admin. It expires after one hour. Successful completion changes the account-wide password and revokes all active sessions and API tokens across workspaces.
       parameters:
         - $ref: '#/components/parameters/Id'
         - $ref: '#/components/parameters/CsrfToken'
       responses:
         '200':
-          description: One-hour reset URL; raw token is not stored or returned again.
+          description: Recovery email submitted to the account's email address; the raw token is never returned.
           content:
             application/json:
               schema:
                 type: object
-                required: [reset_url, expires_at]
+                required: [expires_at]
                 properties:
-                  reset_url: { type: string, format: uri }
                   expires_at: { type: string, format: date-time }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { description: Email delivery failed; no usable reset link was issued. }
   /tokens:
     get:
       summary: List the authenticated user's active API tokens

@@ -1465,10 +1465,10 @@ function renderWorkspaceMembers(members: readonly WorkspaceMember[]): void {
     const resetLinkButton = document.createElement('button');
     resetLinkButton.type = 'button';
     resetLinkButton.className = 'button button-quiet';
-    resetLinkButton.textContent = 'Generate reset link';
-    resetLinkButton.setAttribute('aria-label', `Generate password reset link for ${member.name}`);
+    resetLinkButton.textContent = 'Send recovery email';
+    resetLinkButton.setAttribute('aria-label', `Send password recovery email to ${member.name}`);
     resetLinkButton.disabled = !member.is_active;
-    resetLinkButton.addEventListener('click', () => void generateMemberPasswordResetLink(member));
+    resetLinkButton.addEventListener('click', () => void sendMemberPasswordRecoveryEmail(member));
     if (member.role === 'guest') {
       const manageProjectsButton = document.createElement('button');
       manageProjectsButton.type = 'button';
@@ -1712,21 +1712,16 @@ function showGeneratedCredentialLink(heading: string, description: string, url: 
   copyGeneratedCredentialLink.focus();
 }
 
-async function generateMemberPasswordResetLink(member: WorkspaceMember): Promise<void> {
+async function sendMemberPasswordRecoveryEmail(member: WorkspaceMember): Promise<void> {
   generatedCredentialLink.hidden = true;
   try {
-    const result = await api<{ reset_url: string }>(`/users/${member.id}/password-reset`, {
+    await api<{ expires_at: string }>(`/users/${member.id}/password-reset`, {
       method: 'POST',
       body: JSON.stringify({}),
     });
-    showGeneratedCredentialLink(
-      'Password reset link',
-      `Copy this one-hour link and send it to ${member.email}.`,
-      result.reset_url,
-    );
-    report('Password reset link generated.');
+    report(`Password recovery email sent to ${member.email}.`);
   } catch (error) {
-    report(error instanceof Error ? error.message : 'Could not generate the password reset link.', true);
+    report(error instanceof Error ? error.message : 'Could not send the password recovery email.', true);
   }
 }
 

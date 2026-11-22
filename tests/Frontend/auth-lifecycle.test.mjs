@@ -45,7 +45,7 @@ test('invite and password reset fragments are removed before public requests', (
   assert.match(html, /id="credential-flow"/);
   assert.match(html, /name="verification_code"/);
   assert.match(html, /id="login-admin-help"[^>]*hidden/);
-  assert.match(html, /Contact a workspace admin to generate a password reset link\./);
+  assert.match(html, /Contact a workspace admin to request a password recovery email\./);
   assert.match(html, /autocomplete="new-password"/);
   assert.match(app, /function consumeCredentialFragment\(/);
   assert.match(app, /history\.replaceState\(null, '', location\.pathname \+ location\.search\)/);
@@ -104,7 +104,7 @@ test('workspace administration renders member and invite data as text', () => {
   assert.match(app, /function renderWorkspaceInvites\(/);
   assert.match(app, /label\.textContent = `\$\{member\.name\}/);
   assert.match(app, /\/users\/invites/);
-  assert.match(app, /reset_url/);
+  assert.match(app, /sendMemberPasswordRecoveryEmail/);
   assert.match(app, /await loadWorkspaceAdmin\(\)/);
 });
 
@@ -157,7 +157,7 @@ test('workspace member rows give identity its own line and group role/actions be
   assert.match(css, /\.workspace-admin-member-row\s*\{[^}]*display:\s*grid/s);
 });
 
-test('OpenAPI exposes public token completion and manual admin credential-link routes', () => {
+test('OpenAPI exposes public token completion and admin initiated email recovery', () => {
   for (const path of [
     '/auth/invites/inspect', '/auth/invites/accept', '/auth/password-reset/complete',
     '/users/invites', '/users/invites/{id}/link', '/users/{id}/password-reset', '/users/{id}/status', '/users/{id}/role',
@@ -167,4 +167,14 @@ test('OpenAPI exposes public token completion and manual admin credential-link r
   }
   assert.doesNotMatch(openapi, /  \/auth\/password-reset:/);
   assert.match(openapi, /password: \{ type: string, minLength: 15, maxLength: 128/);
+  const resetDelivery = app.slice(
+    app.indexOf('async function sendMemberPasswordRecoveryEmail('),
+    app.indexOf('async function generateNewInviteLink('),
+  );
+  assert.doesNotMatch(resetDelivery, /reset_url/);
+  assert.match(resetDelivery, /Password recovery email sent to/);
+  const resetContract = openapi.slice(openapi.indexOf('  \/users\/{id}\/password-reset:'), openapi.indexOf('  \/tokens:'));
+  assert.match(resetContract, /email/);
+  assert.doesNotMatch(resetContract, /required: \[reset_url, expires_at\]/);
+  assert.match(resetContract, /'503':/);
 });

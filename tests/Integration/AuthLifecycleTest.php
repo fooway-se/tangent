@@ -669,8 +669,12 @@ final class AuthLifecycleTest extends ApiTestCase
             $admin['csrf'],
         );
         self::assertSame(200, $generated->status, json_encode($generated->body));
-        self::assertArrayHasKey('reset_url', $generated->body);
-        $token = $this->tokenFromCredentialUrl($generated->body['reset_url'], 'reset');
+        self::assertArrayNotHasKey('reset_url', $generated->body, 'Workspace admins must not receive an account-wide recovery credential.');
+        self::assertSame($this->adminEmail, $this->mailer->messages[0]['to']);
+        self::assertCount(1, $this->mailer->messages);
+        preg_match('/#reset=([a-f0-9]{64})/', $this->mailer->messages[0]['body'], $resetTokenMatch);
+        self::assertArrayHasKey(1, $resetTokenMatch, 'The reset credential is delivered only in the account email.');
+        $token = $resetTokenMatch[1];
 
         $completed = $this->request('POST', '/api/v1/auth/password-reset/complete', [
             'token' => $token,
@@ -700,6 +704,28 @@ final class AuthLifecycleTest extends ApiTestCase
             'token' => $token,
             'password' => 'yet another password phrase',
         ])->status);
+    }
+
+    public function testPasswordRecoveryEmailFailureDoesNotLeaveAUsableResetCredential(): void
+    {
+        $admin = $this->login($this->adminEmail);
+        $this->mailer->deliveryResult = false;
+
+        $response = $this->cookieRequest(
+            'POST',
+            '/api/v1/users/' . $this->developerId . '/password-reset',
+            $admin['cookie'],
+            [],
+            $admin['csrf'],
+        );
+
+        self::assertSame(503, $response->status, json_encode($response->body));
+        $credential = $this->pdo->query(
+            "SELECT used_at, revoked_at FROM credential_tokens WHERE token_type = 'password_reset' ORDER BY id DESC LIMIT 1"
+        )->fetch(\PDO::FETCH_ASSOC);
+        self::assertNotFalse($credential);
+        self::assertNull($credential['used_at']);
+        self::assertNotNull($credential['revoked_at'], 'An undelivered recovery token must be unusable.');
     }
 
     public function testLegacyPasswordHashesAreUpgradedOnLogin(): void

@@ -10,6 +10,35 @@ use Tangent\Tests\Support\ApiTestCase;
 
 final class MigrationPreconditionsTest extends ApiTestCase
 {
+    public function testRecoveryEmailMigrationRevokesPreviouslyIssuedPasswordResetLinks(): void
+    {
+        $account = $this->pdo->prepare('SELECT account_id FROM users WHERE workspace_id = :workspace_id AND id = :id');
+        $account->execute(['workspace_id' => $this->workspaceId, 'id' => $this->adminId]);
+        $accountId = (int) $account->fetchColumn();
+        $insert = $this->pdo->prepare(
+            'INSERT INTO credential_tokens (workspace_id, token_hash, token_type, account_id, email, name, expires_at)
+             VALUES (:workspace_id, :token_hash, :token_type, :account_id, :email, :name, :expires_at)'
+        );
+        $insert->execute([
+            'workspace_id' => $this->workspaceId,
+            'token_hash' => hash('sha256', 'previous-admin-issued-reset'),
+            'token_type' => 'password_reset',
+            'account_id' => $accountId,
+            'email' => $this->adminEmail,
+            'name' => 'Admin',
+            'expires_at' => '2099-01-01 00:00:00',
+        ]);
+        $credentialId = (int) $this->pdo->lastInsertId();
+        $migrationPath = dirname(__DIR__, 2) . '/migrations/035_email_password_recovery.sql';
+        $migration = file_get_contents($migrationPath);
+        self::assertNotFalse($migration);
+        $this->pdo->exec($migration);
+
+        $credential = $this->pdo->prepare('SELECT revoked_at FROM credential_tokens WHERE id = :id');
+        $credential->execute(['id' => $credentialId]);
+        self::assertNotNull($credential->fetchColumn(), 'Reset links issued under the old admin-copy policy must stop working.');
+    }
+
     public function testAuthLifecycleMigrationStopsBeforeMergingDuplicateWorkspaceEmails(): void
     {
         $workspace = $this->pdo->prepare('INSERT INTO workspaces (name, slug) VALUES (:name, :slug)');

@@ -55,7 +55,7 @@ Configure these values in the host environment or in `config.php` for production
 
 | Environment variable | `config.php` key | Purpose | Default |
 |---|---|---|---|
-| `TANGENT_APP_URL` | `app_url` | Public base URL used to build copyable invite and reset links; set this to the exact HTTPS site address. | `http://localhost:8080` |
+| `TANGENT_APP_URL` | `app_url` | Public base URL used to build invite links and emailed password recovery links; set this to the exact HTTPS site address. | `http://localhost:8080` |
 | `TANGENT_MAIL_FROM` | `mail_from` | Valid sender address used for invitation verification and password recovery email. Configure PHP's mail transport on the host. | unset |
 | `TANGENT_HIBP_ENABLED` | `hibp_enabled` | Enables the optional Have I Been Pwned Pwned Passwords range lookup. | `false` |
 | `TANGENT_GITHUB_APP_ID` | — | Numeric GitHub App ID for repository selection and pull-request tracking. | unset |
