@@ -5,7 +5,7 @@ import {
   type ChatMessage, type ConditionalIssueList,
   type GitHubRepository, type GitHubRepositoryOptionSelection,
   type InboxIssue, type Issue,
-  type IssueDiscussionMessage, type IssueGrouping, type IssuePriority, type IssueStatusTransition, type IssueType,
+  type IssueGrouping, type IssuePriority, type IssueStatusTransition, type IssueType,
   type LinkedPullRequest, type LoginResponse, type Member,
   type Milestone, type Project, type User, type Workspace,
   type WorkspaceLocation,
@@ -31,6 +31,7 @@ import { initCommandPaletteUi, type PaletteCommand } from './command-palette-ui.
 import { initWorkspacePickerUi } from './workspace-picker-ui.js';
 import { initIssueBoardUi } from './issue-board-ui.js';
 import { initIssueAiPromptUi } from './issue-ai-prompt-ui.js';
+import { initIssueDiscussionUi } from './issue-discussion-ui.js';
 import { parseQuickIssueInput } from './quick-issue.js';
 import { milestoneStatus, type RoadmapMilestone } from './roadmap.js';
 import {
@@ -114,10 +115,8 @@ const {
     issueDetailMilestone, issueDetailOngoingRow, issueDetailSharing, issueDetailApproval,
     issueDetailTypeInput, issueDetailAssigneeInput, issueDetailMilestoneInput, issueDetailOngoingInput,
     issueDetailSharedInput, issueDetailApprovalInput, issueStatusHistory, issueStatusHistoryCount,
-    issueStatusHistoryEmpty, issueStatusHistoryList, issueDiscussionHeading, issueDiscussionCount,
-    issueDiscussionStatus, issueDiscussionEmpty, issueDiscussionList, issueDiscussionForm,
-    issueDiscussionInput, issueDiscussionSubmit, issueDiscussionReplyContext, issueDiscussionReplyLabel,
-    issueDiscussionReplyCancel, issueDescriptionDetails, issueProgress, issueProgressLabel, issueFilter,
+    issueStatusHistoryEmpty, issueStatusHistoryList,
+    issueDescriptionDetails, issueProgress, issueProgressLabel, issueFilter,
     issueGrouping, issueOrder, issueScope, issueCountSummary, issueBulkAssignToggle,
     issueBulkAssignToolbar, issueList, deletedIssuesDetails, deletedIssueCount, deletedIssueList,
     issueStatusPicker, issueStatusPickerClose, issueStatusPickerDescription, issueStatusPickerOptions,
@@ -579,13 +578,6 @@ let issuePollHasDeferredChanges = false;
 let issuePollInFlightProjectId: number | null = null;
 let issuePollRequestVersion = 0;
 let issueStatusHistoryRequestVersion = 0;
-let issueDiscussionRequestVersion = 0;
-let issueDiscussionPollTimer: number | null = null;
-let issueDiscussionMessages: IssueDiscussionMessage[] = [];
-let selectedIssueDiscussionMessageId: number | null = null;
-let issueDiscussionParent: IssueDiscussionMessage | null = null;
-let editingIssueDiscussionMessageId: number | null = null;
-let confirmingIssueDiscussionDeleteId: number | null = null;
 const deletedIssueRowRenderSignatures = new WeakMap<HTMLLIElement, string>();
 const issueBoardUi = initIssueBoardUi({
   issueList,
@@ -623,6 +615,17 @@ const issueAiPromptUi = initIssueAiPromptUi({
     renderProjectIssueBoard();
   },
   onUnauthorized: () => showSignedOut(),
+});
+const issueDiscussionUi = initIssueDiscussionUi({
+  getIssue: () => selectedIssue,
+  getUser: () => activeUser,
+  getProject: () => activeProject,
+  isProjectReadOnly: (project) => projectStatusIsReadOnly(project.status),
+  isDetailVisible: () => !issueDetailView.hidden,
+  getPageSize: (messages) => visibleRowsInViewport(messages, projectMain, '.issue-discussion-message'),
+  onDiscussionCountChanged: updateProjectIssueDiscussionCount,
+  onUnauthorized: () => showSignedOut(),
+  avatarInitials,
 });
 let selectedChatMessageId: number | null = null;
 let issueQuickAddEscapePending = false;
@@ -845,7 +848,7 @@ function showSignedOut(): void {
   issueQuickAddSourceProjectId = null;
   issueQuickAddReturnFocus = null;
   stopIssuePolling();
-  clearIssueDiscussion();
+  issueDiscussionUi.clear();
   inboxUi.reset();
   workspacePickerUi.resetPendingSwitch();
   projectChatUi.stop();
@@ -967,7 +970,7 @@ function showWorkspaceView(view: 'projects' | 'roadmap' | 'inbox' | 'lounge' | '
     if (activeProject !== null) projectReturnFocusId = activeProject.id;
     projectChatUi.stop();
     stopIssuePolling();
-    clearIssueDiscussion();
+    issueDiscussionUi.clear();
     activeProject = null;
     activeProjectMembers = [];
     selectedIssue = null;
@@ -1445,7 +1448,7 @@ function createIssueFromSelectedChatMessage(): void {
 
 function goToProjectIssues(): void {
   if (activeProject === null) return;
-  clearIssueDiscussion();
+  issueDiscussionUi.clear();
   selectedIssue = null;
   issueDetailEditForm.hidden = true;
   issueDetailDisplay.hidden = false;
@@ -1507,10 +1510,8 @@ function shortcutContext(target: EventTarget | null) {
     hasSelectedChatMessage: selectedChatMessageId !== null && selectedChatMessageId > 0
       && activeChatMessagesById().has(selectedChatMessageId),
     canCreateIssueFromChatMessage: loungeView.hidden,
-    issueDiscussionMessagesFocused: target instanceof HTMLElement
-      && target.closest('.issue-discussion-message') !== null,
-    hasSelectedIssueDiscussionMessage: selectedIssueDiscussionMessageId !== null
-      && issueDiscussionMessages.some((message) => message.id === selectedIssueDiscussionMessageId),
+    issueDiscussionMessagesFocused: issueDiscussionUi.isMessageTarget(target),
+    hasSelectedIssueDiscussionMessage: issueDiscussionUi.hasSelectedMessage(),
     issueGroupFocused: target instanceof HTMLElement && target.closest('.issue-group > summary') !== null,
     statusHistoryFocused: issueStatusHistory.open && issueStatusHistory.contains(document.activeElement),
     textInputFocused: shouldBlurOnEscape(target),
@@ -1677,9 +1678,8 @@ function moveProjectSelectionToBoundary(edge: 'first' | 'last'): void {
 function moveSelectionByPage(direction: -1 | 1): void {
   if (document.activeElement instanceof HTMLElement && document.activeElement.closest('.chat-message') !== null) {
     moveChatMessageSelectionByPage(direction);
-  } else if (document.activeElement instanceof HTMLElement
-    && document.activeElement.closest('.issue-discussion-message') !== null) {
-    moveIssueDiscussionSelectionByPage(direction);
+  } else if (issueDiscussionUi.isMessageTarget(document.activeElement)) {
+    issueDiscussionUi.moveSelectionByPage(direction);
   } else if (!projectsView.hidden) {
     moveFocusByPage(
       Array.from(projectList.querySelectorAll<HTMLButtonElement>('.project-card button')),
@@ -1706,7 +1706,7 @@ function moveSelection(direction: -1 | 1): void {
 
 function beginCreateIssue(): void {
   if (activeProject === null) return;
-  clearIssueDiscussion();
+  issueDiscussionUi.clear();
   selectedIssue = null;
   switchProjectTab('issues');
   issueQuickAddTitle.focus();
@@ -1771,7 +1771,7 @@ function beginCreateIssueFromChatMessage(message: ChatMessage, trigger: HTMLButt
   issueDescriptionDetails.open = false;
   issueQuickAddEscapePending = false;
   updateIssueQuickAddApproval();
-  clearIssueDiscussion();
+  issueDiscussionUi.clear();
   selectedIssue = null;
   issueDetailEditForm.hidden = true;
   issueDetailDisplay.hidden = false;
@@ -2205,9 +2205,7 @@ function updateProjectReadOnlyNotice(status: Project['status']): void {
   issueDetailStatus.disabled = readOnly;
   issueDetailEditButton.disabled = readOnly;
   issueDetailDeleteButton.disabled = readOnly;
-  issueDiscussionInput.disabled = readOnly;
-  issueDiscussionSubmit.disabled = readOnly;
-  issueDiscussionReplyCancel.disabled = readOnly;
+  issueDiscussionUi.setReadOnly(readOnly);
   projectNotesUi.setReadOnly(readOnly);
   memberForm.hidden = activeUser?.role !== 'admin' || readOnly;
   if (readOnly) {
@@ -2277,7 +2275,7 @@ async function saveProjectEdit(event: SubmitEvent): Promise<void> {
     updateProjectReadOnlyNotice(result.project.status);
     if (selectedIssue !== null) {
       renderIssueDetail();
-      renderIssueDiscussion();
+      issueDiscussionUi.render();
     }
     breadcrumbCurrent.textContent = result.project.name;
     report('Project updated.');
@@ -2332,14 +2330,8 @@ function blurTextInput(): void {
     workspaceAdminUi.focusSelectedTab();
     return;
   }
-  if (focused === issueDiscussionInput) {
-    const selected = selectedIssueDiscussionMessageId === null
-      ? null
-      : issueDiscussionList.querySelector<HTMLElement>(`.issue-discussion-message[data-message-id="${selectedIssueDiscussionMessageId}"]`);
-    const latest = issueDiscussionMessageElements().at(-1) ?? null;
-    const target = selected ?? latest;
-    if (target !== null) selectIssueDiscussionMessage(Number(target.dataset.messageId));
-    else issueDiscussionHeading.focus();
+  if (issueDiscussionUi.isComposer(focused)) {
+    issueDiscussionUi.focusSelectedMessageOrLatest();
     return;
   }
   if (loungeChatUi.isComposer(focused)) {
@@ -2391,8 +2383,8 @@ function executeShortcut(action: ShortcutAction): void {
     case 'open-selected-project': selectedProjectButton()?.click(); break;
     case 'first-chat-message': moveChatMessageSelectionToBoundary('first'); break;
     case 'last-chat-message': moveChatMessageSelectionToBoundary('last'); break;
-    case 'first-issue-discussion-message': moveIssueDiscussionSelectionToBoundary('first'); break;
-    case 'last-issue-discussion-message': moveIssueDiscussionSelectionToBoundary('last'); break;
+    case 'first-issue-discussion-message': issueDiscussionUi.moveSelectionToBoundary('first'); break;
+    case 'last-issue-discussion-message': issueDiscussionUi.moveSelectionToBoundary('last'); break;
     case 'page-up': moveSelectionByPage(-1); break;
     case 'page-down': moveSelectionByPage(1); break;
     case 'next': moveIssueSelection(1); break;
@@ -2410,12 +2402,12 @@ function executeShortcut(action: ShortcutAction): void {
     case 'issue-from-latest-message': createIssueFromLatestMessage(); break;
     case 'next-chat-message': moveChatMessageSelection(1); break;
     case 'previous-chat-message': moveChatMessageSelection(-1); break;
-    case 'next-issue-discussion-message': moveIssueDiscussionSelection(1); break;
-    case 'previous-issue-discussion-message': moveIssueDiscussionSelection(-1); break;
+    case 'next-issue-discussion-message': issueDiscussionUi.moveSelection(1); break;
+    case 'previous-issue-discussion-message': issueDiscussionUi.moveSelection(-1); break;
     case 'focus-chat-composer': focusActiveChatComposer(); break;
     case 'reply-to-chat-message': replyToSelectedChatMessage(); break;
-    case 'focus-issue-discussion-composer': issueDiscussionInput.focus(); break;
-    case 'reply-to-issue-discussion-message': replyToSelectedIssueDiscussionMessage(); break;
+    case 'focus-issue-discussion-composer': issueDiscussionUi.focusComposer(); break;
+    case 'reply-to-issue-discussion-message': issueDiscussionUi.replyToSelected(); break;
     case 'issue-from-selected-chat-message': createIssueFromSelectedChatMessage(); break;
     case 'blur-text-input': blurTextInput(); break;
     case 'collapse-status-history': issueStatusHistory.open = false; break;
@@ -2556,9 +2548,6 @@ projectForm.querySelector<HTMLTextAreaElement>('textarea[name="description"]')
   ?.addEventListener('keydown', (event) => submitFormOnEnter(event, projectForm));
 issueDescriptionInput?.addEventListener('keydown', (event) => submitFormOnEnter(event, issueForm));
 issueDetailDescriptionInput.addEventListener('keydown', (event) => submitFormOnEnter(event, issueDetailEditForm));
-issueDiscussionInput.addEventListener('keydown', (event) => submitFormOnEnter(event, issueDiscussionForm));
-issueDiscussionForm.addEventListener('submit', (event) => void postIssueDiscussionMessage(event));
-issueDiscussionReplyCancel.addEventListener('click', clearIssueDiscussionReply);
 issueFilter.addEventListener('input', () => {
   clearBulkMoveSelection();
   renderProjectIssueBoard();
@@ -3061,7 +3050,7 @@ function switchProjectTab(tab: 'issues' | 'members' | 'notes', returnFocusIssueI
   notesTabButton.tabIndex = tab === 'notes' ? 0 : -1;
   if (tab !== 'issues') pauseIssuePolling();
   if (tab === 'issues') {
-    if (showingIssueDetail && selectedIssue !== null) scheduleIssueDiscussionPoll(selectedIssue.id);
+    if (showingIssueDetail && selectedIssue !== null) issueDiscussionUi.schedulePoll(selectedIssue.id);
     if (!showingIssueDetail && loadIssues) {
       const projectId = activeProject.id;
       const loadingIssues = loadProjectIssues(projectId);
@@ -3838,63 +3827,6 @@ async function loadIssueStatusHistory(issueId: number): Promise<void> {
   }
 }
 
-function stopIssueDiscussionPolling(): void {
-  if (issueDiscussionPollTimer !== null) window.clearTimeout(issueDiscussionPollTimer);
-  issueDiscussionPollTimer = null;
-  issueDiscussionRequestVersion += 1;
-}
-
-function clearIssueDiscussion(): void {
-  stopIssueDiscussionPolling();
-  issueDiscussionMessages = [];
-  selectedIssueDiscussionMessageId = null;
-  editingIssueDiscussionMessageId = null;
-  confirmingIssueDiscussionDeleteId = null;
-  issueDiscussionList.replaceChildren();
-  issueDiscussionInput.value = '';
-  issueDiscussionStatus.textContent = '';
-  clearIssueDiscussionReply();
-  renderIssueDiscussion();
-}
-
-function scheduleIssueDiscussionPoll(issueId: number): void {
-  if (issueDiscussionPollTimer !== null) window.clearTimeout(issueDiscussionPollTimer);
-  issueDiscussionPollTimer = null;
-  if (selectedIssue?.id !== issueId || issueDetailView.hidden) return;
-  issueDiscussionPollTimer = window.setTimeout(() => {
-    issueDiscussionPollTimer = null;
-    void loadIssueDiscussion(issueId, false);
-  }, 5_000);
-}
-
-async function loadIssueDiscussion(issueId: number, showLoading = true): Promise<void> {
-  const requestVersion = ++issueDiscussionRequestVersion;
-  if (showLoading) issueDiscussionStatus.textContent = 'Loading discussion…';
-  try {
-    const result = await api<{ messages: IssueDiscussionMessage[] }>(`/issues/${issueId}/discussion`);
-    if (requestVersion !== issueDiscussionRequestVersion || selectedIssue?.id !== issueId) return;
-    const changed = result.messages.length !== issueDiscussionMessages.length
-      || result.messages.some((message, index) => {
-        const current = issueDiscussionMessages[index];
-        return current === undefined || current.id !== message.id || current.body !== message.body
-          || current.parent_id !== message.parent_id;
-      });
-    issueDiscussionMessages = result.messages;
-    issueDiscussionStatus.textContent = '';
-    updateProjectIssueDiscussionCount(issueId, result.messages.length);
-    if (changed) renderIssueDiscussion();
-  } catch (error) {
-    if (requestVersion !== issueDiscussionRequestVersion || selectedIssue?.id !== issueId) return;
-    if (error instanceof ApiFailure && error.status === 401) {
-      showSignedOut();
-      return;
-    }
-    issueDiscussionStatus.textContent = error instanceof Error ? error.message : 'Could not load the discussion.';
-  } finally {
-    scheduleIssueDiscussionPoll(issueId);
-  }
-}
-
 function updateProjectIssueDiscussionCount(issueId: number, count: number): void {
   const current = projectIssues.find((issue) => issue.id === issueId);
   if (current !== undefined && (current.discussion_count ?? 0) !== count) {
@@ -3907,350 +3839,6 @@ function updateProjectIssueDiscussionCount(issueId: number, count: number): void
   inboxUi.updateIssueDiscussionCount(issueId, count);
 }
 
-function renderIssueDiscussion(): void {
-  issueDiscussionCount.textContent = String(issueDiscussionMessages.length);
-  issueDiscussionEmpty.hidden = issueDiscussionMessages.length > 0;
-  const existing = new Map(
-    Array.from(issueDiscussionList.querySelectorAll<HTMLLIElement>('.issue-discussion-message'))
-      .map((item) => [Number(item.dataset.messageId), item] as const),
-  );
-  for (const message of issueDiscussionMessages) {
-    const canEdit = canEditIssueDiscussionMessage(message);
-    const isEditing = canEdit && editingIssueDiscussionMessageId === message.id;
-    const isConfirmingDelete = canEdit && confirmingIssueDiscussionDeleteId === message.id;
-    const signature = JSON.stringify([message, canEdit, isEditing, isConfirmingDelete]);
-    const current = existing.get(message.id);
-    if (current?.dataset.renderSignature === signature) {
-      existing.delete(message.id);
-      continue;
-    }
-
-    const item = createIssueDiscussionMessage(message, canEdit, isEditing, isConfirmingDelete);
-    item.dataset.renderSignature = signature;
-    if (current !== undefined) {
-      const oldEditInput = current.querySelector<HTMLTextAreaElement>('[data-discussion-edit-input]');
-      const newEditInput = item.querySelector<HTMLTextAreaElement>('[data-discussion-edit-input]');
-      if (oldEditInput !== null && newEditInput !== null && isEditing) newEditInput.value = oldEditInput.value;
-      current.replaceWith(item);
-      existing.delete(message.id);
-    } else {
-      issueDiscussionList.append(item);
-    }
-  }
-  existing.forEach((item) => item.remove());
-}
-
-function canEditIssueDiscussionMessage(message: IssueDiscussionMessage): boolean {
-  return activeUser !== null
-    && message.author_id === activeUser.id
-    && issueDiscussionMessages.at(-1)?.id === message.id
-    && activeProject !== null
-    && !projectStatusIsReadOnly(activeProject.status);
-}
-
-function issueDiscussionMessageElements(): HTMLElement[] {
-  return Array.from(issueDiscussionList.querySelectorAll<HTMLElement>('.issue-discussion-message'));
-}
-
-function selectIssueDiscussionMessage(id: number, focus = true): void {
-  const item = issueDiscussionList.querySelector<HTMLElement>(`.issue-discussion-message[data-message-id="${id}"]`);
-  if (item === null) return;
-  selectedIssueDiscussionMessageId = id;
-  issueDiscussionMessageElements().forEach((message) => {
-    message.classList.toggle('is-keyboard-selected', message === item);
-  });
-  if (focus) item.focus();
-}
-
-function moveIssueDiscussionSelection(direction: -1 | 1): void {
-  const messages = issueDiscussionMessageElements();
-  if (messages.length === 0) {
-    issueDiscussionInput.focus();
-    return;
-  }
-  const currentIndex = messages.findIndex((message) => Number(message.dataset.messageId) === selectedIssueDiscussionMessageId);
-  const nextIndex = currentIndex < 0
-    ? direction > 0 ? 0 : messages.length - 1
-    : Math.max(0, Math.min(messages.length - 1, currentIndex + direction));
-  const next = messages[nextIndex];
-  if (next !== undefined) selectIssueDiscussionMessage(Number(next.dataset.messageId));
-}
-
-function moveIssueDiscussionSelectionToBoundary(edge: 'first' | 'last'): void {
-  const messages = issueDiscussionMessageElements();
-  const target = messages[edge === 'first' ? 0 : messages.length - 1];
-  if (target !== undefined) selectIssueDiscussionMessage(Number(target.dataset.messageId));
-}
-
-function moveIssueDiscussionSelectionByPage(direction: -1 | 1): void {
-  const messages = issueDiscussionMessageElements();
-  if (messages.length === 0) {
-    issueDiscussionInput.focus();
-    return;
-  }
-  const currentIndex = messages.findIndex((message) => Number(message.dataset.messageId) === selectedIssueDiscussionMessageId);
-  const pageSize = Math.max(1, visibleRowsInViewport(messages, projectMain, '.issue-discussion-message') - 1);
-  const baseIndex = currentIndex < 0
-    ? direction > 0 ? 0 : Math.min(pageSize, messages.length - 1)
-    : currentIndex;
-  const targetIndex = Math.max(0, Math.min(messages.length - 1, baseIndex + direction * pageSize));
-  const target = messages[targetIndex];
-  if (target !== undefined) selectIssueDiscussionMessage(Number(target.dataset.messageId));
-}
-
-function replyToSelectedIssueDiscussionMessage(): void {
-  if (selectedIssueDiscussionMessageId === null) return;
-  const message = issueDiscussionMessages.find((candidate) => candidate.id === selectedIssueDiscussionMessageId);
-  if (message !== undefined) setIssueDiscussionReply(message);
-}
-
-function createIssueDiscussionMessage(
-  message: IssueDiscussionMessage,
-  canEdit: boolean,
-  isEditing: boolean,
-  isConfirmingDelete: boolean,
-): HTMLLIElement {
-  const item = document.createElement('li');
-  item.className = `issue-discussion-message${message.parent_id === null ? '' : ' is-reply'}`;
-  item.dataset.messageId = String(message.id);
-  item.tabIndex = -1;
-  item.setAttribute('aria-keyshortcuts', 'j k ArrowUp ArrowDown Home End PageUp PageDown Enter r');
-  item.addEventListener('focusin', () => selectIssueDiscussionMessage(message.id, false));
-  item.addEventListener('click', (event) => {
-    if (!(event.target instanceof HTMLElement) || event.target.closest('button') === null) {
-      selectIssueDiscussionMessage(message.id);
-    }
-  });
-
-  const avatar = document.createElement('span');
-  avatar.className = 'chat-message-avatar';
-  avatar.setAttribute('aria-hidden', 'true');
-  avatar.textContent = avatarInitials(message.author_name);
-  item.append(avatar);
-
-  if (message.parent_id !== null && message.parent_body !== null) {
-    const parent = document.createElement('button');
-    parent.type = 'button';
-    parent.className = 'button button-quiet issue-discussion-parent';
-    parent.textContent = `↳ ${message.parent_author_name ?? 'Earlier message'}: ${message.parent_body.slice(0, 100)}`;
-    parent.addEventListener('click', () => {
-      const parentMessage = issueDiscussionList.querySelector<HTMLElement>(`[data-message-id="${message.parent_id}"]`);
-      parentMessage?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      parentMessage?.focus();
-    });
-    item.append(parent);
-  }
-
-  const heading = document.createElement('header');
-  heading.className = 'issue-discussion-message-heading';
-  const author = document.createElement('span');
-  author.className = 'issue-discussion-author';
-  author.textContent = message.author_name;
-  const time = document.createElement('time');
-  time.dateTime = message.created_at.replace(' ', 'T');
-  const parsedDate = new Date(message.created_at.replace(' ', 'T'));
-  time.textContent = Number.isNaN(parsedDate.getTime())
-    ? message.created_at
-    : new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(parsedDate);
-  const reply = document.createElement('button');
-  reply.type = 'button';
-  reply.className = 'button button-quiet issue-discussion-reply-button';
-  reply.textContent = 'Reply';
-  reply.disabled = activeProject !== null && projectStatusIsReadOnly(activeProject.status);
-  reply.setAttribute('aria-label', `Reply to ${message.author_name}`);
-  reply.addEventListener('click', () => setIssueDiscussionReply(message));
-  const actions = document.createElement('div');
-  actions.className = 'issue-discussion-actions';
-  actions.append(reply);
-  if (canEdit && isEditing) {
-    reply.hidden = true;
-  } else if (canEdit && isConfirmingDelete) {
-    const prompt = document.createElement('span');
-    prompt.className = 'issue-discussion-delete-prompt';
-    prompt.textContent = 'Delete this message?';
-    const confirm = document.createElement('button');
-    confirm.type = 'button';
-    confirm.className = 'button button-quiet issue-discussion-delete-confirm';
-    confirm.textContent = 'Delete';
-    confirm.dataset.discussionDelete = '';
-    confirm.addEventListener('click', () => void deleteIssueDiscussionMessage(message.id, confirm));
-    const cancel = document.createElement('button');
-    cancel.type = 'button';
-    cancel.className = 'button button-quiet issue-discussion-action';
-    cancel.textContent = 'Cancel';
-    cancel.addEventListener('click', () => {
-      confirmingIssueDiscussionDeleteId = null;
-      renderIssueDiscussion();
-      issueDiscussionList.querySelector<HTMLButtonElement>(`[data-message-id="${message.id}"] [data-discussion-delete-begin]`)?.focus();
-    });
-    actions.append(prompt, confirm, cancel);
-  } else if (canEdit) {
-    const edit = document.createElement('button');
-    edit.type = 'button';
-    edit.className = 'button button-quiet issue-discussion-action';
-    edit.textContent = 'Edit';
-    edit.dataset.discussionEdit = '';
-    edit.setAttribute('aria-label', `Edit your message from ${message.author_name}`);
-    edit.addEventListener('click', () => {
-      editingIssueDiscussionMessageId = message.id;
-      confirmingIssueDiscussionDeleteId = null;
-      renderIssueDiscussion();
-      issueDiscussionList.querySelector<HTMLTextAreaElement>(`[data-message-id="${message.id}"] [data-discussion-edit-input]`)?.focus();
-    });
-    const remove = document.createElement('button');
-    remove.type = 'button';
-    remove.className = 'button button-quiet issue-discussion-action';
-    remove.textContent = 'Delete';
-    remove.dataset.discussionDeleteBegin = '';
-    remove.setAttribute('aria-label', `Delete your message from ${message.author_name}`);
-    remove.addEventListener('click', () => {
-      confirmingIssueDiscussionDeleteId = message.id;
-      editingIssueDiscussionMessageId = null;
-      renderIssueDiscussion();
-      issueDiscussionList.querySelector<HTMLButtonElement>(`[data-message-id="${message.id}"] [data-discussion-delete]`)?.focus();
-    });
-    actions.append(edit, remove);
-  }
-  heading.append(author, time, actions);
-
-  if (canEdit && isEditing) {
-    const form = document.createElement('form');
-    form.className = 'issue-discussion-edit-form';
-    const label = document.createElement('label');
-    const inputId = `issue-discussion-edit-input-${message.id}`;
-    label.htmlFor = inputId;
-    label.textContent = 'Edit message';
-    const input = document.createElement('textarea');
-    input.id = inputId;
-    input.rows = 3;
-    input.maxLength = 10_000;
-    input.required = true;
-    input.value = message.body;
-    input.dataset.discussionEditInput = '';
-    const formActions = document.createElement('div');
-    formActions.className = 'form-actions';
-    const cancel = document.createElement('button');
-    cancel.type = 'button';
-    cancel.className = 'button button-quiet';
-    cancel.textContent = 'Cancel';
-    cancel.addEventListener('click', () => {
-      editingIssueDiscussionMessageId = null;
-      renderIssueDiscussion();
-      issueDiscussionList.querySelector<HTMLButtonElement>(`[data-message-id="${message.id}"] [data-discussion-edit]`)?.focus();
-    });
-    const save = document.createElement('button');
-    save.type = 'submit';
-    save.className = 'button button-primary';
-    save.textContent = 'Save';
-    formActions.append(cancel, save);
-    form.append(label, input, formActions);
-    form.addEventListener('submit', (event) => {
-      event.preventDefault();
-      void saveIssueDiscussionMessage(message.id, input.value, save);
-    });
-    item.append(heading, form);
-  } else {
-    const body = document.createElement('p');
-    body.className = 'issue-discussion-body';
-    body.textContent = message.body;
-    item.append(heading, body);
-  }
-  return item;
-}
-
-async function saveIssueDiscussionMessage(messageId: number, body: string, button: HTMLButtonElement): Promise<void> {
-  const issueId = selectedIssue?.id;
-  if (issueId === undefined || body.trim() === '') return;
-  button.disabled = true;
-  try {
-    const result = await api<{ message: IssueDiscussionMessage }>(`/issues/${issueId}/discussion/${messageId}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ body }),
-    });
-    if (selectedIssue?.id !== issueId) return;
-    issueDiscussionMessages = issueDiscussionMessages.map((message) => message.id === messageId ? result.message : message);
-    editingIssueDiscussionMessageId = null;
-    issueDiscussionStatus.textContent = 'Message updated.';
-    renderIssueDiscussion();
-    issueDiscussionList.querySelector<HTMLButtonElement>(`[data-message-id="${messageId}"] [data-discussion-edit]`)?.focus();
-  } catch (error) {
-    issueDiscussionStatus.textContent = error instanceof Error ? error.message : 'Could not update the message.';
-  } finally {
-    button.disabled = false;
-  }
-}
-
-async function deleteIssueDiscussionMessage(messageId: number, button: HTMLButtonElement): Promise<void> {
-  const issueId = selectedIssue?.id;
-  if (issueId === undefined) return;
-  button.disabled = true;
-  try {
-    await api(`/issues/${issueId}/discussion/${messageId}`, { method: 'DELETE' });
-    if (selectedIssue?.id !== issueId) return;
-    issueDiscussionMessages = issueDiscussionMessages.filter((message) => message.id !== messageId);
-    confirmingIssueDiscussionDeleteId = null;
-    updateProjectIssueDiscussionCount(issueId, issueDiscussionMessages.length);
-    issueDiscussionStatus.textContent = 'Message deleted.';
-    renderIssueDiscussion();
-    const latest = issueDiscussionMessages.at(-1);
-    if (latest === undefined) issueDiscussionHeading.focus();
-    else selectIssueDiscussionMessage(latest.id);
-  } catch (error) {
-    issueDiscussionStatus.textContent = error instanceof Error ? error.message : 'Could not delete the message.';
-  } finally {
-    button.disabled = false;
-  }
-}
-
-function setIssueDiscussionReply(message: IssueDiscussionMessage): void {
-  selectIssueDiscussionMessage(message.id, false);
-  issueDiscussionParent = message;
-  const excerpt = message.body.length > 100 ? `${message.body.slice(0, 100)}…` : message.body;
-  issueDiscussionReplyLabel.textContent = `Replying to ${message.author_name}: ${excerpt}`;
-  issueDiscussionReplyContext.hidden = false;
-  issueDiscussionInput.focus();
-}
-
-function clearIssueDiscussionReply(): void {
-  issueDiscussionParent = null;
-  issueDiscussionReplyLabel.textContent = '';
-  issueDiscussionReplyContext.hidden = true;
-}
-
-async function postIssueDiscussionMessage(event: SubmitEvent): Promise<void> {
-  event.preventDefault();
-  const issueId = selectedIssue?.id;
-  const body = issueDiscussionInput.value.trim();
-  if (issueId === undefined || body === '') return;
-  const parentId = issueDiscussionParent?.id ?? null;
-  issueDiscussionSubmit.disabled = true;
-  issueDiscussionStatus.textContent = '';
-  try {
-    const result = await api<{ message: IssueDiscussionMessage }>(`/issues/${issueId}/discussion`, {
-      method: 'POST',
-      body: JSON.stringify({ body, parent_id: parentId }),
-    });
-    if (selectedIssue?.id !== issueId) return;
-    issueDiscussionMessages.push(result.message);
-    editingIssueDiscussionMessageId = null;
-    confirmingIssueDiscussionDeleteId = null;
-    updateProjectIssueDiscussionCount(issueId, issueDiscussionMessages.length);
-    renderIssueDiscussion();
-    if (issueDiscussionInput.value.trim() === body) issueDiscussionInput.value = '';
-    if (issueDiscussionParent?.id === parentId) clearIssueDiscussionReply();
-    issueDiscussionList.querySelector<HTMLElement>(`[data-message-id="${result.message.id}"]`)
-      ?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    issueDiscussionInput.focus();
-  } catch (error) {
-    if (error instanceof ApiFailure && error.status === 401) {
-      showSignedOut();
-      return;
-    }
-    issueDiscussionStatus.textContent = error instanceof Error ? error.message : 'Could not send the message.';
-  } finally {
-    issueDiscussionSubmit.disabled = false;
-  }
-}
 
 function createIssueStatusHistoryRow(transition: IssueStatusTransition): HTMLLIElement {
   const item = document.createElement('li');
@@ -4297,15 +3885,9 @@ function resetIssueDetailEditForm(): void {
 }
 
 function openIssue(issue: Issue): void {
-  stopIssueDiscussionPolling();
   selectedIssue = issue;
   linkedPullRequests = [];
-  issueDiscussionMessages = [];
-  selectedIssueDiscussionMessageId = null;
-  issueDiscussionList.replaceChildren();
-  issueDiscussionInput.value = '';
-  clearIssueDiscussionReply();
-  renderIssueDiscussion();
+  issueDiscussionUi.clear();
   issueList.querySelectorAll<HTMLElement>('.issue-card').forEach((row) => {
     row.classList.toggle('is-keyboard-selected', row.dataset.issueId === String(issue.id));
   });
@@ -4314,7 +3896,7 @@ function openIssue(issue: Issue): void {
   renderIssueDetail();
   void loadIssuePullRequests(issue.id);
   void loadIssueStatusHistory(issue.id);
-  void loadIssueDiscussion(issue.id);
+  void issueDiscussionUi.load(issue.id);
   switchProjectTab('issues');
   issueBackButton.focus();
 }

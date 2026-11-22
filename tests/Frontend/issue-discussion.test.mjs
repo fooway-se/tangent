@@ -4,7 +4,7 @@ import test from 'node:test';
 
 const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
-const dom = await readFile(new URL('../../frontend/src/dom.ts', import.meta.url), 'utf8');
+const discussionUi = await readFile(new URL('../../frontend/src/issue-discussion-ui.ts', import.meta.url), 'utf8');
 const types = await readFile(new URL('../../frontend/src/types.ts', import.meta.url), 'utf8');
 const css = await readFile(new URL('../../public/assets/app.css', import.meta.url), 'utf8');
 
@@ -24,23 +24,23 @@ test('issue detail contains a separate discussion timeline and composer', () => 
 
 test('issue discussions load for the selected issue and post issue-scoped replies', () => {
   assert.match(types, /interface IssueDiscussionMessage/);
-  assert.match(app, /async function loadIssueDiscussion\(issueId: number/);
-  assert.match(app, /`\/issues\/\$\{issueId\}\/discussion`/);
-  assert.match(app, /function createIssueDiscussionMessage\(/);
-  assert.match(app, /parent_id\s*\??:/);
-  assert.match(app, /api<\{ message: IssueDiscussionMessage \}>\s*\(`\/issues\/\$\{issueId\}\/discussion`/);
-  assert.match(app, /loadIssueDiscussion\(issue\.id\)/);
+  assert.match(discussionUi, /async function loadIssueDiscussion\(issueId: number/);
+  assert.match(discussionUi, /`\/issues\/\$\{issueId\}\/discussion`/);
+  assert.match(discussionUi, /function createIssueDiscussionMessage\(/);
+  assert.match(discussionUi, /parent_id\s*\??:/);
+  assert.match(discussionUi, /request<\{ message: IssueDiscussionMessage \}>\s*\(`\/issues\/\$\{issueId\}\/discussion`/);
+  assert.match(app, /issueDiscussionUi\.load\(issue\.id\)/);
 });
 
 test('only the author of the final issue discussion message gets edit and delete actions', () => {
-  assert.match(app, /function canEditIssueDiscussionMessage\(/);
-  assert.match(app, /activeUser !== null\s*&&\s*message\.author_id === activeUser\.id/);
-  assert.match(app, /issueDiscussionMessages\.at\(-1\)\?\.id === message\.id/);
-  assert.match(app, /data-discussion-edit/);
-  assert.match(app, /data-discussion-delete/);
-  assert.match(app, /`\/issues\/\$\{issueId\}\/discussion\/\$\{messageId\}`/);
-  assert.match(app, /method: 'PATCH'/);
-  assert.match(app, /method: 'DELETE'/);
+  assert.match(discussionUi, /function canEditIssueDiscussionMessage\(/);
+  assert.match(discussionUi, /message\.author_id === user\.id/);
+  assert.match(discussionUi, /issueDiscussionMessages\.at\(-1\)\?\.id === message\.id/);
+  assert.match(discussionUi, /data-discussion-edit/);
+  assert.match(discussionUi, /data-discussion-delete/);
+  assert.match(discussionUi, /`\/issues\/\$\{issueId\}\/discussion\/\$\{messageId\}`/);
+  assert.match(discussionUi, /method: 'PATCH'/);
+  assert.match(discussionUi, /method: 'DELETE'/);
 });
 
 test('issue rows show an accessible discussion indicator when messages exist', () => {
@@ -60,15 +60,15 @@ test('discussion indicators are a plain pixel bubble next to the row status cont
 });
 
 test('issue discussion messages reuse the chat avatar and thread styling', () => {
-  assert.match(app, /avatar\.className = 'chat-message-avatar'/);
+  assert.match(discussionUi, /avatar\.className = 'chat-message-avatar'/);
   assert.match(css, /\.issue-discussion-message\.is-reply\s*\{[^}]*border-left:\s*3px solid var\(--accent\)/);
   assert.match(css, /\.issue-discussion-author\s*\{[^}]*700 13px var\(--font-display\)/);
 });
 
 test('issue discussion replies remain within the selected issue and show their parent context', () => {
-  assert.match(app, /issueDiscussionParent/);
-  assert.match(dom, /issue-discussion-reply-context/);
-  assert.match(app, /function setIssueDiscussionReply\(/);
-  assert.match(app, /function clearIssueDiscussionReply\(/);
-  assert.match(app, /selectedIssue\?\.id !== issueId/);
+  assert.match(discussionUi, /issueDiscussionParent/);
+  assert.match(discussionUi, /issue-discussion-reply-context/);
+  assert.match(discussionUi, /function setIssueDiscussionReply\(/);
+  assert.match(discussionUi, /function clearIssueDiscussionReply\(/);
+  assert.match(discussionUi, /options\.getIssue\(\)\?\.id !== issueId/);
 });

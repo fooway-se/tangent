@@ -75,7 +75,7 @@ test('completed and archived project controls switch to read-only in the project
   const controls = app.slice(app.indexOf('function updateProjectReadOnlyNotice'), app.indexOf('function updateProjectStatusHint'));
   assert.match(controls, /issueForm\.hidden = readOnly/);
   assert.match(controls, /issueDetailStatus\.disabled = readOnly/);
-  assert.match(controls, /issueDiscussionInput\.disabled = readOnly/);
+  assert.match(controls, /issueDiscussionUi\.setReadOnly\(readOnly\)/);
   assert.match(controls, /projectNotesUi\.setReadOnly\(readOnly\)/);
   assert.match(projectNotesUi, /projectNotesInput\.disabled = readOnly/);
 });

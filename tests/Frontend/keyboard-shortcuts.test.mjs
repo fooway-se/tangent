@@ -14,6 +14,7 @@ const milestoneUi = await readFile(new URL('../../frontend/src/milestone-ui.ts',
 const summaryUi = await readFile(new URL('../../frontend/src/client-summary-ui.ts', import.meta.url), 'utf8');
 const workspacePickerUi = await readFile(new URL('../../frontend/src/workspace-picker-ui.ts', import.meta.url), 'utf8');
 const issueAiPromptUi = await readFile(new URL('../../frontend/src/issue-ai-prompt-ui.ts', import.meta.url), 'utf8');
+const issueDiscussionUi = await readFile(new URL('../../frontend/src/issue-discussion-ui.ts', import.meta.url), 'utf8');
 const baseContext = {
   targetIsEditable: false,
   goPrefixPending: false,
@@ -268,14 +269,15 @@ test('issue discussion messages use the chat navigation, reply, and composer sho
   assert.equal(resolve('PageDown', discussionSelection), 'page-down');
   assert.equal(resolve('Enter', discussionSelection), 'focus-issue-discussion-composer');
   assert.equal(resolve('r', discussionSelection), 'reply-to-issue-discussion-message');
-  assert.match(app, /issueDiscussionMessagesFocused:[\s\S]{0,100}closest\('\.issue-discussion-message'\)/);
-  assert.match(app, /case 'next-issue-discussion-message': moveIssueDiscussionSelection\(1\)/);
-  assert.match(app, /function moveIssueDiscussionSelectionByPage\(/);
-  assert.match(app, /function replyToSelectedIssueDiscussionMessage\(/);
-  assert.match(app, /item\.addEventListener\('focusin', \(\) => selectIssueDiscussionMessage/);
+  assert.match(app, /issueDiscussionMessagesFocused:[\s\S]{0,100}issueDiscussionUi\.isMessageTarget\(target\)/);
+  assert.match(app, /case 'next-issue-discussion-message': issueDiscussionUi\.moveSelection\(1\)/);
+  assert.match(issueDiscussionUi, /function moveIssueDiscussionSelectionByPage\(/);
+  assert.match(issueDiscussionUi, /function replyToSelectedIssueDiscussionMessage\(/);
+  assert.match(issueDiscussionUi, /item\.addEventListener\('focusin', \(\) => selectIssueDiscussionMessage/);
   const blurHandler = app.slice(app.indexOf('function blurTextInput'), app.indexOf('function executeShortcut'));
-  assert.match(blurHandler, /focused === issueDiscussionInput/);
-  assert.match(blurHandler, /issueDiscussionHeading\.focus\(\)/);
+  assert.match(blurHandler, /issueDiscussionUi\.isComposer\(focused\)/);
+  assert.match(blurHandler, /issueDiscussionUi\.focusSelectedMessageOrLatest\(\)/);
+  assert.match(issueDiscussionUi, /focusComposer: \(\) => issueDiscussionInput\.focus\(\)/);
   assert.match(html, /id="issue-discussion-heading"[^>]*tabindex="-1"/);
 });
 
