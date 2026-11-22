@@ -73,10 +73,12 @@ final class Request
             if ($mediaType !== 'application/json') {
                 $validJson = false;
             } else {
-                $decoded = json_decode($rawBody, true);
-                $validJson = json_last_error() === JSON_ERROR_NONE && is_array($decoded);
+                $decodedShape = json_decode($rawBody);
+                $validJson = json_last_error() === JSON_ERROR_NONE && $decodedShape instanceof \stdClass;
                 if ($validJson) {
-                    $body = $decoded;
+                    $decodedBody = json_decode($rawBody, true);
+                    $validJson = json_last_error() === JSON_ERROR_NONE && is_array($decodedBody);
+                    if ($validJson) $body = $decodedBody;
                 }
             }
         }

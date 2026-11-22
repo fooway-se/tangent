@@ -51,6 +51,40 @@ final class RequestSecurityTest extends TestCase
         self::assertSame('user@example.test', $request->body['email']);
     }
 
+    public function testHttpJsonBodyRequiresAnObjectButKeepsEmptyObjectAndBodySemantics(): void
+    {
+        $object = Request::fromHttp(
+            'POST', '/api/v1/test', [], ['Content-Type' => 'application/json'], [], '{"name":"Tangent"}', '192.0.2.1',
+        );
+        $emptyObject = Request::fromHttp(
+            'POST', '/api/v1/test', [], ['Content-Type' => 'application/json'], [], '{}', '192.0.2.1',
+        );
+        $list = Request::fromHttp(
+            'POST', '/api/v1/test', [], ['Content-Type' => 'application/json'], [], '[]', '192.0.2.1',
+        );
+        $emptyBody = Request::fromHttp(
+            'POST', '/api/v1/test', [], ['Content-Type' => 'application/json'], [], '', '192.0.2.1',
+        );
+
+        self::assertTrue($object->validJson);
+        self::assertSame(['name' => 'Tangent'], $object->body);
+        self::assertTrue($emptyObject->validJson);
+        self::assertSame([], $emptyObject->body);
+        self::assertFalse($list->validJson);
+        self::assertSame([], $list->body);
+        self::assertTrue($emptyBody->validJson);
+        self::assertSame([], $emptyBody->body);
+
+        $gateway = new Gateway(new Router(), new Authenticator(new TokenRepository(new class extends \PDO {
+            public function __construct()
+            {
+            }
+        }), new AppConfig(1)));
+        $response = $gateway->handle($list);
+        self::assertSame(400, $response->status);
+        self::assertSame('invalid_json', $response->body['error']['code']);
+    }
+
     public function testHttpRequestMarksBodiesOverTheLimitWithoutDecodingThem(): void
     {
         $rawBody = '{"large":"' . str_repeat('x', Request::MAX_BODY_BYTES) . '"}';
