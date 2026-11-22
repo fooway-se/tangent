@@ -6,6 +6,7 @@ namespace Tangent\Modules\Chat;
 
 use Tangent\Core\ApiException;
 use Tangent\Core\AuthenticatedUser;
+use Tangent\Core\PositiveId;
 use Tangent\Core\Request;
 use Tangent\Core\Response;
 use Tangent\Core\Router;
@@ -82,8 +83,8 @@ final class ChatRoutes
         ): Response {
             return Response::json(200, ['message' => $this->service->message(
                 $user,
-                self::positiveId($params['id']),
-                self::positiveId($params['messageId']),
+                PositiveId::parse($params['id']),
+                PositiveId::parse($params['messageId']),
             )]);
         });
 
@@ -118,7 +119,7 @@ final class ChatRoutes
         ): Response {
             $result = $this->service->messages(
                 $user,
-                self::positiveId($params['id']),
+                PositiveId::parse($params['id']),
                 self::sinceId($request),
                 $request->header('If-None-Match'),
             );
@@ -142,7 +143,7 @@ final class ChatRoutes
         ): Response {
             return Response::json(200, $this->service->heartbeatProjectPresence(
                 $user,
-                self::positiveId($params['id']),
+                PositiveId::parse($params['id']),
             ));
         });
 
@@ -154,21 +155,13 @@ final class ChatRoutes
             return Response::json(201, [
                 'message' => $this->service->sendMessage(
                     $user,
-                    self::positiveId($params['id']),
+                    PositiveId::parse($params['id']),
                     $request->body,
                 ),
             ]);
         });
     }
 
-    private static function positiveId(string $value): int
-    {
-        $parsed = filter_var($value, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
-        if ($parsed === false) {
-            throw new ApiException(404, 'not_found', 'The requested resource was not found.');
-        }
-        return $parsed;
-    }
 
     private static function sinceId(Request $request): ?int
     {

@@ -7,6 +7,7 @@ namespace Tangent\Modules\GitHub;
 use Tangent\Core\ApiException;
 use Tangent\Core\AppConfig;
 use Tangent\Core\AuthenticatedUser;
+use Tangent\Core\PositiveId;
 use Tangent\Core\Request;
 use Tangent\Core\Response;
 use Tangent\Core\Router;
@@ -30,7 +31,7 @@ final class GitHubRoutes
         });
 
         $router->add('GET', '/api/v1/github/setup', function (Request $request, array $params, AuthenticatedUser $user): Response {
-            $installationId = self::positiveId(is_scalar($request->query['installation_id'] ?? null)
+            $installationId = PositiveId::parse(is_scalar($request->query['installation_id'] ?? null)
                 ? (string) $request->query['installation_id'] : '');
             $state = is_string($request->query['state'] ?? null) ? $request->query['state'] : '';
             $authorizationUrl = $this->service->beginInstallationAuthorization($user, $installationId, $state);
@@ -50,31 +51,24 @@ final class GitHubRoutes
 
         $router->add('GET', '/api/v1/issues/{id}/pull-requests', function (Request $request, array $params, AuthenticatedUser $user): Response {
             return Response::json(200, [
-                'pull_requests' => $this->service->listPullRequests($user, self::positiveId($params['id'])),
+                'pull_requests' => $this->service->listPullRequests($user, PositiveId::parse($params['id'])),
             ]);
         });
 
         $router->add('POST', '/api/v1/issues/{id}/pull-requests', function (Request $request, array $params, AuthenticatedUser $user): Response {
             return Response::json(201, [
-                'pull_request' => $this->service->linkPullRequest($user, self::positiveId($params['id']), $request->body),
+                'pull_request' => $this->service->linkPullRequest($user, PositiveId::parse($params['id']), $request->body),
             ]);
         });
 
         $router->add('DELETE', '/api/v1/issues/{id}/pull-requests/{pullRequestId}', function (Request $request, array $params, AuthenticatedUser $user): Response {
             $this->service->unlinkPullRequest(
                 $user,
-                self::positiveId($params['id']),
-                self::positiveId($params['pullRequestId']),
+                PositiveId::parse($params['id']),
+                PositiveId::parse($params['pullRequestId']),
             );
             return new Response(204);
         });
     }
 
-    private static function positiveId(string $value): int
-    {
-        if (!ctype_digit($value) || (int) $value < 1) {
-            throw new ApiException(404, 'not_found', 'The requested resource was not found.');
-        }
-        return (int) $value;
-    }
 }

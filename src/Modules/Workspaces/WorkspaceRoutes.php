@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tangent\Modules\Workspaces;
 
-use Tangent\Core\ApiException;
 use Tangent\Core\AuthenticatedUser;
+use Tangent\Core\PositiveId;
 use Tangent\Core\Request;
 use Tangent\Core\Response;
 use Tangent\Core\Router;
@@ -32,7 +32,10 @@ final class WorkspaceRoutes
         });
 
         $router->add('POST', '/api/v1/workspaces/{id}/switch', function (Request $request, array $params, AuthenticatedUser $user): Response {
-            $switched = $this->service->switch($user, self::positiveId($params['id']));
+            $switched = $this->service->switch(
+                $user,
+                PositiveId::parse($params['id'], 'The requested workspace was not found.'),
+            );
             $secure = $this->cookieSecure ? '; Secure' : '';
             $maxAge = $this->sessionLifetimeSeconds;
             return Response::json(200, [
@@ -54,11 +57,4 @@ final class WorkspaceRoutes
         });
     }
 
-    private static function positiveId(string $value): int
-    {
-        if (!ctype_digit($value) || (int) $value < 1) {
-            throw new ApiException(404, 'not_found', 'The requested workspace was not found.');
-        }
-        return (int) $value;
-    }
 }

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tangent\Modules\Issues;
 
-use Tangent\Core\ApiException;
 use Tangent\Core\AuthenticatedUser;
+use Tangent\Core\PositiveId;
 use Tangent\Core\Request;
 use Tangent\Core\Response;
 use Tangent\Core\Router;
@@ -23,7 +23,7 @@ final class IssuesRoutes
             array $params,
             AuthenticatedUser $user,
         ): Response {
-            $this->service->approve($user, self::positiveId($params['id']));
+            $this->service->approve($user, PositiveId::parse($params['id']));
             return Response::json(200, ['approved' => true]);
         });
 
@@ -33,7 +33,7 @@ final class IssuesRoutes
             AuthenticatedUser $user,
         ): Response {
             return Response::json(201, [
-                'issue' => $this->service->createFromMessage($user, self::positiveId($params['id'])),
+                'issue' => $this->service->createFromMessage($user, PositiveId::parse($params['id'])),
             ]);
         });
 
@@ -42,7 +42,7 @@ final class IssuesRoutes
             array $params,
             AuthenticatedUser $user,
         ): Response {
-            $projectId = self::positiveId($params['id']);
+            $projectId = PositiveId::parse($params['id']);
             $revision = $this->service->listRevision($user, $projectId);
             return IssueListResponse::conditional(
                 $request,
@@ -56,7 +56,7 @@ final class IssuesRoutes
             array $params,
             AuthenticatedUser $user,
         ): Response {
-            $projectId = self::positiveId($params['id']);
+            $projectId = PositiveId::parse($params['id']);
             $revision = $this->service->listRevision($user, $projectId, true);
             return IssueListResponse::conditional(
                 $request,
@@ -73,7 +73,7 @@ final class IssuesRoutes
             return Response::json(200, [
                 'moved_count' => $this->service->moveUnassignedToMilestone(
                     $user,
-                    self::positiveId($params['id']),
+                    PositiveId::parse($params['id']),
                     $request->body,
                 ),
             ]);
@@ -87,7 +87,7 @@ final class IssuesRoutes
             return Response::json(200, [
                 'assigned_count' => $this->service->bulkAssign(
                     $user,
-                    self::positiveId($params['id']),
+                    PositiveId::parse($params['id']),
                     $request->body,
                 ),
             ]);
@@ -101,7 +101,7 @@ final class IssuesRoutes
             return Response::json(200, [
                 'updated_count' => $this->service->bulkSetShared(
                     $user,
-                    self::positiveId($params['id']),
+                    PositiveId::parse($params['id']),
                     $request->body,
                 ),
             ]);
@@ -113,7 +113,7 @@ final class IssuesRoutes
             AuthenticatedUser $user,
         ): Response {
             return Response::json(200, [
-                'transitions' => $this->service->statusHistory($user, self::positiveId($params['id'])),
+                'transitions' => $this->service->statusHistory($user, PositiveId::parse($params['id'])),
             ]);
         });
 
@@ -123,7 +123,7 @@ final class IssuesRoutes
             AuthenticatedUser $user,
         ): Response {
             return Response::json(200, [
-                'messages' => $this->service->discussion($user, self::positiveId($params['id'])),
+                'messages' => $this->service->discussion($user, PositiveId::parse($params['id'])),
             ]);
         });
 
@@ -135,7 +135,7 @@ final class IssuesRoutes
             return Response::json(201, [
                 'message' => $this->service->addDiscussionMessage(
                     $user,
-                    self::positiveId($params['id']),
+                    PositiveId::parse($params['id']),
                     $request->body,
                 ),
             ]);
@@ -149,8 +149,8 @@ final class IssuesRoutes
             return Response::json(200, [
                 'message' => $this->service->editDiscussionMessage(
                     $user,
-                    self::positiveId($params['id']),
-                    self::positiveId($params['messageId']),
+                    PositiveId::parse($params['id']),
+                    PositiveId::parse($params['messageId']),
                     $request->body,
                 ),
             ]);
@@ -163,8 +163,8 @@ final class IssuesRoutes
         ): Response {
             $this->service->deleteDiscussionMessage(
                 $user,
-                self::positiveId($params['id']),
-                self::positiveId($params['messageId']),
+                PositiveId::parse($params['id']),
+                PositiveId::parse($params['messageId']),
             );
             return Response::json(204);
         });
@@ -175,7 +175,7 @@ final class IssuesRoutes
             AuthenticatedUser $user,
         ): Response {
             return Response::json(201, [
-                'issue' => $this->service->create($user, self::positiveId($params['id']), $request->body),
+                'issue' => $this->service->create($user, PositiveId::parse($params['id']), $request->body),
             ]);
         });
 
@@ -185,7 +185,7 @@ final class IssuesRoutes
             AuthenticatedUser $user,
         ): Response {
             return Response::json(200, [
-                'issue' => $this->service->update($user, self::positiveId($params['id']), $request->body),
+                'issue' => $this->service->update($user, PositiveId::parse($params['id']), $request->body),
             ]);
         });
 
@@ -195,7 +195,7 @@ final class IssuesRoutes
             AuthenticatedUser $user,
         ): Response {
             return Response::json(200, [
-                'issue' => $this->service->move($user, self::positiveId($params['id']), $request->body),
+                'issue' => $this->service->move($user, PositiveId::parse($params['id']), $request->body),
             ]);
         });
 
@@ -204,7 +204,7 @@ final class IssuesRoutes
             array $params,
             AuthenticatedUser $user,
         ): Response {
-            $this->service->delete($user, self::positiveId($params['id']));
+            $this->service->delete($user, PositiveId::parse($params['id']));
             return Response::json(204);
         });
 
@@ -214,17 +214,9 @@ final class IssuesRoutes
             AuthenticatedUser $user,
         ): Response {
             return Response::json(200, [
-                'issue' => $this->service->restore($user, self::positiveId($params['id'])),
+                'issue' => $this->service->restore($user, PositiveId::parse($params['id'])),
             ]);
         });
     }
 
-    private static function positiveId(string $value): int
-    {
-        $parsed = filter_var($value, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
-        if ($parsed === false) {
-            throw new ApiException(404, 'not_found', 'The requested resource was not found.');
-        }
-        return $parsed;
-    }
 }

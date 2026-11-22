@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tangent\Modules\Auth;
 
 use Tangent\Core\AuthenticatedUser;
+use Tangent\Core\PositiveId;
 use Tangent\Core\Request;
 use Tangent\Core\Response;
 use Tangent\Core\Router;
@@ -71,7 +72,7 @@ final class AuthRoutes
         });
 
         $router->add('DELETE', '/api/v1/tokens/{id}', function (Request $request, array $params, AuthenticatedUser $user): Response {
-            $this->service->revokeApiToken($user, self::positiveId($params['id']));
+            $this->service->revokeApiToken($user, PositiveId::parse($params['id']));
             return new Response(204);
         });
 
@@ -94,7 +95,7 @@ final class AuthRoutes
         $router->add('POST', '/api/v1/users/invites/{id}/link', function (Request $request, array $params, AuthenticatedUser $user): Response {
             return Response::json(200, ['invite' => $this->credentials->regenerateInviteLink(
                 $user,
-                self::positiveId($params['id']),
+                PositiveId::parse($params['id']),
                 $request->remoteAddress,
             )]);
         });
@@ -102,7 +103,7 @@ final class AuthRoutes
         $router->add('PATCH', '/api/v1/users/{id}/status', function (Request $request, array $params, AuthenticatedUser $user): Response {
             return Response::json(200, ['user' => $this->service->setWorkspaceMemberActive(
                 $user,
-                self::positiveId($params['id']),
+                PositiveId::parse($params['id']),
                 $request->body,
             )]);
         });
@@ -110,7 +111,7 @@ final class AuthRoutes
         $router->add('PATCH', '/api/v1/users/{id}/role', function (Request $request, array $params, AuthenticatedUser $user): Response {
             return Response::json(200, ['user' => $this->service->setWorkspaceMemberRole(
                 $user,
-                self::positiveId($params['id']),
+                PositiveId::parse($params['id']),
                 $request->body,
             )]);
         });
@@ -118,24 +119,17 @@ final class AuthRoutes
         $router->add('POST', '/api/v1/users/{id}/password-reset', function (Request $request, array $params, AuthenticatedUser $user): Response {
             return Response::json(200, $this->credentials->generatePasswordResetLink(
                 $user,
-                self::positiveId($params['id']),
+                PositiveId::parse($params['id']),
                 $request->remoteAddress,
             ), ['cache-control' => 'no-store']);
         });
 
         $router->add('DELETE', '/api/v1/users/invites/{id}', function (Request $request, array $params, AuthenticatedUser $user): Response {
-            $this->credentials->revokeInvite($user, self::positiveId($params['id']));
+            $this->credentials->revokeInvite($user, PositiveId::parse($params['id']));
             return new Response(204);
         });
     }
 
-    private static function positiveId(string $value): int
-    {
-        if (!ctype_digit($value) || (int) $value < 1) {
-            throw new \Tangent\Core\ApiException(404, 'not_found', 'The requested resource was not found.');
-        }
-        return (int) $value;
-    }
 
     private function sessionResponse(array $session, int $workspaceId): Response
     {
