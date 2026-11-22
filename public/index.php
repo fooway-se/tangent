@@ -85,10 +85,11 @@ $request = Request::fromHttp(
 try {
     $gateway = Application::create(Runtime::database()->pdo(), Runtime::appConfig());
     $response = $gateway->handle($request);
-} catch (\Throwable) {
+} catch (\Throwable $exception) {
+    \Tangent\Core\RequestErrorReporter::report($request->requestId, $exception);
     $response = Response::json(500, [
         'error' => ['code' => 'internal_error', 'message' => 'The request could not be completed.'],
-    ]);
+    ], ['X-Request-ID' => $request->requestId]);
 }
 
 $response = new Response($response->status, $response->body, array_merge([

@@ -7,6 +7,7 @@ namespace Tangent\Core;
 final class Request
 {
     public const MAX_BODY_BYTES = 1_048_576;
+    public readonly string $requestId;
 
     public function __construct(
         public readonly string $method,
@@ -20,6 +21,7 @@ final class Request
         public readonly string $rawBody = '',
         public readonly bool $bodyTooLarge = false,
     ) {
+        $this->requestId = bin2hex(random_bytes(16));
     }
 
     public static function json(

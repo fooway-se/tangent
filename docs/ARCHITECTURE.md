@@ -66,6 +66,7 @@ Each module registers its own routes. Modules do not touch each other's tables; 
 - Workspace admins generate one-use invite and password-reset links to copy and send manually; Tangent has no mail integration. Invite acceptance creates or links the global account, workspace membership, guest project access, and session in one transaction. Admin-generated password reset links use the same typed, one-use credential-token table and revoke all sessions and API tokens for the account across workspaces after a successful reset.
 - Cursor-based pagination.
 - One consistent JSON error format.
+- Unexpected server errors return a generic 500 with an `X-Request-ID`. The matching error log records only that ID, the exception class, and the event type.
 - OpenAPI is the contract.
 
 ## Database and migrations

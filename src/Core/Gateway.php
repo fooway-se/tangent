@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tangent\Core;
 
 use Throwable;
+use UnexpectedValueException;
 use Tangent\Modules\Auth\Authenticator;
 
 final class Gateway
@@ -12,10 +13,25 @@ final class Gateway
     public function __construct(
         private readonly Router $router,
         private readonly Authenticator $authenticator,
+        private readonly RequestErrorReporter $errorReporter = new RequestErrorReporter(),
     ) {
     }
 
     public function handle(Request $request): Response
+    {
+        try {
+            return $this->dispatch($request);
+        } catch (ApiException $exception) {
+            return $this->error($exception->status, $exception->apiCode, $exception->getMessage());
+        } catch (Throwable $exception) {
+            $this->errorReporter->report($request->requestId, $exception);
+            return Response::json(500, [
+                'error' => ['code' => 'internal_error', 'message' => 'The request could not be completed.'],
+            ], ['X-Request-ID' => $request->requestId]);
+        }
+    }
+
+    private function dispatch(Request $request): Response
     {
         if ($request->bodyTooLarge) {
             return $this->error(413, 'payload_too_large', 'Request body exceeds the maximum allowed size.');
@@ -32,11 +48,7 @@ final class Gateway
 
         $user = null;
         if ($matched['authenticated']) {
-            try {
-                $user = $this->authenticator->authenticate($request);
-            } catch (ApiException $exception) {
-                return $this->error($exception->status, $exception->apiCode, $exception->getMessage());
-            }
+            $user = $this->authenticator->authenticate($request);
 
             if ($user->authenticationMethod === 'cookie' && !$request->isSafeMethod()
                 && !$this->validCsrf($request, $user->csrfHash)) {
@@ -44,16 +56,12 @@ final class Gateway
             }
         }
 
-        try {
-            $response = ($matched['handler'])($request, $matched['params'], $user);
-            return $response instanceof Response
-                ? $response
-                : $this->error(500, 'internal_error', 'The request could not be completed.');
-        } catch (ApiException $exception) {
-            return $this->error($exception->status, $exception->apiCode, $exception->getMessage());
-        } catch (Throwable) {
-            return $this->error(500, 'internal_error', 'The request could not be completed.');
+        $response = ($matched['handler'])($request, $matched['params'], $user);
+        if (!$response instanceof Response) {
+            throw new UnexpectedValueException('Route handlers must return a response.');
         }
+
+        return $response;
     }
 
     private function validCsrf(Request $request, ?string $expectedHash): bool
