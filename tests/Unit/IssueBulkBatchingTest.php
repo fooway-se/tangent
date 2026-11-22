@@ -32,20 +32,23 @@ final class IssueBulkBatchingTest extends TestCase
             ['id' => 13, 'title' => 'Third issue'],
         ]);
 
-        self::assertCount(6, $pdo->queries, 'Each bulk operation should prepare one SQL statement for its batch.');
+        self::assertCount(9, $pdo->queries, 'Batch writes also persist one revision update for each changed batch.');
         self::assertStringContainsString('id IN (', $pdo->queries[0]['sql']);
         self::assertStringContainsString('UPDATE issues SET is_shared', $pdo->queries[1]['sql']);
-        self::assertStringContainsString('UPDATE issues SET assignee_id', $pdo->queries[2]['sql']);
-        self::assertStringContainsString('CASE id', $pdo->queries[3]['sql']);
-        self::assertStringContainsString('FOR UPDATE', $pdo->queries[4]['sql']);
-        self::assertStringContainsString('INSERT INTO inbox_events', $pdo->queries[5]['sql']);
-        self::assertSame(3, substr_count($pdo->queries[5]['sql'], '(:workspace_id_'));
+        self::assertStringContainsString('INSERT INTO project_issue_revisions', $pdo->queries[2]['sql']);
+        self::assertStringContainsString('UPDATE issues SET assignee_id', $pdo->queries[3]['sql']);
+        self::assertStringContainsString('INSERT INTO project_issue_revisions', $pdo->queries[4]['sql']);
+        self::assertStringContainsString('CASE id', $pdo->queries[5]['sql']);
+        self::assertStringContainsString('INSERT INTO project_issue_revisions', $pdo->queries[6]['sql']);
+        self::assertStringContainsString('FOR UPDATE', $pdo->queries[7]['sql']);
+        self::assertStringContainsString('INSERT INTO inbox_events', $pdo->queries[8]['sql']);
+        self::assertSame(3, substr_count($pdo->queries[8]['sql'], '(:workspace_id_'));
         self::assertSame([11, 12, 13], array_values(array_intersect_key(
-            $pdo->queries[5]['parameters'],
+            $pdo->queries[8]['parameters'],
             ['issue_id_0' => true, 'issue_id_1' => true, 'issue_id_2' => true],
         )));
         self::assertSame(['First issue', 'Second issue', 'Third issue'], array_values(array_intersect_key(
-            $pdo->queries[5]['parameters'],
+            $pdo->queries[8]['parameters'],
             ['detail_0' => true, 'detail_1' => true, 'detail_2' => true],
         )));
     }
