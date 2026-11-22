@@ -52,15 +52,6 @@ export const dom = {
     membersView: document.querySelector<HTMLElement>('#members-view')!,
     adminGoPrefixOption: document.querySelector<HTMLElement>('#admin-go-prefix-option')!,
     membersTabButton: document.querySelector<HTMLButtonElement>('#members-tab')!,
-    memberList: document.querySelector<HTMLUListElement>('#member-list')!,
-    memberForm: document.querySelector<HTMLFormElement>('#member-form')!,
-    memberAddControls: document.querySelector<HTMLElement>('#member-add-controls')!,
-    memberAddStatus: document.querySelector<HTMLElement>('#member-add-status')!,
-    memberSelect: document.querySelector<HTMLSelectElement>('#member-select')!,
-    memberRemovalConfirmation: document.querySelector<HTMLDialogElement>('#member-removal-confirmation')!,
-    memberRemovalDescription: document.querySelector<HTMLElement>('#member-removal-description')!,
-    memberRemovalCancel: document.querySelector<HTMLButtonElement>('#member-removal-cancel')!,
-    memberRemovalConfirm: document.querySelector<HTMLButtonElement>('#member-removal-confirm')!,
   },
   shell: {
     createWorkspaceForm: document.querySelector<HTMLFormElement>('#create-workspace-form')!,
@@ -70,7 +61,6 @@ export const dom = {
     cancelProjectFormButton: document.querySelector<HTMLButtonElement>('#cancel-project-form')!,
     notesTabButton: document.querySelector<HTMLButtonElement>('#notes-tab')!,
     emptyIssues: document.querySelector<HTMLElement>('#empty-issues')!,
-    addMemberButton: document.querySelector<HTMLButtonElement>('#add-member-button')!,
     statusMessage: document.querySelector<HTMLElement>('#status-message')!,
   },
   roadmap: {

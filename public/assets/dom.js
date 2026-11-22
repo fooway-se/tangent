@@ -52,15 +52,6 @@ export const dom = {
         membersView: document.querySelector('#members-view'),
         adminGoPrefixOption: document.querySelector('#admin-go-prefix-option'),
         membersTabButton: document.querySelector('#members-tab'),
-        memberList: document.querySelector('#member-list'),
-        memberForm: document.querySelector('#member-form'),
-        memberAddControls: document.querySelector('#member-add-controls'),
-        memberAddStatus: document.querySelector('#member-add-status'),
-        memberSelect: document.querySelector('#member-select'),
-        memberRemovalConfirmation: document.querySelector('#member-removal-confirmation'),
-        memberRemovalDescription: document.querySelector('#member-removal-description'),
-        memberRemovalCancel: document.querySelector('#member-removal-cancel'),
-        memberRemovalConfirm: document.querySelector('#member-removal-confirm'),
     },
     shell: {
         createWorkspaceForm: document.querySelector('#create-workspace-form'),
@@ -70,7 +61,6 @@ export const dom = {
         cancelProjectFormButton: document.querySelector('#cancel-project-form'),
         notesTabButton: document.querySelector('#notes-tab'),
         emptyIssues: document.querySelector('#empty-issues'),
-        addMemberButton: document.querySelector('#add-member-button'),
         statusMessage: document.querySelector('#status-message'),
     },
     roadmap: {

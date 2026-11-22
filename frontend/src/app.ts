@@ -35,6 +35,7 @@ import { initIssueDiscussionUi } from './issue-discussion-ui.js';
 import { initIssueRelatedUi } from './issue-related-ui.js';
 import { initIssueStatusPickerUi } from './issue-status-picker-ui.js';
 import { initIssueDeleteUi } from './issue-delete-ui.js';
+import { initProjectMembersUi } from './project-members-ui.js';
 import { parseQuickIssueInput } from './quick-issue.js';
 import { milestoneStatus, type RoadmapMilestone } from './roadmap.js';
 import {
@@ -76,13 +77,11 @@ const {
   workspace: {
     workspacePanel, workspaceNav,
     adminNavButton, adminView, adminHeading, membersView, adminGoPrefixOption,
-    membersTabButton, memberList, memberForm, memberAddControls, memberAddStatus,
-    memberSelect, memberRemovalConfirmation, memberRemovalDescription, memberRemovalCancel,
-    memberRemovalConfirm,
+    membersTabButton,
   },
   shell: {
     createWorkspaceForm, breadcrumbProjectsButton, breadcrumbDivider, breadcrumbCurrent,
-    cancelProjectFormButton, notesTabButton, emptyIssues, addMemberButton,
+    cancelProjectFormButton, notesTabButton, emptyIssues,
     statusMessage,
   },
   roadmap: {
@@ -524,6 +523,16 @@ const projectNotesUi = initProjectNotesUi({
   onUnauthorized: () => showSignedOut(),
 });
 let activeProjectMembers: Member[] = [];
+const projectMembersUi = initProjectMembersUi({
+  getProjectId: () => activeProject?.id ?? null,
+  getMembers: () => activeProjectMembers,
+  getRole: () => activeUser?.role,
+  isReadOnly: () => activeProject !== null && projectStatusIsReadOnly(activeProject.status),
+  isViewVisible: () => !membersView.hidden,
+  api,
+  onRefresh: loadProjectDetail,
+  report,
+});
 let projectMilestones: Milestone[] = [];
 let projectIssues: Issue[] = [];
 let bulkMoveSelectionMode = false;
@@ -678,7 +687,6 @@ let issueQuickAddSourceProjectId: number | null = null;
 let goPrefixPending = false;
 let goPrefixTimer: number | null = null;
 let statusMessageTimer: number | null = null;
-let memberRemovalTarget: { member: Member; button: HTMLButtonElement } | null = null;
 
 const loungePresenceUi = initLoungePresence({
   navigationButton: loungeNavButton,
@@ -1195,7 +1203,7 @@ function issuePollingIsActive(projectId: number): boolean {
 
 function issueUpdatesAreDeferred(): boolean {
   const dialogOpen = issueStatusPickerUi.isOpen() || issueDeleteUi.isOpen()
-    || memberRemovalConfirmation.open || workspaceAdminUi.hasOpenDialog()
+    || projectMembersUi.hasOpenDialog() || workspaceAdminUi.hasOpenDialog()
     || milestoneUi.deleteConfirmation.open || milestoneUi.managerDialog.open;
   return shouldDeferIssueUpdates({
     issueEditorOpen: !issueDetailEditForm.hidden,
@@ -1555,7 +1563,7 @@ function shortcutContext(target: EventTarget | null) {
     statusHistoryFocused: issueRelatedUi.isStatusHistoryFocused(document.activeElement),
     textInputFocused: shouldBlurOnEscape(target),
     modalOpen: commandPaletteUi.isPaletteOpen() || clientSummaryUi.dialog.open || commandPaletteUi.isShortcutHelpOpen() || issueAiPromptUi.isOpen() || issueStatusPickerUi.isOpen() || issueDeleteUi.isOpen() || themeUi.aboutDialog.open || projectEditDialog.open
-      || memberRemovalConfirmation.open || workspaceAdminUi.hasOpenDialog() || milestoneUi.deleteConfirmation.open || milestoneUi.managerDialog.open
+      || projectMembersUi.hasOpenDialog() || workspaceAdminUi.hasOpenDialog() || milestoneUi.deleteConfirmation.open || milestoneUi.managerDialog.open
       || workspacePickerUi.isOpen(),
     canDismiss: commandPaletteUi.isPaletteOpen() || commandPaletteUi.isShortcutHelpOpen() || (!workspacePanel.hidden && (
       workspacePickerUi.hasPendingSwitch()
@@ -2010,7 +2018,7 @@ function openCommandPalette(): void {
   if (milestoneUi.managerDialog.open) milestoneUi.close();
   if (issueStatusPickerUi.isOpen()) issueStatusPickerUi.close();
   if (issueDeleteUi.isOpen()) issueDeleteUi.close();
-  if (memberRemovalConfirmation.open) closeMemberRemovalConfirmation();
+  if (projectMembersUi.hasOpenDialog()) projectMembersUi.closeRemovalConfirmation();
   workspaceAdminUi.closeOpenDialogs();
   commandPaletteUi.togglePalette(getPaletteCommands);
 }
@@ -2024,7 +2032,7 @@ function showShortcutHelp(): void {
   if (milestoneUi.managerDialog.open) milestoneUi.close();
   if (issueStatusPickerUi.isOpen()) issueStatusPickerUi.close();
   if (issueDeleteUi.isOpen()) issueDeleteUi.close();
-  if (memberRemovalConfirmation.open) closeMemberRemovalConfirmation();
+  if (projectMembersUi.hasOpenDialog()) projectMembersUi.closeRemovalConfirmation();
   workspaceAdminUi.closeOpenDialogs();
   commandPaletteUi.toggleShortcutHelp();
 }
@@ -2047,8 +2055,8 @@ function dismissCurrentView(): void {
     milestoneUi.close();
   } else if (issueDeleteUi.isOpen()) {
     issueDeleteUi.close();
-  } else if (memberRemovalConfirmation.open) {
-    closeMemberRemovalConfirmation();
+  } else if (projectMembersUi.hasOpenDialog()) {
+    projectMembersUi.closeRemovalConfirmation();
   } else if (workspaceAdminUi.hasOpenDialog()) {
     workspaceAdminUi.closeCurrentDialog();
   } else if (issueStatusPickerUi.isOpen()) {
@@ -2246,7 +2254,7 @@ function updateProjectReadOnlyNotice(status: Project['status']): void {
   issueDetailDeleteButton.disabled = readOnly;
   issueDiscussionUi.setReadOnly(readOnly);
   projectNotesUi.setReadOnly(readOnly);
-  memberForm.hidden = activeUser?.role !== 'admin' || readOnly;
+  projectMembersUi.setReadOnly(readOnly);
   if (readOnly) {
     issueDetailEditForm.hidden = true;
     issueDetailDisplay.hidden = false;
@@ -2459,7 +2467,7 @@ function handleKeyboardShortcut(event: KeyboardEvent): void {
     if (event.key === 'Escape') guestUi.closePreview();
     return;
   }
-  if ((commandPaletteUi.isPaletteOpen() || clientSummaryUi.dialog.open || commandPaletteUi.isShortcutHelpOpen() || issueAiPromptUi.isOpen() || issueStatusPickerUi.isOpen() || issueDeleteUi.isOpen() || memberRemovalConfirmation.open || workspaceAdminUi.hasOpenDialog() || milestoneUi.deleteConfirmation.open || milestoneUi.managerDialog.open || workspacePickerUi.isOpen() || themeUi.aboutDialog.open || projectEditDialog.open)
+  if ((commandPaletteUi.isPaletteOpen() || clientSummaryUi.dialog.open || commandPaletteUi.isShortcutHelpOpen() || issueAiPromptUi.isOpen() || issueStatusPickerUi.isOpen() || issueDeleteUi.isOpen() || projectMembersUi.hasOpenDialog() || workspaceAdminUi.hasOpenDialog() || milestoneUi.deleteConfirmation.open || milestoneUi.managerDialog.open || workspacePickerUi.isOpen() || themeUi.aboutDialog.open || projectEditDialog.open)
     && event.key !== 'Escape'
     && !((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k')) return;
   const context = shortcutContext(event.target);
@@ -2679,19 +2687,6 @@ issueForm.addEventListener('submit', async (event) => {
   } catch (error) {
     if (activeProject?.id === projectId) issueQuickAddTitle.focus();
     report(error instanceof Error ? error.message : 'Could not create the issue.', true);
-  }
-});
-
-memberForm.addEventListener('submit', async (event) => {
-  event.preventDefault();
-  if (activeProject === null || memberSelect.value === '') return;
-  const projectId = activeProject.id;
-  try {
-    await api(`/projects/${projectId}/members/${memberSelect.value}`, { method: 'PUT' });
-    report('Member added to the project.');
-    await loadProjectDetail(projectId, 'members');
-  } catch (error) {
-    report(error instanceof Error ? error.message : 'Could not add member.', true);
   }
 });
 
@@ -3042,7 +3037,7 @@ function switchProjectTab(tab: 'issues' | 'members' | 'notes', returnFocusIssueI
   }
 
   if (tab === 'members') {
-    void loadProjectMembers(activeProject.id);
+    void projectMembersUi.load(activeProject.id);
     return;
   }
   if (!projectNotesUi.isLoadedFor(activeProject.id)) void projectNotesUi.load(activeProject.id);
@@ -4174,131 +4169,6 @@ issueSourceLink.addEventListener('click', async (event) => {
   sourceMessage.classList.add('is-chat-source');
   sourceMessage.scrollIntoView({ behavior: 'smooth', block: 'center' });
 });
-
-async function loadProjectMembers(projectId: number): Promise<void> {
-  memberList.replaceChildren();
-  for (const member of activeProjectMembers) {
-    const item = document.createElement('li');
-    const label = document.createElement('span');
-    label.textContent = `${member.name} · ${member.role}`;
-    item.append(label);
-    if (activeUser?.role === 'admin') {
-      const removeButton = document.createElement('button');
-      removeButton.type = 'button';
-      removeButton.className = 'button button-quiet button-danger';
-      removeButton.textContent = 'Remove';
-      removeButton.dataset.userId = String(member.id);
-      removeButton.setAttribute('aria-label', `Remove ${member.name} from this project`);
-      removeButton.addEventListener('click', () => openMemberRemovalConfirmation(member, removeButton));
-      item.append(removeButton);
-    }
-    memberList.append(item);
-  }
-
-  memberForm.hidden = activeUser?.role !== 'admin' || (activeProject !== null && projectStatusIsReadOnly(activeProject.status));
-  updateMembersPanelTabIndex();
-  if (memberForm.hidden) {
-    memberAddControls.hidden = true;
-    memberAddStatus.hidden = true;
-    return;
-  }
-
-  memberAddControls.hidden = true;
-  memberAddStatus.textContent = 'Loading available members…';
-  memberAddStatus.hidden = false;
-  memberSelect.replaceChildren();
-  memberSelect.disabled = true;
-  addMemberButton.disabled = true;
-
-  try {
-    const result = await api<{ users: User[] }>('/users');
-    if (activeProject?.id !== projectId || membersView.hidden) return;
-    memberSelect.replaceChildren();
-    const availableMembers = result.users.filter(
-      (user) => !activeProjectMembers.some((member) => member.id === user.id),
-    );
-    if (availableMembers.length === 0) {
-      memberAddStatus.textContent = 'There are no other workspace members available to add.';
-      memberAddStatus.hidden = false;
-      updateMembersPanelTabIndex();
-      return;
-    }
-
-    for (const candidate of availableMembers) {
-      const option = document.createElement('option');
-      option.value = String(candidate.id);
-      option.textContent = `${candidate.name} · ${candidate.email}`;
-      memberSelect.append(option);
-    }
-    memberSelect.disabled = false;
-    addMemberButton.disabled = false;
-    memberAddStatus.hidden = true;
-    memberAddControls.hidden = false;
-    updateMembersPanelTabIndex();
-  } catch (error) {
-    if (activeProject?.id === projectId && !membersView.hidden) {
-      memberAddStatus.textContent = 'Could not load available members.';
-      memberAddStatus.hidden = false;
-    }
-    report(error instanceof Error ? error.message : 'Could not load workspace users.', true);
-  }
-}
-
-function openMemberRemovalConfirmation(member: Member, button: HTMLButtonElement): void {
-  memberRemovalTarget = { member, button };
-  memberRemovalDescription.textContent = `“${member.name}” will be removed from the project.`;
-  memberRemovalConfirmation.showModal();
-  memberRemovalCancel.focus();
-}
-
-function closeMemberRemovalConfirmation(): void {
-  if (memberRemovalConfirmation.open) memberRemovalConfirmation.close();
-  memberRemovalTarget = null;
-  memberRemovalConfirm.disabled = false;
-}
-
-async function confirmMemberRemoval(): Promise<void> {
-  const target = memberRemovalTarget;
-  if (target === null) return;
-  closeMemberRemovalConfirmation();
-  await removeProjectMember(target.member, target.button);
-}
-
-async function removeProjectMember(member: Member, removeButton: HTMLButtonElement): Promise<void> {
-  const projectId = activeProject?.id;
-  if (projectId === undefined) return;
-
-  const memberIndex = activeProjectMembers.findIndex((candidate) => candidate.id === member.id);
-  removeButton.disabled = true;
-  try {
-    await api<void>(`/projects/${projectId}/members/${member.id}`, { method: 'DELETE' });
-    if (activeProject?.id === projectId) {
-      await loadProjectDetail(projectId, 'members');
-      if (activeProject?.id === projectId && !membersView.hidden) {
-        const nextIndex = Math.min(memberIndex, activeProjectMembers.length - 1);
-        const nextMember = activeProjectMembers[nextIndex];
-        const nextRemoveButton = nextMember === undefined
-          ? null
-          : memberList.querySelector<HTMLButtonElement>(`button[data-user-id="${nextMember.id}"]`);
-        (nextRemoveButton ?? memberSelect).focus();
-      }
-    }
-    report(`${member.name} removed from the project.`);
-  } catch (error) {
-    report(error instanceof Error ? error.message : 'Could not remove the project member.', true);
-  } finally {
-    removeButton.disabled = false;
-  }
-}
-
-memberRemovalCancel.addEventListener('click', closeMemberRemovalConfirmation);
-memberRemovalConfirm.addEventListener('click', () => void confirmMemberRemoval());
-function updateMembersPanelTabIndex(): void {
-  const hasFocusableContent = Array.from(membersView.querySelectorAll<HTMLElement>(
-    'a[href], button, input, select, textarea, [tabindex]',
-  )).some((element) => element.tabIndex >= 0 && !element.matches(':disabled') && element.closest('[hidden]') === null);
-  membersView.tabIndex = hasFocusableContent ? -1 : 0;
-}
 
 createWorkspaceForm.addEventListener('submit', async (event) => {
   event.preventDefault();
