@@ -11,15 +11,14 @@ use Tangent\Tests\Support\ApiTestCase;
 
 final class AuthLifecycleTest extends ApiTestCase
 {
-    public function testLoginRejectsCrossOriginAndNonJsonRequests(): void
+    public function testLoginRequiresJsonWithoutDependingOnConfiguredOrigin(): void
     {
-        $crossOrigin = $this->request('POST', '/api/v1/auth/login', [
+        $mobileOrigin = $this->request('POST', '/api/v1/auth/login', [
             'email' => $this->adminEmail,
             'password' => $this->password,
-        ], ['Origin' => 'https://attacker.example']);
+        ], ['Origin' => 'https://fooway.se']);
 
-        self::assertSame(403, $crossOrigin->status);
-        self::assertSame('origin_invalid', $crossOrigin->body['error']['code']);
+        self::assertSame(200, $mobileOrigin->status, json_encode($mobileOrigin->body));
 
         $nonJson = $this->application->handle(Request::fromHttp(
             'POST',
@@ -33,13 +32,6 @@ final class AuthLifecycleTest extends ApiTestCase
 
         self::assertSame(400, $nonJson->status);
         self::assertSame('invalid_json', $nonJson->body['error']['code']);
-
-        $sameOrigin = $this->request('POST', '/api/v1/auth/login', [
-            'email' => $this->adminEmail,
-            'password' => $this->password,
-        ], ['Origin' => 'http://localhost:8080']);
-
-        self::assertSame(200, $sameOrigin->status, json_encode($sameOrigin->body));
     }
 
     public function testOversizedRequestBodyIsRejectedBeforeAuthentication(): void

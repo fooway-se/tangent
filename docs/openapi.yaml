@@ -149,7 +149,6 @@ paths:
     post:
       security: []
       summary: Sign in and create a browser session
-      description: Any supplied Origin header must match the configured public app origin. Clients that do not send Origin are supported.
       requestBody:
         required: true
         content:

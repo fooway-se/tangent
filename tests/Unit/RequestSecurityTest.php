@@ -95,7 +95,7 @@ final class RequestSecurityTest extends TestCase
         self::assertSame('payload_too_large', $response->body['error']['code']);
     }
 
-    public function testLoginRejectsMismatchedOrMalformedOrigins(): void
+    public function testLoginValidatesCredentialsWithoutDependingOnOriginParsing(): void
     {
         $pdo = new class extends \PDO {
             public function __construct()
@@ -113,13 +113,13 @@ final class RequestSecurityTest extends TestCase
             new WorkspaceRepository($pdo),
         );
 
-        foreach (['https://attacker.example', 'https://attacker.example:99999'] as $origin) {
+        foreach (['https://fooway.se', 'https://fooway.se:99999'] as $origin) {
             try {
                 $auth->login(Request::json('POST', '/api/v1/auth/login', [], ['Origin' => $origin]));
-                self::fail('Login should reject a mismatched or malformed origin.');
+                self::fail('Invalid credentials should be rejected.');
             } catch (ApiException $exception) {
-                self::assertSame(403, $exception->status);
-                self::assertSame('origin_invalid', $exception->apiCode);
+                self::assertSame(401, $exception->status);
+                self::assertSame('invalid_credentials', $exception->apiCode);
             }
         }
     }
