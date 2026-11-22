@@ -180,7 +180,7 @@ final class ProjectChatTest extends ApiTestCase
         $admin = $this->login($this->adminEmail);
         $projectId = $this->createProject($admin, 'Maximum depth thread');
         $parentId = null;
-        $maxDepth = 32;
+        $maxDepth = ChatRepository::MAX_THREAD_DEPTH;
 
         for ($depth = 1; $depth <= $maxDepth; $depth++) {
             $input = ['body' => 'Thread depth ' . $depth];
@@ -242,6 +242,13 @@ final class ProjectChatTest extends ApiTestCase
         ]);
         self::assertSame(422, $legacyReply->status, json_encode($legacyReply->body));
         self::assertSame('validation_failed', $legacyReply->body['error']['code']);
+
+        $shallowReply = $this->postMessage($projectId, $admin, [
+            'body' => 'A valid reply on the root beside legacy deep data',
+            'parent_id' => $history->body['messages'][0]['id'],
+        ]);
+        self::assertSame(201, $shallowReply->status, json_encode($shallowReply->body));
+        self::assertSame($history->body['messages'][0]['id'], $shallowReply->body['message']['parent_id']);
     }
 
     public function testNonMembersCannotReadOrPostProjectMessages(): void

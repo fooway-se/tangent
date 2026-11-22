@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tangent\Tests\Integration;
 
+use Tangent\Modules\Chat\ChatRepository;
 use Tangent\Tests\Support\ApiTestCase;
 
 final class LoungeChatTest extends ApiTestCase
@@ -68,6 +69,54 @@ final class LoungeChatTest extends ApiTestCase
         );
         $count->execute(['workspace_id' => $this->workspaceId]);
         self::assertSame(1, (int) $count->fetchColumn(), 'Opening Lounge again reuses the workspace channel.');
+    }
+
+    public function testLoungeRepliesSupportNestedThreadsUpToTheSharedDepthLimit(): void
+    {
+        $admin = $this->login($this->adminEmail);
+        $developer = $this->login($this->developerEmail);
+        $parentId = null;
+        $messages = [];
+
+        for ($depth = 1; $depth <= ChatRepository::MAX_THREAD_DEPTH; $depth++) {
+            $author = $depth % 2 === 0 ? $developer : $admin;
+            $input = ['body' => 'Lounge depth ' . $depth];
+            if ($parentId !== null) $input['parent_id'] = $parentId;
+
+            $sent = $this->cookieRequest(
+                'POST',
+                '/api/v1/lounge/messages',
+                $author['cookie'],
+                $input,
+                $author['csrf'],
+            );
+            self::assertSame(201, $sent->status, json_encode($sent->body));
+            $message = $sent->body['message'];
+            self::assertSame($parentId, $message['parent_id']);
+            $messages[] = $message;
+            $parentId = $message['id'];
+        }
+
+        self::assertSame('Lounge depth 1', $messages[0]['body']);
+        self::assertSame('Lounge depth 2', $messages[1]['body']);
+        self::assertSame($messages[0]['id'], $messages[1]['parent_id']);
+        self::assertSame($messages[1]['id'], $messages[2]['parent_id']);
+
+        $history = $this->cookieRequest('GET', '/api/v1/lounge/messages?since=0', $admin['cookie']);
+        self::assertSame(200, $history->status, json_encode($history->body));
+        self::assertCount(ChatRepository::MAX_THREAD_DEPTH, $history->body['messages']);
+        self::assertSame('Lounge depth 32', $history->body['messages'][31]['body']);
+        self::assertSame($messages[30]['id'], $history->body['messages'][31]['parent_id']);
+
+        $tooDeep = $this->cookieRequest(
+            'POST',
+            '/api/v1/lounge/messages',
+            $admin['cookie'],
+            ['body' => 'Lounge depth 33', 'parent_id' => $parentId],
+            $admin['csrf'],
+        );
+        self::assertSame(422, $tooDeep->status, json_encode($tooDeep->body));
+        self::assertSame('validation_failed', $tooDeep->body['error']['code']);
     }
 
     public function testLoungePresenceListsActiveInternalMembersAndExpiresStaleViewers(): void

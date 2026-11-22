@@ -216,6 +216,32 @@ test('chat message selection supports navigation, reply, issue creation, and com
   assert.match(app, /aria-keyshortcuts', 'j k ArrowUp ArrowDown Home End PageUp PageDown Enter r i'/);
 });
 
+test('Lounge messages use the same keyboard traversal and reply shortcuts as project chat', () => {
+  const loungeAppend = app.slice(app.indexOf('function appendLoungeMessage('), app.indexOf('function updateLoungeMessageReplyCount('));
+  const shortcutContext = app.slice(app.indexOf('function shortcutContext('), app.indexOf('function clearGoPrefix('));
+  const loungeSelection = {
+    chatMessagesFocused: true,
+    hasSelectedChatMessage: true,
+    canCreateIssueFromChatMessage: false,
+  };
+
+  assert.equal(resolve('j', loungeSelection), 'next-chat-message');
+  assert.equal(resolve('ArrowUp', loungeSelection), 'previous-chat-message');
+  assert.equal(resolve('Home', loungeSelection), 'first-chat-message');
+  assert.equal(resolve('End', loungeSelection), 'last-chat-message');
+  assert.equal(resolve('PageUp', loungeSelection), 'page-up');
+  assert.equal(resolve('PageDown', loungeSelection), 'page-down');
+  assert.equal(resolve('Enter', loungeSelection), 'focus-chat-composer');
+  assert.equal(resolve('r', loungeSelection), 'reply-to-chat-message');
+  assert.equal(resolve('i', loungeSelection), null);
+  assert.match(loungeAppend, /aria-keyshortcuts', 'j k ArrowUp ArrowDown Home End PageUp PageDown Enter r'/);
+  assert.match(loungeAppend, /item\.addEventListener\('focusin', \(\) => selectChatMessage\(message\.id, false\)\)/);
+  assert.match(shortcutContext, /activeChatMessagesById\(\)\.has\(selectedChatMessageId\)/);
+  assert.match(app, /function activeChatMessageList\(/);
+  assert.match(app, /function activeChatMessagesById\(/);
+  assert.match(app, /function focusActiveChatComposer\(/);
+});
+
 test('issue discussion messages use the chat navigation, reply, and composer shortcuts', () => {
   const discussionSelection = {
     issueDiscussionMessagesFocused: true,

@@ -241,7 +241,9 @@
                 <label>Message
                   <textarea id="lounge-input" name="body" rows="2" maxlength="10000" placeholder="Message the Lounge…" aria-label="Message" aria-autocomplete="list" aria-controls="lounge-mention-suggestions" aria-expanded="false" required></textarea>
                 </label>
+                <p id="lounge-reply-hint" class="chat-reply-hint" hidden></p>
                 <div class="chat-composer-actions">
+                  <button id="lounge-cancel-reply" class="button button-quiet" type="button" hidden>Cancel reply</button>
                   <button class="button button-primary" type="submit">Send</button>
                 </div>
               </form>

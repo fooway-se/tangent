@@ -73,6 +73,7 @@ export interface ShortcutContext {
   issueDetailVisible: boolean;
   hasSelectedIssue: boolean;
   hasLatestChatMessage: boolean;
+  canCreateIssueFromChatMessage?: boolean;
   chatMessagesFocused: boolean;
   hasSelectedChatMessage: boolean;
   issueDiscussionMessagesFocused: boolean;
@@ -147,7 +148,7 @@ export function resolveShortcut(event: ShortcutEvent, context: ShortcutContext):
     if (key === 'k' || key === 'arrowup') return 'previous-chat-message';
     if (event.key === 'Enter') return 'focus-chat-composer';
     if (key === 'r') return 'reply-to-chat-message';
-    if (key === 'i') return 'issue-from-selected-chat-message';
+    if (key === 'i' && context.canCreateIssueFromChatMessage !== false) return 'issue-from-selected-chat-message';
   }
 
   if (context.projectListVisible) {

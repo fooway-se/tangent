@@ -96,7 +96,7 @@ export function resolveShortcut(event, context) {
             return 'focus-chat-composer';
         if (key === 'r')
             return 'reply-to-chat-message';
-        if (key === 'i')
+        if (key === 'i' && context.canCreateIssueFromChatMessage !== false)
             return 'issue-from-selected-chat-message';
     }
     if (context.projectListVisible) {

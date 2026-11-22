@@ -498,13 +498,14 @@ final class ChatRepository
     public function threadParticipantIds(int $workspaceId, int $channelId, int $rootMessageId): array
     {
         $statement = $this->pdo->prepare(
-            'WITH RECURSIVE thread_messages AS (
-                SELECT id, parent_id, author_id FROM messages
+            'WITH RECURSIVE thread_messages (id, parent_id, author_id, depth) AS (
+                SELECT id, parent_id, author_id, 1 FROM messages
                 WHERE workspace_id = :workspace_id AND channel_id = :channel_id AND id = :root_id
                 UNION ALL
-                SELECT child.id, child.parent_id, child.author_id FROM messages child
+                SELECT child.id, child.parent_id, child.author_id, parent.depth + 1 FROM messages child
                 INNER JOIN thread_messages parent ON child.parent_id = parent.id
                 WHERE child.workspace_id = :child_workspace_id AND child.channel_id = :child_channel_id
+                  AND parent.depth < :max_depth
              )
              SELECT DISTINCT author_id FROM thread_messages'
         );
@@ -514,6 +515,7 @@ final class ChatRepository
             'root_id' => $rootMessageId,
             'child_workspace_id' => $workspaceId,
             'child_channel_id' => $channelId,
+            'max_depth' => self::MAX_THREAD_DEPTH,
         ]);
         return array_map('intval', $statement->fetchAll(PDO::FETCH_COLUMN));
     }

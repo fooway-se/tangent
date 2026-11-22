@@ -528,6 +528,8 @@ const loungeEmptyState = document.querySelector<HTMLElement>('#lounge-empty-stat
 const loungeForm = document.querySelector<HTMLFormElement>('#lounge-form')!;
 const loungeInput = document.querySelector<HTMLTextAreaElement>('#lounge-input')!;
 const loungeMentionList = document.querySelector<HTMLDivElement>('#lounge-mention-suggestions')!;
+const loungeReplyHint = document.querySelector<HTMLElement>('#lounge-reply-hint')!;
+const loungeCancelReply = document.querySelector<HTMLButtonElement>('#lounge-cancel-reply')!;
 const inboxSummary = document.querySelector<HTMLElement>('#inbox-summary')!;
 const inboxIssueList = document.querySelector<HTMLUListElement>('#inbox-issue-list')!;
 const inboxEmptyState = document.querySelector<HTMLElement>('#inbox-empty-state')!;
@@ -888,6 +890,8 @@ let loungeEtag: string | null = null;
 let loungePollDelay = 1000;
 let loungeFollowLatest = true;
 let loungeMembers: LoungeMentionMember[] = [];
+const loungeMessagesById = new Map<number, ChatMessage>();
+let loungeReplyParent: { id: number; name: string; body: string } | null = null;
 let loungeMentionQuery: MentionQuery | null = null;
 let loungeMentionMatches: LoungeMentionMember[] = [];
 let loungeMentionSelectedIndex = 0;
@@ -1891,11 +1895,14 @@ function stopChatPolling(): void {
 
 function stopLoungePolling(): void {
   loungeActive = false;
+  selectedChatMessageId = null;
   if (loungePollTimer !== null) window.clearTimeout(loungePollTimer);
   loungePollTimer = null;
   stopLoungePresencePolling();
   loungeMembers = [];
   loungeMentionDismissed = false;
+  clearLoungeReplyParent();
+  loungeMessagesById.clear();
   hideLoungeMentionSuggestions();
   loungeMessageList.replaceChildren(loungeEmptyState);
   loungeEmptyState.hidden = false;
@@ -2132,8 +2139,21 @@ function appendLoungeMessage(message: ChatMessage, scrollToBottom = false): void
   if (loungeMessageList.querySelector(`[data-message-id="${message.id}"]`) !== null) return;
 
   const item = document.createElement('article');
-  item.className = 'chat-message';
+  item.className = message.parent_id === null ? 'chat-message' : 'chat-message chat-reply';
   item.dataset.messageId = String(message.id);
+  item.tabIndex = -1;
+  item.setAttribute('aria-keyshortcuts', 'j k ArrowUp ArrowDown Home End PageUp PageDown Enter r');
+  item.addEventListener('focusin', () => selectChatMessage(message.id, false));
+  item.addEventListener('click', (event) => {
+    if (!(event.target instanceof HTMLElement) || event.target.closest('button') === null) {
+      selectChatMessage(message.id);
+    }
+  });
+  loungeMessagesById.set(message.id, message);
+  if (message.parent_id !== null) {
+    const parent = loungeMessagesById.get(message.parent_id);
+    if (parent !== undefined) updateLoungeMessageReplyCount(parent);
+  }
 
   const heading = document.createElement('div');
   heading.className = 'chat-message-heading';
@@ -2150,7 +2170,16 @@ function appendLoungeMessage(message: ChatMessage, scrollToBottom = false): void
   time.dateTime = message.created_at;
   time.textContent = formatChatTimestamp(message.created_at);
   authorDetails.append(author, time);
-  heading.append(avatar, authorDetails);
+  const actions = document.createElement('div');
+  actions.className = 'chat-message-actions';
+  const reply = document.createElement('button');
+  reply.className = 'button button-quiet chat-reply-button';
+  reply.type = 'button';
+  reply.textContent = 'Reply';
+  reply.setAttribute('aria-label', `Reply to ${message.author_name}`);
+  reply.addEventListener('click', () => setLoungeReplyParent(message));
+  actions.append(reply);
+  heading.append(avatar, authorDetails, actions);
 
   const body = document.createElement('p');
   body.className = 'chat-message-body';
@@ -2165,10 +2194,104 @@ function appendLoungeMessage(message: ChatMessage, scrollToBottom = false): void
       body.append(mention);
     }
   }
-  item.append(heading, body);
+  item.append(heading);
+  if (message.parent_id !== null) {
+    const parentAuthor = message.parent_author_name ?? loungeMessagesById.get(message.parent_id)?.author_name ?? null;
+    const parentBody = message.parent_body ?? loungeMessagesById.get(message.parent_id)?.body ?? null;
+    const parentExcerpt = parentBody === null ? '' : compactChatMessage(parentBody);
+    const parentLabel = parentAuthor === null
+      ? parentExcerpt || `Message #${message.parent_id}`
+      : parentExcerpt === '' ? parentAuthor : `${parentAuthor}: ${parentExcerpt}`;
+    const context = document.createElement('button');
+    context.className = 'chat-reply-context';
+    context.type = 'button';
+    context.textContent = `↳ ${parentLabel}`;
+    context.title = `Reply to ${parentLabel}`;
+    context.setAttribute('aria-label', `Jump to message #${message.parent_id}: ${parentLabel}`);
+    context.addEventListener('click', () => void focusLoungeMessageById(message.parent_id!));
+    item.append(context);
+  }
+  item.append(body);
   loungeMessageList.append(item);
+  updateLoungeMessageReplyCount(message);
   loungeEmptyState.hidden = true;
   if (scrollToBottom) loungeMessageList.scrollTop = loungeMessageList.scrollHeight;
+}
+
+function updateLoungeMessageReplyCount(message: ChatMessage): void {
+  const item = loungeMessageList.querySelector<HTMLElement>(`.chat-message[data-message-id="${message.id}"]`);
+  if (item === null) return;
+
+  const replies = Array.from(loungeMessagesById.values()).filter((candidate) => candidate.parent_id === message.id);
+  const replyCount = Math.max(message.reply_count ?? 0, replies.length);
+  const loadedFirstReplyId = replies.reduce<number | null>((firstId, reply) =>
+    firstId === null || reply.id < firstId ? reply.id : firstId, null);
+  const firstReplyId = message.first_reply_id === null || message.first_reply_id === undefined
+    ? loadedFirstReplyId
+    : loadedFirstReplyId === null ? message.first_reply_id : Math.min(message.first_reply_id, loadedFirstReplyId);
+  message.reply_count = replyCount;
+  message.first_reply_id = firstReplyId;
+
+  const existing = item.querySelector<HTMLButtonElement>('.chat-message-reply-count');
+  if (replyCount === 0 || firstReplyId === null) {
+    existing?.remove();
+    return;
+  }
+
+  const button = existing ?? document.createElement('button');
+  button.className = 'chat-message-reply-count';
+  button.type = 'button';
+  button.dataset.firstReplyId = String(firstReplyId);
+  const label = `${replyCount} ${replyCount === 1 ? 'reply' : 'replies'}`;
+  button.textContent = label;
+  button.title = `Show ${label} to ${message.author_name}'s message`;
+  button.setAttribute('aria-label', `Jump to the first of ${label} to ${message.author_name}'s message`);
+  if (existing === null) {
+    button.addEventListener('click', () => {
+      const firstReplyId = Number(button.dataset.firstReplyId);
+      if (Number.isSafeInteger(firstReplyId)) void focusLoungeMessageById(firstReplyId);
+    });
+    item.append(button);
+  }
+}
+
+function setLoungeReplyParent(message: ChatMessage): void {
+  loungeReplyParent = { id: message.id, name: message.author_name, body: message.body };
+  loungeReplyHint.textContent = `Replying to ${message.author_name}: ${compactChatMessage(message.body)}`;
+  loungeReplyHint.hidden = false;
+  loungeCancelReply.hidden = false;
+  loungeInput.focus();
+}
+
+function clearLoungeReplyParent(): void {
+  loungeReplyParent = null;
+  loungeReplyHint.hidden = true;
+  loungeReplyHint.textContent = '';
+  loungeCancelReply.hidden = true;
+}
+
+async function focusLoungeMessageById(messageId: number): Promise<void> {
+  if (!Number.isSafeInteger(messageId) || messageId < 1) return;
+  let sourceMessage = loungeMessageList.querySelector<HTMLElement>(`.chat-message[data-message-id="${messageId}"]`);
+  if (sourceMessage === null) {
+    try {
+      const result = await api<{ messages: ChatMessage[] }>(`/lounge/messages?since=${messageId - 1}`);
+      if (!loungeActive || loungeView.hidden) return;
+      for (const message of result.messages) appendLoungeMessage(message);
+      sourceMessage = loungeMessageList.querySelector<HTMLElement>(`.chat-message[data-message-id="${messageId}"]`);
+    } catch (error) {
+      report(error instanceof Error ? error.message : 'Could not open the replied-to Lounge message.', true);
+      return;
+    }
+  }
+  if (sourceMessage === null) {
+    report('The replied-to message is unavailable in the Lounge.', true);
+    return;
+  }
+  loungeMessageList.querySelector('.is-chat-source')?.classList.remove('is-chat-source');
+  sourceMessage.classList.add('is-chat-source');
+  sourceMessage.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  sourceMessage.focus();
 }
 
 async function loadLoungeChat(): Promise<void> {
@@ -2260,14 +2383,17 @@ async function sendLoungeMessage(event: SubmitEvent): Promise<void> {
   const sendButton = loungeForm.querySelector<HTMLButtonElement>('button[type="submit"]');
   if (sendButton !== null) sendButton.disabled = true;
   try {
+    const messageBody: { body: string; parent_id?: number } = { body };
+    if (loungeReplyParent !== null) messageBody.parent_id = loungeReplyParent.id;
     const result = await api<{ message: ChatMessage }>('/lounge/messages', {
       method: 'POST',
-      body: JSON.stringify({ body }),
+      body: JSON.stringify(messageBody),
     });
     if (!loungeActive) return;
     loungeCursor = Math.max(loungeCursor, result.message.id);
     appendLoungeMessage(result.message, true);
     loungeInput.value = '';
+    clearLoungeReplyParent();
     loungeMentionDismissed = false;
     hideLoungeMentionSuggestions();
     loungeEtag = null;
@@ -2532,18 +2658,34 @@ function latestChatIssueButton(): HTMLButtonElement | null {
   return messages.at(-1)?.querySelector<HTMLButtonElement>('.chat-create-issue-button:not(:disabled)') ?? null;
 }
 
+function activeChatMessageList(): HTMLElement | null {
+  return loungeView.hidden ? chatMessageList : loungeMessageList;
+}
+
+function activeChatMessagesById(): Map<number, ChatMessage> {
+  return loungeView.hidden ? chatMessagesById : loungeMessagesById;
+}
+
+function focusActiveChatComposer(): void {
+  if (loungeView.hidden) chatInput?.focus();
+  else loungeInput.focus();
+}
+
 function chatMessageElements(): HTMLElement[] {
-  if (chatMessageList === null) return [];
-  return Array.from(chatMessageList.querySelectorAll<HTMLElement>('.chat-message'))
+  const list = activeChatMessageList();
+  if (list === null) return [];
+  return Array.from(list.querySelectorAll<HTMLElement>('.chat-message'))
     .filter((message) => Number(message.dataset.messageId) > 0);
 }
 
 function selectChatMessage(id: number, focus = true): void {
-  const item = chatMessageList?.querySelector<HTMLElement>(`.chat-message[data-message-id="${id}"]`);
+  const list = activeChatMessageList();
+  const item = list?.querySelector<HTMLElement>(`.chat-message[data-message-id="${id}"]`);
   if (item === null || item === undefined) return;
   selectedChatMessageId = id;
-  chatFollowLatest = chatMessageElements().at(-1) === item;
-  chatMessageList?.querySelectorAll<HTMLElement>('.chat-message').forEach((message) => {
+  if (loungeView.hidden) chatFollowLatest = chatMessageElements().at(-1) === item;
+  else loungeFollowLatest = chatMessageElements().at(-1) === item;
+  list?.querySelectorAll<HTMLElement>('.chat-message').forEach((message) => {
     message.classList.toggle('is-keyboard-selected', message === item);
   });
   if (focus) item.focus();
@@ -2552,7 +2694,7 @@ function selectChatMessage(id: number, focus = true): void {
 function moveChatMessageSelection(direction: -1 | 1): void {
   const messages = chatMessageElements();
   if (messages.length === 0) {
-    chatInput?.focus();
+    focusActiveChatComposer();
     return;
   }
   const currentIndex = messages.findIndex((message) => Number(message.dataset.messageId) === selectedChatMessageId);
@@ -2571,9 +2713,10 @@ function moveChatMessageSelectionToBoundary(edge: 'first' | 'last'): void {
 
 function moveChatMessageSelectionByPage(direction: -1 | 1): void {
   const messages = chatMessageElements();
-  if (messages.length === 0 || chatMessageList === null) return;
+  const list = activeChatMessageList();
+  if (messages.length === 0 || list === null) return;
   const currentIndex = messages.findIndex((message) => Number(message.dataset.messageId) === selectedChatMessageId);
-  const pageSize = Math.max(1, visibleRowsInViewport(messages, chatMessageList, '.chat-message') - 1);
+  const pageSize = Math.max(1, visibleRowsInViewport(messages, list, '.chat-message') - 1);
   const baseIndex = currentIndex < 0
     ? direction > 0 ? 0 : Math.min(pageSize, messages.length - 1)
     : currentIndex;
@@ -2594,8 +2737,10 @@ function focusProjectChat(): void {
 
 function replyToSelectedChatMessage(): void {
   if (selectedChatMessageId === null || selectedChatMessageId <= 0) return;
-  const message = chatMessagesById.get(selectedChatMessageId);
-  if (message !== undefined) setChatReplyParent(message);
+  const message = activeChatMessagesById().get(selectedChatMessageId);
+  if (message === undefined) return;
+  if (loungeView.hidden) setChatReplyParent(message);
+  else setLoungeReplyParent(message);
 }
 
 function createIssueFromSelectedChatMessage(): void {
@@ -2673,7 +2818,8 @@ function shortcutContext(target: EventTarget | null) {
     chatMessagesFocused: target instanceof HTMLElement
       && target.closest('.chat-message') !== null,
     hasSelectedChatMessage: selectedChatMessageId !== null && selectedChatMessageId > 0
-      && chatMessagesById.has(selectedChatMessageId),
+      && activeChatMessagesById().has(selectedChatMessageId),
+    canCreateIssueFromChatMessage: loungeView.hidden,
     issueDiscussionMessagesFocused: target instanceof HTMLElement
       && target.closest('.issue-discussion-message') !== null,
     hasSelectedIssueDiscussionMessage: selectedIssueDiscussionMessageId !== null
@@ -2689,6 +2835,7 @@ function shortcutContext(target: EventTarget | null) {
       pendingWorkspaceId !== null
       || (!projectView.hidden && (!issueDetailView.hidden || !issueDetailEditForm.hidden
         || issueQuickAddEscapePending || chatReplyParent !== null))
+      || (!loungeView.hidden && loungeReplyParent !== null)
       || (!projectsView.hidden && !projectFormPanel.hidden)
       || !projectView.hidden || !roadmapView.hidden || !inboxView.hidden || !loungeView.hidden || !adminView.hidden
     )),
@@ -2842,7 +2989,7 @@ function moveProjectSelectionToBoundary(edge: 'first' | 'last'): void {
 }
 
 function moveSelectionByPage(direction: -1 | 1): void {
-  if (document.activeElement instanceof HTMLElement && document.activeElement.matches('.chat-message')) {
+  if (document.activeElement instanceof HTMLElement && document.activeElement.closest('.chat-message') !== null) {
     moveChatMessageSelectionByPage(direction);
   } else if (document.activeElement instanceof HTMLElement
     && document.activeElement.closest('.issue-discussion-message') !== null) {
@@ -3259,6 +3406,8 @@ function dismissCurrentView(): void {
   } else if (!workspacePanel.hidden && !projectView.hidden
     && (issueQuickAddEscapePending || issueForm.classList.contains('is-active'))) {
     cancelIssueQuickAdd();
+  } else if (!workspacePanel.hidden && !loungeView.hidden && loungeReplyParent !== null) {
+    clearLoungeReplyParent();
   } else if (!workspacePanel.hidden && !projectView.hidden && chatReplyParent !== null) {
     clearChatReplyParent();
   } else if (!workspacePanel.hidden && (!projectView.hidden || !inboxView.hidden || !adminView.hidden)) {
@@ -3576,6 +3725,16 @@ function blurTextInput(): void {
     else issueDiscussionHeading.focus();
     return;
   }
+  if (focused === loungeInput) {
+    const selected = selectedChatMessageId === null
+      ? null
+      : loungeMessageList.querySelector<HTMLElement>(`.chat-message[data-message-id="${selectedChatMessageId}"]`);
+    const latest = chatMessageElements().at(-1) ?? null;
+    const target = selected ?? latest;
+    if (target !== null) selectChatMessage(Number(target.dataset.messageId));
+    else loungeHeading.focus();
+    return;
+  }
   if (focused !== chatInput) return;
 
   const selected = selectedChatMessageId === null
@@ -3636,7 +3795,7 @@ function executeShortcut(action: ShortcutAction): void {
     case 'previous-chat-message': moveChatMessageSelection(-1); break;
     case 'next-issue-discussion-message': moveIssueDiscussionSelection(1); break;
     case 'previous-issue-discussion-message': moveIssueDiscussionSelection(-1); break;
-    case 'focus-chat-composer': chatInput?.focus(); break;
+    case 'focus-chat-composer': focusActiveChatComposer(); break;
     case 'reply-to-chat-message': replyToSelectedChatMessage(); break;
     case 'focus-issue-discussion-composer': issueDiscussionInput.focus(); break;
     case 'reply-to-issue-discussion-message': replyToSelectedIssueDiscussionMessage(); break;
@@ -4423,6 +4582,7 @@ loungeMessageList.addEventListener('scroll', () => {
     - loungeMessageList.clientHeight <= 24;
 });
 loungeForm.addEventListener('submit', (event) => void sendLoungeMessage(event));
+loungeCancelReply.addEventListener('click', clearLoungeReplyParent);
 loungeInput.addEventListener('input', () => {
   loungeMentionDismissed = false;
   updateLoungeMentionSuggestions();

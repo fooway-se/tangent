@@ -81,6 +81,20 @@ test('Lounge messages use relative calendar days in their timestamps', () => {
   assert.match(app, /time\.textContent = formatChatTimestamp\(message\.created_at\)/);
 });
 
+test('Lounge messages can be replied to and the selected parent is sent with the reply', () => {
+  const append = app.slice(app.indexOf('function appendLoungeMessage('), app.indexOf('async function loadLoungeChat('));
+
+  assert.match(append, /message\.parent_id === null \? 'chat-message' : 'chat-message chat-reply'/);
+  assert.match(append, /textContent = 'Reply'/);
+  assert.match(append, /setLoungeReplyParent\(message\)/);
+  assert.match(append, /chat-reply-context/);
+  assert.match(app, /function setLoungeReplyParent\(/);
+  assert.match(app, /if \(loungeReplyParent !== null\) messageBody\.parent_id = loungeReplyParent\.id/);
+  assert.match(app, /JSON\.stringify\(messageBody\)/);
+  assert.match(html, /id="lounge-reply-hint"/);
+  assert.match(html, /id="lounge-cancel-reply"/);
+});
+
 test('Lounge presence stays visible in navigation without adding the viewer to presence', () => {
   assert.match(app, /function pollWorkspaceLoungePresence\(/);
   assert.match(app, /api<\{ members: LoungePresenceMember\[\] \}>\('\/lounge\/presence'\)/);
