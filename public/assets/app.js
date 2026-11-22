@@ -7260,12 +7260,47 @@ function createIssueRow(issue, reorder, allowBulkMoveSelection = false, allowBul
     const key = document.createElement('span');
     key.className = 'issue-key';
     key.textContent = `#${issue.id}`;
+    let sharedIndicator = null;
+    if (issue.is_shared) {
+        const shared = document.createElement('span');
+        shared.className = 'issue-shared-tag';
+        shared.textContent = 'Shared';
+        shared.setAttribute('role', 'img');
+        shared.setAttribute('aria-label', 'Shared with guests');
+        shared.title = 'Shared with guests';
+        const shareIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        shareIcon.setAttribute('viewBox', '0 0 16 16');
+        shareIcon.setAttribute('aria-hidden', 'true');
+        shareIcon.setAttribute('focusable', 'false');
+        const shareLines = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        shareLines.setAttribute('d', 'M5.8 7 10.2 4.9M5.8 9 10.2 11.1');
+        const shareStart = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        shareStart.setAttribute('cx', '4');
+        shareStart.setAttribute('cy', '8');
+        shareStart.setAttribute('r', '2');
+        const shareTop = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        shareTop.setAttribute('cx', '12');
+        shareTop.setAttribute('cy', '4');
+        shareTop.setAttribute('r', '2');
+        const shareBottom = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        shareBottom.setAttribute('cx', '12');
+        shareBottom.setAttribute('cy', '12');
+        shareBottom.setAttribute('r', '2');
+        shareIcon.append(shareLines, shareStart, shareTop, shareBottom);
+        shared.append(shareIcon);
+        sharedIndicator = shared;
+    }
+    const statusColumn = document.createElement('span');
+    statusColumn.className = 'issue-status-column';
+    statusColumn.append(indicator);
+    if (sharedIndicator !== null)
+        statusColumn.append(sharedIndicator);
     const title = document.createElement('button');
     title.className = 'issue-title issue-title-button';
     title.type = 'button';
     title.textContent = issue.title;
     title.addEventListener('click', () => openIssue(issue));
-    mainline.append(indicator, key, title);
+    mainline.append(statusColumn, key, title);
     const discussionIndicator = createDiscussionIndicator(issue.discussion_count ?? 0);
     const metadata = document.createElement('div');
     metadata.className = 'issue-metadata';
@@ -7288,13 +7323,6 @@ function createIssueRow(issue, reorder, allowBulkMoveSelection = false, allowBul
         dueDate.textContent = `${overdue ? 'Overdue' : 'Due'} ${formatIssueDueDate(issue.due_date)}`;
         dueDate.title = `${overdue ? 'Overdue' : 'Due'} ${issue.due_date}`;
         metadata.append(dueDate);
-    }
-    if (issue.is_shared) {
-        const shared = document.createElement('span');
-        shared.className = 'issue-shared-tag';
-        shared.textContent = 'Shared';
-        shared.title = 'Shared with guest';
-        metadata.append(shared);
     }
     if (issue.is_ongoing) {
         const ongoing = document.createElement('span');
