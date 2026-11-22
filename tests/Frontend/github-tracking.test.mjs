@@ -4,6 +4,7 @@ import test from 'node:test';
 
 const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
+const issueRelatedUi = await readFile(new URL('../../frontend/src/issue-related-ui.ts', import.meta.url), 'utf8');
 const openapi = await readFile(new URL('../../docs/openapi.yaml', import.meta.url), 'utf8');
 const development = await readFile(new URL('../../docs/DEVELOPMENT.md', import.meta.url), 'utf8');
 const githubDocs = await readFile(new URL('../../docs/GITHUB.md', import.meta.url), 'utf8');
@@ -28,9 +29,9 @@ test('issue pull-request controls are available only for connected project repos
   assert.match(html, /id="link-pull-request-button"[^>]*>Link pull request/);
   assert.match(html, /id="issue-pull-request-dialog"/);
   assert.match(html, /id="issue-pull-request-url"[^>]*type="url"/);
-  assert.match(app, /issuePullRequests\.hidden = !hasIssue[\s\S]{0,160}activeProject\.github_repository === null[\s\S]{0,100}linkedPullRequests\.length === 0/);
-  assert.match(app, /api<\{ pull_requests: LinkedPullRequest\[\] \}>\(`\/issues\/\$\{issueId\}\/pull-requests`\)/);
-  assert.match(app, /method: 'POST',[\s\S]{0,160}JSON\.stringify\(\{ url: issuePullRequestUrl\.value \}\)/);
+  assert.match(issueRelatedUi, /issuePullRequests\.hidden = !hasIssue[\s\S]{0,200}project\.github_repository === null[\s\S]{0,100}linkedPullRequests\.length === 0/);
+  assert.match(issueRelatedUi, /request<\{ pull_requests: LinkedPullRequest\[\] \}>\(`\/issues\/\$\{issueId\}\/pull-requests`\)/);
+  assert.match(issueRelatedUi, /method: 'POST',[\s\S]{0,160}JSON\.stringify\(\{ url: issuePullRequestUrl\.value \}\)/);
 });
 
 test('GitHub API describes repository selection, manual PR links, and signed webhook updates', () => {

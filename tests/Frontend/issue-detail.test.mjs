@@ -4,6 +4,7 @@ import test from 'node:test';
 
 const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
+const issueRelatedUi = await readFile(new URL('../../frontend/src/issue-related-ui.ts', import.meta.url), 'utf8');
 const css = await readFile(new URL('../../public/assets/app.css', import.meta.url), 'utf8');
 
 test('issue detail editor sits in the center pane beside project chat', () => {
@@ -54,9 +55,9 @@ test('issue quick add exposes priority and due date syntax', () => {
 
 test('issue detail loads a compact status history with actor and time', () => {
   assert.match(html, /<details id="issue-status-history"/);
-  assert.match(app, /`\/issues\/\$\{issueId\}\/history`/);
-  assert.match(app, /transition\.actor_name/);
-  assert.match(app, /transition\.created_at/);
+  assert.match(issueRelatedUi, /`\/issues\/\$\{issueId\}\/history`/);
+  assert.match(issueRelatedUi, /transition\.actor_name/);
+  assert.match(issueRelatedUi, /transition\.created_at/);
 });
 
 test('status history has a strong visible keyboard focus state', () => {

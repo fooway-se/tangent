@@ -15,6 +15,7 @@ const summaryUi = await readFile(new URL('../../frontend/src/client-summary-ui.t
 const workspacePickerUi = await readFile(new URL('../../frontend/src/workspace-picker-ui.ts', import.meta.url), 'utf8');
 const issueAiPromptUi = await readFile(new URL('../../frontend/src/issue-ai-prompt-ui.ts', import.meta.url), 'utf8');
 const issueDiscussionUi = await readFile(new URL('../../frontend/src/issue-discussion-ui.ts', import.meta.url), 'utf8');
+const issueRelatedUi = await readFile(new URL('../../frontend/src/issue-related-ui.ts', import.meta.url), 'utf8');
 const baseContext = {
   targetIsEditable: false,
   goPrefixPending: false,
@@ -144,8 +145,8 @@ test('the g then p sequence returns to the project list and Escape dismisses tra
 test('Escape collapses focused issue status history before leaving issue detail', () => {
   assert.equal(resolve('Escape', { statusHistoryFocused: true, canDismiss: true }), 'collapse-status-history');
   assert.equal(resolve('Escape', { statusHistoryFocused: false, canDismiss: true }), 'dismiss');
-  assert.match(app, /statusHistoryFocused:\s*issueStatusHistory\.open\s*&&\s*issueStatusHistory\.contains\(document\.activeElement\)/);
-  assert.match(app, /case 'collapse-status-history':\s*issueStatusHistory\.open = false;/);
+  assert.match(app, /statusHistoryFocused:\s*issueRelatedUi\.isStatusHistoryFocused\(document\.activeElement\)/);
+  assert.match(app, /case 'collapse-status-history':\s*issueRelatedUi\.closeStatusHistory\(\)/);
 });
 
 test('g sequences switch between available project features', () => {

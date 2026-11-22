@@ -5,8 +5,8 @@ import {
   type ChatMessage, type ConditionalIssueList,
   type GitHubRepository, type GitHubRepositoryOptionSelection,
   type InboxIssue, type Issue,
-  type IssueGrouping, type IssuePriority, type IssueStatusTransition, type IssueType,
-  type LinkedPullRequest, type LoginResponse, type Member,
+  type IssueGrouping, type IssuePriority, type IssueType,
+  type LoginResponse, type Member,
   type Milestone, type Project, type User, type Workspace,
   type WorkspaceLocation,
 } from './types.js';
@@ -32,6 +32,7 @@ import { initWorkspacePickerUi } from './workspace-picker-ui.js';
 import { initIssueBoardUi } from './issue-board-ui.js';
 import { initIssueAiPromptUi } from './issue-ai-prompt-ui.js';
 import { initIssueDiscussionUi } from './issue-discussion-ui.js';
+import { initIssueRelatedUi } from './issue-related-ui.js';
 import { parseQuickIssueInput } from './quick-issue.js';
 import { milestoneStatus, type RoadmapMilestone } from './roadmap.js';
 import {
@@ -79,7 +80,7 @@ const {
   },
   shell: {
     createWorkspaceForm, breadcrumbProjectsButton, breadcrumbDivider, breadcrumbCurrent,
-    cancelProjectFormButton, linkPullRequestButton, notesTabButton, emptyIssues, addMemberButton,
+    cancelProjectFormButton, notesTabButton, emptyIssues, addMemberButton,
     statusMessage,
   },
   roadmap: {
@@ -103,9 +104,7 @@ const {
     issueDetailDueDate, issueDetailDescription, issueDetailBrief, issueDetailContextSection,
     issueDetailContext, issueDetailExpectedOutcomeSection, issueDetailExpectedOutcome,
     issueDetailAcceptanceCriteriaSection, issueDetailAcceptanceCriteria, issueDetailStatus,
-    issueDetailStatusLabel, issueSourceLink, issuePullRequests, issuePullRequestsList,
-    issuePullRequestsEmpty, issuePullRequestDialog, issuePullRequestForm, issuePullRequestClose,
-    issuePullRequestCancel, issuePullRequestUrl, issuePullRequestMessage, issuePullRequestSubmit,
+    issueDetailStatusLabel, issueSourceLink,
     issueDetailEditForm, issueDetailTitleInput, issueDetailDescriptionInput, issueDetailPriorityInput,
     issueDetailDueDateInput, issueDetailEditButton,
     issueDetailDeleteButton, issueDetailSaveButton, issuesTabButton, issueBackButton,
@@ -114,8 +113,7 @@ const {
     issueQuickAddApproval, issueQuickAddCancelButton, issueDetailType, issueDetailAssignee,
     issueDetailMilestone, issueDetailOngoingRow, issueDetailSharing, issueDetailApproval,
     issueDetailTypeInput, issueDetailAssigneeInput, issueDetailMilestoneInput, issueDetailOngoingInput,
-    issueDetailSharedInput, issueDetailApprovalInput, issueStatusHistory, issueStatusHistoryCount,
-    issueStatusHistoryEmpty, issueStatusHistoryList,
+    issueDetailSharedInput, issueDetailApprovalInput,
     issueDescriptionDetails, issueProgress, issueProgressLabel, issueFilter,
     issueGrouping, issueOrder, issueScope, issueCountSummary, issueBulkAssignToggle,
     issueBulkAssignToolbar, issueList, deletedIssuesDetails, deletedIssueCount, deletedIssueList,
@@ -564,8 +562,6 @@ const milestoneUi = initMilestoneUi({
   shouldRestoreFocus: () => !projectView.hidden && activeProject !== null
     && !commandPaletteUi.isPaletteOpen() && !commandPaletteUi.isShortcutHelpOpen() && !workspacePickerUi.isOpen(),
 });
-let linkedPullRequests: LinkedPullRequest[] = [];
-let issuePullRequestsRequestVersion = 0;
 let githubRepositories: GitHubRepository[] = [];
 let loungeActive = false;
 let issuePollTimer: number | null = null;
@@ -577,7 +573,6 @@ let deletedIssuesLoadPromise: Promise<void> | null = null;
 let issuePollHasDeferredChanges = false;
 let issuePollInFlightProjectId: number | null = null;
 let issuePollRequestVersion = 0;
-let issueStatusHistoryRequestVersion = 0;
 const deletedIssueRowRenderSignatures = new WeakMap<HTMLLIElement, string>();
 const issueBoardUi = initIssueBoardUi({
   issueList,
@@ -626,6 +621,16 @@ const issueDiscussionUi = initIssueDiscussionUi({
   onDiscussionCountChanged: updateProjectIssueDiscussionCount,
   onUnauthorized: () => showSignedOut(),
   avatarInitials,
+});
+const issueRelatedUi = initIssueRelatedUi({
+  getIssue: () => selectedIssue,
+  getProject: () => activeProject,
+  getUser: () => activeUser,
+  isProjectReadOnly: (project) => projectStatusIsReadOnly(project.status),
+  isDetailVisible: () => !issueDetailView.hidden,
+  issueStatusLabel,
+  onUnauthorized: () => showSignedOut(),
+  report,
 });
 let selectedChatMessageId: number | null = null;
 let issueQuickAddEscapePending = false;
@@ -1262,7 +1267,7 @@ async function pollProjectIssues(projectId: number): Promise<void> {
             if (activeDiff?.added.includes(selectedIssueId) || activeDiff?.changed.includes(selectedIssueId)) {
               renderIssueDetail();
               if (previousSelectedStatus !== refreshedSelectedIssue.status) {
-                void loadIssueStatusHistory(selectedIssueId);
+                void issueRelatedUi.loadStatusHistory(selectedIssueId);
               }
             }
           } else if (!issueDetailView.hidden) {
@@ -1513,7 +1518,7 @@ function shortcutContext(target: EventTarget | null) {
     issueDiscussionMessagesFocused: issueDiscussionUi.isMessageTarget(target),
     hasSelectedIssueDiscussionMessage: issueDiscussionUi.hasSelectedMessage(),
     issueGroupFocused: target instanceof HTMLElement && target.closest('.issue-group > summary') !== null,
-    statusHistoryFocused: issueStatusHistory.open && issueStatusHistory.contains(document.activeElement),
+    statusHistoryFocused: issueRelatedUi.isStatusHistoryFocused(document.activeElement),
     textInputFocused: shouldBlurOnEscape(target),
     modalOpen: commandPaletteUi.isPaletteOpen() || clientSummaryUi.dialog.open || commandPaletteUi.isShortcutHelpOpen() || issueAiPromptUi.isOpen() || issueStatusPicker.open || issueDeleteConfirmation.open || themeUi.aboutDialog.open || projectEditDialog.open
       || memberRemovalConfirmation.open || workspaceAdminUi.hasOpenDialog() || milestoneUi.deleteConfirmation.open || milestoneUi.managerDialog.open
@@ -2410,7 +2415,7 @@ function executeShortcut(action: ShortcutAction): void {
     case 'reply-to-issue-discussion-message': issueDiscussionUi.replyToSelected(); break;
     case 'issue-from-selected-chat-message': createIssueFromSelectedChatMessage(); break;
     case 'blur-text-input': blurTextInput(); break;
-    case 'collapse-status-history': issueStatusHistory.open = false; break;
+    case 'collapse-status-history': issueRelatedUi.closeStatusHistory(); break;
     case 'dismiss': dismissCurrentView(); break;
   }
 }
@@ -2610,47 +2615,6 @@ connectGithubCreateButton.addEventListener('click', () => void connectGithub());
 connectGithubEditButton.addEventListener('click', () => void connectGithub());
 projectEditStatus.addEventListener('change', updateProjectStatusHint);
 cancelProjectFormButton.addEventListener('click', closeProjectForm);
-linkPullRequestButton.addEventListener('click', () => {
-  if (selectedIssue === null || activeProject === null || activeProject.github_repository === null
-    || projectStatusIsReadOnly(activeProject.status)) return;
-  issuePullRequestForm.reset();
-  issuePullRequestMessage.textContent = '';
-  issuePullRequestMessage.classList.remove('is-error');
-  issuePullRequestDialog.showModal();
-  issuePullRequestUrl.focus();
-});
-issuePullRequestClose.addEventListener('click', () => issuePullRequestDialog.close());
-issuePullRequestCancel.addEventListener('click', () => issuePullRequestDialog.close());
-issuePullRequestDialog.addEventListener('close', () => {
-  issuePullRequestForm.reset();
-  issuePullRequestMessage.textContent = '';
-  issuePullRequestMessage.classList.remove('is-error');
-  if (selectedIssue !== null && !issueDetailView.hidden) linkPullRequestButton.focus();
-});
-issuePullRequestForm.addEventListener('submit', (event) => {
-  event.preventDefault();
-  const issueId = selectedIssue?.id;
-  if (issueId === undefined || activeProject === null || activeProject.github_repository === null) return;
-  issuePullRequestSubmit.disabled = true;
-  issuePullRequestMessage.textContent = '';
-  issuePullRequestMessage.classList.remove('is-error');
-  void api<{ pull_request: LinkedPullRequest }>(`/issues/${issueId}/pull-requests`, {
-    method: 'POST',
-    body: JSON.stringify({ url: issuePullRequestUrl.value }),
-  }).then(async () => {
-    if (selectedIssue?.id !== issueId) return;
-    await loadIssuePullRequests(issueId);
-    issuePullRequestDialog.close();
-    report('Pull request linked.');
-  }).catch((error: unknown) => {
-    issuePullRequestMessage.textContent = error instanceof Error ? error.message : 'Could not link pull request.';
-    issuePullRequestMessage.classList.add('is-error');
-    issuePullRequestUrl.focus();
-  }).finally(() => {
-    issuePullRequestSubmit.disabled = false;
-  });
-});
-
 issueForm.addEventListener('submit', async (event) => {
   event.preventDefault();
   if (activeProject === null) return;
@@ -3721,110 +3685,7 @@ function renderIssueDetail(): void {
   } else {
     delete issueSourceLink.dataset.messageId;
   }
-  renderIssuePullRequests();
-}
-
-function renderIssuePullRequests(message = ''): void {
-  const hasIssue = selectedIssue !== null;
-  const canManage = hasIssue
-    && activeProject !== null
-    && !projectStatusIsReadOnly(activeProject.status)
-    && activeUser?.role !== 'guest';
-  const canLink = canManage && activeProject !== null && activeProject.github_repository !== null;
-  issuePullRequestsList.replaceChildren(...linkedPullRequests.map((pullRequest) => {
-    const item = document.createElement('li');
-    item.className = 'issue-pull-request-row';
-    const main = document.createElement('div');
-    main.className = 'issue-pull-request-main';
-    const link = document.createElement('a');
-    link.className = 'issue-pull-request-link';
-    link.href = pullRequest.html_url;
-    link.target = '_blank';
-    link.rel = 'noopener noreferrer';
-    link.textContent = `${pullRequest.repository_full_name} #${pullRequest.pull_number} · ${pullRequest.title}`;
-    const metadata = document.createElement('div');
-    metadata.className = 'issue-pull-request-meta';
-    const state = document.createElement('span');
-    state.className = `issue-pull-request-state${pullRequest.state !== 'open' ? ' is-closed' : ''}`;
-    state.textContent = `${pullRequest.is_draft ? 'Draft · ' : ''}${pullRequest.state}`;
-    const author = document.createElement('span');
-    author.textContent = pullRequest.author_login === '' ? 'Author unknown' : `@${pullRequest.author_login}`;
-    const updated = document.createElement('time');
-    updated.dateTime = pullRequest.github_updated_at;
-    updated.textContent = `Updated ${new Date(`${pullRequest.github_updated_at}Z`).toLocaleDateString()}`;
-    metadata.append(state, author, updated);
-    main.append(link, metadata);
-    item.append(main);
-    if (canManage && selectedIssue !== null) {
-      const issueId = selectedIssue.id;
-      const unlink = document.createElement('button');
-      unlink.type = 'button';
-      unlink.className = 'button button-quiet';
-      unlink.textContent = 'Unlink';
-      unlink.setAttribute('aria-label', `Unlink pull request ${pullRequest.repository_full_name} #${pullRequest.pull_number}`);
-      unlink.addEventListener('click', () => void unlinkIssuePullRequest(issueId, pullRequest.id, unlink));
-      item.append(unlink);
-    }
-    return item;
-  }));
-  issuePullRequests.hidden = !hasIssue
-    || ((activeProject === null || activeProject.github_repository === null) && linkedPullRequests.length === 0);
-  linkPullRequestButton.hidden = !canLink;
-  issuePullRequestsEmpty.hidden = linkedPullRequests.length > 0;
-  issuePullRequestsEmpty.textContent = message || 'No pull requests linked yet.';
-}
-
-async function loadIssuePullRequests(issueId: number): Promise<void> {
-  const requestVersion = ++issuePullRequestsRequestVersion;
-  renderIssuePullRequests('Loading pull requests…');
-  try {
-    const result = await api<{ pull_requests: LinkedPullRequest[] }>(`/issues/${issueId}/pull-requests`);
-    if (requestVersion !== issuePullRequestsRequestVersion || selectedIssue?.id !== issueId) return;
-    linkedPullRequests = result.pull_requests;
-    renderIssuePullRequests();
-  } catch (error) {
-    if (requestVersion !== issuePullRequestsRequestVersion || selectedIssue?.id !== issueId) return;
-    linkedPullRequests = [];
-    renderIssuePullRequests(error instanceof Error ? error.message : 'Could not load linked pull requests.');
-  }
-}
-
-async function unlinkIssuePullRequest(issueId: number, pullRequestId: number, button: HTMLButtonElement): Promise<void> {
-  button.disabled = true;
-  try {
-    await api(`/issues/${issueId}/pull-requests/${pullRequestId}`, { method: 'DELETE' });
-    await loadIssuePullRequests(issueId);
-  } catch (error) {
-    button.disabled = false;
-    report(error instanceof Error ? error.message : 'Could not unlink pull request.', true);
-  }
-}
-
-async function loadIssueStatusHistory(issueId: number): Promise<void> {
-  const requestVersion = ++issueStatusHistoryRequestVersion;
-  issueStatusHistory.hidden = false;
-  issueStatusHistoryCount.textContent = '…';
-  issueStatusHistoryList.replaceChildren();
-  issueStatusHistoryEmpty.hidden = false;
-  issueStatusHistoryEmpty.textContent = 'Loading status history…';
-  try {
-    const result = await api<{ transitions: IssueStatusTransition[] }>(`/issues/${issueId}/history`);
-    if (requestVersion !== issueStatusHistoryRequestVersion || selectedIssue?.id !== issueId) return;
-    issueStatusHistoryCount.textContent = String(result.transitions.length);
-    issueStatusHistoryEmpty.hidden = result.transitions.length > 0;
-    issueStatusHistoryEmpty.textContent = 'No status changes yet.';
-    issueStatusHistoryList.replaceChildren(...result.transitions.map(createIssueStatusHistoryRow));
-  } catch (error) {
-    if (requestVersion !== issueStatusHistoryRequestVersion || selectedIssue?.id !== issueId) return;
-    if (error instanceof ApiFailure && error.status === 401) {
-      showSignedOut();
-      return;
-    }
-    issueStatusHistoryCount.textContent = '—';
-    issueStatusHistoryEmpty.hidden = false;
-    issueStatusHistoryEmpty.textContent = 'Could not load status history.';
-    report(error instanceof Error ? error.message : 'Could not load status history.', true);
-  }
+  issueRelatedUi.renderPullRequests();
 }
 
 function updateProjectIssueDiscussionCount(issueId: number, count: number): void {
@@ -3839,27 +3700,6 @@ function updateProjectIssueDiscussionCount(issueId: number, count: number): void
   inboxUi.updateIssueDiscussionCount(issueId, count);
 }
 
-
-function createIssueStatusHistoryRow(transition: IssueStatusTransition): HTMLLIElement {
-  const item = document.createElement('li');
-  item.className = 'issue-status-history-item';
-  const change = document.createElement('span');
-  change.className = 'issue-status-history-change';
-  change.textContent = transition.from_status === null
-    ? `Set to ${issueStatusLabel(transition.to_status)}`
-    : `${issueStatusLabel(transition.from_status)} → ${issueStatusLabel(transition.to_status)}`;
-  const actor = document.createElement('span');
-  actor.className = 'issue-status-history-actor';
-  actor.textContent = transition.actor_name;
-  const time = document.createElement('time');
-  time.dateTime = transition.created_at.replace(' ', 'T');
-  const parsedDate = new Date(transition.created_at.replace(' ', 'T'));
-  time.textContent = Number.isNaN(parsedDate.getTime())
-    ? transition.created_at
-    : new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(parsedDate);
-  item.append(change, actor, time);
-  return item;
-}
 
 function focusIssueTitleButton(issueId: number): boolean {
   const button = issueList.querySelector<HTMLButtonElement>(
@@ -3886,7 +3726,7 @@ function resetIssueDetailEditForm(): void {
 
 function openIssue(issue: Issue): void {
   selectedIssue = issue;
-  linkedPullRequests = [];
+  issueRelatedUi.reset();
   issueDiscussionUi.clear();
   issueList.querySelectorAll<HTMLElement>('.issue-card').forEach((row) => {
     row.classList.toggle('is-keyboard-selected', row.dataset.issueId === String(issue.id));
@@ -3894,8 +3734,8 @@ function openIssue(issue: Issue): void {
   issueDetailDisplay.hidden = false;
   issueDetailEditForm.hidden = true;
   renderIssueDetail();
-  void loadIssuePullRequests(issue.id);
-  void loadIssueStatusHistory(issue.id);
+  void issueRelatedUi.loadPullRequests(issue.id);
+  void issueRelatedUi.loadStatusHistory(issue.id);
   void issueDiscussionUi.load(issue.id);
   switchProjectTab('issues');
   issueBackButton.focus();
@@ -4090,7 +3930,7 @@ async function updateIssueStatus(issue: Issue, nextStatus: IssueStatus): Promise
       projectIssues = projectIssues.map((candidate) => candidate.id === issue.id ? result.issue : candidate);
       renderIssueDetail();
       renderProjectIssueBoard();
-      if (previousStatus !== result.issue.status) void loadIssueStatusHistory(issue.id);
+      if (previousStatus !== result.issue.status) void issueRelatedUi.loadStatusHistory(issue.id);
     }
     report('Issue status updated.');
     if (issueDetailView.hidden) await loadProjectIssues(issue.project_id);

@@ -22,12 +22,13 @@ import { initWorkspacePickerUi } from './workspace-picker-ui.js';
 import { initIssueBoardUi } from './issue-board-ui.js';
 import { initIssueAiPromptUi } from './issue-ai-prompt-ui.js';
 import { initIssueDiscussionUi } from './issue-discussion-ui.js';
+import { initIssueRelatedUi } from './issue-related-ui.js';
 import { parseQuickIssueInput } from './quick-issue.js';
 import { milestoneStatus } from './roadmap.js';
 import { filterIssues, filterIssuesByMilestoneArchive, groupIssues, groupIssuesByMilestone, discussionIndicatorLabel, projectProgress, sortIssues, } from './issue-board.js';
 import { diffConditionalIssueCollections, loadIssueCollections, nextIssuePollDelay, refreshDeletedIssuesOnOpen, shouldDeferIssueUpdates, } from './issue-polling.js';
 import { dom } from './dom.js';
-const { project: { projectHeading, projectEditDialog, projectEditForm, projectEditClose, projectEditCancel, projectEditName, projectEditDescription, projectEditStatus, projectEditStatusHelp, projectReadOnlyNotice, projectEditMessage, projectEditSave, editProjectButton, projectGithubRepository, projectEditGithubRepository, githubProjectSelectionStatus, githubProjectEditStatus, connectGithubCreateButton, connectGithubEditButton, projectsNavButton, projectsView, projectView, projectForm, projectList, emptyProjects, projectFormPanel, projectDescription, projectState, projectChatColumn, projectSidebarList, projectSidebarEmpty, projectMain, projectTabs, projectKeyboardHints, }, auth: { loginPanel, loginShell, accountBar, currentUserLabel, loginStatusMessage, logoutButton, }, workspace: { workspacePanel, workspaceNav, adminNavButton, adminView, adminHeading, membersView, adminGoPrefixOption, membersTabButton, memberList, memberForm, memberAddControls, memberAddStatus, memberSelect, memberRemovalConfirmation, memberRemovalDescription, memberRemovalCancel, memberRemovalConfirm, }, shell: { createWorkspaceForm, breadcrumbProjectsButton, breadcrumbDivider, breadcrumbCurrent, cancelProjectFormButton, linkPullRequestButton, notesTabButton, emptyIssues, addMemberButton, statusMessage, }, roadmap: { roadmapNavButton, roadmapView, roadmapHeading, roadmapSummary, roadmapMilestoneList, roadmapEmptyState, roadmapGoPrefixOption, }, inbox: { inboxNavButton, inboxView, inboxHeading, }, lounge: { loungeNavButton, loungeView, loungeHeading, loungeMessageList, }, shortcuts: { toggleProjectFormButton, keyboardHints, goPrefixHint, goPrefixWorkspaceOption, goPrefixProjectOptions, }, chat: { chatView, }, issues: { issuesView, issueDetailView, issueDetailDisplay, issueDetailTitle, issueDetailPriority, issueDetailDueDate, issueDetailDescription, issueDetailBrief, issueDetailContextSection, issueDetailContext, issueDetailExpectedOutcomeSection, issueDetailExpectedOutcome, issueDetailAcceptanceCriteriaSection, issueDetailAcceptanceCriteria, issueDetailStatus, issueDetailStatusLabel, issueSourceLink, issuePullRequests, issuePullRequestsList, issuePullRequestsEmpty, issuePullRequestDialog, issuePullRequestForm, issuePullRequestClose, issuePullRequestCancel, issuePullRequestUrl, issuePullRequestMessage, issuePullRequestSubmit, issueDetailEditForm, issueDetailTitleInput, issueDetailDescriptionInput, issueDetailPriorityInput, issueDetailDueDateInput, issueDetailEditButton, issueDetailDeleteButton, issueDetailSaveButton, issuesTabButton, issueBackButton, issueDetailCancelButton, issueForm, issueQuickAddTitle, issueQuickAddPriority, issueQuickAddDueDate, issueQuickAddAssignee, issueQuickAddMilestone, issueQuickAddOngoing, issueQuickAddShared, issueQuickAddApproval, issueQuickAddCancelButton, issueDetailType, issueDetailAssignee, issueDetailMilestone, issueDetailOngoingRow, issueDetailSharing, issueDetailApproval, issueDetailTypeInput, issueDetailAssigneeInput, issueDetailMilestoneInput, issueDetailOngoingInput, issueDetailSharedInput, issueDetailApprovalInput, issueStatusHistory, issueStatusHistoryCount, issueStatusHistoryEmpty, issueStatusHistoryList, issueDescriptionDetails, issueProgress, issueProgressLabel, issueFilter, issueGrouping, issueOrder, issueScope, issueCountSummary, issueBulkAssignToggle, issueBulkAssignToolbar, issueList, deletedIssuesDetails, deletedIssueCount, deletedIssueList, issueStatusPicker, issueStatusPickerClose, issueStatusPickerDescription, issueStatusPickerOptions, issueDeleteConfirmation, issueDeleteDescription, issueDeleteError, issueDeleteCancel, issueDeleteConfirm, }, guest: { guestLogoutButton, }, } = dom;
+const { project: { projectHeading, projectEditDialog, projectEditForm, projectEditClose, projectEditCancel, projectEditName, projectEditDescription, projectEditStatus, projectEditStatusHelp, projectReadOnlyNotice, projectEditMessage, projectEditSave, editProjectButton, projectGithubRepository, projectEditGithubRepository, githubProjectSelectionStatus, githubProjectEditStatus, connectGithubCreateButton, connectGithubEditButton, projectsNavButton, projectsView, projectView, projectForm, projectList, emptyProjects, projectFormPanel, projectDescription, projectState, projectChatColumn, projectSidebarList, projectSidebarEmpty, projectMain, projectTabs, projectKeyboardHints, }, auth: { loginPanel, loginShell, accountBar, currentUserLabel, loginStatusMessage, logoutButton, }, workspace: { workspacePanel, workspaceNav, adminNavButton, adminView, adminHeading, membersView, adminGoPrefixOption, membersTabButton, memberList, memberForm, memberAddControls, memberAddStatus, memberSelect, memberRemovalConfirmation, memberRemovalDescription, memberRemovalCancel, memberRemovalConfirm, }, shell: { createWorkspaceForm, breadcrumbProjectsButton, breadcrumbDivider, breadcrumbCurrent, cancelProjectFormButton, notesTabButton, emptyIssues, addMemberButton, statusMessage, }, roadmap: { roadmapNavButton, roadmapView, roadmapHeading, roadmapSummary, roadmapMilestoneList, roadmapEmptyState, roadmapGoPrefixOption, }, inbox: { inboxNavButton, inboxView, inboxHeading, }, lounge: { loungeNavButton, loungeView, loungeHeading, loungeMessageList, }, shortcuts: { toggleProjectFormButton, keyboardHints, goPrefixHint, goPrefixWorkspaceOption, goPrefixProjectOptions, }, chat: { chatView, }, issues: { issuesView, issueDetailView, issueDetailDisplay, issueDetailTitle, issueDetailPriority, issueDetailDueDate, issueDetailDescription, issueDetailBrief, issueDetailContextSection, issueDetailContext, issueDetailExpectedOutcomeSection, issueDetailExpectedOutcome, issueDetailAcceptanceCriteriaSection, issueDetailAcceptanceCriteria, issueDetailStatus, issueDetailStatusLabel, issueSourceLink, issueDetailEditForm, issueDetailTitleInput, issueDetailDescriptionInput, issueDetailPriorityInput, issueDetailDueDateInput, issueDetailEditButton, issueDetailDeleteButton, issueDetailSaveButton, issuesTabButton, issueBackButton, issueDetailCancelButton, issueForm, issueQuickAddTitle, issueQuickAddPriority, issueQuickAddDueDate, issueQuickAddAssignee, issueQuickAddMilestone, issueQuickAddOngoing, issueQuickAddShared, issueQuickAddApproval, issueQuickAddCancelButton, issueDetailType, issueDetailAssignee, issueDetailMilestone, issueDetailOngoingRow, issueDetailSharing, issueDetailApproval, issueDetailTypeInput, issueDetailAssigneeInput, issueDetailMilestoneInput, issueDetailOngoingInput, issueDetailSharedInput, issueDetailApprovalInput, issueDescriptionDetails, issueProgress, issueProgressLabel, issueFilter, issueGrouping, issueOrder, issueScope, issueCountSummary, issueBulkAssignToggle, issueBulkAssignToolbar, issueList, deletedIssuesDetails, deletedIssueCount, deletedIssueList, issueStatusPicker, issueStatusPickerClose, issueStatusPickerDescription, issueStatusPickerOptions, issueDeleteConfirmation, issueDeleteDescription, issueDeleteError, issueDeleteCancel, issueDeleteConfirm, }, guest: { guestLogoutButton, }, } = dom;
 const KEYBOARD_HINTS_STORAGE_KEY = 'tangent.keyboard-hints-visible';
 function loadKeyboardHintsPreference() {
     try {
@@ -170,8 +171,6 @@ const milestoneUi = initMilestoneUi({
     shouldRestoreFocus: () => !projectView.hidden && activeProject !== null
         && !commandPaletteUi.isPaletteOpen() && !commandPaletteUi.isShortcutHelpOpen() && !workspacePickerUi.isOpen(),
 });
-let linkedPullRequests = [];
-let issuePullRequestsRequestVersion = 0;
 let githubRepositories = [];
 let loungeActive = false;
 let issuePollTimer = null;
@@ -183,7 +182,6 @@ let deletedIssuesLoadPromise = null;
 let issuePollHasDeferredChanges = false;
 let issuePollInFlightProjectId = null;
 let issuePollRequestVersion = 0;
-let issueStatusHistoryRequestVersion = 0;
 const deletedIssueRowRenderSignatures = new WeakMap();
 const issueBoardUi = initIssueBoardUi({
     issueList,
@@ -234,6 +232,16 @@ const issueDiscussionUi = initIssueDiscussionUi({
     onDiscussionCountChanged: updateProjectIssueDiscussionCount,
     onUnauthorized: () => showSignedOut(),
     avatarInitials,
+});
+const issueRelatedUi = initIssueRelatedUi({
+    getIssue: () => selectedIssue,
+    getProject: () => activeProject,
+    getUser: () => activeUser,
+    isProjectReadOnly: (project) => projectStatusIsReadOnly(project.status),
+    isDetailVisible: () => !issueDetailView.hidden,
+    issueStatusLabel,
+    onUnauthorized: () => showSignedOut(),
+    report,
 });
 let selectedChatMessageId = null;
 let issueQuickAddEscapePending = false;
@@ -863,7 +871,7 @@ async function pollProjectIssues(projectId) {
                         if (activeDiff?.added.includes(selectedIssueId) || activeDiff?.changed.includes(selectedIssueId)) {
                             renderIssueDetail();
                             if (previousSelectedStatus !== refreshedSelectedIssue.status) {
-                                void loadIssueStatusHistory(selectedIssueId);
+                                void issueRelatedUi.loadStatusHistory(selectedIssueId);
                             }
                         }
                     }
@@ -1121,7 +1129,7 @@ function shortcutContext(target) {
         issueDiscussionMessagesFocused: issueDiscussionUi.isMessageTarget(target),
         hasSelectedIssueDiscussionMessage: issueDiscussionUi.hasSelectedMessage(),
         issueGroupFocused: target instanceof HTMLElement && target.closest('.issue-group > summary') !== null,
-        statusHistoryFocused: issueStatusHistory.open && issueStatusHistory.contains(document.activeElement),
+        statusHistoryFocused: issueRelatedUi.isStatusHistoryFocused(document.activeElement),
         textInputFocused: shouldBlurOnEscape(target),
         modalOpen: commandPaletteUi.isPaletteOpen() || clientSummaryUi.dialog.open || commandPaletteUi.isShortcutHelpOpen() || issueAiPromptUi.isOpen() || issueStatusPicker.open || issueDeleteConfirmation.open || themeUi.aboutDialog.open || projectEditDialog.open
             || memberRemovalConfirmation.open || workspaceAdminUi.hasOpenDialog() || milestoneUi.deleteConfirmation.open || milestoneUi.managerDialog.open
@@ -2124,7 +2132,7 @@ function executeShortcut(action) {
             blurTextInput();
             break;
         case 'collapse-status-history':
-            issueStatusHistory.open = false;
+            issueRelatedUi.closeStatusHistory();
             break;
         case 'dismiss':
             dismissCurrentView();
@@ -2342,50 +2350,6 @@ connectGithubCreateButton.addEventListener('click', () => void connectGithub());
 connectGithubEditButton.addEventListener('click', () => void connectGithub());
 projectEditStatus.addEventListener('change', updateProjectStatusHint);
 cancelProjectFormButton.addEventListener('click', closeProjectForm);
-linkPullRequestButton.addEventListener('click', () => {
-    if (selectedIssue === null || activeProject === null || activeProject.github_repository === null
-        || projectStatusIsReadOnly(activeProject.status))
-        return;
-    issuePullRequestForm.reset();
-    issuePullRequestMessage.textContent = '';
-    issuePullRequestMessage.classList.remove('is-error');
-    issuePullRequestDialog.showModal();
-    issuePullRequestUrl.focus();
-});
-issuePullRequestClose.addEventListener('click', () => issuePullRequestDialog.close());
-issuePullRequestCancel.addEventListener('click', () => issuePullRequestDialog.close());
-issuePullRequestDialog.addEventListener('close', () => {
-    issuePullRequestForm.reset();
-    issuePullRequestMessage.textContent = '';
-    issuePullRequestMessage.classList.remove('is-error');
-    if (selectedIssue !== null && !issueDetailView.hidden)
-        linkPullRequestButton.focus();
-});
-issuePullRequestForm.addEventListener('submit', (event) => {
-    event.preventDefault();
-    const issueId = selectedIssue?.id;
-    if (issueId === undefined || activeProject === null || activeProject.github_repository === null)
-        return;
-    issuePullRequestSubmit.disabled = true;
-    issuePullRequestMessage.textContent = '';
-    issuePullRequestMessage.classList.remove('is-error');
-    void api(`/issues/${issueId}/pull-requests`, {
-        method: 'POST',
-        body: JSON.stringify({ url: issuePullRequestUrl.value }),
-    }).then(async () => {
-        if (selectedIssue?.id !== issueId)
-            return;
-        await loadIssuePullRequests(issueId);
-        issuePullRequestDialog.close();
-        report('Pull request linked.');
-    }).catch((error) => {
-        issuePullRequestMessage.textContent = error instanceof Error ? error.message : 'Could not link pull request.';
-        issuePullRequestMessage.classList.add('is-error');
-        issuePullRequestUrl.focus();
-    }).finally(() => {
-        issuePullRequestSubmit.disabled = false;
-    });
-});
 issueForm.addEventListener('submit', async (event) => {
     event.preventDefault();
     if (activeProject === null)
@@ -3431,113 +3395,7 @@ function renderIssueDetail() {
     else {
         delete issueSourceLink.dataset.messageId;
     }
-    renderIssuePullRequests();
-}
-function renderIssuePullRequests(message = '') {
-    const hasIssue = selectedIssue !== null;
-    const canManage = hasIssue
-        && activeProject !== null
-        && !projectStatusIsReadOnly(activeProject.status)
-        && activeUser?.role !== 'guest';
-    const canLink = canManage && activeProject !== null && activeProject.github_repository !== null;
-    issuePullRequestsList.replaceChildren(...linkedPullRequests.map((pullRequest) => {
-        const item = document.createElement('li');
-        item.className = 'issue-pull-request-row';
-        const main = document.createElement('div');
-        main.className = 'issue-pull-request-main';
-        const link = document.createElement('a');
-        link.className = 'issue-pull-request-link';
-        link.href = pullRequest.html_url;
-        link.target = '_blank';
-        link.rel = 'noopener noreferrer';
-        link.textContent = `${pullRequest.repository_full_name} #${pullRequest.pull_number} · ${pullRequest.title}`;
-        const metadata = document.createElement('div');
-        metadata.className = 'issue-pull-request-meta';
-        const state = document.createElement('span');
-        state.className = `issue-pull-request-state${pullRequest.state !== 'open' ? ' is-closed' : ''}`;
-        state.textContent = `${pullRequest.is_draft ? 'Draft · ' : ''}${pullRequest.state}`;
-        const author = document.createElement('span');
-        author.textContent = pullRequest.author_login === '' ? 'Author unknown' : `@${pullRequest.author_login}`;
-        const updated = document.createElement('time');
-        updated.dateTime = pullRequest.github_updated_at;
-        updated.textContent = `Updated ${new Date(`${pullRequest.github_updated_at}Z`).toLocaleDateString()}`;
-        metadata.append(state, author, updated);
-        main.append(link, metadata);
-        item.append(main);
-        if (canManage && selectedIssue !== null) {
-            const issueId = selectedIssue.id;
-            const unlink = document.createElement('button');
-            unlink.type = 'button';
-            unlink.className = 'button button-quiet';
-            unlink.textContent = 'Unlink';
-            unlink.setAttribute('aria-label', `Unlink pull request ${pullRequest.repository_full_name} #${pullRequest.pull_number}`);
-            unlink.addEventListener('click', () => void unlinkIssuePullRequest(issueId, pullRequest.id, unlink));
-            item.append(unlink);
-        }
-        return item;
-    }));
-    issuePullRequests.hidden = !hasIssue
-        || ((activeProject === null || activeProject.github_repository === null) && linkedPullRequests.length === 0);
-    linkPullRequestButton.hidden = !canLink;
-    issuePullRequestsEmpty.hidden = linkedPullRequests.length > 0;
-    issuePullRequestsEmpty.textContent = message || 'No pull requests linked yet.';
-}
-async function loadIssuePullRequests(issueId) {
-    const requestVersion = ++issuePullRequestsRequestVersion;
-    renderIssuePullRequests('Loading pull requests…');
-    try {
-        const result = await api(`/issues/${issueId}/pull-requests`);
-        if (requestVersion !== issuePullRequestsRequestVersion || selectedIssue?.id !== issueId)
-            return;
-        linkedPullRequests = result.pull_requests;
-        renderIssuePullRequests();
-    }
-    catch (error) {
-        if (requestVersion !== issuePullRequestsRequestVersion || selectedIssue?.id !== issueId)
-            return;
-        linkedPullRequests = [];
-        renderIssuePullRequests(error instanceof Error ? error.message : 'Could not load linked pull requests.');
-    }
-}
-async function unlinkIssuePullRequest(issueId, pullRequestId, button) {
-    button.disabled = true;
-    try {
-        await api(`/issues/${issueId}/pull-requests/${pullRequestId}`, { method: 'DELETE' });
-        await loadIssuePullRequests(issueId);
-    }
-    catch (error) {
-        button.disabled = false;
-        report(error instanceof Error ? error.message : 'Could not unlink pull request.', true);
-    }
-}
-async function loadIssueStatusHistory(issueId) {
-    const requestVersion = ++issueStatusHistoryRequestVersion;
-    issueStatusHistory.hidden = false;
-    issueStatusHistoryCount.textContent = '…';
-    issueStatusHistoryList.replaceChildren();
-    issueStatusHistoryEmpty.hidden = false;
-    issueStatusHistoryEmpty.textContent = 'Loading status history…';
-    try {
-        const result = await api(`/issues/${issueId}/history`);
-        if (requestVersion !== issueStatusHistoryRequestVersion || selectedIssue?.id !== issueId)
-            return;
-        issueStatusHistoryCount.textContent = String(result.transitions.length);
-        issueStatusHistoryEmpty.hidden = result.transitions.length > 0;
-        issueStatusHistoryEmpty.textContent = 'No status changes yet.';
-        issueStatusHistoryList.replaceChildren(...result.transitions.map(createIssueStatusHistoryRow));
-    }
-    catch (error) {
-        if (requestVersion !== issueStatusHistoryRequestVersion || selectedIssue?.id !== issueId)
-            return;
-        if (error instanceof ApiFailure && error.status === 401) {
-            showSignedOut();
-            return;
-        }
-        issueStatusHistoryCount.textContent = '—';
-        issueStatusHistoryEmpty.hidden = false;
-        issueStatusHistoryEmpty.textContent = 'Could not load status history.';
-        report(error instanceof Error ? error.message : 'Could not load status history.', true);
-    }
+    issueRelatedUi.renderPullRequests();
 }
 function updateProjectIssueDiscussionCount(issueId, count) {
     const current = projectIssues.find((issue) => issue.id === issueId);
@@ -3550,26 +3408,6 @@ function updateProjectIssueDiscussionCount(issueId, count) {
         selectedIssue = { ...selectedIssue, discussion_count: count };
     }
     inboxUi.updateIssueDiscussionCount(issueId, count);
-}
-function createIssueStatusHistoryRow(transition) {
-    const item = document.createElement('li');
-    item.className = 'issue-status-history-item';
-    const change = document.createElement('span');
-    change.className = 'issue-status-history-change';
-    change.textContent = transition.from_status === null
-        ? `Set to ${issueStatusLabel(transition.to_status)}`
-        : `${issueStatusLabel(transition.from_status)} → ${issueStatusLabel(transition.to_status)}`;
-    const actor = document.createElement('span');
-    actor.className = 'issue-status-history-actor';
-    actor.textContent = transition.actor_name;
-    const time = document.createElement('time');
-    time.dateTime = transition.created_at.replace(' ', 'T');
-    const parsedDate = new Date(transition.created_at.replace(' ', 'T'));
-    time.textContent = Number.isNaN(parsedDate.getTime())
-        ? transition.created_at
-        : new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(parsedDate);
-    item.append(change, actor, time);
-    return item;
 }
 function focusIssueTitleButton(issueId) {
     const button = issueList.querySelector(`.issue-card[data-issue-id="${issueId}"] .issue-title-button`);
@@ -3593,7 +3431,7 @@ function resetIssueDetailEditForm() {
 }
 function openIssue(issue) {
     selectedIssue = issue;
-    linkedPullRequests = [];
+    issueRelatedUi.reset();
     issueDiscussionUi.clear();
     issueList.querySelectorAll('.issue-card').forEach((row) => {
         row.classList.toggle('is-keyboard-selected', row.dataset.issueId === String(issue.id));
@@ -3601,8 +3439,8 @@ function openIssue(issue) {
     issueDetailDisplay.hidden = false;
     issueDetailEditForm.hidden = true;
     renderIssueDetail();
-    void loadIssuePullRequests(issue.id);
-    void loadIssueStatusHistory(issue.id);
+    void issueRelatedUi.loadPullRequests(issue.id);
+    void issueRelatedUi.loadStatusHistory(issue.id);
     void issueDiscussionUi.load(issue.id);
     switchProjectTab('issues');
     issueBackButton.focus();
@@ -3809,7 +3647,7 @@ async function updateIssueStatus(issue, nextStatus) {
             renderIssueDetail();
             renderProjectIssueBoard();
             if (previousStatus !== result.issue.status)
-                void loadIssueStatusHistory(issue.id);
+                void issueRelatedUi.loadStatusHistory(issue.id);
         }
         report('Issue status updated.');
         if (issueDetailView.hidden)
