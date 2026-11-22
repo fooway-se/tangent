@@ -4,6 +4,7 @@ import test from 'node:test';
 
 const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
+const issueBoardUi = await readFile(new URL('../../frontend/src/issue-board-ui.ts', import.meta.url), 'utf8');
 const dom = await readFile(new URL('../../frontend/src/dom.ts', import.meta.url), 'utf8');
 const css = await readFile(new URL('../../public/assets/app.css', import.meta.url), 'utf8');
 
@@ -32,29 +33,25 @@ test('Next Up keeps keyboard focus when a move disables the selected arrow', () 
 });
 
 test('milestone groups are collapsible and their headings show issue counts', () => {
-  assert.match(app, /function createIssueGroupSummary\(name: string, count: number\)/);
-  assert.match(app, /details\.open = group\.openByDefault \?\? true/);
-  assert.match(app, /summary\.className = 'issue-group-summary'/);
-  assert.match(app, /groupCount\.textContent = String\(count\)/);
-  assert.match(app, /createIssueGroupSummary\(group\.name, group\.issues\.length\)/);
-  assert.match(app, /reconcileIssueBoardGroups\(groups\)/);
+  assert.match(issueBoardUi, /function createGroupSummary\(name: string, count: number\)/);
+  assert.match(issueBoardUi, /details\.open = group\.openByDefault \?\? true/);
+  assert.match(issueBoardUi, /summary\.className = 'issue-group-summary'/);
+  assert.match(issueBoardUi, /groupCount\.textContent = String\(count\)/);
+  assert.match(issueBoardUi, /createGroupSummary\(group\.name, group\.issues\.length\)/);
+  assert.match(app, /issueBoardUi\.render\(groups\)/);
 });
 
 test('history milestone groups start collapsed and existing disclosure state is preserved', () => {
   const milestoneBoardStart = app.indexOf('function renderMilestoneIssueBoard(');
   const milestoneBoardEnd = app.indexOf('\nfunction renderNextUpIssueBoard(', milestoneBoardStart);
   const milestoneBoard = app.slice(milestoneBoardStart, milestoneBoardEnd);
-  const reconcileStart = app.indexOf('function reconcileIssueBoardGroups(');
-  const reconcileEnd = app.indexOf('\nfunction createIssueBulkMoveToolbar(', reconcileStart);
-  const reconcile = app.slice(reconcileStart, reconcileEnd);
-
   assert.match(milestoneBoard, /openByDefault: issueScope\.value !== 'history'/);
-  assert.match(reconcile, /if \(details === undefined\) \{\s*details = document\.createElement\('details'\);\s*details\.open = group\.openByDefault \?\? true;/);
+  assert.match(issueBoardUi, /if \(details === undefined\) \{\s*details = doc\.createElement\('details'\);\s*details\.open = group\.openByDefault \?\? true;/);
 });
 
 test('No milestone bulk move uses the shared selection and action-group design', () => {
   assert.match(app, /allowBulkMove: group\.milestoneId === null/);
-  assert.match(app, /issue-bulk-select-toggle/);
+  assert.match(issueBoardUi, /issue-bulk-select-toggle/);
   assert.match(app, /issue-bulk-move-toolbar/);
   assert.match(app, /selectionActions\.className = 'issue-bulk-move-selection-actions'/);
   assert.match(app, /selectionLabel\.textContent = 'Selection'/);
@@ -73,7 +70,7 @@ test('issue board offers opt-in bulk assignment across milestone groups', () => 
   assert.match(html, /id="issue-bulk-assign-toggle"/);
   assert.match(dom, /issue-bulk-assign-toolbar/);
   assert.match(app, /issue-bulk-assign-checkbox/);
-  assert.match(app, /const allowBulkAssignSelection = bulkAssignSelectionMode/);
+  assert.match(issueBoardUi, /const allowBulkAssignSelection = state\.bulkAssignSelectionMode/);
   assert.match(app, /visibleBulkAssignIssueIds = new Set\(visible\.map\(\(issue\) => issue\.id\)\)/);
   assert.match(html, /Assign selected/);
   assert.match(html, /Unassigned/);

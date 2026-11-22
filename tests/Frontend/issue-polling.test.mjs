@@ -11,6 +11,7 @@ import {
 } from '../../public/assets/issue-polling.js';
 
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
+const issueBoardUi = await readFile(new URL('../../frontend/src/issue-board-ui.ts', import.meta.url), 'utf8');
 const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
 
 test('issue collection diff identifies only added, changed, and removed issues', () => {
@@ -104,13 +105,13 @@ test('issue polling is conditional and board rendering keeps unchanged issue row
   assert.match(app, /fetchConditionalIssueList\(projectId, false, activeEtag\)/);
   assert.match(app, /fetchConditionalIssueList\(projectId, true, deletedEtag\)/);
   assert.match(app, /issuePollHasDeferredChanges/);
-  assert.match(app, /issueRowRenderSignatures/);
+  assert.match(issueBoardUi, /rowRenderSignatures/);
   assert.match(app, /const deferUpdates = deferUpdatesAtStart \|\| issueUpdatesAreDeferred\(\)/);
 
   const renderStart = app.indexOf('function renderProjectIssueBoard(');
   const renderEnd = app.indexOf('\nfunction renderMilestoneIssueBoard(', renderStart);
   const renderer = app.slice(renderStart, renderEnd);
-  assert.match(renderer, /reconcileIssueBoardGroups/);
+  assert.match(renderer, /issueBoardUi\.render/);
   assert.doesNotMatch(renderer, /issueList\.replaceChildren\(/);
   assert.match(app, /function placeNodeAtPosition\(/);
   assert.doesNotMatch(app, /rows\.append\(row\)/);

@@ -4,7 +4,7 @@ import {
   ISSUE_STATUS_OPTIONS, ISSUE_TYPE_OPTIONS, PROJECT_STATUS_HINTS, PROJECT_STATUS_LABELS, PROJECT_STATUS_ORDER,
   type ChatMessage, type ConditionalIssueList,
   type GitHubRepository, type GitHubRepositoryOptionSelection,
-  type InboxIssue, type Issue, type IssueBoardGroup,
+  type InboxIssue, type Issue,
   type IssueDiscussionMessage, type IssueGrouping, type IssuePriority, type IssueStatusTransition, type IssueType,
   type LinkedPullRequest, type LoginResponse, type Member,
   type Milestone, type Project, type User, type Workspace,
@@ -29,6 +29,7 @@ import { initWorkspaceAdminUi } from './workspace-admin-ui.js';
 import { initProjectChatUi } from './project-chat-ui.js';
 import { initCommandPaletteUi, type PaletteCommand } from './command-palette-ui.js';
 import { initWorkspacePickerUi } from './workspace-picker-ui.js';
+import { initIssueBoardUi } from './issue-board-ui.js';
 import { parseQuickIssueInput } from './quick-issue.js';
 import { milestoneStatus, type RoadmapMilestone } from './roadmap.js';
 import { formatIssueMarkdown, formatIssuePrompt } from './issue-export.js';
@@ -598,8 +599,33 @@ let selectedIssueDiscussionMessageId: number | null = null;
 let issueDiscussionParent: IssueDiscussionMessage | null = null;
 let editingIssueDiscussionMessageId: number | null = null;
 let confirmingIssueDiscussionDeleteId: number | null = null;
-const issueRowRenderSignatures = new WeakMap<HTMLLIElement, string>();
 const deletedIssueRowRenderSignatures = new WeakMap<HTMLLIElement, string>();
+const issueBoardUi = initIssueBoardUi({
+  issueList,
+  getState: () => ({
+    bulkMoveSelectionMode,
+    bulkMovePending,
+    bulkAssignSelectionMode,
+    selectedBulkMoveIssueIds,
+    selectedBulkAssignIssueIds,
+    selectedIssueId: selectedIssue?.id ?? null,
+    readOnly: activeProject !== null && projectStatusIsReadOnly(activeProject.status),
+  }),
+  onToggleBulkMoveSelection: () => {
+    if (bulkAssignSelectionMode) clearBulkAssignSelection();
+    if (bulkMoveSelectionMode) clearBulkMoveSelection();
+    else bulkMoveSelectionMode = true;
+  },
+  renderBoard: renderProjectIssueBoard,
+  issueAssigneeLabel,
+  createIssueRow: (issue, reorder, allowBulkMoveSelection, allowBulkAssignSelection) =>
+    createIssueRow(issue, reorder, allowBulkMoveSelection, allowBulkAssignSelection),
+  createBulkMoveToolbar: createIssueBulkMoveToolbar,
+  syncBulkMoveToolbar: syncIssueBulkMoveToolbar,
+  setTextContentIfChanged,
+  placeNodeAtPosition,
+  replaceIssueRowPreservingFocus,
+});
 let selectedChatMessageId: number | null = null;
 let issueQuickAddEscapePending = false;
 let issueQuickAddReturnFocus: HTMLElement | null = null;
@@ -3266,7 +3292,7 @@ function renderProjectIssueBoard(): void {
     return;
   }
 
-  reconcileIssueBoardGroups(groupIssues(visible).map((group) => ({
+  issueBoardUi.render(groupIssues(visible).map((group) => ({
     key: `status:${group.status}`,
     name: group.status,
     className: 'issue-group',
@@ -3283,7 +3309,7 @@ function renderMilestoneIssueBoard(visibleIssues: Issue[]): void {
   for (const issueId of selectedBulkMoveIssueIds) {
     if (!visibleUnassignedIssueIds.has(issueId)) selectedBulkMoveIssueIds.delete(issueId);
   }
-  reconcileIssueBoardGroups(groupIssuesByMilestone(visibleIssues, projectMilestones).map((group) => ({
+  issueBoardUi.render(groupIssuesByMilestone(visibleIssues, projectMilestones).map((group) => ({
     key: group.isOngoing ? 'milestone:ongoing' : `milestone:${group.milestoneId ?? 'none'}`,
     name: group.dueDate === null ? group.name : `${group.name} · due ${group.dueDate}`,
     className: 'issue-group milestone-issue-group',
@@ -3317,116 +3343,7 @@ function renderNextUpIssueBoard(visibleIssues: Issue[], allOpenIssues: Issue[]):
       isOngoing: group.isOngoing,
     };
   });
-  reconcileIssueBoardGroups(groups);
-}
-
-function reconcileIssueBoardGroups(groups: IssueBoardGroup[]): void {
-  const existingGroups = new Map(
-    Array.from(issueList.querySelectorAll<HTMLDetailsElement>(':scope > .issue-group'))
-      .map((group) => [group.dataset.groupKey ?? '', group]),
-  );
-  const existingRows = new Map(
-    Array.from(issueList.querySelectorAll<HTMLLIElement>('.issue-card'))
-      .map((row) => [Number(row.dataset.issueId), row]),
-  );
-  const expectedRowsByGroup = new Map<string, Set<number>>();
-  const retainedGroupKeys = new Set<string>();
-
-  for (const [groupIndex, group] of groups.entries()) {
-    retainedGroupKeys.add(group.key);
-    let details = existingGroups.get(group.key);
-    if (details === undefined) {
-      details = document.createElement('details');
-      details.open = group.openByDefault ?? true;
-      details.dataset.groupKey = group.key;
-    }
-    if (details.className !== group.className) details.className = group.className;
-    const summary = details.querySelector<HTMLElement>(':scope > summary') ?? createIssueGroupSummary(group.name, group.issues.length);
-    const groupName = summary.querySelector<HTMLElement>('.issue-group-name');
-    const groupCount = summary.querySelector<HTMLElement>('.issue-group-count');
-    if (groupName !== null) setTextContentIfChanged(groupName, group.name);
-    if (groupCount !== null) setTextContentIfChanged(groupCount, String(group.issues.length));
-    let bulkSelectToggle = summary.querySelector<HTMLButtonElement>(':scope > .issue-bulk-select-toggle');
-    if (group.allowBulkMove === true) {
-      if (bulkSelectToggle === null) {
-        bulkSelectToggle = document.createElement('button');
-        bulkSelectToggle.type = 'button';
-        bulkSelectToggle.className = 'button button-secondary issue-bulk-select-toggle';
-        bulkSelectToggle.addEventListener('click', (event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          if (bulkMovePending) return;
-          if (bulkAssignSelectionMode) clearBulkAssignSelection();
-          if (bulkMoveSelectionMode) clearBulkMoveSelection();
-          else bulkMoveSelectionMode = true;
-          details.open = true;
-          renderProjectIssueBoard();
-        });
-        summary.append(bulkSelectToggle);
-      }
-      bulkSelectToggle.textContent = bulkMoveSelectionMode ? 'Cancel selection' : 'Select issues';
-      bulkSelectToggle.disabled = bulkMovePending || (activeProject !== null && projectStatusIsReadOnly(activeProject.status));
-    } else {
-      bulkSelectToggle?.remove();
-    }
-    const isBulkMoveGroup = group.key === 'milestone:none' && group.allowBulkMove === true;
-    let bulkToolbar = details.querySelector<HTMLDivElement>(':scope > .issue-bulk-move-toolbar');
-    if (isBulkMoveGroup && bulkMoveSelectionMode) {
-      if (bulkToolbar === null) bulkToolbar = createIssueBulkMoveToolbar(group.issues);
-      syncIssueBulkMoveToolbar(bulkToolbar, group.issues);
-    } else {
-      bulkToolbar?.remove();
-      bulkToolbar = null;
-    }
-    const rows = details.querySelector<HTMLUListElement>(':scope > .issue-group-items') ?? document.createElement('ul');
-    rows.className = 'issue-group-items';
-    const expectedIds = new Set<number>();
-    for (const [rowIndex, issue] of group.issues.entries()) {
-      expectedIds.add(issue.id);
-      const reorder = group.reorderByIssueId?.get(issue.id);
-      const allowBulkMoveSelection = isBulkMoveGroup && bulkMoveSelectionMode;
-      const bulkMoveSelected = selectedBulkMoveIssueIds.has(issue.id);
-      const allowBulkAssignSelection = bulkAssignSelectionMode;
-      const bulkAssignSelected = selectedBulkAssignIssueIds.has(issue.id);
-      const signature = issueRowSignature(
-        issue,
-        reorder,
-        allowBulkMoveSelection,
-        bulkMoveSelected,
-        allowBulkAssignSelection,
-        bulkAssignSelected,
-      );
-      const existing = existingRows.get(issue.id);
-      let row: HTMLLIElement;
-      if (existing !== undefined && issueRowRenderSignatures.get(existing) === signature) {
-        row = existing;
-      } else {
-        row = createIssueRow(issue, reorder, allowBulkMoveSelection, allowBulkAssignSelection) as HTMLLIElement;
-        row.classList.toggle('is-keyboard-selected', selectedIssue?.id === issue.id);
-        issueRowRenderSignatures.set(row, signature);
-        if (existing !== undefined) replaceIssueRowPreservingFocus(existing, row);
-      }
-      placeNodeAtPosition(rows, row, rowIndex);
-    }
-    if (bulkToolbar !== null) syncIssueBulkMoveToolbar(bulkToolbar, group.issues);
-    expectedRowsByGroup.set(group.key, expectedIds);
-    placeNodeAtPosition(details, summary, 0);
-    if (bulkToolbar !== null) placeNodeAtPosition(details, bulkToolbar, 1);
-    placeNodeAtPosition(details, rows, bulkToolbar === null ? 1 : 2);
-    placeNodeAtPosition(issueList, details, groupIndex);
-  }
-
-  for (const group of Array.from(issueList.querySelectorAll<HTMLDetailsElement>(':scope > .issue-group'))) {
-    const key = group.dataset.groupKey ?? '';
-    if (!retainedGroupKeys.has(key)) {
-      group.remove();
-      continue;
-    }
-    const expected = expectedRowsByGroup.get(key) ?? new Set<number>();
-    group.querySelectorAll<HTMLLIElement>(':scope > .issue-group-items > .issue-card').forEach((row) => {
-      if (!expected.has(Number(row.dataset.issueId))) row.remove();
-    });
-  }
+  issueBoardUi.render(groups);
 }
 
 function createIssueBulkMoveToolbar(issues: Issue[]): HTMLDivElement {
@@ -3714,34 +3631,6 @@ function placeNodeAtPosition(parent: Element, node: Element, index: number): voi
   parent.insertBefore(node, parent.children.item(index));
 }
 
-function issueRowSignature(
-  issue: Issue,
-  reorder: { canMoveEarlier?: boolean; canMoveLater?: boolean; showMilestoneTag?: boolean } | undefined,
-  allowBulkMoveSelection = false,
-  bulkMoveSelected = false,
-  allowBulkAssignSelection = false,
-  bulkAssignSelected = false,
-): string {
-  return JSON.stringify([
-    issue.title,
-    issue.description,
-    issue.status,
-    issue.type,
-    issueAssigneeLabel(issue.assignee_id),
-    issue.is_shared,
-    reorder?.showMilestoneTag === false ? null : issue.milestone_name ?? null,
-    issue.source_message_id !== null,
-    issue.discussion_count ?? 0,
-    reorder?.canMoveEarlier,
-    reorder?.canMoveLater,
-    issue.is_ongoing,
-    allowBulkMoveSelection,
-    bulkMoveSelected,
-    allowBulkAssignSelection,
-    bulkAssignSelected,
-  ]);
-}
-
 function replaceIssueRowPreservingFocus(previous: HTMLLIElement, next: HTMLLIElement): void {
   const focused = document.activeElement;
   let focusTarget: string | null = null;
@@ -3780,23 +3669,6 @@ function reconcileDeletedIssueRows(): void {
   deletedIssueList.querySelectorAll<HTMLLIElement>(':scope > .deleted-issue-item').forEach((row) => {
     if (!expectedIds.has(Number(row.dataset.issueId))) row.remove();
   });
-}
-
-function createIssueGroupSummary(name: string, count: number): HTMLElement {
-  const summary = document.createElement('summary');
-  summary.className = 'issue-group-summary';
-  const chevron = document.createElement('span');
-  chevron.className = 'issue-group-chevron';
-  chevron.setAttribute('aria-hidden', 'true');
-  chevron.textContent = '›';
-  const groupName = document.createElement('span');
-  groupName.className = 'issue-group-name';
-  groupName.textContent = name;
-  const groupCount = document.createElement('span');
-  groupCount.className = 'issue-group-count';
-  groupCount.textContent = String(count);
-  summary.append(chevron, groupName, groupCount);
-  return summary;
 }
 
 function createDeletedIssueRow(issue: Issue): HTMLLIElement {
@@ -4652,7 +4524,7 @@ function createIssueRow(
   reorder?: { canMoveEarlier?: boolean; canMoveLater?: boolean; showMilestoneTag?: boolean },
   allowBulkMoveSelection = false,
   allowBulkAssignSelection = false,
-): HTMLElement {
+): HTMLLIElement {
   const item = document.createElement('li');
   item.className = 'issue-card';
   item.dataset.issueId = String(issue.id);
