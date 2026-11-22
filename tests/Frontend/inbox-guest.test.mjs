@@ -7,6 +7,7 @@ const events = await import('../../public/assets/inbox-events.js');
 const guest = await import('../../public/assets/guest-view.js');
 const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
+const authUi = await readFile(new URL('../../frontend/src/auth-ui.ts', import.meta.url), 'utf8');
 const inboxUi = await readFile(new URL('../../frontend/src/inbox-ui.ts', import.meta.url), 'utf8');
 const css = await readFile(new URL('../../public/assets/app.css', import.meta.url), 'utf8');
 const guestSource = await readFile(new URL('../../frontend/src/guest-view.ts', import.meta.url), 'utf8');
@@ -184,8 +185,11 @@ test('guest startup loads workspace choices without requesting internal project 
 });
 
 test('guest sign-in loads workspace choices and skips internal project loading', () => {
-  const signIn = app.slice(app.indexOf("loginForm.addEventListener('submit'"), app.indexOf("workspaceSwitcher.addEventListener('click'"));
-  assert.match(signIn, /showSignedIn\(result\.user\);\s*await loadWorkspaces\(\);\s*if \(result\.user\.role === 'guest'\) return;\s*await loadProjects\(\);/);
+  const signIn = authUi.slice(
+    authUi.indexOf("loginForm.addEventListener('submit'"),
+    authUi.indexOf('return {', authUi.indexOf("loginForm.addEventListener('submit'")),
+  );
+  assert.match(signIn, /options\.onSignedIn\(result\.user\);\s*await options\.loadWorkspaces\(\);\s*if \(result\.user\.role === 'guest'\) return;\s*await options\.loadProjects\(\);/);
 });
 
 test('inbox message events select their source chat message', () => {

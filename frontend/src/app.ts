@@ -3,8 +3,8 @@ import { api, apiBaseUrl, ApiFailure } from './api.js';
 import {
   ISSUE_STATUS_OPTIONS, ISSUE_TYPE_OPTIONS, PROJECT_STATUS_HINTS, PROJECT_STATUS_LABELS, PROJECT_STATUS_ORDER,
   type ChatEvent, type ChatMessage, type ConditionalIssueList,
-  type CredentialFragment, type GitHubRepository, type GitHubRepositoryOptionSelection,
-  type InboxIssue, type InvitePreview, type Issue, type IssueBoardGroup,
+  type GitHubRepository, type GitHubRepositoryOptionSelection,
+  type InboxIssue, type Issue, type IssueBoardGroup,
   type IssueDiscussionMessage, type IssueGrouping, type IssuePriority, type IssueStatusTransition, type IssueType,
   type LinkedPullRequest, type LoginResponse, type LoungeMentionMember, type Member,
   type Milestone, type Project, type User, type Workspace,
@@ -17,7 +17,7 @@ import { ProjectNavigationOwner, runOwnedRequest } from './project-navigation.js
 import { ChatEventFeed, pollProjectChatEvents, type ChatFeedEvent } from './chat-event-feed.js';
 import { githubRepositorySelectionValue, parseGitHubRepositorySelection } from './github-repository-selection.js';
 import { switchWorkspaceMembership } from './workspace-switch.js';
-import { credentialNeedsConfirmation, inviteCredentialPresentation } from './credential-flow.js';
+import { initAuthUi } from './auth-ui.js';
 import { initClientSummaryUi } from './client-summary-ui.js';
 import {
   filterMentionMembers,
@@ -74,11 +74,7 @@ const {
     projectKeyboardHints,
   },
   auth: {
-    loginPanel, loginShell, accountBar, currentUserLabel, loginAdminHelp, loginKeyboardHints,
-    credentialFlow, credentialFlowHeading, credentialFlowDescription, credentialFlowError, credentialForm,
-    credentialPasswordFields, credentialPasswordLabel, credentialVerificationField,
-    credentialVerificationInput, credentialConfirmationField, credentialSubmit, credentialCancel,
-    loginForm, loginStatusMessage, logoutButton,
+    loginPanel, loginShell, accountBar, currentUserLabel, loginStatusMessage, logoutButton,
   },
   workspace: {
     workspacePanel, workspaceNav, workspaceSwitcher, workspaceSwitcherLabel, workspacePicker,
@@ -533,8 +529,6 @@ const issueBulkAssignCancel = issueBulkAssignToolbar.querySelector<HTMLButtonEle
 
 let activeUser: User | null = null;
 let keyboardHintsVisible = loadKeyboardHintsPreference();
-let credentialFragment: CredentialFragment | null = null;
-let invitePreview: InvitePreview | null = null;
 let activeWorkspaces: Workspace[] = [];
 let activeProject: Project | null = null;
 let projectReturnFocusId: number | null = null;
@@ -697,6 +691,13 @@ const workspaceAdminUi = initWorkspaceAdminUi({
   report,
 });
 
+const authUi = initAuthUi({
+  onSignedIn: showSignedIn,
+  loadWorkspaces,
+  loadProjects,
+  report,
+});
+
 const guestUi = initGuestUi({
   getUser: () => activeUser,
   getProject: () => activeProject,
@@ -829,7 +830,7 @@ function invalidateProjectNavigation(sessionChanged = false): void {
 
 function showSignedOut(): void {
   invalidateProjectNavigation(true);
-  resetAuthForms();
+  authUi.resetForms();
   workspaceViewHistory.length = 0;
   projectReturnFocusId = null;
   issueQuickAddSourceMessageId = null;
@@ -6608,205 +6609,6 @@ function updateMembersPanelTabIndex(): void {
   membersView.tabIndex = hasFocusableContent ? -1 : 0;
 }
 
-function consumeCredentialFragment(): CredentialFragment | null {
-  const fragment = new URLSearchParams(location.hash.slice(1));
-  const inviteToken = fragment.get('invite');
-  const resetToken = fragment.get('reset');
-  const credential = inviteToken !== null
-    ? { type: 'invite' as const, token: inviteToken }
-    : resetToken !== null ? { type: 'reset' as const, token: resetToken } : null;
-  if (credential === null || !/^[a-f0-9]{64}$/.test(credential.token)) return null;
-  history.replaceState(null, '', location.pathname + location.search);
-  return credential;
-}
-
-function resetAuthForms(): void {
-  credentialFragment = null;
-  invitePreview = null;
-  loginForm.reset();
-  loginForm.hidden = false;
-  loginAdminHelp.hidden = true;
-  credentialFlow.hidden = true;
-  credentialFlowError.hidden = true;
-  credentialFlowError.textContent = '';
-  credentialForm.reset();
-  credentialSubmit.hidden = false;
-  credentialSubmit.disabled = false;
-  setCredentialCancelSecondary();
-  loginStatusMessage.hidden = false;
-  loginKeyboardHints.hidden = false;
-  const password = credentialForm.elements.namedItem('password');
-  const confirmation = credentialForm.elements.namedItem('confirmation');
-  const verificationCode = credentialForm.elements.namedItem('verification_code');
-  credentialPasswordLabel.textContent = 'New password';
-  credentialVerificationField.hidden = true;
-  credentialVerificationInput.required = false;
-  credentialConfirmationField.hidden = false;
-  if (password instanceof HTMLInputElement) password.required = true;
-  if (confirmation instanceof HTMLInputElement) confirmation.required = true;
-  if (verificationCode instanceof HTMLInputElement) verificationCode.value = '';
-  credentialPasswordFields.hidden = true;
-}
-
-function showCredentialFlow(): void {
-  loginForm.hidden = true;
-  loginAdminHelp.hidden = true;
-  credentialFlow.hidden = false;
-  loginStatusMessage.hidden = true;
-  loginKeyboardHints.hidden = true;
-  credentialFlowError.hidden = true;
-  credentialFlowError.textContent = '';
-}
-
-function setCredentialCancelPrimary(): void {
-  credentialCancel.classList.remove('auth-text-button');
-  credentialCancel.classList.add('button', 'button-primary');
-  credentialCancel.textContent = 'Back to sign in';
-}
-
-function setCredentialCancelSecondary(): void {
-  credentialCancel.classList.remove('button', 'button-primary');
-  credentialCancel.classList.add('auth-text-button');
-  credentialCancel.textContent = 'Back to sign in';
-}
-
-async function openCredentialFlow(credential: CredentialFragment): Promise<void> {
-  credentialFragment = credential;
-  showCredentialFlow();
-  if (credential.type === 'reset') {
-    credentialFlowHeading.textContent = 'Choose a new password';
-    credentialFlowDescription.textContent = 'Your workspace admin provided this one-time reset link. Use at least 15 characters; spaces and Unicode are allowed.';
-    credentialPasswordFields.hidden = false;
-    credentialPasswordLabel.textContent = 'New password';
-    credentialVerificationField.hidden = true;
-    credentialVerificationInput.required = false;
-    credentialConfirmationField.hidden = false;
-    credentialSubmit.textContent = 'Reset password';
-    const password = credentialForm.elements.namedItem('password');
-    const confirmation = credentialForm.elements.namedItem('confirmation');
-    if (password instanceof HTMLInputElement) {
-      password.required = true;
-      password.autocomplete = 'new-password';
-    }
-    if (confirmation instanceof HTMLInputElement) confirmation.required = true;
-    credentialForm.querySelector<HTMLInputElement>('input[name="password"]')?.focus();
-    return;
-  }
-
-  credentialFlowHeading.textContent = 'Accept workspace invite';
-  credentialFlowDescription.textContent = 'Checking invite…';
-  credentialSubmit.disabled = true;
-  try {
-    const result = await api<{ invite: InvitePreview }>('/auth/invites/inspect', {
-      method: 'POST',
-      body: JSON.stringify({ token: credential.token }),
-    });
-    invitePreview = result.invite;
-    const presentation = inviteCredentialPresentation(
-      result.invite.password_setup_required,
-      result.invite.email_verification_required,
-    );
-    credentialFlowDescription.textContent = `You’re invited to join “${result.invite.workspace_name}” as a ${result.invite.role}. ${presentation.description}`;
-    credentialPasswordFields.hidden = !result.invite.password_required;
-    const password = credentialForm.elements.namedItem('password');
-    const confirmation = credentialForm.elements.namedItem('confirmation');
-    credentialPasswordLabel.textContent = presentation.passwordLabel;
-    credentialVerificationField.hidden = !presentation.showVerificationCode;
-    credentialVerificationInput.required = presentation.showVerificationCode;
-    credentialConfirmationField.hidden = !presentation.showConfirmation;
-    if (password instanceof HTMLInputElement) password.required = result.invite.password_required;
-    if (password instanceof HTMLInputElement) password.autocomplete = presentation.passwordAutocomplete;
-    if (confirmation instanceof HTMLInputElement) confirmation.required = presentation.showConfirmation;
-    credentialSubmit.textContent = presentation.submitLabel;
-    credentialSubmit.disabled = false;
-    if (presentation.showVerificationCode) credentialVerificationInput.focus();
-    else if (result.invite.password_required) credentialForm.querySelector<HTMLInputElement>('input[name="password"]')?.focus();
-    else credentialSubmit.focus();
-  } catch (error) {
-    credentialFlowDescription.textContent = 'This invite link cannot be used.';
-    credentialFlowError.textContent = error instanceof Error ? error.message : 'This invite link is invalid or expired.';
-    credentialFlowError.hidden = false;
-    credentialSubmit.hidden = true;
-    setCredentialCancelPrimary();
-    credentialCancel.focus();
-  }
-}
-
-credentialCancel.addEventListener('click', () => {
-  resetAuthForms();
-  loginForm.querySelector<HTMLInputElement>('input[name="email"]')?.focus();
-});
-
-credentialForm.addEventListener('submit', async (event) => {
-  event.preventDefault();
-  const credential = credentialFragment;
-  if (credential === null) return;
-  const values = new FormData(credentialForm);
-  const password = values.get('password');
-  const confirmation = values.get('confirmation');
-  if (!credentialPasswordFields.hidden && credentialNeedsConfirmation(
-    credential.type,
-    invitePreview?.password_setup_required === true,
-  ) && password !== confirmation) {
-    credentialFlowError.textContent = 'The passwords do not match.';
-    credentialFlowError.hidden = false;
-    credentialForm.querySelector<HTMLInputElement>('input[name="confirmation"]')?.focus();
-    return;
-  }
-  credentialSubmit.disabled = true;
-  credentialFlowError.hidden = true;
-  try {
-    if (credential.type === 'invite') {
-      const result = await api<LoginResponse>('/auth/invites/accept', {
-        method: 'POST',
-        body: JSON.stringify({
-          token: credential.token,
-          ...(invitePreview?.password_required ? { password } : {}),
-          ...(invitePreview?.email_verification_required ? { verification_code: values.get('verification_code') } : {}),
-        }),
-      });
-      credentialFragment = null;
-      showSignedIn(result.user);
-      await loadWorkspaces();
-      if (result.user.role !== 'guest') await loadProjects();
-    } else {
-      await api('/auth/password-reset/complete', {
-        method: 'POST',
-        body: JSON.stringify({ token: credential.token, password }),
-      });
-      resetAuthForms();
-      report('Password reset. Sign in with your new password.');
-      loginForm.querySelector<HTMLInputElement>('input[name="email"]')?.focus();
-    }
-  } catch (error) {
-    credentialFlowError.textContent = error instanceof Error ? error.message : 'Could not complete this request.';
-    credentialFlowError.hidden = false;
-  } finally {
-    credentialSubmit.disabled = false;
-  }
-});
-
-loginForm.addEventListener('submit', async (event) => {
-  event.preventDefault();
-  loginAdminHelp.hidden = true;
-  const values = new FormData(loginForm);
-  try {
-    const result = await api<LoginResponse>('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ email: values.get('email'), password: values.get('password') }),
-    });
-    showSignedIn(result.user);
-    await loadWorkspaces();
-    if (result.user.role === 'guest') return;
-    await loadProjects();
-  } catch (error) {
-    if (error instanceof ApiFailure && error.status === 429) {
-      loginAdminHelp.hidden = false;
-    }
-    report(error instanceof Error ? error.message : 'Could not sign in.', true);
-  }
-});
-
 workspaceSwitcher.addEventListener('click', () => openWorkspacePicker());
 guestWorkspaceSwitcher.addEventListener('click', () => openWorkspacePicker());
 workspacePickerCancel.addEventListener('click', () => resetPendingWorkspaceSwitch());
@@ -6911,10 +6713,10 @@ async function start(): Promise<void> {
       // GitHub connection still completes when local storage is unavailable.
     }
   }
-  const credentialState = consumeCredentialFragment();
+  const credentialState = authUi.consumeCredentialFragment();
   if (credentialState !== null) {
     showSignedOut();
-    await openCredentialFlow(credentialState);
+    await authUi.openCredentialFlow(credentialState);
     return;
   }
   try {

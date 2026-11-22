@@ -5,6 +5,7 @@ import test from 'node:test';
 const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
 const workspaceAdminUi = await readFile(new URL('../../frontend/src/workspace-admin-ui.ts', import.meta.url), 'utf8');
+const authUi = await readFile(new URL('../../frontend/src/auth-ui.ts', import.meta.url), 'utf8');
 const types = await readFile(new URL('../../frontend/src/types.ts', import.meta.url), 'utf8');
 const css = await readFile(new URL('../../public/assets/app.css', import.meta.url), 'utf8');
 const openapi = await readFile(new URL('../../docs/openapi.yaml', import.meta.url), 'utf8');
@@ -61,14 +62,14 @@ test('invite and password reset fragments are removed before public requests', (
   assert.match(html, /id="login-admin-help"[^>]*hidden/);
   assert.match(html, /Contact a workspace admin to request a password recovery email\./);
   assert.match(html, /autocomplete="new-password"/);
-  assert.match(app, /function consumeCredentialFragment\(/);
-  assert.match(app, /history\.replaceState\(null, '', location\.pathname \+ location\.search\)/);
-  assert.match(app, /'\/auth\/invites\/inspect'/);
-  assert.match(app, /'\/auth\/invites\/accept'/);
+  assert.match(authUi, /function consumeCredentialFragment\(/);
+  assert.match(authUi, /history\.replaceState\(null, '', url\)/);
+  assert.match(authUi, /'\/auth\/invites\/inspect'/);
+  assert.match(authUi, /'\/auth\/invites\/accept'/);
   assert.match(types, /workspace_name: string/);
-  const inviteFlow = app.slice(
-    app.indexOf("credentialFlowHeading.textContent = 'Accept workspace invite';"),
-    app.indexOf("credentialCancel.addEventListener('click'"),
+  const inviteFlow = authUi.slice(
+    authUi.indexOf("credentialFlowHeading.textContent = 'Accept workspace invite';"),
+    authUi.indexOf("credentialCancel.addEventListener('click'"),
   );
   const inviteCopy = inviteFlow.slice(
     inviteFlow.indexOf('credentialFlowDescription.textContent = `You’re invited'),
@@ -78,40 +79,40 @@ test('invite and password reset fragments are removed before public requests', (
   assert.doesNotMatch(inviteCopy, /result\.invite\.email/);
   assert.match(inviteFlow, /inviteCredentialPresentation\([\s\S]*result\.invite\.password_setup_required[\s\S]*result\.invite\.email_verification_required/);
   assert.match(types, /password_setup_required: boolean/);
-  assert.match(app, /verification_code: values\.get\('verification_code'\)/);
-  assert.match(app, /api\('\/auth\/password-reset\/complete'/);
-  assert.match(app, /const credentialState = consumeCredentialFragment\(\)/);
-  const loginSubmit = app.slice(
-    app.indexOf("loginForm.addEventListener('submit'"),
-    app.indexOf("workspaceSwitcher.addEventListener('click'"),
+  assert.match(authUi, /verification_code: values\.get\('verification_code'\)/);
+  assert.match(authUi, /request\('\/auth\/password-reset\/complete'/);
+  assert.match(app, /const credentialState = authUi\.consumeCredentialFragment\(\)/);
+  const loginSubmit = authUi.slice(
+    authUi.indexOf("loginForm.addEventListener('submit'"),
+    authUi.indexOf('return {', authUi.indexOf("loginForm.addEventListener('submit'")),
   );
   const resetNoteIndex = loginSubmit.indexOf('loginAdminHelp.hidden = true;');
-  const loginRequestIndex = loginSubmit.indexOf("api<LoginResponse>('/auth/login'");
+  const loginRequestIndex = loginSubmit.indexOf("request<LoginResponse>('/auth/login'");
   assert.ok(resetNoteIndex >= 0 && resetNoteIndex < loginRequestIndex, 'Clear the admin note before each login request.');
   assert.match(loginSubmit, /error instanceof ApiFailure && error\.status === 429\)[\s\S]{0,100}loginAdminHelp\.hidden = false/);
 });
 
 test('unusable invite links show one working action back to sign in', () => {
-  const failurePath = app.slice(
-    app.indexOf("credentialFlowDescription.textContent = 'This invite link cannot be used.';"),
-    app.indexOf("\n  }\n}", app.indexOf("credentialFlowDescription.textContent = 'This invite link cannot be used.';")),
+  const failurePath = authUi.slice(
+    authUi.indexOf("credentialFlowDescription.textContent = 'This invite link cannot be used.';"),
+    authUi.indexOf("credentialCancel.addEventListener('click'"),
   );
   assert.match(failurePath, /credentialSubmit\.hidden = true/);
   assert.match(failurePath, /setCredentialCancelPrimary\(\)/);
   assert.match(failurePath, /credentialCancel\.focus\(\)/);
 
-  const primaryAction = app.slice(app.indexOf('function setCredentialCancelPrimary('), app.indexOf('async function openCredentialFlow('));
+  const primaryAction = authUi.slice(authUi.indexOf('function setCredentialCancelPrimary('), authUi.indexOf('function setCredentialCancelSecondary('));
   assert.match(primaryAction, /credentialCancel\.classList\.add\('button', 'button-primary'\)/);
   assert.match(primaryAction, /credentialCancel\.textContent = 'Back to sign in'/);
 
-  const reset = app.slice(app.indexOf('function resetAuthForms('), app.indexOf('function showCredentialFlow('));
+  const reset = authUi.slice(authUi.indexOf('function resetForms('), authUi.indexOf('function showCredentialFlow('));
   assert.match(reset, /credentialSubmit\.hidden = false/);
   assert.match(reset, /setCredentialCancelSecondary\(\)/);
   assert.match(reset, /loginStatusMessage\.hidden = false/);
   assert.match(reset, /loginKeyboardHints\.hidden = false/);
 
-  const cancelHandler = app.slice(app.indexOf("credentialCancel.addEventListener('click'"), app.indexOf("credentialForm.addEventListener('submit'"));
-  assert.match(cancelHandler, /resetAuthForms\(\)/);
+  const cancelHandler = authUi.slice(authUi.indexOf("credentialCancel.addEventListener('click'"), authUi.indexOf("credentialForm.addEventListener('submit'"));
+  assert.match(cancelHandler, /resetForms\(\)/);
 });
 
 test('workspace administration renders member and invite data as text', () => {
