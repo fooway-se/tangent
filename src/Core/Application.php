@@ -48,7 +48,12 @@ use Tangent\Modules\Workspaces\WorkspaceService;
 
 final class Application
 {
-    public static function create(PDO $pdo, AppConfig $config, ?GitHubApiClient $githubApiClient = null): Gateway
+    public static function create(
+        PDO $pdo,
+        AppConfig $config,
+        ?GitHubApiClient $githubApiClient = null,
+        ?Mailer $mailer = null,
+    ): Gateway
     {
         $basePath = AppBasePath::fromPublicUrl($config->publicAppUrl);
         $apiCookiePath = AppBasePath::apiCookiePath($basePath);
@@ -71,6 +76,7 @@ final class Application
             $auth,
             $passwords,
             $config,
+            $mailer ?? new NativeMailer($config->mailFrom),
         );
         $inboxEvents = new InboxEvents(new InboxEventRepository($pdo), $projectRepository, $users);
         $chat = new ChatService(new ChatRepository($pdo), $projectRepository, $inboxEvents, $pdo);

@@ -11,6 +11,7 @@ use Tangent\Core\AppConfig;
 use Tangent\Core\AuthenticatedUser;
 use Tangent\Core\Permissions;
 use Tangent\Core\Request;
+use Tangent\Core\Mailer;
 use Tangent\Modules\Projects\ProjectRepository;
 use Tangent\Modules\Workspaces\WorkspaceRepository;
 
@@ -32,6 +33,7 @@ final class CredentialService
         private readonly AuthService $auth,
         private readonly PasswordSecurity $passwords,
         private readonly AppConfig $config,
+        private readonly Mailer $mailer,
     ) {
     }
 
@@ -58,6 +60,9 @@ final class CredentialService
         }
 
         $plainToken = bin2hex(random_bytes(32));
+        $verificationCode = $this->users->findAccountByEmail($email) === null
+            ? bin2hex(random_bytes(32))
+            : null;
         $expiresAt = gmdate('Y-m-d H:i:s', time() + self::INVITE_LIFETIME_SECONDS);
         $ownsTransaction = !$this->pdo->inTransaction();
         if ($ownsTransaction) $this->pdo->beginTransaction();
@@ -70,12 +75,20 @@ final class CredentialService
                 $role,
                 $projectIds,
                 hash('sha256', $plainToken),
+                $verificationCode === null ? null : hash('sha256', $verificationCode),
                 $expiresAt,
             );
             if ($ownsTransaction) $this->pdo->commit();
         } catch (Throwable $exception) {
             if ($ownsTransaction && $this->pdo->inTransaction()) $this->pdo->rollBack();
             throw $exception;
+        }
+
+        if ($verificationCode !== null
+            && !$this->sendInviteVerificationCode($email, $name, $actor->workspaceId, $verificationCode, $expiresAt)
+        ) {
+            $this->credentialTokens->revokeInvite($actor->workspaceId, $inviteId);
+            throw $this->emailDeliveryFailure();
         }
 
         $invite = [
@@ -112,12 +125,16 @@ final class CredentialService
                 throw new ApiException(409, 'membership_exists', 'This account is already a member of the workspace.');
             }
             $plainToken = bin2hex(random_bytes(32));
+            $verificationCode = $this->users->findAccountByEmail((string) $invite['email']) === null
+                ? bin2hex(random_bytes(32))
+                : null;
             $expiresAt = gmdate('Y-m-d H:i:s', time() + self::INVITE_LIFETIME_SECONDS);
             $projectIds = $this->credentialTokens->projectIds($actor->workspaceId, $inviteId);
             if (!$this->credentialTokens->replaceInviteToken(
                 $actor->workspaceId,
                 $inviteId,
                 hash('sha256', $plainToken),
+                $verificationCode === null ? null : hash('sha256', $verificationCode),
                 $expiresAt,
                 $projectIds,
             )) {
@@ -127,6 +144,19 @@ final class CredentialService
         } catch (Throwable $exception) {
             if ($ownsTransaction && $this->pdo->inTransaction()) $this->pdo->rollBack();
             throw $exception;
+        }
+
+        if ($verificationCode !== null
+            && !$this->sendInviteVerificationCode(
+                (string) $invite['email'],
+                (string) $invite['name'],
+                $actor->workspaceId,
+                $verificationCode,
+                $expiresAt,
+            )
+        ) {
+            $this->credentialTokens->revokeInvite($actor->workspaceId, $inviteId);
+            throw $this->emailDeliveryFailure();
         }
 
         $invite['id'] = (int) $invite['id'];
@@ -151,6 +181,7 @@ final class CredentialService
         $invite = $this->credentialTokens->findValid(hash('sha256', $token), 'invite');
         if ($invite === null) throw $this->invalidToken();
         $workspaceId = (int) $invite['workspace_id'];
+        $account = $this->users->findAccountByEmail((string) $invite['email']);
         return [
             'invite' => [
                 'name' => (string) $invite['name'],
@@ -158,7 +189,8 @@ final class CredentialService
                 'workspace_name' => $this->workspaces->nameById($workspaceId),
                 'role' => (string) $invite['role'],
                 'project_ids' => $this->credentialTokens->projectIds($workspaceId, (int) $invite['id']),
-                'password_required' => $this->users->findAccountByEmail((string) $invite['email']) === null,
+                'password_required' => true,
+                'email_verification_required' => $account === null,
             ],
         ];
     }
@@ -182,6 +214,11 @@ final class CredentialService
 
             $account = $this->users->findAccountByEmail($email);
             if ($account === null) {
+                $verificationCode = $this->rawToken($request->body['verification_code'] ?? null);
+                $verificationHash = $invite['email_verification_hash'] ?? null;
+                if (!is_string($verificationHash) || !hash_equals($verificationHash, hash('sha256', $verificationCode))) {
+                    throw $this->invalidToken();
+                }
                 $password = is_string($request->body['password'] ?? null) ? $request->body['password'] : '';
                 $reason = $this->passwords->validate($password, [
                     'name' => $name,
@@ -191,6 +228,10 @@ final class CredentialService
                 if ($reason !== null) throw new ApiException(422, 'password_rejected', $reason);
                 $member = $this->users->createWorkspaceUser($workspaceId, $name, $email, $password, $role);
             } else {
+                $password = is_string($request->body['password'] ?? null) ? $request->body['password'] : '';
+                if (!password_verify($password, (string) $account['password_hash'])) {
+                    throw new ApiException(401, 'invalid_credentials', 'The invite token or password is not valid.');
+                }
                 $member = $this->users->createMembershipForAccount(
                     $workspaceId,
                     (int) $account['account_id'],
@@ -308,6 +349,34 @@ final class CredentialService
             throw new ApiException(422, 'validation_failed', 'Role must be developer or guest.');
         }
         return $projectIds;
+    }
+
+    private function sendInviteVerificationCode(
+        string $email,
+        string $name,
+        int $workspaceId,
+        string $verificationCode,
+        string $expiresAt,
+    ): bool {
+        $workspaceName = $this->workspaces->nameById($workspaceId);
+        $body = "Hello {$name},\n\n"
+            . "Use this one-time code to verify your email address and accept the Tangent invitation to {$workspaceName}:\n\n"
+            . "Verification code: {$verificationCode}\n\n"
+            . "The code expires with the invitation at {$expiresAt} UTC. If you did not expect this invitation, you can ignore this message.\n";
+        try {
+            return $this->mailer->send($email, 'Tangent invitation email verification', $body);
+        } catch (Throwable) {
+            return false;
+        }
+    }
+
+    private function emailDeliveryFailure(): ApiException
+    {
+        return new ApiException(
+            503,
+            'email_delivery_failed',
+            'Email delivery failed. Configure server email delivery and try again.',
+        );
     }
 
     private function requireAdmin(AuthenticatedUser $actor): void

@@ -32,7 +32,7 @@ Tangent brings project conversation, issue tracking, planning, and client update
 
 ### Sign in and choose a workspace
 
-- Use the invite link from your workspace admin to join. Tangent does not email invite links; the admin copies and sends the link directly.
+- Use the invite link from your workspace admin to join. For a new account, enter the separate verification code Tangent emails to the invited address. If you already have an account, enter its current password to accept.
 - If your account belongs to more than one workspace, use the workspace picker at the top of the sidebar to switch.
 - If **New project** is available to your role, select it from **Projects**, enter a name and optional description, then create the project.
 - Choose a project from the **Projects** page or the project list in the sidebar. Your available projects depend on membership and access.
@@ -189,11 +189,11 @@ Guests see a separate, read-only project overview with limited actions. The proj
 Workspace admins use **Workspace admin** to manage members, invitations, and workspaces.
 
 - Create an invite, choose **Developer** or **Guest**, and create the link. Guest invites require at least one project to be selected.
-- Copy the generated link and send it to the invitee yourself. Tangent does not send email. The link is single-use and expires after seven days.
+- Copy the generated link and send it to the invitee yourself. For a new account, Tangent separately emails a one-time verification code to the invited address. The link is single-use and expires after seven days.
 - Manage existing members and guest project access from the Members area. An account can be a member of more than one workspace.
 - Use Workspaces to create a separate workspace for another client, then switch to it from the workspace picker.
 
-> **Invite safety:** Treat invite and password-reset links like credentials. Send them only to the intended person.
+> **Invite safety:** Send invite links only to the intended person. New accounts also need a code from the invited email address; existing accounts must prove their password.
 
 ## 10. Keyboard shortcuts
 

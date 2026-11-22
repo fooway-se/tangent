@@ -3,6 +3,7 @@ import { diffInboxCollections, nextInboxPollDelay, shouldDeferInboxUpdates, } fr
 import { renderClientEmptyState, renderClientView } from './guest-view.js';
 import { createLogoutController } from './logout.js';
 import { ProjectNavigationOwner, runOwnedRequest } from './project-navigation.js';
+import { credentialNeedsConfirmation, inviteCredentialPresentation } from './credential-flow.js';
 import { generateClientSummary } from './client-summary.js';
 import { filterMentionMembers, findMentionQuery, mentionEmptyMessage, nextMentionSelectionIndex, replaceMentionQuery, splitMentions, } from './chat-mentions.js';
 import { formatChatTimestamp } from './chat-time.js';
@@ -298,6 +299,10 @@ const credentialFlowDescription = document.querySelector('#credential-flow-descr
 const credentialFlowError = document.querySelector('#credential-flow-error');
 const credentialForm = document.querySelector('#credential-form');
 const credentialPasswordFields = document.querySelector('#credential-password-fields');
+const credentialPasswordLabel = document.querySelector('#credential-password-label-text');
+const credentialVerificationField = document.querySelector('#credential-verification-field');
+const credentialVerificationInput = document.querySelector('input[name="verification_code"]');
+const credentialConfirmationField = document.querySelector('#credential-confirmation-field');
 const credentialSubmit = document.querySelector('#credential-submit');
 const credentialCancel = document.querySelector('#credential-cancel');
 const projectForm = document.querySelector('#project-form');
@@ -1468,7 +1473,7 @@ async function generateNewInviteLink(inviteId) {
             method: 'POST',
             body: JSON.stringify({}),
         });
-        showGeneratedCredentialLink('New invite link', `Copy this seven-day link and send it to ${result.invite.email}. The previous link no longer works.`, result.invite.invite_url);
+        showGeneratedCredentialLink('New invite link', `Copy this seven-day link and send it to ${result.invite.email}. If this creates a new account, Tangent emails a verification code to the invited address. The previous link no longer works.`, result.invite.invite_url);
         report('New invite link generated.');
         await loadWorkspaceAdmin();
         copyGeneratedCredentialLink.focus();
@@ -8094,10 +8099,17 @@ function resetAuthForms() {
     loginKeyboardHints.hidden = false;
     const password = credentialForm.elements.namedItem('password');
     const confirmation = credentialForm.elements.namedItem('confirmation');
+    const verificationCode = credentialForm.elements.namedItem('verification_code');
+    credentialPasswordLabel.textContent = 'New password';
+    credentialVerificationField.hidden = true;
+    credentialVerificationInput.required = false;
+    credentialConfirmationField.hidden = false;
     if (password instanceof HTMLInputElement)
         password.required = true;
     if (confirmation instanceof HTMLInputElement)
         confirmation.required = true;
+    if (verificationCode instanceof HTMLInputElement)
+        verificationCode.value = '';
     credentialPasswordFields.hidden = true;
 }
 function showCredentialFlow() {
@@ -8126,11 +8138,17 @@ async function openCredentialFlow(credential) {
         credentialFlowHeading.textContent = 'Choose a new password';
         credentialFlowDescription.textContent = 'Your workspace admin provided this one-time reset link. Use at least 15 characters; spaces and Unicode are allowed.';
         credentialPasswordFields.hidden = false;
+        credentialPasswordLabel.textContent = 'New password';
+        credentialVerificationField.hidden = true;
+        credentialVerificationInput.required = false;
+        credentialConfirmationField.hidden = false;
         credentialSubmit.textContent = 'Reset password';
         const password = credentialForm.elements.namedItem('password');
         const confirmation = credentialForm.elements.namedItem('confirmation');
-        if (password instanceof HTMLInputElement)
+        if (password instanceof HTMLInputElement) {
             password.required = true;
+            password.autocomplete = 'new-password';
+        }
         if (confirmation instanceof HTMLInputElement)
             confirmation.required = true;
         credentialForm.querySelector('input[name="password"]')?.focus();
@@ -8145,17 +8163,26 @@ async function openCredentialFlow(credential) {
             body: JSON.stringify({ token: credential.token }),
         });
         invitePreview = result.invite;
-        credentialFlowDescription.textContent = `You’re invited to join “${result.invite.workspace_name}” as a ${result.invite.role}.`;
+        const presentation = inviteCredentialPresentation(result.invite.email_verification_required);
+        credentialFlowDescription.textContent = `You’re invited to join “${result.invite.workspace_name}” as a ${result.invite.role}. ${presentation.description}`;
         credentialPasswordFields.hidden = !result.invite.password_required;
         const password = credentialForm.elements.namedItem('password');
         const confirmation = credentialForm.elements.namedItem('confirmation');
+        credentialPasswordLabel.textContent = presentation.passwordLabel;
+        credentialVerificationField.hidden = !presentation.showVerificationCode;
+        credentialVerificationInput.required = presentation.showVerificationCode;
+        credentialConfirmationField.hidden = !presentation.showConfirmation;
         if (password instanceof HTMLInputElement)
             password.required = result.invite.password_required;
+        if (password instanceof HTMLInputElement)
+            password.autocomplete = presentation.passwordAutocomplete;
         if (confirmation instanceof HTMLInputElement)
-            confirmation.required = result.invite.password_required;
-        credentialSubmit.textContent = result.invite.password_required ? 'Set password and join' : 'Join workspace';
+            confirmation.required = presentation.showConfirmation;
+        credentialSubmit.textContent = presentation.submitLabel;
         credentialSubmit.disabled = false;
-        if (result.invite.password_required)
+        if (presentation.showVerificationCode)
+            credentialVerificationInput.focus();
+        else if (result.invite.password_required)
             credentialForm.querySelector('input[name="password"]')?.focus();
         else
             credentialSubmit.focus();
@@ -8181,7 +8208,7 @@ credentialForm.addEventListener('submit', async (event) => {
     const values = new FormData(credentialForm);
     const password = values.get('password');
     const confirmation = values.get('confirmation');
-    if (!credentialPasswordFields.hidden && password !== confirmation) {
+    if (!credentialPasswordFields.hidden && credentialNeedsConfirmation(credential.type, invitePreview?.email_verification_required === true) && password !== confirmation) {
         credentialFlowError.textContent = 'The passwords do not match.';
         credentialFlowError.hidden = false;
         credentialForm.querySelector('input[name="confirmation"]')?.focus();
@@ -8196,6 +8223,7 @@ credentialForm.addEventListener('submit', async (event) => {
                 body: JSON.stringify({
                     token: credential.token,
                     ...(invitePreview?.password_required ? { password } : {}),
+                    ...(invitePreview?.email_verification_required ? { verification_code: values.get('verification_code') } : {}),
                 }),
             });
             credentialFragment = null;
@@ -8334,7 +8362,7 @@ inviteForm.addEventListener('submit', async (event) => {
         });
         inviteForm.reset();
         inviteProjectSelection.hidden = true;
-        showGeneratedCredentialLink('Invite link', `Copy this seven-day link and send it to ${result.invite.email}.`, result.invite.invite_url);
+        showGeneratedCredentialLink('Invite link', `Copy this seven-day link and send it to ${result.invite.email}. If this creates a new account, Tangent emails a verification code to the invited address.`, result.invite.invite_url);
         report('Invite link generated. Copy and send it manually.');
         await loadWorkspaceAdmin();
         copyGeneratedCredentialLink.focus();

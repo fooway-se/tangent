@@ -9,6 +9,7 @@ import {
 import { renderClientEmptyState, renderClientView, type ClientView } from './guest-view.js';
 import { createLogoutController } from './logout.js';
 import { ProjectNavigationOwner, runOwnedRequest } from './project-navigation.js';
+import { credentialNeedsConfirmation, inviteCredentialPresentation } from './credential-flow.js';
 import { generateClientSummary, type ClientSummaryActivity } from './client-summary.js';
 import {
   filterMentionMembers,
@@ -167,6 +168,7 @@ interface InvitePreview {
   role: 'developer' | 'guest';
   project_ids: number[];
   password_required: boolean;
+  email_verification_required: boolean;
 }
 
 type CredentialFragment = { type: 'invite' | 'reset'; token: string };
@@ -565,6 +567,10 @@ const credentialFlowDescription = document.querySelector<HTMLElement>('#credenti
 const credentialFlowError = document.querySelector<HTMLElement>('#credential-flow-error')!;
 const credentialForm = document.querySelector<HTMLFormElement>('#credential-form')!;
 const credentialPasswordFields = document.querySelector<HTMLElement>('#credential-password-fields')!;
+const credentialPasswordLabel = document.querySelector<HTMLElement>('#credential-password-label-text')!;
+const credentialVerificationField = document.querySelector<HTMLElement>('#credential-verification-field')!;
+const credentialVerificationInput = document.querySelector<HTMLInputElement>('input[name="verification_code"]')!;
+const credentialConfirmationField = document.querySelector<HTMLElement>('#credential-confirmation-field')!;
 const credentialSubmit = document.querySelector<HTMLButtonElement>('#credential-submit')!;
 const credentialCancel = document.querySelector<HTMLButtonElement>('#credential-cancel')!;
 const projectForm = document.querySelector<HTMLFormElement>('#project-form')!;
@@ -1733,7 +1739,7 @@ async function generateNewInviteLink(inviteId: number): Promise<void> {
     });
     showGeneratedCredentialLink(
       'New invite link',
-      `Copy this seven-day link and send it to ${result.invite.email}. The previous link no longer works.`,
+      `Copy this seven-day link and send it to ${result.invite.email}. If this creates a new account, Tangent emails a verification code to the invited address. The previous link no longer works.`,
       result.invite.invite_url,
     );
     report('New invite link generated.');
@@ -8220,8 +8226,14 @@ function resetAuthForms(): void {
   loginKeyboardHints.hidden = false;
   const password = credentialForm.elements.namedItem('password');
   const confirmation = credentialForm.elements.namedItem('confirmation');
+  const verificationCode = credentialForm.elements.namedItem('verification_code');
+  credentialPasswordLabel.textContent = 'New password';
+  credentialVerificationField.hidden = true;
+  credentialVerificationInput.required = false;
+  credentialConfirmationField.hidden = false;
   if (password instanceof HTMLInputElement) password.required = true;
   if (confirmation instanceof HTMLInputElement) confirmation.required = true;
+  if (verificationCode instanceof HTMLInputElement) verificationCode.value = '';
   credentialPasswordFields.hidden = true;
 }
 
@@ -8254,10 +8266,17 @@ async function openCredentialFlow(credential: CredentialFragment): Promise<void>
     credentialFlowHeading.textContent = 'Choose a new password';
     credentialFlowDescription.textContent = 'Your workspace admin provided this one-time reset link. Use at least 15 characters; spaces and Unicode are allowed.';
     credentialPasswordFields.hidden = false;
+    credentialPasswordLabel.textContent = 'New password';
+    credentialVerificationField.hidden = true;
+    credentialVerificationInput.required = false;
+    credentialConfirmationField.hidden = false;
     credentialSubmit.textContent = 'Reset password';
     const password = credentialForm.elements.namedItem('password');
     const confirmation = credentialForm.elements.namedItem('confirmation');
-    if (password instanceof HTMLInputElement) password.required = true;
+    if (password instanceof HTMLInputElement) {
+      password.required = true;
+      password.autocomplete = 'new-password';
+    }
     if (confirmation instanceof HTMLInputElement) confirmation.required = true;
     credentialForm.querySelector<HTMLInputElement>('input[name="password"]')?.focus();
     return;
@@ -8272,15 +8291,22 @@ async function openCredentialFlow(credential: CredentialFragment): Promise<void>
       body: JSON.stringify({ token: credential.token }),
     });
     invitePreview = result.invite;
-    credentialFlowDescription.textContent = `You’re invited to join “${result.invite.workspace_name}” as a ${result.invite.role}.`;
+    const presentation = inviteCredentialPresentation(result.invite.email_verification_required);
+    credentialFlowDescription.textContent = `You’re invited to join “${result.invite.workspace_name}” as a ${result.invite.role}. ${presentation.description}`;
     credentialPasswordFields.hidden = !result.invite.password_required;
     const password = credentialForm.elements.namedItem('password');
     const confirmation = credentialForm.elements.namedItem('confirmation');
+    credentialPasswordLabel.textContent = presentation.passwordLabel;
+    credentialVerificationField.hidden = !presentation.showVerificationCode;
+    credentialVerificationInput.required = presentation.showVerificationCode;
+    credentialConfirmationField.hidden = !presentation.showConfirmation;
     if (password instanceof HTMLInputElement) password.required = result.invite.password_required;
-    if (confirmation instanceof HTMLInputElement) confirmation.required = result.invite.password_required;
-    credentialSubmit.textContent = result.invite.password_required ? 'Set password and join' : 'Join workspace';
+    if (password instanceof HTMLInputElement) password.autocomplete = presentation.passwordAutocomplete;
+    if (confirmation instanceof HTMLInputElement) confirmation.required = presentation.showConfirmation;
+    credentialSubmit.textContent = presentation.submitLabel;
     credentialSubmit.disabled = false;
-    if (result.invite.password_required) credentialForm.querySelector<HTMLInputElement>('input[name="password"]')?.focus();
+    if (presentation.showVerificationCode) credentialVerificationInput.focus();
+    else if (result.invite.password_required) credentialForm.querySelector<HTMLInputElement>('input[name="password"]')?.focus();
     else credentialSubmit.focus();
   } catch (error) {
     credentialFlowDescription.textContent = 'This invite link cannot be used.';
@@ -8304,7 +8330,10 @@ credentialForm.addEventListener('submit', async (event) => {
   const values = new FormData(credentialForm);
   const password = values.get('password');
   const confirmation = values.get('confirmation');
-  if (!credentialPasswordFields.hidden && password !== confirmation) {
+  if (!credentialPasswordFields.hidden && credentialNeedsConfirmation(
+    credential.type,
+    invitePreview?.email_verification_required === true,
+  ) && password !== confirmation) {
     credentialFlowError.textContent = 'The passwords do not match.';
     credentialFlowError.hidden = false;
     credentialForm.querySelector<HTMLInputElement>('input[name="confirmation"]')?.focus();
@@ -8319,6 +8348,7 @@ credentialForm.addEventListener('submit', async (event) => {
         body: JSON.stringify({
           token: credential.token,
           ...(invitePreview?.password_required ? { password } : {}),
+          ...(invitePreview?.email_verification_required ? { verification_code: values.get('verification_code') } : {}),
         }),
       });
       credentialFragment = null;
@@ -8454,7 +8484,7 @@ inviteForm.addEventListener('submit', async (event) => {
     inviteProjectSelection.hidden = true;
     showGeneratedCredentialLink(
       'Invite link',
-      `Copy this seven-day link and send it to ${result.invite.email}.`,
+      `Copy this seven-day link and send it to ${result.invite.email}. If this creates a new account, Tangent emails a verification code to the invited address.`,
       result.invite.invite_url,
     );
     report('Invite link generated. Copy and send it manually.');

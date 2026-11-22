@@ -47,22 +47,23 @@ Migration 011 stops before applying if one normalized email belongs to multiple 
 
 ## Workspace invites and password resets
 
-Workspace admins create developer or guest invites from **Workspace admin**. A guest invite must select at least one active project. Tangent generates a random one-use link that expires after seven days and displays it once so the admin can copy and send it manually. Only the SHA-256 token hash is stored; pending invite lists never expose links. Admins can generate a replacement link, which invalidates the previous one, or revoke the invite. New accounts choose a password from the link. If the email already belongs to an account in another workspace, accepting the invite adds a membership to that account and leaves its password unchanged.
+Workspace admins create developer or guest invites from **Workspace admin**. A guest invite must select at least one active project. Tangent generates a random one-use link that expires after seven days and displays it once so the admin can copy and send it manually. Only SHA-256 hashes of the invite token and email verification code are stored; pending invite lists never expose secrets. New global accounts must enter a one-time code emailed to the invited address before choosing a password. Existing accounts must enter their current password before Tangent links the membership. Admins can generate a replacement link, which invalidates the previous link and code, or revoke the invite.
 
-Tangent has no self-service **Forgot password?** form or mail delivery. The sign-in screen tells the user to contact a workspace admin only after the login attempt limit is reached. An admin can generate a one-use, one-hour password reset link from the member list, then copy and send it manually. Completing the reset revokes every active session and API token for the account across workspaces, so a reset also cuts off integrations using that account's tokens.
+Tangent has no self-service **Forgot password?** form. After the login attempt limit is reached, the sign-in screen tells the user to contact a workspace admin. An admin can request a one-use, one-hour password reset email from the member list; the reset URL is sent directly to the account email and is never returned to the admin. Completing the reset revokes every active session and API token for the account across workspaces, so a reset also cuts off integrations using that account's tokens.
 
 Configure these values in the host environment or in `config.php` for production:
 
 | Environment variable | `config.php` key | Purpose | Default |
 |---|---|---|---|
 | `TANGENT_APP_URL` | `app_url` | Public base URL used to build copyable invite and reset links; set this to the exact HTTPS site address. | `http://localhost:8080` |
+| `TANGENT_MAIL_FROM` | `mail_from` | Valid sender address used for invitation verification and password recovery email. Configure PHP's mail transport on the host. | unset |
 | `TANGENT_HIBP_ENABLED` | `hibp_enabled` | Enables the optional Have I Been Pwned Pwned Passwords range lookup. | `false` |
 | `TANGENT_GITHUB_APP_ID` | — | Numeric GitHub App ID for repository selection and pull-request tracking. | unset |
 | `TANGENT_GITHUB_APP_SLUG` | — | GitHub App URL slug. | unset |
 | `TANGENT_GITHUB_PRIVATE_KEY` | — | GitHub App PEM private key; environment values may use `\n` for newlines. | unset |
 | `TANGENT_GITHUB_WEBHOOK_SECRET` | — | Secret used to verify GitHub webhook signatures. | unset |
 
-Tangent does not send email. Admins copy and manually deliver invite and reset links. The optional breach lookup sends only the first five hexadecimal characters of the password's SHA-1 hash to the service, verifies the full hash against the returned suffix list, and fails open when the network check is unavailable. Leave it disabled on hosts without outbound HTTPS access.
+Tangent sends plain-text verification and recovery email through PHP's configured mail transport. New-account invites fail closed when delivery is unavailable; existing-account invites still require the account password. The optional breach lookup sends only the first five hexadecimal characters of the password's SHA-1 hash to the service, verifies the full hash against the returned suffix list, and fails open when the network check is unavailable. Leave it disabled on hosts without outbound HTTPS access.
 
 Passwords are NFC-normalized and checked by one shared policy for seed, direct API account creation, invite acceptance, and reset: 15–128 Unicode code points, all characters allowed, no silent truncation, common-password and contextual checks, Argon2id hashing, and hash upgrades at login. This follows the password guidance in [NIST SP 800-63B-4](https://pages.nist.gov/800-63-4/sp800-63b.html): 15 characters for single-factor passwords, blocklist checks, Unicode code-point counting, and no composition rules. Paste and password-manager autofill are supported; scheduled password rotations are not used. The bundled common-password blocklist and its license attribution are in `resources/`.
 

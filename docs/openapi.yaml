@@ -180,7 +180,7 @@ paths:
     post:
       security: []
       summary: Inspect a workspace invite link
-      description: Public, rate-limited endpoint. The link token is sent in the JSON body, never in the URL. Indicates whether a new password is required; existing accounts are linked by the invite token.
+      description: Public, rate-limited endpoint. The link token is sent in the JSON body, never in the URL. Every recipient must provide a password. New global accounts also need the one-time verification code delivered to the invited email address; existing accounts authenticate with their current password.
       requestBody:
         required: true
         content:
@@ -201,7 +201,7 @@ paths:
                 properties:
                   invite:
                     type: object
-                    required: [name, email, workspace_name, role, project_ids, password_required]
+                    required: [name, email, workspace_name, role, project_ids, password_required, email_verification_required]
                     properties:
                       name: { type: string }
                       email: { type: string, format: email }
@@ -209,23 +209,25 @@ paths:
                       role: { type: string, enum: [developer, guest] }
                       project_ids: { type: array, items: { type: integer } }
                       password_required: { type: boolean }
+                      email_verification_required: { type: boolean }
         '400': { $ref: '#/components/responses/ValidationFailed' }
         '429': { $ref: '#/components/responses/RateLimited' }
   /auth/invites/accept:
     post:
       security: []
       summary: Accept an invite and create a session
-      description: Public, rate-limited, one-use token. New accounts must provide a password. If the email already has an account, the membership is linked to that account and its existing password remains unchanged. The member and guest project access are created atomically.
+      description: Public, rate-limited, one-use token. Every recipient must prove the account password. New global accounts must also provide the one-time verification code emailed to the invited address. Membership, guest project access, invite consumption, and session creation are atomic.
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [token]
+              required: [token, password]
               properties:
                 token: { type: string, pattern: '^[a-f0-9]{64}$' }
-                password: { type: string, minLength: 15, maxLength: 128, description: Required for new accounts. Any Unicode characters and spaces are allowed; validation also checks a common-password blocklist and account context. }
+                password: { type: string, minLength: 15, maxLength: 128, description: Existing accounts provide their current password; new accounts choose a password. Any Unicode characters and spaces are allowed; validation also checks a common-password blocklist and account context. }
+                verification_code: { type: string, pattern: '^[a-f0-9]{64}$', description: Required for new global accounts; emailed to the invited address. }
       responses:
         '200':
           description: Invite accepted; session, workspace, and CSRF cookies are set.
@@ -423,7 +425,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
     post:
       summary: Create a workspace invite link (admin only)
-      description: Stores only a SHA-256 token hash and returns the raw link once so the admin can copy and send it manually. Invite links expire after seven days and contain the token in the app URL fragment. Guest invites require at least one active project.
+      description: Stores only a SHA-256 invite token hash and returns the raw link once so the admin can copy and send it manually. For a new global account, Tangent separately emails a verification code to the invited address. Invite links expire after seven days and contain the token in the app URL fragment. Guest invites require at least one active project.
       parameters:
         - $ref: '#/components/parameters/CsrfToken'
       requestBody:
@@ -465,7 +467,7 @@ paths:
   /users/invites/{id}/link:
     post:
       summary: Generate a replacement invite link (admin only)
-      description: The previous token is invalidated. A fresh random token is generated, hashed, and returned once for the admin to copy and send manually, with a new seven-day expiry.
+      description: The previous token and verification code are invalidated. A fresh invite token is generated and returned once for the admin to copy and send manually, with a new seven-day expiry. For a new global account, a fresh verification code is emailed to the invited address.
       parameters:
         - $ref: '#/components/parameters/Id'
         - $ref: '#/components/parameters/CsrfToken'

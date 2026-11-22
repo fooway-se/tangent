@@ -44,6 +44,7 @@ final class Runtime
             self::environment('TANGENT_GITHUB_APP_SLUG', ''),
             str_replace('\\n', "\n", self::environment('TANGENT_GITHUB_PRIVATE_KEY', '')),
             self::environment('TANGENT_GITHUB_WEBHOOK_SECRET', ''),
+            self::environment('TANGENT_MAIL_FROM', $fileConfig['mail_from'] ?? ''),
         );
     }
 

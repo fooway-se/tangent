@@ -16,6 +16,7 @@ final class AppConfig
         public readonly string $githubAppSlug = '',
         public readonly string $githubPrivateKey = '',
         public readonly string $githubWebhookSecret = '',
+        public readonly string $mailFrom = '',
     ) {
     }
 
@@ -31,6 +32,7 @@ final class AppConfig
             getenv('TANGENT_GITHUB_APP_SLUG') ?: '',
             str_replace('\\n', "\n", getenv('TANGENT_GITHUB_PRIVATE_KEY') ?: ''),
             getenv('TANGENT_GITHUB_WEBHOOK_SECRET') ?: '',
+            getenv('TANGENT_MAIL_FROM') ?: '',
         );
     }
 }

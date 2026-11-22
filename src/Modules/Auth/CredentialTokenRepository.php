@@ -20,17 +20,19 @@ final class CredentialTokenRepository
         string $role,
         array $projectIds,
         string $tokenHash,
+        ?string $emailVerificationHash,
         string $expiresAt,
     ): int {
         $this->revokePendingInvites($workspaceId, $email);
         $statement = $this->pdo->prepare(
             'INSERT INTO credential_tokens
-                (workspace_id, token_hash, token_type, email, name, role, expires_at, created_by)
-             VALUES (:workspace_id, :token_hash, :token_type, :email, :name, :role, :expires_at, :created_by)'
+                (workspace_id, token_hash, email_verification_hash, token_type, email, name, role, expires_at, created_by)
+             VALUES (:workspace_id, :token_hash, :email_verification_hash, :token_type, :email, :name, :role, :expires_at, :created_by)'
         );
         $statement->execute([
             'workspace_id' => $workspaceId,
             'token_hash' => $tokenHash,
+            'email_verification_hash' => $emailVerificationHash,
             'token_type' => 'invite',
             'email' => UserRepository::normalizeEmail($email),
             'name' => trim($name),
@@ -73,16 +75,24 @@ final class CredentialTokenRepository
         return $invite === false ? null : $invite;
     }
 
-    public function replaceInviteToken(int $workspaceId, int $inviteId, string $tokenHash, string $expiresAt, array $projectIds): bool
+    public function replaceInviteToken(
+        int $workspaceId,
+        int $inviteId,
+        string $tokenHash,
+        ?string $emailVerificationHash,
+        string $expiresAt,
+        array $projectIds,
+    ): bool
     {
         $statement = $this->pdo->prepare(
             'UPDATE credential_tokens
-             SET token_hash = :token_hash, expires_at = :expires_at
+             SET token_hash = :token_hash, email_verification_hash = :email_verification_hash, expires_at = :expires_at
              WHERE workspace_id = :workspace_id AND id = :id AND token_type = :token_type
                AND used_at IS NULL AND revoked_at IS NULL'
         );
         $statement->execute([
             'token_hash' => $tokenHash,
+            'email_verification_hash' => $emailVerificationHash,
             'expires_at' => $expiresAt,
             'workspace_id' => $workspaceId,
             'id' => $inviteId,
@@ -134,7 +144,7 @@ final class CredentialTokenRepository
     public function findValid(string $tokenHash, string $type, bool $forUpdate = false): ?array
     {
         $statement = $this->pdo->prepare(
-            'SELECT id, workspace_id, token_type, account_id, email, name, role, expires_at
+            'SELECT id, workspace_id, token_type, account_id, email, email_verification_hash, name, role, expires_at
              FROM credential_tokens
              WHERE token_hash = :token_hash AND token_type = :token_type
                AND used_at IS NULL AND revoked_at IS NULL AND expires_at > UTC_TIMESTAMP()

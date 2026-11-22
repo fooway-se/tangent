@@ -26,6 +26,7 @@ test('workspace admin invites members without creating their passwords', () => {
   assert.match(app, /\/users\/invites\/\$\{inviteId\}/);
   assert.match(app, /\/users\/\$\{member\.id\}\/password-reset/);
   assert.match(app, /function showGeneratedCredentialLink\(/);
+  assert.match(app, /If this creates a new account, Tangent emails a verification code to the invited address\./);
 });
 
 test('pending invite details and actions fit narrow phone screens', () => {
@@ -42,6 +43,7 @@ test('generated credential links use the same host port as the development app',
 
 test('invite and password reset fragments are removed before public requests', () => {
   assert.match(html, /id="credential-flow"/);
+  assert.match(html, /name="verification_code"/);
   assert.match(html, /id="login-admin-help"[^>]*hidden/);
   assert.match(html, /Contact a workspace admin to generate a password reset link\./);
   assert.match(html, /autocomplete="new-password"/);
@@ -50,12 +52,18 @@ test('invite and password reset fragments are removed before public requests', (
   assert.match(app, /'\/auth\/invites\/inspect'/);
   assert.match(app, /'\/auth\/invites\/accept'/);
   assert.match(app, /workspace_name: string/);
-  const inviteCopy = app.slice(
-    app.indexOf('credentialFlowDescription.textContent ='),
-    app.indexOf('credentialPasswordFields.hidden = !result.invite.password_required'),
+  const inviteFlow = app.slice(
+    app.indexOf("credentialFlowHeading.textContent = 'Accept workspace invite';"),
+    app.indexOf("credentialCancel.addEventListener('click'"),
+  );
+  const inviteCopy = inviteFlow.slice(
+    inviteFlow.indexOf('credentialFlowDescription.textContent = `You’re invited'),
+    inviteFlow.indexOf('credentialPasswordFields.hidden = !result.invite.password_required'),
   );
   assert.match(inviteCopy, /result\.invite\.workspace_name/);
   assert.doesNotMatch(inviteCopy, /result\.invite\.email/);
+  assert.match(inviteFlow, /inviteCredentialPresentation\(result\.invite\.email_verification_required\)/);
+  assert.match(app, /verification_code: values\.get\('verification_code'\)/);
   assert.match(app, /api\('\/auth\/password-reset\/complete'/);
   assert.match(app, /const credentialState = consumeCredentialFragment\(\)/);
   const loginSubmit = app.slice(

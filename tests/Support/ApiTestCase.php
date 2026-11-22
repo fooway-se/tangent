@@ -13,6 +13,7 @@ use Tangent\Core\Gateway;
 use Tangent\Core\MigrationRunner;
 use Tangent\Core\Request;
 use Tangent\Core\Response;
+use Tangent\Tests\Support\RecordingMailer;
 
 abstract class ApiTestCase extends TestCase
 {
@@ -24,6 +25,7 @@ abstract class ApiTestCase extends TestCase
     protected string $adminEmail = 'admin@example.test';
     protected string $developerEmail = 'developer@example.test';
     protected string $password = 'correct-horse-battery';
+    protected RecordingMailer $mailer;
     private static ?string $fixturePasswordHash = null;
 
     protected function setUp(): void
@@ -40,6 +42,7 @@ abstract class ApiTestCase extends TestCase
         $this->pdo = $database->pdo();
         (new MigrationRunner($this->pdo, dirname(__DIR__, 2) . '/migrations'))->migrate();
         $this->pdo->beginTransaction();
+        $this->mailer = new RecordingMailer();
 
         $workspace = $this->pdo->prepare(
             'INSERT INTO workspaces (name, slug) VALUES (:name, :slug)'
@@ -49,7 +52,7 @@ abstract class ApiTestCase extends TestCase
 
         $this->adminId = $this->insertUser($this->adminEmail, 'Admin', 'admin');
         $this->developerId = $this->insertUser($this->developerEmail, 'Developer', 'developer');
-        $this->application = Application::create($this->pdo, new AppConfig($this->workspaceId, false));
+        $this->application = Application::create($this->pdo, new AppConfig($this->workspaceId, false), null, $this->mailer);
     }
 
     protected function tearDown(): void
