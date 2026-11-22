@@ -44,7 +44,7 @@ Aimed at freelancers, small remote teams and studios that coordinate client work
 
 Steps in short:
 
-1. Build the release archive with `php bin/build-release.php` (needs the PHP `zip` extension). It contains prebuilt assets and user documentation, including the English manual.
+1. Build the release archive with `php bin/build-release.php` from a Git checkout after installing the npm dependencies (needs the PHP `zip` extension and Node.js). It packages tracked release files and checks that the compiled browser assets match the TypeScript sources. The archive contains user documentation, including the English manual.
 2. Upload it to your host and run the one-time installer.
 3. Update later with the update page.
 
