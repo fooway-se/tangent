@@ -104,6 +104,33 @@ final class LoungeChatTest extends ApiTestCase
         ], $afterExpiry->body['members']);
     }
 
+    public function testLoungeCleanupRunsOncePerWorkspaceInterval(): void
+    {
+        $admin = $this->login($this->adminEmail);
+        $staleDeveloper = $this->pdo->prepare(
+            'INSERT INTO lounge_presence (workspace_id, user_id, last_seen_at)
+             VALUES (:workspace_id, :user_id, UTC_TIMESTAMP() - INTERVAL 2 DAY)'
+        );
+        $staleDeveloper->execute(['workspace_id' => $this->workspaceId, 'user_id' => $this->developerId]);
+
+        self::assertSame(200, $this->postLoungePresence($admin)->status);
+        self::assertSame(0, $this->loungePresenceCount($this->developerId));
+
+        $staleDeveloper->execute(['workspace_id' => $this->workspaceId, 'user_id' => $this->developerId]);
+        $duringThrottle = $this->postLoungePresence($admin);
+        self::assertSame(200, $duringThrottle->status);
+        self::assertSame(1, $this->loungePresenceCount($this->developerId));
+        self::assertSame([['id' => $this->adminId, 'name' => 'Admin']], $duringThrottle->body['members']);
+
+        $advanceCleanup = $this->pdo->prepare(
+            'UPDATE presence_cleanup_state SET last_cleaned_at = UTC_TIMESTAMP() - INTERVAL 2 HOUR
+             WHERE workspace_id = :workspace_id AND project_id = 0'
+        );
+        $advanceCleanup->execute(['workspace_id' => $this->workspaceId]);
+        self::assertSame(200, $this->postLoungePresence($admin)->status);
+        self::assertSame(0, $this->loungePresenceCount($this->developerId));
+    }
+
     public function testReadOnlyLoungePresenceListsCurrentNamesWithoutMarkingTheViewerPresent(): void
     {
         $admin = $this->login($this->adminEmail);

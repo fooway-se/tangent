@@ -85,12 +85,14 @@ final class ChatRepository
 
     public function heartbeatLoungePresence(int $workspaceId, int $userId): array
     {
-        $prune = $this->pdo->prepare(
-            'DELETE FROM lounge_presence
-             WHERE workspace_id = :workspace_id
-               AND last_seen_at < UTC_TIMESTAMP() - INTERVAL 1 DAY'
-        );
-        $prune->execute(['workspace_id' => $workspaceId]);
+        if ($this->claimPresenceCleanupSlot($workspaceId, 0)) {
+            $prune = $this->pdo->prepare(
+                'DELETE FROM lounge_presence
+                 WHERE workspace_id = :workspace_id
+                   AND last_seen_at < UTC_TIMESTAMP() - INTERVAL 1 DAY'
+            );
+            $prune->execute(['workspace_id' => $workspaceId]);
+        }
 
         $heartbeat = $this->pdo->prepare(
             'INSERT INTO lounge_presence (workspace_id, user_id, last_seen_at)
@@ -127,12 +129,14 @@ final class ChatRepository
 
     public function heartbeatProjectPresence(int $workspaceId, int $projectId, int $userId): bool
     {
-        $prune = $this->pdo->prepare(
-            'DELETE FROM project_presence
-             WHERE workspace_id = :workspace_id AND project_id = :project_id
-               AND last_seen_at < UTC_TIMESTAMP() - INTERVAL 1 DAY'
-        );
-        $prune->execute(['workspace_id' => $workspaceId, 'project_id' => $projectId]);
+        if ($this->claimPresenceCleanupSlot($workspaceId, $projectId)) {
+            $prune = $this->pdo->prepare(
+                'DELETE FROM project_presence
+                 WHERE workspace_id = :workspace_id AND project_id = :project_id
+                   AND last_seen_at < UTC_TIMESTAMP() - INTERVAL 1 DAY'
+            );
+            $prune->execute(['workspace_id' => $workspaceId, 'project_id' => $projectId]);
+        }
 
         $heartbeat = $this->pdo->prepare(
             'INSERT INTO project_presence (workspace_id, project_id, user_id, last_seen_at)
@@ -159,6 +163,24 @@ final class ChatRepository
             'user_id' => $userId,
         ]);
         return (bool) $otherViewer->fetchColumn();
+    }
+
+    private function claimPresenceCleanupSlot(int $workspaceId, int $projectId): bool
+    {
+        $initialize = $this->pdo->prepare(
+            'INSERT IGNORE INTO presence_cleanup_state (workspace_id, project_id, last_cleaned_at)
+             VALUES (:workspace_id, :project_id, UTC_TIMESTAMP() - INTERVAL 1 DAY)'
+        );
+        $initialize->execute(['workspace_id' => $workspaceId, 'project_id' => $projectId]);
+
+        $claim = $this->pdo->prepare(
+            'UPDATE presence_cleanup_state
+             SET last_cleaned_at = UTC_TIMESTAMP()
+             WHERE workspace_id = :workspace_id AND project_id = :project_id
+               AND last_cleaned_at <= UTC_TIMESTAMP() - INTERVAL 1 HOUR'
+        );
+        $claim->execute(['workspace_id' => $workspaceId, 'project_id' => $projectId]);
+        return $claim->rowCount() === 1;
     }
 
     public function latestMessageId(int $workspaceId, int $channelId): int

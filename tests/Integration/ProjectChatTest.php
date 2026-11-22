@@ -66,6 +66,40 @@ final class ProjectChatTest extends ApiTestCase
         self::assertSame(['someone_else_viewing' => false], $afterExpiry->body);
     }
 
+    public function testProjectPresenceCleanupRunsOncePerProjectInterval(): void
+    {
+        $admin = $this->login($this->adminEmail);
+        $projectId = $this->createProject($admin, 'Project presence cleanup');
+        $staleDeveloper = $this->pdo->prepare(
+            'INSERT INTO project_presence (workspace_id, project_id, user_id, last_seen_at)
+             VALUES (:workspace_id, :project_id, :user_id, UTC_TIMESTAMP() - INTERVAL 2 DAY)'
+        );
+        $staleDeveloper->execute([
+            'workspace_id' => $this->workspaceId,
+            'project_id' => $projectId,
+            'user_id' => $this->developerId,
+        ]);
+
+        self::assertFalse($this->postPresence($projectId, $admin)->body['someone_else_viewing']);
+        self::assertSame(0, $this->projectPresenceCount($projectId, $this->developerId));
+
+        $staleDeveloper->execute([
+            'workspace_id' => $this->workspaceId,
+            'project_id' => $projectId,
+            'user_id' => $this->developerId,
+        ]);
+        self::assertFalse($this->postPresence($projectId, $admin)->body['someone_else_viewing']);
+        self::assertSame(1, $this->projectPresenceCount($projectId, $this->developerId));
+
+        $advanceCleanup = $this->pdo->prepare(
+            'UPDATE presence_cleanup_state SET last_cleaned_at = UTC_TIMESTAMP() - INTERVAL 2 HOUR
+             WHERE workspace_id = :workspace_id AND project_id = :project_id'
+        );
+        $advanceCleanup->execute(['workspace_id' => $this->workspaceId, 'project_id' => $projectId]);
+        self::assertFalse($this->postPresence($projectId, $admin)->body['someone_else_viewing']);
+        self::assertSame(0, $this->projectPresenceCount($projectId, $this->developerId));
+    }
+
     public function testNonMembersCannotReportProjectPresence(): void
     {
         $admin = $this->login($this->adminEmail);
@@ -404,6 +438,20 @@ final class ProjectChatTest extends ApiTestCase
             ['X-CSRF-Token' => $user['csrf']],
             ['tangent_session' => $user['cookie']],
         );
+    }
+
+    private function projectPresenceCount(int $projectId, int $userId): int
+    {
+        $count = $this->pdo->prepare(
+            'SELECT COUNT(*) FROM project_presence
+             WHERE workspace_id = :workspace_id AND project_id = :project_id AND user_id = :user_id'
+        );
+        $count->execute([
+            'workspace_id' => $this->workspaceId,
+            'project_id' => $projectId,
+            'user_id' => $userId,
+        ]);
+        return (int) $count->fetchColumn();
     }
 
     private function getMessages(int $projectId, string $cookie, array $query = [], array $headers = []): Response
