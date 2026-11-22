@@ -5,6 +5,8 @@ import { resolveShortcut } from '../../public/assets/shortcuts.js';
 
 const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
+const loungeChatUi = await readFile(new URL('../../frontend/src/lounge-chat-ui.ts', import.meta.url), 'utf8');
+const mentionsUi = await readFile(new URL('../../frontend/src/chat-mentions-ui.ts', import.meta.url), 'utf8');
 const css = await readFile(new URL('../../public/assets/app.css', import.meta.url), 'utf8');
 const shortcuts = await readFile(new URL('../../frontend/src/shortcuts.ts', import.meta.url), 'utf8');
 const presence = await readFile(new URL('../../frontend/src/lounge-presence.ts', import.meta.url), 'utf8');
@@ -20,7 +22,7 @@ test('Lounge is a fixed workspace destination between Inbox and workspace admin'
   assert.match(html, /id="lounge-nav-presence"/);
   assert.match(html, /id="lounge-view"[^>]*hidden/);
   assert.match(app, /function goToLounge\(/);
-  assert.match(app, /\/lounge\/messages/);
+  assert.match(loungeChatUi, /\/lounge\/messages/);
 });
 
 test('Lounge can be opened with the workspace g-l shortcut', () => {
@@ -57,15 +59,16 @@ test('Lounge can be opened with the workspace g-l shortcut', () => {
 
 test('Lounge composer uses the project chat mention autocomplete for workspace members', () => {
   assert.match(html, /id="lounge-mention-suggestions"[^>]*role="listbox"/);
-  assert.match(app, /function updateLoungeMentionSuggestions\(/);
-  assert.match(app, /api<\{ members: LoungeMentionMember\[\] \}>\('\/lounge\/members'\)/);
-  assert.match(app, /filterMentionMembers\(loungeMembers, query\.query/);
-  assert.match(app, /replaceMentionQuery\(loungeInput\.value, loungeMentionQuery, member\.name\)/);
-  assert.match(app, /handleLoungeMentionKeydown/);
-  assert.match(app, /return handleMentionKeydown\([\s\S]{0,80}event,\s*loungeInput,\s*loungeMentionList/);
+  assert.match(loungeChatUi, /function updateMentionSuggestions\(/);
+  assert.match(loungeChatUi, /request<\{ members: LoungeMentionMember\[\] \}>\('\/lounge\/members'\)/);
+  assert.match(loungeChatUi, /filterMentionMembers\(members, query\.query/);
+  assert.match(loungeChatUi, /replaceMentionQuery\(loungeInput\.value, mentionQuery, member\.name\)/);
+  assert.match(loungeChatUi, /function handleMentionKeydown\(/);
+  assert.match(loungeChatUi, /handleMentionKeydownUi\([\s\S]{0,100}event,\s*loungeInput,\s*loungeMentionList/);
   assert.match(app, /return handleMentionKeydown\([\s\S]{0,80}event,\s*chatInput,\s*chatMentionList/);
-  assert.match(app, /splitMentions\(message\.body, loungeMembers\)/);
-  assert.match(app, /chat-message-mention/);
+  assert.match(loungeChatUi, /splitMentions\(message\.body, members\)/);
+  assert.match(loungeChatUi, /chat-message-mention/);
+  assert.match(mentionsUi, /event\.key === 'ArrowDown'/);
 });
 
 test('Lounge shows the names of teammates who are currently present', () => {
@@ -78,20 +81,20 @@ test('Lounge shows the names of teammates who are currently present', () => {
 });
 
 test('Lounge messages use relative calendar days in their timestamps', () => {
-  assert.match(app, /import \{ formatChatTimestamp \} from '\.\/chat-time\.js'/);
-  assert.match(app, /time\.textContent = formatChatTimestamp\(message\.created_at\)/);
+  assert.match(loungeChatUi, /import \{ formatChatTimestamp \} from '\.\/chat-time\.js'/);
+  assert.match(loungeChatUi, /time\.textContent = formatChatTimestamp\(message\.created_at\)/);
 });
 
 test('Lounge messages can be replied to and the selected parent is sent with the reply', () => {
-  const append = app.slice(app.indexOf('function appendLoungeMessage('), app.indexOf('async function loadLoungeChat('));
+  const append = loungeChatUi.slice(loungeChatUi.indexOf('function appendMessage('), loungeChatUi.indexOf('async function loadNow('));
 
   assert.match(append, /message\.parent_id === null \? 'chat-message' : 'chat-message chat-reply'/);
   assert.match(append, /textContent = 'Reply'/);
-  assert.match(append, /setLoungeReplyParent\(message\)/);
+  assert.match(append, /setReplyParent\(message\)/);
   assert.match(append, /chat-reply-context/);
-  assert.match(app, /function setLoungeReplyParent\(/);
-  assert.match(app, /if \(loungeReplyParent !== null\) messageBody\.parent_id = loungeReplyParent\.id/);
-  assert.match(app, /JSON\.stringify\(messageBody\)/);
+  assert.match(loungeChatUi, /function setReplyParent\(/);
+  assert.match(loungeChatUi, /if \(replyParent !== null\) messageBody\.parent_id = replyParent\.id/);
+  assert.match(loungeChatUi, /JSON\.stringify\(messageBody\)/);
   assert.match(html, /id="lounge-reply-hint"/);
   assert.match(html, /id="lounge-cancel-reply"/);
 });

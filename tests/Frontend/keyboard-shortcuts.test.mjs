@@ -6,6 +6,7 @@ import { resolveShortcut, shouldSendChatOnEnter } from '../../public/assets/shor
 const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
 const workspaceAdminUi = await readFile(new URL('../../frontend/src/workspace-admin-ui.ts', import.meta.url), 'utf8');
+const loungeChatUi = await readFile(new URL('../../frontend/src/lounge-chat-ui.ts', import.meta.url), 'utf8');
 const inboxUi = await readFile(new URL('../../frontend/src/inbox-ui.ts', import.meta.url), 'utf8');
 const themeUi = await readFile(new URL('../../frontend/src/theme-ui.ts', import.meta.url), 'utf8');
 const milestoneUi = await readFile(new URL('../../frontend/src/milestone-ui.ts', import.meta.url), 'utf8');
@@ -222,7 +223,7 @@ test('chat message selection supports navigation, reply, issue creation, and com
 });
 
 test('Lounge messages use the same keyboard traversal and reply shortcuts as project chat', () => {
-  const loungeAppend = app.slice(app.indexOf('function appendLoungeMessage('), app.indexOf('function updateLoungeMessageReplyCount('));
+  const loungeAppend = loungeChatUi.slice(loungeChatUi.indexOf('function appendMessage('), loungeChatUi.indexOf('function updateMessageReplyCount('));
   const shortcutContext = app.slice(app.indexOf('function shortcutContext('), app.indexOf('function clearGoPrefix('));
   const loungeSelection = {
     chatMessagesFocused: true,
@@ -240,7 +241,7 @@ test('Lounge messages use the same keyboard traversal and reply shortcuts as pro
   assert.equal(resolve('r', loungeSelection), 'reply-to-chat-message');
   assert.equal(resolve('i', loungeSelection), null);
   assert.match(loungeAppend, /aria-keyshortcuts', 'j k ArrowUp ArrowDown Home End PageUp PageDown Enter r'/);
-  assert.match(loungeAppend, /item\.addEventListener\('focusin', \(\) => selectChatMessage\(message\.id, false\)\)/);
+  assert.match(loungeAppend, /item\.addEventListener\('focusin', \(\) => options\.selectMessage\(message\.id, false\)\)/);
   assert.match(shortcutContext, /activeChatMessagesById\(\)\.has\(selectedChatMessageId\)/);
   assert.match(app, /function activeChatMessageList\(/);
   assert.match(app, /function activeChatMessagesById\(/);

@@ -101,12 +101,6 @@ export const dom = {
         loungeView: document.querySelector('#lounge-view'),
         loungeHeading: document.querySelector('#lounge-heading'),
         loungeMessageList: document.querySelector('#lounge-message-list'),
-        loungeEmptyState: document.querySelector('#lounge-empty-state'),
-        loungeForm: document.querySelector('#lounge-form'),
-        loungeInput: document.querySelector('#lounge-input'),
-        loungeMentionList: document.querySelector('#lounge-mention-suggestions'),
-        loungeReplyHint: document.querySelector('#lounge-reply-hint'),
-        loungeCancelReply: document.querySelector('#lounge-cancel-reply'),
     },
     shortcuts: {
         toggleProjectFormButton: document.querySelector('#toggle-project-form'),

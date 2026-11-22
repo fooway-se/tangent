@@ -9,14 +9,15 @@ import { githubRepositorySelectionValue, parseGitHubRepositorySelection } from '
 import { switchWorkspaceMembership } from './workspace-switch.js';
 import { initAuthUi } from './auth-ui.js';
 import { initClientSummaryUi } from './client-summary-ui.js';
-import { filterMentionMembers, findMentionQuery, mentionEmptyMessage, nextMentionSelectionIndex, replaceMentionQuery, splitMentions, } from './chat-mentions.js';
-import { formatChatTimestamp } from './chat-time.js';
+import { filterMentionMembers, findMentionQuery, mentionEmptyMessage, replaceMentionQuery, } from './chat-mentions.js';
 import { resolveShortcut, shouldSubmitOnEnter } from './shortcuts.js';
 import { nextTheme, themeLabel } from './theme.js';
 import { initThemeUi } from './theme-ui.js';
 import { initProjectNotesUi } from './project-notes-ui.js';
 import { initMilestoneUi } from './milestone-ui.js';
 import { initLoungePresence } from './lounge-presence.js';
+import { initLoungeChatUi } from './lounge-chat-ui.js';
+import { handleMentionKeydown } from './chat-mentions-ui.js';
 import { initWorkspaceAdminUi } from './workspace-admin-ui.js';
 import { parseQuickIssueInput } from './quick-issue.js';
 import { milestoneStatus } from './roadmap.js';
@@ -24,7 +25,7 @@ import { formatIssueMarkdown, formatIssuePrompt } from './issue-export.js';
 import { filterIssues, filterIssuesByMilestoneArchive, groupIssues, groupIssuesByMilestone, discussionIndicatorLabel, projectProgress, sortIssues, } from './issue-board.js';
 import { diffConditionalIssueCollections, loadIssueCollections, nextIssuePollDelay, refreshDeletedIssuesOnOpen, shouldDeferIssueUpdates, } from './issue-polling.js';
 import { dom } from './dom.js';
-const { project: { projectHeading, projectEditDialog, projectEditForm, projectEditClose, projectEditCancel, projectEditName, projectEditDescription, projectEditStatus, projectEditStatusHelp, projectReadOnlyNotice, projectEditMessage, projectEditSave, editProjectButton, projectGithubRepository, projectEditGithubRepository, githubProjectSelectionStatus, githubProjectEditStatus, connectGithubCreateButton, connectGithubEditButton, projectsNavButton, projectsView, projectView, projectForm, projectList, emptyProjects, projectFormPanel, projectDescription, projectState, projectChatColumn, projectSidebarList, projectSidebarEmpty, projectMain, projectTabs, projectKeyboardHints, }, auth: { loginPanel, loginShell, accountBar, currentUserLabel, loginStatusMessage, logoutButton, }, workspace: { workspacePanel, workspaceNav, workspaceSwitcher, workspaceSwitcherLabel, workspacePicker, workspacePickerCancel, workspacePickerConfirm, workspacePickerDescription, workspacePickerOptions, adminNavButton, adminView, adminHeading, membersView, adminGoPrefixOption, workspaceSwitchHint, membersTabButton, memberList, memberForm, memberAddControls, memberAddStatus, memberSelect, memberRemovalConfirmation, memberRemovalDescription, memberRemovalCancel, memberRemovalConfirm, }, shell: { createWorkspaceForm, breadcrumbProjectsButton, breadcrumbDivider, breadcrumbCurrent, cancelProjectFormButton, linkPullRequestButton, notesTabButton, emptyIssues, addMemberButton, statusMessage, }, roadmap: { roadmapNavButton, roadmapView, roadmapHeading, roadmapSummary, roadmapMilestoneList, roadmapEmptyState, roadmapGoPrefixOption, }, inbox: { inboxNavButton, inboxView, inboxHeading, }, lounge: { loungeNavButton, loungeView, loungeHeading, loungeMessageList, loungeEmptyState, loungeForm, loungeInput, loungeMentionList, loungeReplyHint, loungeCancelReply, }, shortcuts: { toggleProjectFormButton, keyboardHints, goPrefixHint, goPrefixWorkspaceOption, goPrefixProjectOptions, commandPalette, commandPaletteClose, commandSearch, commandResults, shortcutHelp, shortcutHelpClose, }, chat: { chatView, }, issues: { issuesView, issueDetailView, issueDetailDisplay, issueDetailTitle, issueDetailPriority, issueDetailDueDate, issueDetailDescription, issueDetailBrief, issueDetailContextSection, issueDetailContext, issueDetailExpectedOutcomeSection, issueDetailExpectedOutcome, issueDetailAcceptanceCriteriaSection, issueDetailAcceptanceCriteria, issueDetailStatus, issueDetailStatusLabel, issueSourceLink, issuePullRequests, issuePullRequestsList, issuePullRequestsEmpty, issuePullRequestDialog, issuePullRequestForm, issuePullRequestClose, issuePullRequestCancel, issuePullRequestUrl, issuePullRequestMessage, issuePullRequestSubmit, issueDetailEditForm, issueDetailTitleInput, issueDetailDescriptionInput, issueDetailPriorityInput, issueDetailDueDateInput, issueDetailEditButton, issueAiPromptButton, issueAiPromptDialog, issueAiPromptCloseButton, issueAiPromptStepCount, issueAiPromptContext, issueAiPromptOutcome, issueAiPromptCriteria, issueAiPromptPreview, issueAiPromptStatus, issueAiPromptBackButton, issueAiPromptSkipButton, issueAiPromptNextButton, issueAiPromptActions, issueAiPromptSaveButton, issueAiPromptCopyButton, issueAiPromptCopyMarkdownButton, issueAiPromptDownloadButton, issueDetailDeleteButton, issueDetailSaveButton, issuesTabButton, issueBackButton, issueDetailCancelButton, issueForm, issueQuickAddTitle, issueQuickAddPriority, issueQuickAddDueDate, issueQuickAddAssignee, issueQuickAddMilestone, issueQuickAddOngoing, issueQuickAddShared, issueQuickAddApproval, issueQuickAddCancelButton, issueDetailType, issueDetailAssignee, issueDetailMilestone, issueDetailOngoingRow, issueDetailSharing, issueDetailApproval, issueDetailTypeInput, issueDetailAssigneeInput, issueDetailMilestoneInput, issueDetailOngoingInput, issueDetailSharedInput, issueDetailApprovalInput, issueStatusHistory, issueStatusHistoryCount, issueStatusHistoryEmpty, issueStatusHistoryList, issueDiscussionHeading, issueDiscussionCount, issueDiscussionStatus, issueDiscussionEmpty, issueDiscussionList, issueDiscussionForm, issueDiscussionInput, issueDiscussionSubmit, issueDiscussionReplyContext, issueDiscussionReplyLabel, issueDiscussionReplyCancel, issueDescriptionDetails, issueProgress, issueProgressLabel, issueFilter, issueGrouping, issueOrder, issueScope, issueCountSummary, issueBulkAssignToggle, issueBulkAssignToolbar, issueList, deletedIssuesDetails, deletedIssueCount, deletedIssueList, issueStatusPicker, issueStatusPickerClose, issueStatusPickerDescription, issueStatusPickerOptions, issueDeleteConfirmation, issueDeleteDescription, issueDeleteError, issueDeleteCancel, issueDeleteConfirm, }, guest: { guestWorkspaceSwitcher, guestWorkspaceSwitcherLabel, guestLogoutButton, }, } = dom;
+const { project: { projectHeading, projectEditDialog, projectEditForm, projectEditClose, projectEditCancel, projectEditName, projectEditDescription, projectEditStatus, projectEditStatusHelp, projectReadOnlyNotice, projectEditMessage, projectEditSave, editProjectButton, projectGithubRepository, projectEditGithubRepository, githubProjectSelectionStatus, githubProjectEditStatus, connectGithubCreateButton, connectGithubEditButton, projectsNavButton, projectsView, projectView, projectForm, projectList, emptyProjects, projectFormPanel, projectDescription, projectState, projectChatColumn, projectSidebarList, projectSidebarEmpty, projectMain, projectTabs, projectKeyboardHints, }, auth: { loginPanel, loginShell, accountBar, currentUserLabel, loginStatusMessage, logoutButton, }, workspace: { workspacePanel, workspaceNav, workspaceSwitcher, workspaceSwitcherLabel, workspacePicker, workspacePickerCancel, workspacePickerConfirm, workspacePickerDescription, workspacePickerOptions, adminNavButton, adminView, adminHeading, membersView, adminGoPrefixOption, workspaceSwitchHint, membersTabButton, memberList, memberForm, memberAddControls, memberAddStatus, memberSelect, memberRemovalConfirmation, memberRemovalDescription, memberRemovalCancel, memberRemovalConfirm, }, shell: { createWorkspaceForm, breadcrumbProjectsButton, breadcrumbDivider, breadcrumbCurrent, cancelProjectFormButton, linkPullRequestButton, notesTabButton, emptyIssues, addMemberButton, statusMessage, }, roadmap: { roadmapNavButton, roadmapView, roadmapHeading, roadmapSummary, roadmapMilestoneList, roadmapEmptyState, roadmapGoPrefixOption, }, inbox: { inboxNavButton, inboxView, inboxHeading, }, lounge: { loungeNavButton, loungeView, loungeHeading, loungeMessageList, }, shortcuts: { toggleProjectFormButton, keyboardHints, goPrefixHint, goPrefixWorkspaceOption, goPrefixProjectOptions, commandPalette, commandPaletteClose, commandSearch, commandResults, shortcutHelp, shortcutHelpClose, }, chat: { chatView, }, issues: { issuesView, issueDetailView, issueDetailDisplay, issueDetailTitle, issueDetailPriority, issueDetailDueDate, issueDetailDescription, issueDetailBrief, issueDetailContextSection, issueDetailContext, issueDetailExpectedOutcomeSection, issueDetailExpectedOutcome, issueDetailAcceptanceCriteriaSection, issueDetailAcceptanceCriteria, issueDetailStatus, issueDetailStatusLabel, issueSourceLink, issuePullRequests, issuePullRequestsList, issuePullRequestsEmpty, issuePullRequestDialog, issuePullRequestForm, issuePullRequestClose, issuePullRequestCancel, issuePullRequestUrl, issuePullRequestMessage, issuePullRequestSubmit, issueDetailEditForm, issueDetailTitleInput, issueDetailDescriptionInput, issueDetailPriorityInput, issueDetailDueDateInput, issueDetailEditButton, issueAiPromptButton, issueAiPromptDialog, issueAiPromptCloseButton, issueAiPromptStepCount, issueAiPromptContext, issueAiPromptOutcome, issueAiPromptCriteria, issueAiPromptPreview, issueAiPromptStatus, issueAiPromptBackButton, issueAiPromptSkipButton, issueAiPromptNextButton, issueAiPromptActions, issueAiPromptSaveButton, issueAiPromptCopyButton, issueAiPromptCopyMarkdownButton, issueAiPromptDownloadButton, issueDetailDeleteButton, issueDetailSaveButton, issuesTabButton, issueBackButton, issueDetailCancelButton, issueForm, issueQuickAddTitle, issueQuickAddPriority, issueQuickAddDueDate, issueQuickAddAssignee, issueQuickAddMilestone, issueQuickAddOngoing, issueQuickAddShared, issueQuickAddApproval, issueQuickAddCancelButton, issueDetailType, issueDetailAssignee, issueDetailMilestone, issueDetailOngoingRow, issueDetailSharing, issueDetailApproval, issueDetailTypeInput, issueDetailAssigneeInput, issueDetailMilestoneInput, issueDetailOngoingInput, issueDetailSharedInput, issueDetailApprovalInput, issueStatusHistory, issueStatusHistoryCount, issueStatusHistoryEmpty, issueStatusHistoryList, issueDiscussionHeading, issueDiscussionCount, issueDiscussionStatus, issueDiscussionEmpty, issueDiscussionList, issueDiscussionForm, issueDiscussionInput, issueDiscussionSubmit, issueDiscussionReplyContext, issueDiscussionReplyLabel, issueDiscussionReplyCancel, issueDescriptionDetails, issueProgress, issueProgressLabel, issueFilter, issueGrouping, issueOrder, issueScope, issueCountSummary, issueBulkAssignToggle, issueBulkAssignToolbar, issueList, deletedIssuesDetails, deletedIssueCount, deletedIssueList, issueStatusPicker, issueStatusPickerClose, issueStatusPickerDescription, issueStatusPickerOptions, issueDeleteConfirmation, issueDeleteDescription, issueDeleteError, issueDeleteCancel, issueDeleteConfirm, }, guest: { guestWorkspaceSwitcher, guestWorkspaceSwitcherLabel, guestLogoutButton, }, } = dom;
 const KEYBOARD_HINTS_STORAGE_KEY = 'tangent.keyboard-hints-visible';
 function loadKeyboardHintsPreference() {
     try {
@@ -171,18 +172,6 @@ let issueAiPromptStepIndex = 0;
 let issueAiPromptReturnFocus = null;
 let activeChatProjectId = null;
 let loungeActive = false;
-let loungePollTimer = null;
-let loungeCursor = 0;
-let loungeEtag = null;
-let loungePollDelay = 1000;
-let loungeFollowLatest = true;
-let loungeMembers = [];
-const loungeMessagesById = new Map();
-let loungeReplyParent = null;
-let loungeMentionQuery = null;
-let loungeMentionMatches = [];
-let loungeMentionSelectedIndex = 0;
-let loungeMentionDismissed = false;
 let issuePollTimer = null;
 let issuePollDelay = 1000;
 let activeIssuesEtag = null;
@@ -247,6 +236,20 @@ const loungePresenceUi = initLoungePresence({
     isWorkspaceVisible: () => !workspacePanel.hidden,
     isDocumentHidden: () => document.hidden,
     onUnauthorized: () => showSignedOut(),
+});
+const loungeChatUi = initLoungeChatUi({
+    isVisible: () => !loungeView.hidden,
+    isDocumentHidden: () => document.hidden,
+    getUserId: () => activeUser?.id ?? null,
+    onActiveChange: (active) => { loungeActive = active; },
+    onSelectionCleared: () => { selectedChatMessageId = null; },
+    selectMessage: selectChatMessage,
+    onUnauthorized: () => showSignedOut(),
+    report,
+    presence: loungePresenceUi,
+    avatarInitials,
+    compactMessage: compactChatMessage,
+    submitFormOnEnter,
 });
 const inboxUi = initInboxUi({
     isVisible: () => !workspacePanel.hidden && !inboxView.hidden,
@@ -420,7 +423,7 @@ function showSignedOut() {
     inboxUi.reset();
     resetPendingWorkspaceSwitch();
     stopChatPolling();
-    stopLoungePolling();
+    loungeChatUi.stop();
     loungePresenceUi.reset();
     if (clientSummaryUi.dialog.open)
         clientSummaryUi.close();
@@ -467,7 +470,7 @@ function showSignedIn(user) {
     workspaceViewHistory.length = 0;
     projectReturnFocusId = null;
     activeProject = null;
-    stopLoungePolling();
+    loungeChatUi.stop();
     loungePresenceUi.reset();
     activeUser = user;
     guestWorkspaceSwitcher.hidden = user.role !== 'guest';
@@ -627,7 +630,7 @@ function showWorkspaceView(view) {
         inboxUi.clearForNavigation();
     }
     if (view !== 'lounge')
-        stopLoungePolling();
+        loungeChatUi.stop();
     if (view !== 'project') {
         if (activeProject !== null)
             projectReturnFocusId = activeProject.id;
@@ -760,7 +763,7 @@ function goToLounge() {
         workspaceViewHistory.push(currentLocation);
     showWorkspaceView('lounge');
     loungeHeading.focus();
-    loadLoungeChat();
+    loungeChatUi.load();
 }
 function goBackWorkspaceView() {
     const currentLocation = currentWorkspaceLocation();
@@ -783,7 +786,7 @@ function goBackWorkspaceView() {
     else if (previousLocation?.view === 'lounge') {
         showWorkspaceView('lounge');
         loungeHeading.focus();
-        void loadLoungeChat();
+        void loungeChatUi.load();
     }
     else if (previousLocation?.view === 'admin') {
         showWorkspaceView('admin');
@@ -817,392 +820,6 @@ function stopChatPolling() {
     selectedChatMessageId = null;
     chatFollowLatest = true;
     chatMessagesById.clear();
-}
-function stopLoungePolling() {
-    loungeActive = false;
-    selectedChatMessageId = null;
-    if (loungePollTimer !== null)
-        window.clearTimeout(loungePollTimer);
-    loungePollTimer = null;
-    loungePresenceUi.stopLoungePolling();
-    loungeMembers = [];
-    loungeMentionDismissed = false;
-    clearLoungeReplyParent();
-    loungeMessagesById.clear();
-    hideLoungeMentionSuggestions();
-    loungeMessageList.replaceChildren(loungeEmptyState);
-    loungeEmptyState.hidden = false;
-}
-function updateLoungeMentionSuggestions() {
-    if (loungeMentionDismissed)
-        return;
-    const query = findMentionQuery(loungeInput.value, loungeInput.selectionStart);
-    if (query === null) {
-        hideLoungeMentionSuggestions();
-        return;
-    }
-    const matches = filterMentionMembers(loungeMembers, query.query, activeUser?.id ?? null);
-    if (matches.length === 0) {
-        loungeMentionQuery = query;
-        loungeMentionMatches = [];
-        loungeMentionSelectedIndex = 0;
-        const empty = document.createElement('div');
-        empty.className = 'chat-mention-empty';
-        empty.setAttribute('role', 'option');
-        empty.setAttribute('aria-disabled', 'true');
-        empty.setAttribute('aria-selected', 'false');
-        empty.textContent = mentionEmptyMessage(loungeMembers, query.query, activeUser?.id ?? null, 'workspace');
-        loungeMentionList.replaceChildren(empty);
-        loungeMentionList.hidden = false;
-        loungeInput.setAttribute('aria-expanded', 'true');
-        loungeInput.removeAttribute('aria-activedescendant');
-        return;
-    }
-    loungeMentionQuery = query;
-    loungeMentionMatches = matches;
-    loungeMentionSelectedIndex = Math.min(loungeMentionSelectedIndex, matches.length - 1);
-    loungeMentionList.replaceChildren(...matches.map((member, index) => {
-        const option = document.createElement('button');
-        option.type = 'button';
-        option.id = `lounge-mention-option-${index}`;
-        option.className = 'chat-mention-option';
-        option.setAttribute('role', 'option');
-        option.setAttribute('aria-selected', String(index === loungeMentionSelectedIndex));
-        const name = document.createElement('strong');
-        name.textContent = member.name;
-        const email = document.createElement('span');
-        email.textContent = member.email;
-        option.append(name, email);
-        option.addEventListener('mousedown', (event) => event.preventDefault());
-        option.addEventListener('click', () => selectLoungeMention(member));
-        return option;
-    }));
-    loungeMentionList.hidden = false;
-    loungeInput.setAttribute('aria-expanded', 'true');
-    loungeInput.setAttribute('aria-activedescendant', `lounge-mention-option-${loungeMentionSelectedIndex}`);
-}
-function hideLoungeMentionSuggestions() {
-    loungeMentionQuery = null;
-    loungeMentionMatches = [];
-    loungeMentionSelectedIndex = 0;
-    loungeMentionList.hidden = true;
-    loungeMentionList.replaceChildren();
-    loungeInput.setAttribute('aria-expanded', 'false');
-    loungeInput.removeAttribute('aria-activedescendant');
-}
-function selectLoungeMention(member) {
-    if (loungeMentionQuery === null)
-        return;
-    const insertion = replaceMentionQuery(loungeInput.value, loungeMentionQuery, member.name);
-    loungeInput.value = insertion.value;
-    loungeInput.setSelectionRange(insertion.cursor, insertion.cursor);
-    loungeMentionDismissed = true;
-    hideLoungeMentionSuggestions();
-    loungeInput.focus();
-}
-function handleLoungeMentionKeydown(event) {
-    return handleMentionKeydown(event, loungeInput, loungeMentionList, loungeMentionMatches, loungeMentionSelectedIndex, (index) => { loungeMentionSelectedIndex = index; }, selectLoungeMention, () => {
-        loungeMentionDismissed = true;
-        hideLoungeMentionSuggestions();
-    });
-}
-function scheduleLoungePoll(delay = loungePollDelay) {
-    if (!loungeActive)
-        return;
-    if (loungePollTimer !== null)
-        window.clearTimeout(loungePollTimer);
-    loungePollTimer = window.setTimeout(() => {
-        loungePollTimer = null;
-        if (loungeActive)
-            void pollLoungeChat();
-    }, delay);
-}
-function appendLoungeMessage(message, scrollToBottom = false) {
-    if (loungeMessageList.querySelector(`[data-message-id="${message.id}"]`) !== null)
-        return;
-    const item = document.createElement('article');
-    item.className = message.parent_id === null ? 'chat-message' : 'chat-message chat-reply';
-    item.dataset.messageId = String(message.id);
-    item.tabIndex = -1;
-    item.setAttribute('aria-keyshortcuts', 'j k ArrowUp ArrowDown Home End PageUp PageDown Enter r');
-    item.addEventListener('focusin', () => selectChatMessage(message.id, false));
-    item.addEventListener('click', (event) => {
-        if (!(event.target instanceof HTMLElement) || event.target.closest('button') === null) {
-            selectChatMessage(message.id);
-        }
-    });
-    loungeMessagesById.set(message.id, message);
-    if (message.parent_id !== null) {
-        const parent = loungeMessagesById.get(message.parent_id);
-        if (parent !== undefined)
-            updateLoungeMessageReplyCount(parent);
-    }
-    const heading = document.createElement('div');
-    heading.className = 'chat-message-heading';
-    const avatar = document.createElement('span');
-    avatar.className = 'chat-message-avatar';
-    avatar.setAttribute('aria-hidden', 'true');
-    avatar.textContent = avatarInitials(message.author_name);
-    const authorDetails = document.createElement('span');
-    authorDetails.className = 'chat-message-author';
-    const author = document.createElement('strong');
-    author.textContent = message.author_name;
-    const time = document.createElement('time');
-    time.className = 'chat-message-time';
-    time.dateTime = message.created_at;
-    time.textContent = formatChatTimestamp(message.created_at);
-    authorDetails.append(author, time);
-    const actions = document.createElement('div');
-    actions.className = 'chat-message-actions';
-    const reply = document.createElement('button');
-    reply.className = 'button button-quiet chat-reply-button';
-    reply.type = 'button';
-    reply.textContent = 'Reply';
-    reply.setAttribute('aria-label', `Reply to ${message.author_name}`);
-    reply.addEventListener('click', () => setLoungeReplyParent(message));
-    actions.append(reply);
-    heading.append(avatar, authorDetails, actions);
-    const body = document.createElement('p');
-    body.className = 'chat-message-body';
-    for (const segment of splitMentions(message.body, loungeMembers)) {
-        if (segment.memberId === null) {
-            body.append(document.createTextNode(segment.text));
-        }
-        else {
-            const mention = document.createElement('mark');
-            mention.className = 'chat-message-mention';
-            mention.dataset.memberId = String(segment.memberId);
-            mention.textContent = segment.text;
-            body.append(mention);
-        }
-    }
-    item.append(heading);
-    if (message.parent_id !== null) {
-        const parentAuthor = message.parent_author_name ?? loungeMessagesById.get(message.parent_id)?.author_name ?? null;
-        const parentBody = message.parent_body ?? loungeMessagesById.get(message.parent_id)?.body ?? null;
-        const parentExcerpt = parentBody === null ? '' : compactChatMessage(parentBody);
-        const parentLabel = parentAuthor === null
-            ? parentExcerpt || `Message #${message.parent_id}`
-            : parentExcerpt === '' ? parentAuthor : `${parentAuthor}: ${parentExcerpt}`;
-        const context = document.createElement('button');
-        context.className = 'chat-reply-context';
-        context.type = 'button';
-        context.textContent = `↳ ${parentLabel}`;
-        context.title = `Reply to ${parentLabel}`;
-        context.setAttribute('aria-label', `Jump to message #${message.parent_id}: ${parentLabel}`);
-        context.addEventListener('click', () => void focusLoungeMessageById(message.parent_id));
-        item.append(context);
-    }
-    item.append(body);
-    loungeMessageList.append(item);
-    updateLoungeMessageReplyCount(message);
-    loungeEmptyState.hidden = true;
-    if (scrollToBottom)
-        loungeMessageList.scrollTop = loungeMessageList.scrollHeight;
-}
-function updateLoungeMessageReplyCount(message) {
-    const item = loungeMessageList.querySelector(`.chat-message[data-message-id="${message.id}"]`);
-    if (item === null)
-        return;
-    const replies = Array.from(loungeMessagesById.values()).filter((candidate) => candidate.parent_id === message.id);
-    const replyCount = Math.max(message.reply_count ?? 0, replies.length);
-    const loadedFirstReplyId = replies.reduce((firstId, reply) => firstId === null || reply.id < firstId ? reply.id : firstId, null);
-    const firstReplyId = message.first_reply_id === null || message.first_reply_id === undefined
-        ? loadedFirstReplyId
-        : loadedFirstReplyId === null ? message.first_reply_id : Math.min(message.first_reply_id, loadedFirstReplyId);
-    message.reply_count = replyCount;
-    message.first_reply_id = firstReplyId;
-    const existing = item.querySelector('.chat-message-reply-count');
-    if (replyCount === 0 || firstReplyId === null) {
-        existing?.remove();
-        return;
-    }
-    const button = existing ?? document.createElement('button');
-    button.className = 'chat-message-reply-count';
-    button.type = 'button';
-    button.dataset.firstReplyId = String(firstReplyId);
-    const label = `${replyCount} ${replyCount === 1 ? 'reply' : 'replies'}`;
-    button.textContent = label;
-    button.title = `Show ${label} to ${message.author_name}'s message`;
-    button.setAttribute('aria-label', `Jump to the first of ${label} to ${message.author_name}'s message`);
-    if (existing === null) {
-        button.addEventListener('click', () => {
-            const firstReplyId = Number(button.dataset.firstReplyId);
-            if (Number.isSafeInteger(firstReplyId))
-                void focusLoungeMessageById(firstReplyId);
-        });
-        item.append(button);
-    }
-}
-function setLoungeReplyParent(message) {
-    loungeReplyParent = { id: message.id, name: message.author_name, body: message.body };
-    loungeReplyHint.textContent = `Replying to ${message.author_name}: ${compactChatMessage(message.body)}`;
-    loungeReplyHint.hidden = false;
-    loungeCancelReply.hidden = false;
-    loungeInput.focus();
-}
-function clearLoungeReplyParent() {
-    loungeReplyParent = null;
-    loungeReplyHint.hidden = true;
-    loungeReplyHint.textContent = '';
-    loungeCancelReply.hidden = true;
-}
-async function focusLoungeMessageById(messageId) {
-    if (!Number.isSafeInteger(messageId) || messageId < 1)
-        return;
-    let sourceMessage = loungeMessageList.querySelector(`.chat-message[data-message-id="${messageId}"]`);
-    if (sourceMessage === null) {
-        try {
-            const result = await api(`/lounge/messages?since=${messageId - 1}`);
-            if (!loungeActive || loungeView.hidden)
-                return;
-            for (const message of result.messages)
-                appendLoungeMessage(message);
-            sourceMessage = loungeMessageList.querySelector(`.chat-message[data-message-id="${messageId}"]`);
-        }
-        catch (error) {
-            report(error instanceof Error ? error.message : 'Could not open the replied-to Lounge message.', true);
-            return;
-        }
-    }
-    if (sourceMessage === null) {
-        report('The replied-to message is unavailable in the Lounge.', true);
-        return;
-    }
-    loungeMessageList.querySelector('.is-chat-source')?.classList.remove('is-chat-source');
-    sourceMessage.classList.add('is-chat-source');
-    sourceMessage.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    sourceMessage.focus();
-}
-async function loadLoungeChat() {
-    stopLoungePolling();
-    loungeActive = true;
-    loungePresenceUi.resetLoungeStatus();
-    loungePresenceUi.setLoungePresenceStatus('Checking who’s here…', 'checking');
-    void loungePresenceUi.pollLoungePresence();
-    loungeCursor = 0;
-    loungeEtag = null;
-    loungePollDelay = 1000;
-    loungeFollowLatest = true;
-    loungeMessageList.replaceChildren(loungeEmptyState);
-    loungeEmptyState.hidden = false;
-    try {
-        const [result, membersResult] = await Promise.all([
-            api('/lounge/messages'),
-            api('/lounge/members'),
-        ]);
-        if (!loungeActive || loungeView.hidden)
-            return;
-        loungeMembers = membersResult.members;
-        for (const message of result.messages) {
-            loungeCursor = Math.max(loungeCursor, message.id);
-            appendLoungeMessage(message);
-        }
-        loungeMessageList.scrollTop = loungeMessageList.scrollHeight;
-        void pollLoungeChat();
-    }
-    catch (error) {
-        if (!loungeActive)
-            return;
-        if (error instanceof ApiFailure && error.status === 401) {
-            showSignedOut();
-            return;
-        }
-        report(error instanceof Error ? error.message : 'Could not load the Lounge.', true);
-        scheduleLoungePoll(5000);
-    }
-}
-async function pollLoungeChat() {
-    if (!loungeActive || loungeView.hidden)
-        return;
-    if (loungePollTimer !== null)
-        window.clearTimeout(loungePollTimer);
-    loungePollTimer = null;
-    if (document.hidden) {
-        loungePollDelay = Math.min(10_000, Math.max(5_000, loungePollDelay * 1.5));
-        scheduleLoungePoll();
-        return;
-    }
-    const headers = new Headers();
-    if (loungeEtag !== null)
-        headers.set('If-None-Match', loungeEtag);
-    try {
-        const response = await fetch(`${apiBaseUrl}/lounge/messages?since=${loungeCursor}`, {
-            headers,
-            credentials: 'same-origin',
-        });
-        if (!loungeActive)
-            return;
-        if (response.status === 304) {
-            loungePollDelay = Math.min(10_000, loungePollDelay * 1.5);
-        }
-        else {
-            const payload = await response.json();
-            if (!loungeActive)
-                return;
-            if (!response.ok)
-                throw new ApiFailure(payload.error?.message ?? 'Could not load the Lounge.', response.status);
-            loungeEtag = response.headers.get('ETag');
-            const received = payload.messages ?? [];
-            for (const message of received) {
-                loungeCursor = Math.max(loungeCursor, message.id);
-                appendLoungeMessage(message, loungeFollowLatest);
-            }
-            loungePollDelay = received.length > 0 ? 1000 : Math.min(10_000, loungePollDelay * 1.5);
-        }
-    }
-    catch (error) {
-        if (!loungeActive)
-            return;
-        if (error instanceof ApiFailure && error.status === 401) {
-            showSignedOut();
-            return;
-        }
-        report(error instanceof Error ? error.message : 'Could not load the Lounge.', true);
-        loungePollDelay = Math.min(10_000, loungePollDelay * 1.5);
-    }
-    if (loungeActive)
-        scheduleLoungePoll();
-}
-async function sendLoungeMessage(event) {
-    event.preventDefault();
-    const body = loungeInput.value.trim();
-    if (body === '')
-        return;
-    const sendButton = loungeForm.querySelector('button[type="submit"]');
-    if (sendButton !== null)
-        sendButton.disabled = true;
-    try {
-        const messageBody = { body };
-        if (loungeReplyParent !== null)
-            messageBody.parent_id = loungeReplyParent.id;
-        const result = await api('/lounge/messages', {
-            method: 'POST',
-            body: JSON.stringify(messageBody),
-        });
-        if (!loungeActive)
-            return;
-        loungeCursor = Math.max(loungeCursor, result.message.id);
-        appendLoungeMessage(result.message, true);
-        loungeInput.value = '';
-        clearLoungeReplyParent();
-        loungeMentionDismissed = false;
-        hideLoungeMentionSuggestions();
-        loungeEtag = null;
-        loungePollDelay = 1000;
-        scheduleLoungePoll(0);
-    }
-    catch (error) {
-        if (error instanceof ApiFailure && error.status === 401) {
-            showSignedOut();
-            return;
-        }
-        report(error instanceof Error ? error.message : 'Could not send the Lounge message.', true);
-    }
-    finally {
-        if (sendButton !== null)
-            sendButton.disabled = false;
-    }
 }
 function pauseIssuePolling() {
     if (issuePollTimer !== null)
@@ -1419,13 +1036,13 @@ function activeChatMessageList() {
     return loungeView.hidden ? chatMessageList : loungeMessageList;
 }
 function activeChatMessagesById() {
-    return loungeView.hidden ? chatMessagesById : loungeMessagesById;
+    return loungeView.hidden ? chatMessagesById : loungeChatUi.messagesById();
 }
 function focusActiveChatComposer() {
     if (loungeView.hidden)
         chatInput?.focus();
     else
-        loungeInput.focus();
+        loungeChatUi.focusComposer();
 }
 function chatMessageElements() {
     const list = activeChatMessageList();
@@ -1443,7 +1060,7 @@ function selectChatMessage(id, focus = true) {
     if (loungeView.hidden)
         chatFollowLatest = chatMessageElements().at(-1) === item;
     else
-        loungeFollowLatest = chatMessageElements().at(-1) === item;
+        loungeChatUi.setFollowLatest(chatMessageElements().at(-1) === item);
     list?.querySelectorAll('.chat-message').forEach((message) => {
         message.classList.toggle('is-keyboard-selected', message === item);
     });
@@ -1504,7 +1121,7 @@ function replyToSelectedChatMessage() {
     if (loungeView.hidden)
         setChatReplyParent(message);
     else
-        setLoungeReplyParent(message);
+        loungeChatUi.setReplyParent(message);
 }
 function createIssueFromSelectedChatMessage() {
     if (selectedChatMessageId !== null) {
@@ -1597,7 +1214,7 @@ function shortcutContext(target) {
         canDismiss: commandPalette.open || shortcutHelp.open || (!workspacePanel.hidden && (pendingWorkspaceId !== null
             || (!projectView.hidden && (!issueDetailView.hidden || !issueDetailEditForm.hidden
                 || issueQuickAddEscapePending || chatReplyParent !== null))
-            || (!loungeView.hidden && loungeReplyParent !== null)
+            || (!loungeView.hidden && loungeChatUi.hasReplyParent())
             || (!projectsView.hidden && !projectFormPanel.hidden)
             || !projectView.hidden || !roadmapView.hidden || !inboxView.hidden || !loungeView.hidden || !adminView.hidden)),
     };
@@ -2176,8 +1793,8 @@ function dismissCurrentView() {
         && (issueQuickAddEscapePending || issueForm.classList.contains('is-active'))) {
         cancelIssueQuickAdd();
     }
-    else if (!workspacePanel.hidden && !loungeView.hidden && loungeReplyParent !== null) {
-        clearLoungeReplyParent();
+    else if (!workspacePanel.hidden && !loungeView.hidden && loungeChatUi.hasReplyParent()) {
+        loungeChatUi.clearReplyParent();
     }
     else if (!workspacePanel.hidden && !projectView.hidden && chatReplyParent !== null) {
         clearChatReplyParent();
@@ -2491,7 +2108,7 @@ function blurTextInput() {
             issueDiscussionHeading.focus();
         return;
     }
-    if (focused === loungeInput) {
+    if (loungeChatUi.isComposer(focused)) {
         const selected = selectedChatMessageId === null
             ? null
             : loungeMessageList.querySelector(`.chat-message[data-message-id="${selectedChatMessageId}"]`);
@@ -3197,42 +2814,6 @@ function handleChatMentionKeydown(event) {
         hideChatMentionSuggestions();
     });
 }
-function handleMentionKeydown(event, input, list, matches, selectedIndex, setSelectedIndex, selectMember, dismiss) {
-    if (list.hidden)
-        return false;
-    if (event.key === 'Escape') {
-        event.preventDefault();
-        event.stopPropagation();
-        dismiss();
-        return true;
-    }
-    if (matches.length === 0)
-        return false;
-    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-        event.preventDefault();
-        event.stopPropagation();
-        const nextIndex = nextMentionSelectionIndex(selectedIndex, event.key === 'ArrowDown' ? 1 : -1, matches.length);
-        setSelectedIndex(nextIndex);
-        const options = Array.from(list.querySelectorAll('[role="option"]'));
-        options.forEach((option, index) => option.setAttribute('aria-selected', String(index === nextIndex)));
-        const selected = options[nextIndex];
-        if (selected !== undefined) {
-            input.setAttribute('aria-activedescendant', selected.id);
-            selected.scrollIntoView({ block: 'nearest' });
-        }
-        return true;
-    }
-    if ((event.key === 'Enter' && !event.shiftKey && !event.isComposing) || event.key === 'Tab') {
-        const member = matches[selectedIndex];
-        if (member === undefined)
-            return false;
-        event.preventDefault();
-        event.stopPropagation();
-        selectMember(member);
-        return true;
-    }
-    return false;
-}
 function createProjectChat(projectId) {
     stopProjectPresencePolling();
     const section = document.createElement('section');
@@ -3401,8 +2982,7 @@ document.addEventListener('visibilitychange', () => {
         void pollProjectPresence(activeChatProjectId);
     }
     if (!document.hidden && loungeActive) {
-        loungePollDelay = 1000;
-        scheduleLoungePoll(0);
+        loungeChatUi.resume();
         void loungePresenceUi.pollLoungePresence();
     }
     if (!document.hidden && !loungeActive)
@@ -3427,24 +3007,6 @@ roadmapNavButton.addEventListener('click', goToRoadmap);
 inboxNavButton.addEventListener('click', goToInbox);
 loungeNavButton.addEventListener('click', goToLounge);
 adminNavButton.addEventListener('click', openWorkspaceAdmin);
-loungeMessageList.addEventListener('scroll', () => {
-    loungeFollowLatest = loungeMessageList.scrollHeight - loungeMessageList.scrollTop
-        - loungeMessageList.clientHeight <= 24;
-});
-loungeForm.addEventListener('submit', (event) => void sendLoungeMessage(event));
-loungeCancelReply.addEventListener('click', clearLoungeReplyParent);
-loungeInput.addEventListener('input', () => {
-    loungeMentionDismissed = false;
-    updateLoungeMentionSuggestions();
-});
-loungeInput.addEventListener('click', updateLoungeMentionSuggestions);
-loungeInput.addEventListener('select', updateLoungeMentionSuggestions);
-loungeInput.addEventListener('keyup', updateLoungeMentionSuggestions);
-loungeInput.addEventListener('blur', hideLoungeMentionSuggestions);
-loungeInput.addEventListener('keydown', (event) => {
-    if (!handleLoungeMentionKeydown(event))
-        submitFormOnEnter(event, loungeForm);
-});
 breadcrumbProjectsButton.addEventListener('click', goToProjects);
 issuesTabButton.addEventListener('click', () => switchProjectTab('issues'));
 deletedIssuesDetails.addEventListener('toggle', () => {
