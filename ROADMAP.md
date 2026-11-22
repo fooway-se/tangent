@@ -17,7 +17,7 @@ The project chat header has a privacy-preserving presence light: it shows whethe
 
 ## Client updates
 
-- Let admins generate a client-safe project summary and open it in their email client to address and send manually.
+- Let admins generate and copy a client-safe project summary.
 
 ## AI and API
 

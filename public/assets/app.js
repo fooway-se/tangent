@@ -164,7 +164,6 @@ const projectReadOnlyNotice = document.querySelector('#project-read-only-notice'
 const projectEditMessage = document.querySelector('#project-edit-message');
 const projectEditSave = document.querySelector('#project-edit-save');
 const editProjectButton = document.querySelector('#edit-project-button');
-const previewGuestViewButton = document.querySelector('#preview-guest-view-button');
 const projectGithubRepository = document.querySelector('#project-github-repository');
 const projectEditGithubRepository = document.querySelector('#project-edit-github-repository');
 const githubProjectSelectionStatus = document.querySelector('#github-project-selection-status');
@@ -569,6 +568,7 @@ let issueAiPromptReturnFocus = null;
 let activeChatProjectId = null;
 let loungeActive = false;
 let guestPreviewActive = false;
+let guestPreviewReturnFocus = null;
 let guestPreviewProjectId = null;
 let guestPreviewMembers = [];
 let guestViewRequestVersion = 0;
@@ -785,7 +785,6 @@ function showSignedOut() {
     connectGithubCreateButton.hidden = true;
     connectGithubEditButton.hidden = true;
     editProjectButton.hidden = true;
-    previewGuestViewButton.hidden = true;
     if (projectEditDialog.open)
         projectEditDialog.close();
     activeProject = null;
@@ -805,6 +804,7 @@ function showSignedOut() {
     document.body.classList.remove('is-project-view', 'is-guest');
     guestShell.hidden = true;
     guestPreviewActive = false;
+    guestPreviewReturnFocus = null;
     guestViewRequestVersion += 1;
     guestPreviewProjectId = null;
     guestPreviewMembers = [];
@@ -842,7 +842,6 @@ function showSignedIn(user) {
     renderLoungeNavigationPresence([]);
     activeUser = user;
     editProjectButton.hidden = user.role !== 'admin';
-    previewGuestViewButton.hidden = user.role !== 'admin';
     roadmapNavButton.hidden = user.role === 'guest';
     resetPendingWorkspaceSwitch();
     if (user.role === 'guest') {
@@ -2678,6 +2677,14 @@ function getPaletteCommands() {
                 switchWorkspaceAdminTab('workspaces');
                 createWorkspaceForm.querySelector('input[name="name"]')?.focus();
             },
+        });
+    }
+    if (activeProject !== null && activeUser.role === 'admin' && !projectView.hidden) {
+        commands.splice(1, 0, {
+            label: 'Preview guest view',
+            detail: 'Preview the client portal for ' + activeProject.name,
+            shortcut: '',
+            run: openGuestViewPreview,
         });
     }
     if (activeProject !== null) {
@@ -8244,6 +8251,10 @@ function showGuestShell(user) {
 function openGuestViewPreview() {
     if (activeUser?.role !== 'admin' || activeProject === null)
         return;
+    const activeElement = document.activeElement;
+    guestPreviewReturnFocus = activeElement instanceof HTMLElement && activeElement !== document.body
+        ? activeElement
+        : projectHeading;
     const projectId = activeProject.id;
     guestPreviewActive = true;
     guestPreviewProjectId = projectId;
@@ -8275,7 +8286,9 @@ function openGuestViewPreview() {
 function closeGuestViewPreview() {
     if (!guestPreviewActive)
         return;
+    const returnFocus = guestPreviewReturnFocus ?? projectHeading;
     guestPreviewActive = false;
+    guestPreviewReturnFocus = null;
     guestViewRequestVersion += 1;
     guestPreviewProjectId = null;
     guestPreviewMembers = [];
@@ -8295,7 +8308,7 @@ function closeGuestViewPreview() {
     accountBar.hidden = false;
     updateKeyboardHintsVisibility();
     showWorkspaceView('project');
-    previewGuestViewButton.focus();
+    returnFocus.focus();
 }
 async function loadGuestProjects() {
     try {
@@ -8364,7 +8377,6 @@ guestPreviewMemberSelect.addEventListener('change', () => {
     guestUser.textContent = viewer.email;
     void loadClientView(guestPreviewProjectId, true, viewer.id);
 });
-previewGuestViewButton.addEventListener('click', openGuestViewPreview);
 guestPreviewReturnButton.addEventListener('click', closeGuestViewPreview);
 guestLogoutButton.addEventListener('click', () => { void signOut(); });
 inboxMarkAllReadButton.addEventListener('click', () => { void markAllInboxEventsRead(); });

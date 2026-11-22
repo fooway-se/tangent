@@ -425,7 +425,6 @@ const projectReadOnlyNotice = document.querySelector<HTMLElement>('#project-read
 const projectEditMessage = document.querySelector<HTMLElement>('#project-edit-message')!;
 const projectEditSave = document.querySelector<HTMLButtonElement>('#project-edit-save')!;
 const editProjectButton = document.querySelector<HTMLButtonElement>('#edit-project-button')!;
-const previewGuestViewButton = document.querySelector<HTMLButtonElement>('#preview-guest-view-button')!;
 const projectGithubRepository = document.querySelector<HTMLSelectElement>('#project-github-repository')!;
 const projectEditGithubRepository = document.querySelector<HTMLSelectElement>('#project-edit-github-repository')!;
 const githubProjectSelectionStatus = document.querySelector<HTMLElement>('#github-project-selection-status')!;
@@ -840,6 +839,7 @@ let issueAiPromptReturnFocus: HTMLElement | null = null;
 let activeChatProjectId: number | null = null;
 let loungeActive = false;
 let guestPreviewActive = false;
+let guestPreviewReturnFocus: HTMLElement | null = null;
 let guestPreviewProjectId: number | null = null;
 let guestPreviewMembers: Member[] = [];
 let guestViewRequestVersion = 0;
@@ -1056,7 +1056,6 @@ function showSignedOut(): void {
   connectGithubCreateButton.hidden = true;
   connectGithubEditButton.hidden = true;
   editProjectButton.hidden = true;
-  previewGuestViewButton.hidden = true;
   if (projectEditDialog.open) projectEditDialog.close();
   activeProject = null;
   activeProjectMembers = [];
@@ -1075,6 +1074,7 @@ function showSignedOut(): void {
   document.body.classList.remove('is-project-view', 'is-guest');
   guestShell.hidden = true;
   guestPreviewActive = false;
+  guestPreviewReturnFocus = null;
   guestViewRequestVersion += 1;
   guestPreviewProjectId = null;
   guestPreviewMembers = [];
@@ -1113,7 +1113,6 @@ function showSignedIn(user: User): void {
   renderLoungeNavigationPresence([]);
   activeUser = user;
   editProjectButton.hidden = user.role !== 'admin';
-  previewGuestViewButton.hidden = user.role !== 'admin';
   roadmapNavButton.hidden = user.role === 'guest';
   resetPendingWorkspaceSwitch();
   if (user.role === 'guest') {
@@ -2946,6 +2945,14 @@ function getPaletteCommands(): PaletteCommand[] {
         switchWorkspaceAdminTab('workspaces');
         createWorkspaceForm.querySelector<HTMLInputElement>('input[name="name"]')?.focus();
       },
+    });
+  }
+  if (activeProject !== null && activeUser.role === 'admin' && !projectView.hidden) {
+    commands.splice(1, 0, {
+      label: 'Preview guest view',
+      detail: 'Preview the client portal for ' + activeProject.name,
+      shortcut: '',
+      run: openGuestViewPreview,
     });
   }
   if (activeProject !== null) {
@@ -8356,6 +8363,10 @@ function showGuestShell(user: User): void {
 function openGuestViewPreview(): void {
   if (activeUser?.role !== 'admin' || activeProject === null) return;
 
+  const activeElement = document.activeElement;
+  guestPreviewReturnFocus = activeElement instanceof HTMLElement && activeElement !== document.body
+    ? activeElement
+    : projectHeading;
   const projectId = activeProject.id;
   guestPreviewActive = true;
   guestPreviewProjectId = projectId;
@@ -8391,7 +8402,9 @@ function openGuestViewPreview(): void {
 function closeGuestViewPreview(): void {
   if (!guestPreviewActive) return;
 
+  const returnFocus = guestPreviewReturnFocus ?? projectHeading;
   guestPreviewActive = false;
+  guestPreviewReturnFocus = null;
   guestViewRequestVersion += 1;
   guestPreviewProjectId = null;
   guestPreviewMembers = [];
@@ -8411,7 +8424,7 @@ function closeGuestViewPreview(): void {
   accountBar.hidden = false;
   updateKeyboardHintsVisibility();
   showWorkspaceView('project');
-  previewGuestViewButton.focus();
+  returnFocus.focus();
 }
 
 async function loadGuestProjects(): Promise<void> {
@@ -8473,7 +8486,6 @@ guestPreviewMemberSelect.addEventListener('change', () => {
   guestUser.textContent = viewer.email;
   void loadClientView(guestPreviewProjectId, true, viewer.id);
 });
-previewGuestViewButton.addEventListener('click', openGuestViewPreview);
 guestPreviewReturnButton.addEventListener('click', closeGuestViewPreview);
 guestLogoutButton.addEventListener('click', () => { void signOut(); });
 inboxMarkAllReadButton.addEventListener('click', () => { void markAllInboxEventsRead(); });

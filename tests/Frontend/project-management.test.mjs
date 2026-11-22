@@ -22,7 +22,6 @@ test('project details provide admins an edit dialog for name, description, and s
   assert.match(html, /id="project-edit-status-help"[^>]*aria-live="polite"/);
   assert.match(html, /id="project-read-only-notice"[^>]*role="status" hidden/);
   assert.match(app, /editProjectButton\.hidden = user\.role !== 'admin'/);
-  assert.match(app, /previewGuestViewButton\.hidden = user\.role !== 'admin'/);
   assert.match(app, /editProjectButton\.addEventListener\('click', openProjectEditDialog\)/);
 });
 
