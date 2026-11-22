@@ -17,39 +17,59 @@ final class MigrationRunner
 
     public function migrate(): void
     {
-        $this->pdo->exec(
-            'CREATE TABLE IF NOT EXISTS schema_migrations (
-                version VARCHAR(190) NOT NULL PRIMARY KEY,
-                applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
-        );
-
-        $files = glob(rtrim($this->directory, '/') . '/[0-9][0-9][0-9]_*.sql') ?: [];
-        sort($files, SORT_STRING);
-
-        $applied = $this->pdo->query('SELECT version FROM schema_migrations')->fetchAll(PDO::FETCH_COLUMN);
-        $appliedVersions = array_fill_keys($applied, true);
-
-        foreach ($files as $file) {
-            $version = basename($file);
-            if (isset($appliedVersions[$version])) {
-                continue;
-            }
-
-            $this->assertMigrationPreconditions($version);
-
-            $sql = file_get_contents($file);
-            if ($sql === false) {
-                throw new RuntimeException('Unable to read migration: ' . $version);
-            }
-
-            foreach ($this->statements($sql) as $statement) {
-                $this->pdo->exec($statement);
-            }
-
-            $record = $this->pdo->prepare('INSERT INTO schema_migrations (version) VALUES (:version)');
-            $record->execute(['version' => $version]);
+        $lockName = $this->lockName();
+        $lock = $this->pdo->prepare('SELECT GET_LOCK(:lock_name, 30)');
+        $lock->execute(['lock_name' => $lockName]);
+        if ((int) $lock->fetchColumn() !== 1) {
+            throw new RuntimeException('Unable to acquire the database migration lock.');
         }
+
+        try {
+            $this->pdo->exec(
+                'CREATE TABLE IF NOT EXISTS schema_migrations (
+                    version VARCHAR(190) NOT NULL PRIMARY KEY,
+                    applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
+            );
+
+            $files = glob(rtrim($this->directory, '/') . '/[0-9][0-9][0-9]_*.sql') ?: [];
+            sort($files, SORT_STRING);
+
+            $applied = $this->pdo->query('SELECT version FROM schema_migrations')->fetchAll(PDO::FETCH_COLUMN);
+            $appliedVersions = array_fill_keys($applied, true);
+
+            foreach ($files as $file) {
+                $version = basename($file);
+                if (isset($appliedVersions[$version])) {
+                    continue;
+                }
+
+                $this->assertMigrationPreconditions($version);
+
+                $sql = file_get_contents($file);
+                if ($sql === false) {
+                    throw new RuntimeException('Unable to read migration: ' . $version);
+                }
+
+                foreach ($this->statements($sql) as $statement) {
+                    $this->pdo->exec($statement);
+                }
+
+                $record = $this->pdo->prepare('INSERT INTO schema_migrations (version) VALUES (:version)');
+                $record->execute(['version' => $version]);
+            }
+        } finally {
+            $release = $this->pdo->prepare('SELECT RELEASE_LOCK(:lock_name)');
+            $release->execute(['lock_name' => $lockName]);
+            $release->fetchColumn();
+        }
+    }
+
+    private function lockName(): string
+    {
+        $database = (string) $this->pdo->query('SELECT DATABASE()')->fetchColumn();
+
+        return 'tangent:migrate:' . substr(hash('sha256', $database), 0, 48);
     }
 
     private function assertMigrationPreconditions(string $version): void
