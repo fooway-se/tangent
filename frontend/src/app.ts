@@ -594,6 +594,9 @@ const chatView = document.querySelector<HTMLElement>('#chat-view')!;
 const projectChatColumn = document.querySelector<HTMLElement>('#project-chat-column')!;
 const projectSidebarList = document.querySelector<HTMLUListElement>('#project-sidebar-list')!;
 const projectSidebarEmpty = document.querySelector<HTMLElement>('#project-sidebar-empty')!;
+const projectSidebarSection = projectSidebarList.closest<HTMLElement>('.sidebar-projects')!;
+const projectSidebarMore = createScrollMoreIndicator();
+projectSidebarList.after(projectSidebarMore);
 const projectMain = document.querySelector<HTMLElement>('.project-main')!;
 const projectTabs = document.querySelector<HTMLElement>('.project-tabs')!;
 const issuesView = document.querySelector<HTMLElement>('#issues-view')!;
@@ -4573,6 +4576,10 @@ document.addEventListener('focusout', () => {
 });
 
 projectsNavButton.addEventListener('click', goToProjects);
+projectSidebarList.addEventListener('scroll', updateProjectSidebarMoreCue, { passive: true });
+window.addEventListener('resize', updateProjectSidebarMoreCue);
+const projectSidebarResizeObserver = new ResizeObserver(updateProjectSidebarMoreCue);
+projectSidebarResizeObserver.observe(projectSidebarList);
 roadmapNavButton.addEventListener('click', goToRoadmap);
 inboxNavButton.addEventListener('click', goToInbox);
 loungeNavButton.addEventListener('click', goToLounge);
@@ -4904,6 +4911,31 @@ function updateProjectEmptyStates(projects: readonly Project[]): void {
   projectSidebarEmpty.textContent = isAdmin ? 'No projects yet.' : 'No project access yet.';
 }
 
+function createScrollMoreIndicator(): HTMLSpanElement {
+  const indicator = document.createElement('span');
+  indicator.className = 'sidebar-scroll-more';
+  indicator.setAttribute('aria-hidden', 'true');
+  indicator.hidden = true;
+  return indicator;
+}
+
+function updateProjectSidebarMoreCue(): void {
+  const isHorizontal = window.matchMedia('(max-width: 760px)').matches;
+  const scrollSize = isHorizontal ? projectSidebarList.scrollWidth : projectSidebarList.scrollHeight;
+  const visibleSize = isHorizontal ? projectSidebarList.clientWidth : projectSidebarList.clientHeight;
+  const scrollOffset = isHorizontal ? projectSidebarList.scrollLeft : projectSidebarList.scrollTop;
+  const hasProjectOverflow = visibleSize > 0 && scrollSize > visibleSize + 1;
+  const hasMoreProjects = hasProjectOverflow && scrollOffset + visibleSize < scrollSize - 1;
+
+  projectSidebarMore.classList.toggle('is-horizontal', isHorizontal);
+  projectSidebarMore.textContent = isHorizontal ? '▶' : '▼';
+  projectSidebarMore.hidden = !hasMoreProjects;
+  projectSidebarSection.classList.toggle('is-horizontal', isHorizontal);
+  projectSidebarSection.classList.toggle('has-project-overflow', hasProjectOverflow);
+  projectSidebarSection.classList.toggle('has-more-projects', hasMoreProjects);
+  accountBar.classList.toggle('has-project-overflow', hasProjectOverflow);
+}
+
 async function loadProjects(): Promise<void> {
   const result = await api<{ projects: Project[] }>('/projects');
   const projects = [...result.projects].sort((left, right) => (
@@ -4955,6 +4987,7 @@ async function loadProjects(): Promise<void> {
     sidebarItem.append(sidebarButton);
     projectSidebarList.append(sidebarItem);
   }
+  window.requestAnimationFrame(updateProjectSidebarMoreCue);
 }
 
 async function loadRoadmap(): Promise<void> {

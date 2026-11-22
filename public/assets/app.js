@@ -317,6 +317,9 @@ const chatView = document.querySelector('#chat-view');
 const projectChatColumn = document.querySelector('#project-chat-column');
 const projectSidebarList = document.querySelector('#project-sidebar-list');
 const projectSidebarEmpty = document.querySelector('#project-sidebar-empty');
+const projectSidebarSection = projectSidebarList.closest('.sidebar-projects');
+const projectSidebarMore = createScrollMoreIndicator();
+projectSidebarList.after(projectSidebarMore);
 const projectMain = document.querySelector('.project-main');
 const projectTabs = document.querySelector('.project-tabs');
 const issuesView = document.querySelector('#issues-view');
@@ -4407,6 +4410,10 @@ document.addEventListener('focusout', () => {
     window.setTimeout(resumeDeferredInboxPolling, 0);
 });
 projectsNavButton.addEventListener('click', goToProjects);
+projectSidebarList.addEventListener('scroll', updateProjectSidebarMoreCue, { passive: true });
+window.addEventListener('resize', updateProjectSidebarMoreCue);
+const projectSidebarResizeObserver = new ResizeObserver(updateProjectSidebarMoreCue);
+projectSidebarResizeObserver.observe(projectSidebarList);
 roadmapNavButton.addEventListener('click', goToRoadmap);
 inboxNavButton.addEventListener('click', goToInbox);
 loungeNavButton.addEventListener('click', goToLounge);
@@ -4764,6 +4771,28 @@ function updateProjectEmptyStates(projects) {
         : "You're not a member of any projects yet. Ask a workspace admin to add you.";
     projectSidebarEmpty.textContent = isAdmin ? 'No projects yet.' : 'No project access yet.';
 }
+function createScrollMoreIndicator() {
+    const indicator = document.createElement('span');
+    indicator.className = 'sidebar-scroll-more';
+    indicator.setAttribute('aria-hidden', 'true');
+    indicator.hidden = true;
+    return indicator;
+}
+function updateProjectSidebarMoreCue() {
+    const isHorizontal = window.matchMedia('(max-width: 760px)').matches;
+    const scrollSize = isHorizontal ? projectSidebarList.scrollWidth : projectSidebarList.scrollHeight;
+    const visibleSize = isHorizontal ? projectSidebarList.clientWidth : projectSidebarList.clientHeight;
+    const scrollOffset = isHorizontal ? projectSidebarList.scrollLeft : projectSidebarList.scrollTop;
+    const hasProjectOverflow = visibleSize > 0 && scrollSize > visibleSize + 1;
+    const hasMoreProjects = hasProjectOverflow && scrollOffset + visibleSize < scrollSize - 1;
+    projectSidebarMore.classList.toggle('is-horizontal', isHorizontal);
+    projectSidebarMore.textContent = isHorizontal ? '▶' : '▼';
+    projectSidebarMore.hidden = !hasMoreProjects;
+    projectSidebarSection.classList.toggle('is-horizontal', isHorizontal);
+    projectSidebarSection.classList.toggle('has-project-overflow', hasProjectOverflow);
+    projectSidebarSection.classList.toggle('has-more-projects', hasMoreProjects);
+    accountBar.classList.toggle('has-project-overflow', hasProjectOverflow);
+}
 async function loadProjects() {
     const result = await api('/projects');
     const projects = [...result.projects].sort((left, right) => (PROJECT_STATUS_ORDER[left.status] - PROJECT_STATUS_ORDER[right.status]
@@ -4809,6 +4838,7 @@ async function loadProjects() {
         sidebarItem.append(sidebarButton);
         projectSidebarList.append(sidebarItem);
     }
+    window.requestAnimationFrame(updateProjectSidebarMoreCue);
 }
 async function loadRoadmap() {
     try {
