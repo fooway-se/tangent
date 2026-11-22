@@ -4,6 +4,7 @@ import test from 'node:test';
 
 const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
+const workspaceAdminUi = await readFile(new URL('../../frontend/src/workspace-admin-ui.ts', import.meta.url), 'utf8');
 const types = await readFile(new URL('../../frontend/src/types.ts', import.meta.url), 'utf8');
 const css = await readFile(new URL('../../public/assets/app.css', import.meta.url), 'utf8');
 const openapi = await readFile(new URL('../../docs/openapi.yaml', import.meta.url), 'utf8');
@@ -18,16 +19,16 @@ test('workspace admin invites members without creating their passwords', () => {
   assert.ok(/id="workspace-admin-invites-tab"[^>]*role="tab"/.test(html), 'Invites tab exists.');
   assert.ok(/id="workspace-admin-workspaces-tab"[^>]*role="tab"/.test(html), 'Workspaces tab exists.');
   assert.doesNotMatch(html, /id="generated-credential-link"/);
-  assert.match(app, /checkbox\.name = 'project_ids'/);
+  assert.match(workspaceAdminUi, /checkbox\.name = 'project_ids'/);
   assert.doesNotMatch(html, /id="developer-form"/);
   assert.doesNotMatch(html, /Forgot password\?/);
-  assert.match(app, /'\/users\/invites'/);
-  assert.match(app, /\/users\/invites\/\$\{inviteId\}\/resend/);
-  assert.match(app, /\/users\/invites\/\$\{inviteId\}/);
-  assert.match(app, /\/users\/\$\{member\.id\}\/password-reset/);
+  assert.match(workspaceAdminUi, /'\/users\/invites'/);
+  assert.match(workspaceAdminUi, /\/users\/invites\/\$\{inviteId\}\/resend/);
+  assert.match(workspaceAdminUi, /\/users\/invites\/\$\{inviteId\}/);
+  assert.match(workspaceAdminUi, /\/users\/\$\{member\.id\}\/password-reset/);
   assert.match(html, /Send invite/);
-  assert.match(app, /Invitation sent to/);
-  assert.match(app, /Invite resent to/);
+  assert.match(workspaceAdminUi, /Invitation sent to/);
+  assert.match(workspaceAdminUi, /Invite resent to/);
 });
 
 test('member deactivation explains permanent workspace credential revocation', () => {
@@ -35,7 +36,7 @@ test('member deactivation explains permanent workspace credential revocation', (
     html.indexOf('id="workspace-member-deactivation-dialog"'),
     html.indexOf('id="workspace-member-role-confirmation-dialog"'),
   );
-  assert.match(app, /existing browser sessions and API tokens for this workspace will be revoked/i);
+  assert.match(workspaceAdminUi, /existing browser sessions and API tokens for this workspace will be revoked/i);
   assert.match(deactivationDialog, /reactivating won't restore old credentials/i);
   const endpoint = openapi.slice(openapi.indexOf('  /users/{id}/status:'), openapi.indexOf('  /users/{id}/role:'));
   assert.match(endpoint, /Deactivation revokes the member's browser sessions and API tokens in this workspace/);
@@ -43,7 +44,7 @@ test('member deactivation explains permanent workspace credential revocation', (
 });
 
 test('pending invite details and actions fit narrow phone screens', () => {
-  assert.match(app, /details\.className = 'workspace-invite-details'/);
+  assert.match(workspaceAdminUi, /details\.className = 'workspace-invite-details'/);
   assert.match(css, /@media \(max-width: 520px\)[\s\S]*\.workspace-invite-row\s*\{[^}]*flex-direction:\s*column/);
   assert.match(css, /\.workspace-invite-actions\s*\{[^}]*flex-wrap:\s*wrap/);
   assert.match(css, /\.workspace-invite-actions \.button\s*\{[^}]*min-height:\s*44px/);
@@ -114,50 +115,50 @@ test('unusable invite links show one working action back to sign in', () => {
 });
 
 test('workspace administration renders member and invite data as text', () => {
-  assert.match(app, /function renderWorkspaceMembers\(/);
-  assert.match(app, /function renderWorkspaceInvites\(/);
-  assert.match(app, /label\.textContent = `\$\{member\.name\}/);
-  assert.match(app, /\/users\/invites/);
-  assert.match(app, /sendMemberPasswordRecoveryEmail/);
-  assert.match(app, /await loadWorkspaceAdmin\(\)/);
+  assert.match(workspaceAdminUi, /function renderMembers\(/);
+  assert.match(workspaceAdminUi, /function renderInvites\(/);
+  assert.match(workspaceAdminUi, /label\.textContent = `\$\{member\.name\}/);
+  assert.match(workspaceAdminUi, /\/users\/invites/);
+  assert.match(workspaceAdminUi, /sendPasswordRecoveryEmail/);
+  assert.match(workspaceAdminUi, /await load\(\)/);
 });
 
 test('workspace admins can resend emailed invites without retrieving their secrets', () => {
   assert.doesNotMatch(html, /id="generated-credential-link"/);
-  assert.match(app, /\/users\/invites\/\$\{inviteId\}\/resend/);
+  assert.match(workspaceAdminUi, /\/users\/invites\/\$\{inviteId\}\/resend/);
 });
 
 test('workspace administration has keyboard tabs and member activation controls', () => {
-  assert.ok(/function switchWorkspaceAdminTab\(/.test(app), 'Workspace admin tab switching is implemented.');
-  assert.ok(/workspaceAdminTabs\.addEventListener\('keydown'/.test(app), 'Workspace admin tabs support keyboard navigation.');
-  assert.ok(/event\.key === 'ArrowRight'/.test(app));
-  assert.ok(/event\.key === 'ArrowLeft'/.test(app));
-  assert.ok(/member\.is_active \? 'Deactivate' : 'Reactivate'/.test(app), 'Members can be deactivated or reactivated.');
-  assert.ok(/\/users\/\$\{member\.id\}\/status/.test(app), 'Member activation calls the status endpoint.');
+  assert.match(workspaceAdminUi, /function switchTab\(/);
+  assert.match(workspaceAdminUi, /tabs\.addEventListener\('keydown'/);
+  assert.match(workspaceAdminUi, /event\.key === 'ArrowRight'/);
+  assert.match(workspaceAdminUi, /event\.key === 'ArrowLeft'/);
+  assert.match(workspaceAdminUi, /member\.is_active \? 'Deactivate' : 'Reactivate'/);
+  assert.match(workspaceAdminUi, /\/users\/\$\{member\.id\}\/status/);
 });
 
 test('workspace administrators can change member roles with confirmation for admin access', () => {
   assert.match(html, /id="workspace-member-role-confirmation-dialog"/);
   assert.match(html, /id="workspace-member-role-confirm"/);
-  assert.match(app, /function openWorkspaceMemberRoleConfirmation\(/);
-  assert.match(app, /roleSelect.addEventListener\('change'/);
-  assert.match(app, /\/users\/\$\{member.id\}\/role/);
-  assert.match(app, /role !== member.role && \(role === 'admin' \|\| member.role === 'admin'\)/);
+  assert.match(workspaceAdminUi, /function openRoleConfirmation\(/);
+  assert.match(workspaceAdminUi, /roleSelect\.addEventListener\('change'/);
+  assert.match(workspaceAdminUi, /\/users\/\$\{member\.id\}\/role/);
+  assert.match(workspaceAdminUi, /role !== member\.role && \(role === 'admin' \|\| member\.role === 'admin'\)/);
 });
 
-test('workspace administrators can manage a guest member project access', () => {
+test('workspace administrators can manage guest member project access', () => {
   assert.match(html, /id="workspace-guest-projects-dialog"/);
   assert.match(html, /id="workspace-guest-project-options"/);
-  assert.match(app, /manageProjectsButton\.textContent = 'Manage projects'/);
-  assert.match(app, /function openWorkspaceGuestProjectAccess\(/);
-  assert.match(app, /\/users\/\$\{member\.id\}\/projects/);
-  assert.match(app, /function saveWorkspaceGuestProjectAccess\(/);
+  assert.match(workspaceAdminUi, /manageProjectsButton\.textContent = 'Manage projects'/);
+  assert.match(workspaceAdminUi, /function openGuestProjectAccess\(/);
+  assert.match(workspaceAdminUi, /\/users\/\$\{member\.id\}\/projects/);
+  assert.match(workspaceAdminUi, /function saveGuestProjectAccess\(/);
 });
 
 test('guest access editor shows existing read-only memberships so admins can revoke them', () => {
-  const editor = app.slice(
-    app.indexOf('async function openWorkspaceGuestProjectAccess('),
-    app.indexOf('function closeWorkspaceGuestProjectAccess('),
+  const editor = workspaceAdminUi.slice(
+    workspaceAdminUi.indexOf('async function openGuestProjectAccess('),
+    workspaceAdminUi.indexOf('function closeGuestProjectAccess('),
   );
   assert.match(editor, /project_ids: number\[\];[\s\S]*projects: Array<Pick<Project, 'id' \| 'name' \| 'status'>>/);
   assert.match(editor, /for \(const project of result\.projects\)/);
@@ -170,12 +171,12 @@ test('guest project checkboxes have compact layout and visible keyboard focus', 
   assert.match(html, /Tab between projects[\s\S]*Space toggles/);
   assert.match(css, /\.admin-project-option input\[type="checkbox"\]\s*\{[^}]*width:\s*16px[^}]*height:\s*16px/s);
   assert.match(css, /\.admin-project-option:focus-within\s*\{[^}]*outline:/s);
-  assert.match(app, /firstProjectCheckbox\.focus\(\)/);
-  assert.match(app, /if \(\(commandPalette\.open.*workspaceGuestProjectsDialog\.open.*\)\s*\n\s*&& event\.key !== 'Escape'/);
+  assert.match(workspaceAdminUi, /firstProjectCheckbox\.focus\(\)/);
+  assert.match(app, /commandPalette\.open.*workspaceAdminUi\.hasOpenDialog\(\).*&& event\.key !== 'Escape'/s);
 });
 
 test('workspace member rows give identity its own line and group role/actions below', () => {
-  const renderer = app.slice(app.indexOf('function renderWorkspaceMembers('), app.indexOf('function openWorkspaceMemberDeactivationConfirmation('));
+  const renderer = workspaceAdminUi.slice(workspaceAdminUi.indexOf('function renderMembers('), workspaceAdminUi.indexOf('function openDeactivationConfirmation('));
   assert.match(renderer, /label\.className = 'workspace-admin-member-identity'/);
   assert.match(renderer, /memberTools\.className = 'workspace-admin-member-tools'/);
   assert.match(renderer, /memberTools\.append\(roleControl, actions\)/);
@@ -193,9 +194,9 @@ test('OpenAPI exposes public token completion and admin initiated email recovery
   }
   assert.doesNotMatch(openapi, /  \/auth\/password-reset:/);
   assert.match(openapi, /password: \{ type: string, minLength: 15, maxLength: 128/);
-  const resetDelivery = app.slice(
-    app.indexOf('async function sendMemberPasswordRecoveryEmail('),
-    app.indexOf('async function resendWorkspaceInvite('),
+  const resetDelivery = workspaceAdminUi.slice(
+    workspaceAdminUi.indexOf('async function sendPasswordRecoveryEmail('),
+    workspaceAdminUi.indexOf('async function resendInvite('),
   );
   assert.doesNotMatch(resetDelivery, /reset_url/);
   assert.match(resetDelivery, /Password recovery email sent to/);

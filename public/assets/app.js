@@ -17,13 +17,14 @@ import { initThemeUi } from './theme-ui.js';
 import { initProjectNotesUi } from './project-notes-ui.js';
 import { initMilestoneUi } from './milestone-ui.js';
 import { initLoungePresence } from './lounge-presence.js';
+import { initWorkspaceAdminUi } from './workspace-admin-ui.js';
 import { parseQuickIssueInput } from './quick-issue.js';
 import { milestoneStatus } from './roadmap.js';
 import { formatIssueMarkdown, formatIssuePrompt } from './issue-export.js';
 import { filterIssues, filterIssuesByMilestoneArchive, groupIssues, groupIssuesByMilestone, discussionIndicatorLabel, projectProgress, sortIssues, } from './issue-board.js';
 import { diffConditionalIssueCollections, loadIssueCollections, nextIssuePollDelay, refreshDeletedIssuesOnOpen, shouldDeferIssueUpdates, } from './issue-polling.js';
 import { dom } from './dom.js';
-const { project: { projectHeading, projectEditDialog, projectEditForm, projectEditClose, projectEditCancel, projectEditName, projectEditDescription, projectEditStatus, projectEditStatusHelp, projectReadOnlyNotice, projectEditMessage, projectEditSave, editProjectButton, projectGithubRepository, projectEditGithubRepository, githubProjectSelectionStatus, githubProjectEditStatus, connectGithubCreateButton, connectGithubEditButton, projectsNavButton, projectsView, projectView, projectForm, projectList, emptyProjects, projectFormPanel, projectDescription, projectState, projectChatColumn, projectSidebarList, projectSidebarEmpty, projectMain, projectTabs, projectKeyboardHints, }, auth: { loginPanel, loginShell, accountBar, currentUserLabel, loginAdminHelp, loginKeyboardHints, credentialFlow, credentialFlowHeading, credentialFlowDescription, credentialFlowError, credentialForm, credentialPasswordFields, credentialPasswordLabel, credentialVerificationField, credentialVerificationInput, credentialConfirmationField, credentialSubmit, credentialCancel, loginForm, loginStatusMessage, logoutButton, }, workspace: { workspacePanel, workspaceNav, workspaceSwitcher, workspaceSwitcherLabel, workspacePicker, workspacePickerCancel, workspacePickerConfirm, workspacePickerDescription, workspacePickerOptions, adminNavButton, adminView, adminHeading, workspaceAdminTabs, workspaceAdminMembersTab, workspaceAdminInvitesTab, workspaceAdminWorkspacesTab, workspaceAdminMembersPanel, workspaceAdminInvitesPanel, workspaceAdminWorkspacesPanel, workspaceMembersList, workspaceMembersEmpty, inviteForm, inviteRoleInput, inviteProjectSelection, inviteProjectOptions, workspaceInvitesList, workspaceInvitesEmpty, workspaceMemberDeactivationDialog, workspaceMemberDeactivationDescription, workspaceMemberDeactivationCancel, workspaceMemberDeactivationConfirm, workspaceMemberRoleDialog, workspaceMemberRoleHeading, workspaceMemberRoleDescription, workspaceMemberRoleCancel, workspaceMemberRoleConfirm, workspaceGuestProjectsDialog, workspaceGuestProjectsDescription, workspaceGuestProjectOptions, workspaceGuestProjectsEmpty, workspaceGuestProjectsStatus, workspaceGuestProjectsCancel, workspaceGuestProjectsSave, membersView, adminGoPrefixOption, workspaceSwitchHint, membersTabButton, memberList, memberForm, memberAddControls, memberAddStatus, memberSelect, memberRemovalConfirmation, memberRemovalDescription, memberRemovalCancel, memberRemovalConfirm, }, shell: { createWorkspaceForm, breadcrumbProjectsButton, breadcrumbDivider, breadcrumbCurrent, cancelProjectFormButton, linkPullRequestButton, notesTabButton, emptyIssues, addMemberButton, statusMessage, }, roadmap: { roadmapNavButton, roadmapView, roadmapHeading, roadmapSummary, roadmapMilestoneList, roadmapEmptyState, roadmapGoPrefixOption, }, inbox: { inboxNavButton, inboxView, inboxHeading, }, lounge: { loungeNavButton, loungeView, loungeHeading, loungeMessageList, loungeEmptyState, loungeForm, loungeInput, loungeMentionList, loungeReplyHint, loungeCancelReply, }, shortcuts: { toggleProjectFormButton, keyboardHints, goPrefixHint, goPrefixWorkspaceOption, goPrefixProjectOptions, commandPalette, commandPaletteClose, commandSearch, commandResults, shortcutHelp, shortcutHelpClose, }, chat: { chatView, }, issues: { issuesView, issueDetailView, issueDetailDisplay, issueDetailTitle, issueDetailPriority, issueDetailDueDate, issueDetailDescription, issueDetailBrief, issueDetailContextSection, issueDetailContext, issueDetailExpectedOutcomeSection, issueDetailExpectedOutcome, issueDetailAcceptanceCriteriaSection, issueDetailAcceptanceCriteria, issueDetailStatus, issueDetailStatusLabel, issueSourceLink, issuePullRequests, issuePullRequestsList, issuePullRequestsEmpty, issuePullRequestDialog, issuePullRequestForm, issuePullRequestClose, issuePullRequestCancel, issuePullRequestUrl, issuePullRequestMessage, issuePullRequestSubmit, issueDetailEditForm, issueDetailTitleInput, issueDetailDescriptionInput, issueDetailPriorityInput, issueDetailDueDateInput, issueDetailEditButton, issueAiPromptButton, issueAiPromptDialog, issueAiPromptCloseButton, issueAiPromptStepCount, issueAiPromptContext, issueAiPromptOutcome, issueAiPromptCriteria, issueAiPromptPreview, issueAiPromptStatus, issueAiPromptBackButton, issueAiPromptSkipButton, issueAiPromptNextButton, issueAiPromptActions, issueAiPromptSaveButton, issueAiPromptCopyButton, issueAiPromptCopyMarkdownButton, issueAiPromptDownloadButton, issueDetailDeleteButton, issueDetailSaveButton, issuesTabButton, issueBackButton, issueDetailCancelButton, issueForm, issueQuickAddTitle, issueQuickAddPriority, issueQuickAddDueDate, issueQuickAddAssignee, issueQuickAddMilestone, issueQuickAddOngoing, issueQuickAddShared, issueQuickAddApproval, issueQuickAddCancelButton, issueDetailType, issueDetailAssignee, issueDetailMilestone, issueDetailOngoingRow, issueDetailSharing, issueDetailApproval, issueDetailTypeInput, issueDetailAssigneeInput, issueDetailMilestoneInput, issueDetailOngoingInput, issueDetailSharedInput, issueDetailApprovalInput, issueStatusHistory, issueStatusHistoryCount, issueStatusHistoryEmpty, issueStatusHistoryList, issueDiscussionHeading, issueDiscussionCount, issueDiscussionStatus, issueDiscussionEmpty, issueDiscussionList, issueDiscussionForm, issueDiscussionInput, issueDiscussionSubmit, issueDiscussionReplyContext, issueDiscussionReplyLabel, issueDiscussionReplyCancel, issueDescriptionDetails, issueProgress, issueProgressLabel, issueFilter, issueGrouping, issueOrder, issueScope, issueCountSummary, issueBulkAssignToggle, issueBulkAssignToolbar, issueList, deletedIssuesDetails, deletedIssueCount, deletedIssueList, issueStatusPicker, issueStatusPickerClose, issueStatusPickerDescription, issueStatusPickerOptions, issueDeleteConfirmation, issueDeleteDescription, issueDeleteError, issueDeleteCancel, issueDeleteConfirm, }, guest: { guestWorkspaceSwitcher, guestWorkspaceSwitcherLabel, guestLogoutButton, }, } = dom;
+const { project: { projectHeading, projectEditDialog, projectEditForm, projectEditClose, projectEditCancel, projectEditName, projectEditDescription, projectEditStatus, projectEditStatusHelp, projectReadOnlyNotice, projectEditMessage, projectEditSave, editProjectButton, projectGithubRepository, projectEditGithubRepository, githubProjectSelectionStatus, githubProjectEditStatus, connectGithubCreateButton, connectGithubEditButton, projectsNavButton, projectsView, projectView, projectForm, projectList, emptyProjects, projectFormPanel, projectDescription, projectState, projectChatColumn, projectSidebarList, projectSidebarEmpty, projectMain, projectTabs, projectKeyboardHints, }, auth: { loginPanel, loginShell, accountBar, currentUserLabel, loginAdminHelp, loginKeyboardHints, credentialFlow, credentialFlowHeading, credentialFlowDescription, credentialFlowError, credentialForm, credentialPasswordFields, credentialPasswordLabel, credentialVerificationField, credentialVerificationInput, credentialConfirmationField, credentialSubmit, credentialCancel, loginForm, loginStatusMessage, logoutButton, }, workspace: { workspacePanel, workspaceNav, workspaceSwitcher, workspaceSwitcherLabel, workspacePicker, workspacePickerCancel, workspacePickerConfirm, workspacePickerDescription, workspacePickerOptions, adminNavButton, adminView, adminHeading, membersView, adminGoPrefixOption, workspaceSwitchHint, membersTabButton, memberList, memberForm, memberAddControls, memberAddStatus, memberSelect, memberRemovalConfirmation, memberRemovalDescription, memberRemovalCancel, memberRemovalConfirm, }, shell: { createWorkspaceForm, breadcrumbProjectsButton, breadcrumbDivider, breadcrumbCurrent, cancelProjectFormButton, linkPullRequestButton, notesTabButton, emptyIssues, addMemberButton, statusMessage, }, roadmap: { roadmapNavButton, roadmapView, roadmapHeading, roadmapSummary, roadmapMilestoneList, roadmapEmptyState, roadmapGoPrefixOption, }, inbox: { inboxNavButton, inboxView, inboxHeading, }, lounge: { loungeNavButton, loungeView, loungeHeading, loungeMessageList, loungeEmptyState, loungeForm, loungeInput, loungeMentionList, loungeReplyHint, loungeCancelReply, }, shortcuts: { toggleProjectFormButton, keyboardHints, goPrefixHint, goPrefixWorkspaceOption, goPrefixProjectOptions, commandPalette, commandPaletteClose, commandSearch, commandResults, shortcutHelp, shortcutHelpClose, }, chat: { chatView, }, issues: { issuesView, issueDetailView, issueDetailDisplay, issueDetailTitle, issueDetailPriority, issueDetailDueDate, issueDetailDescription, issueDetailBrief, issueDetailContextSection, issueDetailContext, issueDetailExpectedOutcomeSection, issueDetailExpectedOutcome, issueDetailAcceptanceCriteriaSection, issueDetailAcceptanceCriteria, issueDetailStatus, issueDetailStatusLabel, issueSourceLink, issuePullRequests, issuePullRequestsList, issuePullRequestsEmpty, issuePullRequestDialog, issuePullRequestForm, issuePullRequestClose, issuePullRequestCancel, issuePullRequestUrl, issuePullRequestMessage, issuePullRequestSubmit, issueDetailEditForm, issueDetailTitleInput, issueDetailDescriptionInput, issueDetailPriorityInput, issueDetailDueDateInput, issueDetailEditButton, issueAiPromptButton, issueAiPromptDialog, issueAiPromptCloseButton, issueAiPromptStepCount, issueAiPromptContext, issueAiPromptOutcome, issueAiPromptCriteria, issueAiPromptPreview, issueAiPromptStatus, issueAiPromptBackButton, issueAiPromptSkipButton, issueAiPromptNextButton, issueAiPromptActions, issueAiPromptSaveButton, issueAiPromptCopyButton, issueAiPromptCopyMarkdownButton, issueAiPromptDownloadButton, issueDetailDeleteButton, issueDetailSaveButton, issuesTabButton, issueBackButton, issueDetailCancelButton, issueForm, issueQuickAddTitle, issueQuickAddPriority, issueQuickAddDueDate, issueQuickAddAssignee, issueQuickAddMilestone, issueQuickAddOngoing, issueQuickAddShared, issueQuickAddApproval, issueQuickAddCancelButton, issueDetailType, issueDetailAssignee, issueDetailMilestone, issueDetailOngoingRow, issueDetailSharing, issueDetailApproval, issueDetailTypeInput, issueDetailAssigneeInput, issueDetailMilestoneInput, issueDetailOngoingInput, issueDetailSharedInput, issueDetailApprovalInput, issueStatusHistory, issueStatusHistoryCount, issueStatusHistoryEmpty, issueStatusHistoryList, issueDiscussionHeading, issueDiscussionCount, issueDiscussionStatus, issueDiscussionEmpty, issueDiscussionList, issueDiscussionForm, issueDiscussionInput, issueDiscussionSubmit, issueDiscussionReplyContext, issueDiscussionReplyLabel, issueDiscussionReplyCancel, issueDescriptionDetails, issueProgress, issueProgressLabel, issueFilter, issueGrouping, issueOrder, issueScope, issueCountSummary, issueBulkAssignToggle, issueBulkAssignToolbar, issueList, deletedIssuesDetails, deletedIssueCount, deletedIssueList, issueStatusPicker, issueStatusPickerClose, issueStatusPickerDescription, issueStatusPickerOptions, issueDeleteConfirmation, issueDeleteDescription, issueDeleteError, issueDeleteCancel, issueDeleteConfirm, }, guest: { guestWorkspaceSwitcher, guestWorkspaceSwitcherLabel, guestLogoutButton, }, } = dom;
 const KEYBOARD_HINTS_STORAGE_KEY = 'tangent.keyboard-hints-visible';
 function loadKeyboardHintsPreference() {
     try {
@@ -116,11 +117,6 @@ let activeUser = null;
 let keyboardHintsVisible = loadKeyboardHintsPreference();
 let credentialFragment = null;
 let invitePreview = null;
-let adminProjects = [];
-let workspaceAdminTab = 'members';
-let workspaceMemberDeactivationTarget = null;
-let workspaceMemberRoleChangeTarget = null;
-let workspaceGuestProjectsTarget = null;
 let activeWorkspaces = [];
 let activeProject = null;
 let projectReturnFocusId = null;
@@ -267,6 +263,11 @@ const inboxUi = initInboxUi({
     formatDueDate: formatIssueDueDate,
     isIssueOverdue,
     createDiscussionIndicator,
+});
+const workspaceAdminUi = initWorkspaceAdminUi({
+    getUser: () => activeUser,
+    isVisible: () => !adminView.hidden,
+    report,
 });
 const guestUi = initGuestUi({
     getUser: () => activeUser,
@@ -684,392 +685,11 @@ function openWorkspaceAdmin() {
     if (currentLocation.view !== 'admin')
         workspaceViewHistory.push(currentLocation);
     showWorkspaceView('admin');
-    switchWorkspaceAdminTab(workspaceAdminTab);
+    workspaceAdminUi.open();
     adminHeading.focus();
-    void loadWorkspaceAdmin();
 }
 function switchWorkspaceAdminTab(tab) {
-    workspaceAdminTab = tab;
-    const states = [
-        ['members', workspaceAdminMembersTab, workspaceAdminMembersPanel],
-        ['invites', workspaceAdminInvitesTab, workspaceAdminInvitesPanel],
-        ['workspaces', workspaceAdminWorkspacesTab, workspaceAdminWorkspacesPanel],
-    ];
-    for (const [name, button, panel] of states) {
-        const selected = name === tab;
-        button.setAttribute('aria-selected', String(selected));
-        button.tabIndex = selected ? 0 : -1;
-        button.classList.toggle('is-active', selected);
-        panel.hidden = !selected;
-    }
-    updateWorkspaceAdminPanelTabIndex();
-}
-function updateWorkspaceAdminPanelTabIndex() {
-    const panel = [workspaceAdminMembersPanel, workspaceAdminInvitesPanel, workspaceAdminWorkspacesPanel]
-        .find((candidate) => !candidate.hidden);
-    if (panel === undefined)
-        return;
-    const hasFocusableContent = Array.from(panel.querySelectorAll('a[href], button, input, select, textarea, [tabindex]')).some((element) => element.tabIndex >= 0 && !element.matches(':disabled') && element.closest('[hidden]') === null);
-    panel.tabIndex = hasFocusableContent ? -1 : 0;
-}
-async function loadWorkspaceAdmin() {
-    if (activeUser?.role !== 'admin')
-        return;
-    try {
-        const [members, invites, projects] = await Promise.all([
-            api('/users'),
-            api('/users/invites'),
-            api('/projects'),
-        ]);
-        if (adminView.hidden)
-            return;
-        adminProjects = projects.projects.filter((project) => project.status === 'active' || project.status === 'paused');
-        renderWorkspaceMembers(members.users);
-        renderWorkspaceInvites(invites.invites);
-        renderInviteProjectOptions();
-        updateWorkspaceAdminPanelTabIndex();
-    }
-    catch (error) {
-        report(error instanceof Error ? error.message : 'Could not load workspace administration.', true);
-    }
-}
-function renderWorkspaceMembers(members) {
-    workspaceMembersList.replaceChildren();
-    workspaceMembersEmpty.hidden = members.length > 0;
-    const activeAdminCount = members.filter((member) => member.role === 'admin' && member.is_active).length;
-    for (const member of members) {
-        const item = document.createElement('li');
-        const label = document.createElement('span');
-        label.className = 'workspace-admin-member-identity';
-        label.textContent = `${member.name} · ${member.email}${member.is_active ? '' : ' · inactive'}`;
-        const roleControl = document.createElement('div');
-        roleControl.className = 'workspace-admin-role-control';
-        const roleSelect = document.createElement('select');
-        roleSelect.setAttribute('aria-label', `Workspace role for ${member.name}`);
-        roleSelect.dataset.memberId = String(member.id);
-        roleSelect.dataset.memberAction = 'role';
-        for (const role of ['admin', 'developer', 'guest']) {
-            const option = document.createElement('option');
-            option.value = role;
-            option.textContent = role[0].toUpperCase() + role.slice(1);
-            roleSelect.append(option);
-        }
-        roleSelect.value = member.role;
-        const roleSaveButton = document.createElement('button');
-        roleSaveButton.type = 'button';
-        roleSaveButton.className = 'button button-quiet';
-        roleSaveButton.textContent = 'Save role';
-        roleSaveButton.dataset.memberId = String(member.id);
-        roleSaveButton.dataset.memberAction = 'save-role';
-        const isSelf = member.id === activeUser?.id;
-        const isLastActiveAdmin = member.is_active && member.role === 'admin' && activeAdminCount <= 1;
-        roleSelect.disabled = isSelf || isLastActiveAdmin;
-        if (isSelf)
-            roleSelect.title = 'Ask another workspace admin to change your role.';
-        else if (isLastActiveAdmin)
-            roleSelect.title = 'At least one active workspace admin must remain.';
-        const updateRoleSaveButton = () => {
-            roleSaveButton.disabled = roleSelect.disabled || roleSelect.value === member.role;
-        };
-        roleSelect.addEventListener('change', updateRoleSaveButton);
-        updateRoleSaveButton();
-        roleSaveButton.addEventListener('click', () => {
-            if (roleSaveButton.disabled)
-                return;
-            const role = roleSelect.value;
-            if (role !== member.role && (role === 'admin' || member.role === 'admin')) {
-                openWorkspaceMemberRoleConfirmation(member, role, roleSelect, roleSaveButton);
-            }
-            else {
-                void setWorkspaceMemberRole(member, role, roleSelect);
-            }
-        });
-        roleControl.append(roleSelect, roleSaveButton);
-        item.classList.add('workspace-admin-member-row');
-        const actions = document.createElement('div');
-        actions.className = 'workspace-admin-member-actions';
-        const resetLinkButton = document.createElement('button');
-        resetLinkButton.type = 'button';
-        resetLinkButton.className = 'button button-quiet';
-        resetLinkButton.textContent = 'Send recovery email';
-        resetLinkButton.setAttribute('aria-label', `Send password recovery email to ${member.name}`);
-        resetLinkButton.disabled = !member.is_active;
-        resetLinkButton.addEventListener('click', () => void sendMemberPasswordRecoveryEmail(member));
-        if (member.role === 'guest') {
-            const manageProjectsButton = document.createElement('button');
-            manageProjectsButton.type = 'button';
-            manageProjectsButton.className = 'button button-quiet';
-            manageProjectsButton.textContent = 'Manage projects';
-            manageProjectsButton.dataset.memberId = String(member.id);
-            manageProjectsButton.dataset.memberAction = 'projects';
-            manageProjectsButton.setAttribute('aria-label', `Manage project access for ${member.name}`);
-            manageProjectsButton.addEventListener('click', () => void openWorkspaceGuestProjectAccess(member, manageProjectsButton));
-            actions.append(manageProjectsButton);
-        }
-        const statusButton = document.createElement('button');
-        statusButton.type = 'button';
-        statusButton.className = member.is_active ? 'button button-quiet button-danger' : 'button button-quiet';
-        statusButton.textContent = member.is_active ? 'Deactivate' : 'Reactivate';
-        statusButton.dataset.memberId = String(member.id);
-        statusButton.dataset.memberAction = 'status';
-        statusButton.setAttribute('aria-label', `${member.is_active ? 'Deactivate' : 'Reactivate'} ${member.name} in this workspace`);
-        const isLastAdmin = member.is_active && member.role === 'admin' && activeAdminCount <= 1;
-        statusButton.disabled = member.is_active && (isSelf || isLastAdmin);
-        if (isSelf)
-            statusButton.title = 'Ask another workspace admin to deactivate your membership.';
-        else if (isLastAdmin)
-            statusButton.title = 'At least one active workspace admin must remain.';
-        statusButton.addEventListener('click', () => {
-            if (member.is_active)
-                openWorkspaceMemberDeactivationConfirmation(member, statusButton);
-            else
-                void setWorkspaceMemberActive(member, true);
-        });
-        actions.append(resetLinkButton, statusButton);
-        const memberTools = document.createElement('div');
-        memberTools.className = 'workspace-admin-member-tools';
-        memberTools.append(roleControl, actions);
-        item.append(label, memberTools);
-        workspaceMembersList.append(item);
-    }
-}
-function openWorkspaceMemberDeactivationConfirmation(member, button) {
-    workspaceMemberDeactivationTarget = { member, button };
-    workspaceMemberDeactivationDescription.textContent = `${member.name} will lose access to this workspace and its projects. Existing browser sessions and API tokens for this workspace will be revoked.`;
-    workspaceMemberDeactivationDialog.showModal();
-    workspaceMemberDeactivationCancel.focus();
-}
-function closeWorkspaceMemberDeactivationConfirmation(restoreFocus = true) {
-    if (workspaceMemberDeactivationDialog.open)
-        workspaceMemberDeactivationDialog.close();
-    const target = workspaceMemberDeactivationTarget;
-    workspaceMemberDeactivationTarget = null;
-    workspaceMemberDeactivationConfirm.disabled = false;
-    if (restoreFocus && !adminView.hidden && target?.button.isConnected && !target.button.disabled)
-        target.button.focus();
-}
-async function setWorkspaceMemberActive(member, isActive) {
-    try {
-        await api(`/users/${member.id}/status`, {
-            method: 'PATCH',
-            body: JSON.stringify({ is_active: isActive }),
-        });
-        report(isActive ? `${member.name} reactivated in this workspace.` : `${member.name} deactivated from this workspace.`);
-        await loadWorkspaceAdmin();
-        workspaceMembersList.querySelector(`button[data-member-id="${member.id}"][data-member-action="status"]`)?.focus();
-    }
-    catch (error) {
-        report(error instanceof Error ? error.message : `Could not ${isActive ? 'reactivate' : 'deactivate'} the workspace member.`, true);
-        if (!adminView.hidden)
-            workspaceMembersList.querySelector(`button[data-member-id="${member.id}"][data-member-action="status"]`)?.focus();
-    }
-}
-function openWorkspaceMemberRoleConfirmation(member, role, select, button) {
-    workspaceMemberRoleChangeTarget = { member, role, select, button };
-    const roleLabel = role[0].toUpperCase() + role.slice(1);
-    if (role === 'admin') {
-        workspaceMemberRoleHeading.textContent = 'Grant admin access?';
-        workspaceMemberRoleDescription.textContent = `${member.name} will gain workspace-wide administration access.`;
-        workspaceMemberRoleConfirm.textContent = 'Grant admin access';
-    }
-    else {
-        workspaceMemberRoleHeading.textContent = 'Remove admin access?';
-        workspaceMemberRoleDescription.textContent = `${member.name} will lose workspace administration access and become a ${roleLabel}.`;
-        workspaceMemberRoleConfirm.textContent = 'Change role';
-    }
-    workspaceMemberRoleDialog.showModal();
-    workspaceMemberRoleCancel.focus();
-}
-function closeWorkspaceMemberRoleConfirmation(restoreFocus = true) {
-    if (workspaceMemberRoleDialog.open)
-        workspaceMemberRoleDialog.close();
-    const target = workspaceMemberRoleChangeTarget;
-    workspaceMemberRoleChangeTarget = null;
-    workspaceMemberRoleConfirm.disabled = false;
-    if (restoreFocus && !adminView.hidden && target?.button.isConnected)
-        target.button.focus();
-}
-async function setWorkspaceMemberRole(member, role, select) {
-    try {
-        await api(`/users/${member.id}/role`, {
-            method: 'PATCH',
-            body: JSON.stringify({ role }),
-        });
-        report(`${member.name}'s role changed to ${role}. They may need to reload to see their updated controls.`);
-        await loadWorkspaceAdmin();
-        workspaceMembersList.querySelector(`select[data-member-id="${member.id}"][data-member-action="role"]`)?.focus();
-    }
-    catch (error) {
-        report(error instanceof Error ? error.message : `Could not change ${member.name}'s role.`, true);
-        if (!adminView.hidden && select.isConnected)
-            select.focus();
-    }
-}
-async function openWorkspaceGuestProjectAccess(member, button) {
-    workspaceGuestProjectsTarget = { member, button };
-    workspaceGuestProjectsDescription.textContent = `Choose active or paused projects ${member.name} can access. Existing access to completed or archived projects can be removed.`;
-    workspaceGuestProjectOptions.replaceChildren();
-    workspaceGuestProjectsEmpty.hidden = true;
-    workspaceGuestProjectsStatus.textContent = 'Loading project access…';
-    workspaceGuestProjectsSave.disabled = true;
-    workspaceGuestProjectsDialog.showModal();
-    workspaceGuestProjectsCancel.focus();
-    try {
-        const result = await api(`/users/${member.id}/projects`);
-        if (!workspaceGuestProjectsDialog.open || workspaceGuestProjectsTarget?.member.id !== member.id)
-            return;
-        workspaceGuestProjectOptions.replaceChildren();
-        workspaceGuestProjectsStatus.textContent = '';
-        workspaceGuestProjectsEmpty.hidden = result.projects.length > 0;
-        if (result.projects.length === 0) {
-            workspaceGuestProjectsEmpty.textContent = 'There are no active or paused projects. This guest will have no project access.';
-        }
-        for (const project of result.projects) {
-            const label = document.createElement('label');
-            label.className = 'admin-project-option';
-            const checkbox = document.createElement('input');
-            checkbox.type = 'checkbox';
-            checkbox.name = 'guest_project_ids';
-            checkbox.value = String(project.id);
-            checkbox.checked = result.project_ids.includes(project.id);
-            const readOnly = project.status === 'completed' || project.status === 'archived';
-            const description = readOnly ? `${project.name} (${project.status}; remove access only)` : project.name;
-            label.append(checkbox, document.createTextNode(description));
-            workspaceGuestProjectOptions.append(label);
-        }
-        const firstProjectCheckbox = workspaceGuestProjectOptions.querySelector('input[type="checkbox"]');
-        if (firstProjectCheckbox !== null && document.activeElement === workspaceGuestProjectsCancel) {
-            firstProjectCheckbox.focus();
-        }
-        workspaceGuestProjectsSave.disabled = false;
-    }
-    catch (error) {
-        if (!workspaceGuestProjectsDialog.open || workspaceGuestProjectsTarget?.member.id !== member.id)
-            return;
-        report(error instanceof Error ? error.message : `Could not load ${member.name}'s project access.`, true);
-        closeWorkspaceGuestProjectAccess();
-    }
-}
-function closeWorkspaceGuestProjectAccess(restoreFocus = true) {
-    if (workspaceGuestProjectsDialog.open)
-        workspaceGuestProjectsDialog.close();
-    const target = workspaceGuestProjectsTarget;
-    workspaceGuestProjectsTarget = null;
-    workspaceGuestProjectsSave.disabled = false;
-    if (restoreFocus && !adminView.hidden && target?.button.isConnected)
-        target.button.focus();
-}
-async function saveWorkspaceGuestProjectAccess() {
-    const target = workspaceGuestProjectsTarget;
-    if (target === null)
-        return;
-    const projectIds = Array.from(workspaceGuestProjectOptions.querySelectorAll('input[name="guest_project_ids"]:checked')).map((checkbox) => Number(checkbox.value));
-    workspaceGuestProjectsSave.disabled = true;
-    workspaceGuestProjectsStatus.textContent = 'Saving project access…';
-    try {
-        await api(`/users/${target.member.id}/projects`, {
-            method: 'PUT',
-            body: JSON.stringify({ project_ids: projectIds }),
-        });
-        closeWorkspaceGuestProjectAccess(false);
-        report(`${target.member.name}'s project access updated.`);
-        if (!adminView.hidden && target.button.isConnected)
-            target.button.focus();
-    }
-    catch (error) {
-        report(error instanceof Error ? error.message : `Could not update ${target.member.name}'s project access.`, true);
-        workspaceGuestProjectsStatus.textContent = 'The project access could not be saved. Review the selection and try again.';
-        workspaceGuestProjectsSave.disabled = false;
-        workspaceGuestProjectsSave.focus();
-    }
-}
-function renderWorkspaceInvites(invites) {
-    workspaceInvitesList.replaceChildren();
-    workspaceInvitesEmpty.hidden = invites.length > 0;
-    for (const invite of invites) {
-        const item = document.createElement('li');
-        item.className = 'workspace-invite-row';
-        const details = document.createElement('span');
-        details.className = 'workspace-invite-details';
-        details.textContent = `${invite.name} · ${invite.email} · ${invite.role} · Expires ${new Date(`${invite.expires_at}Z`).toLocaleDateString()}`;
-        const actions = document.createElement('div');
-        actions.className = 'workspace-invite-actions';
-        const resend = document.createElement('button');
-        resend.type = 'button';
-        resend.className = 'button button-quiet';
-        resend.textContent = 'Resend invite';
-        resend.dataset.inviteId = String(invite.id);
-        resend.dataset.inviteAction = 'resend';
-        resend.addEventListener('click', () => void resendWorkspaceInvite(invite.id));
-        const revoke = document.createElement('button');
-        revoke.type = 'button';
-        revoke.className = 'button button-quiet button-danger';
-        revoke.textContent = 'Revoke';
-        revoke.dataset.inviteId = String(invite.id);
-        revoke.dataset.inviteAction = 'revoke';
-        revoke.addEventListener('click', () => void revokeWorkspaceInvite(invite.id));
-        actions.append(resend, revoke);
-        item.append(details, actions);
-        workspaceInvitesList.append(item);
-    }
-}
-function renderInviteProjectOptions() {
-    inviteProjectOptions.replaceChildren();
-    for (const project of adminProjects) {
-        const label = document.createElement('label');
-        label.className = 'admin-project-option';
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.name = 'project_ids';
-        checkbox.value = String(project.id);
-        label.append(checkbox, document.createTextNode(project.name));
-        inviteProjectOptions.append(label);
-    }
-    inviteProjectSelection.hidden = inviteRoleInput.value !== 'guest';
-    if (adminProjects.length === 0) {
-        const empty = document.createElement('p');
-        empty.className = 'panel-description';
-        empty.textContent = 'Create a project before inviting a guest.';
-        inviteProjectOptions.append(empty);
-    }
-}
-async function sendMemberPasswordRecoveryEmail(member) {
-    try {
-        await api(`/users/${member.id}/password-reset`, {
-            method: 'POST',
-            body: JSON.stringify({}),
-        });
-        report(`Password recovery email sent to ${member.email}.`);
-    }
-    catch (error) {
-        report(error instanceof Error ? error.message : 'Could not send the password recovery email.', true);
-    }
-}
-async function resendWorkspaceInvite(inviteId) {
-    try {
-        const result = await api(`/users/invites/${inviteId}/resend`, {
-            method: 'POST',
-            body: JSON.stringify({}),
-        });
-        report(`Invite resent to ${result.invite.email}. The previous link no longer works.`);
-        await loadWorkspaceAdmin();
-    }
-    catch (error) {
-        report(error instanceof Error ? error.message : 'Could not resend the invite.', true);
-    }
-}
-async function revokeWorkspaceInvite(inviteId) {
-    try {
-        await api(`/users/invites/${inviteId}`, { method: 'DELETE' });
-        report('Invite revoked.');
-        await loadWorkspaceAdmin();
-        const nextAction = workspaceInvitesList.querySelector('.workspace-invite-actions button')
-            ?? inviteForm.querySelector('button[type="submit"]');
-        nextAction?.focus();
-    }
-    catch (error) {
-        report(error instanceof Error ? error.message : 'Could not revoke the invite.', true);
-    }
+    workspaceAdminUi.switchTab(tab);
 }
 function currentWorkspaceLocation() {
     if (!projectView.hidden && activeProject !== null) {
@@ -1610,8 +1230,7 @@ function issuePollingIsActive(projectId) {
 }
 function issueUpdatesAreDeferred() {
     const dialogOpen = issueStatusPicker.open || issueDeleteConfirmation.open
-        || memberRemovalConfirmation.open || workspaceMemberDeactivationDialog.open
-        || workspaceMemberRoleDialog.open || workspaceGuestProjectsDialog.open
+        || memberRemovalConfirmation.open || workspaceAdminUi.hasOpenDialog()
         || milestoneUi.deleteConfirmation.open || milestoneUi.managerDialog.open;
     return shouldDeferIssueUpdates({
         issueEditorOpen: !issueDetailEditForm.hidden,
@@ -1969,8 +1588,7 @@ function shortcutContext(target) {
         statusHistoryFocused: issueStatusHistory.open && issueStatusHistory.contains(document.activeElement),
         textInputFocused: shouldBlurOnEscape(target),
         modalOpen: commandPalette.open || clientSummaryUi.dialog.open || shortcutHelp.open || issueAiPromptDialog.open || issueStatusPicker.open || issueDeleteConfirmation.open || themeUi.aboutDialog.open || projectEditDialog.open
-            || memberRemovalConfirmation.open || workspaceMemberDeactivationDialog.open || workspaceMemberRoleDialog.open
-            || workspaceGuestProjectsDialog.open || milestoneUi.deleteConfirmation.open || milestoneUi.managerDialog.open
+            || memberRemovalConfirmation.open || workspaceAdminUi.hasOpenDialog() || milestoneUi.deleteConfirmation.open || milestoneUi.managerDialog.open
             || workspacePicker.open,
         canDismiss: commandPalette.open || shortcutHelp.open || (!workspacePanel.hidden && (pendingWorkspaceId !== null
             || (!projectView.hidden && (!issueDetailView.hidden || !issueDetailEditForm.hidden
@@ -2456,12 +2074,7 @@ function openCommandPalette() {
         closeIssueDeleteConfirmation();
     if (memberRemovalConfirmation.open)
         closeMemberRemovalConfirmation();
-    if (workspaceMemberDeactivationDialog.open)
-        closeWorkspaceMemberDeactivationConfirmation();
-    if (workspaceMemberRoleDialog.open)
-        closeWorkspaceMemberRoleConfirmation();
-    if (workspaceGuestProjectsDialog.open)
-        closeWorkspaceGuestProjectAccess();
+    workspaceAdminUi.closeOpenDialogs();
     if (shortcutHelp.open)
         shortcutHelp.close();
     if (commandPalette.open) {
@@ -2494,12 +2107,7 @@ function showShortcutHelp() {
         closeIssueDeleteConfirmation();
     if (memberRemovalConfirmation.open)
         closeMemberRemovalConfirmation();
-    if (workspaceMemberDeactivationDialog.open)
-        closeWorkspaceMemberDeactivationConfirmation();
-    if (workspaceMemberRoleDialog.open)
-        closeWorkspaceMemberRoleConfirmation();
-    if (workspaceGuestProjectsDialog.open)
-        closeWorkspaceGuestProjectAccess();
+    workspaceAdminUi.closeOpenDialogs();
     if (commandPalette.open)
         closeCommandPalette();
     if (shortcutHelp.open) {
@@ -2539,14 +2147,8 @@ function dismissCurrentView() {
     else if (memberRemovalConfirmation.open) {
         closeMemberRemovalConfirmation();
     }
-    else if (workspaceMemberDeactivationDialog.open) {
-        closeWorkspaceMemberDeactivationConfirmation();
-    }
-    else if (workspaceMemberRoleDialog.open) {
-        closeWorkspaceMemberRoleConfirmation();
-    }
-    else if (workspaceGuestProjectsDialog.open) {
-        closeWorkspaceGuestProjectAccess();
+    else if (workspaceAdminUi.hasOpenDialog()) {
+        workspaceAdminUi.closeCurrentDialog();
     }
     else if (issueStatusPicker.open) {
         closeIssueStatusPicker();
@@ -2870,7 +2472,7 @@ function blurTextInput() {
         return;
     }
     if (adminView.contains(focused)) {
-        workspaceAdminTabs.querySelector('[role="tab"][aria-selected="true"]')?.focus();
+        workspaceAdminUi.focusSelectedTab();
         return;
     }
     if (focused === issueDiscussionInput) {
@@ -3071,7 +2673,7 @@ function handleKeyboardShortcut(event) {
             guestUi.closePreview();
         return;
     }
-    if ((commandPalette.open || clientSummaryUi.dialog.open || shortcutHelp.open || issueAiPromptDialog.open || issueStatusPicker.open || issueDeleteConfirmation.open || memberRemovalConfirmation.open || workspaceMemberDeactivationDialog.open || workspaceMemberRoleDialog.open || workspaceGuestProjectsDialog.open || milestoneUi.deleteConfirmation.open || milestoneUi.managerDialog.open || workspacePicker.open || themeUi.aboutDialog.open || projectEditDialog.open)
+    if ((commandPalette.open || clientSummaryUi.dialog.open || shortcutHelp.open || issueAiPromptDialog.open || issueStatusPicker.open || issueDeleteConfirmation.open || memberRemovalConfirmation.open || workspaceAdminUi.hasOpenDialog() || milestoneUi.deleteConfirmation.open || milestoneUi.managerDialog.open || workspacePicker.open || themeUi.aboutDialog.open || projectEditDialog.open)
         && event.key !== 'Escape'
         && !((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k'))
         return;
@@ -3838,35 +3440,6 @@ loungeInput.addEventListener('blur', hideLoungeMentionSuggestions);
 loungeInput.addEventListener('keydown', (event) => {
     if (!handleLoungeMentionKeydown(event))
         submitFormOnEnter(event, loungeForm);
-});
-workspaceAdminMembersTab.addEventListener('click', () => switchWorkspaceAdminTab('members'));
-workspaceAdminInvitesTab.addEventListener('click', () => switchWorkspaceAdminTab('invites'));
-workspaceAdminWorkspacesTab.addEventListener('click', () => switchWorkspaceAdminTab('workspaces'));
-workspaceAdminTabs.addEventListener('keydown', (event) => {
-    const tabs = [workspaceAdminMembersTab, workspaceAdminInvitesTab, workspaceAdminWorkspacesTab];
-    const names = ['members', 'invites', 'workspaces'];
-    const currentIndex = tabs.indexOf(event.target);
-    if (currentIndex < 0 || event.altKey || event.ctrlKey || event.metaKey)
-        return;
-    let nextIndex;
-    if (event.key === 'ArrowRight')
-        nextIndex = (currentIndex + 1) % tabs.length;
-    else if (event.key === 'ArrowLeft')
-        nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
-    else if (event.key === 'Home')
-        nextIndex = 0;
-    else if (event.key === 'End')
-        nextIndex = tabs.length - 1;
-    else
-        return;
-    event.preventDefault();
-    event.stopPropagation();
-    const nextTab = tabs[nextIndex];
-    const nextName = names[nextIndex];
-    if (nextTab !== undefined && nextName !== undefined) {
-        switchWorkspaceAdminTab(nextName);
-        nextTab.focus();
-    }
 });
 breadcrumbProjectsButton.addEventListener('click', goToProjects);
 issuesTabButton.addEventListener('click', () => switchProjectTab('issues'));
@@ -6702,36 +6275,6 @@ async function removeProjectMember(member, removeButton) {
 }
 memberRemovalCancel.addEventListener('click', closeMemberRemovalConfirmation);
 memberRemovalConfirm.addEventListener('click', () => void confirmMemberRemoval());
-workspaceMemberDeactivationCancel.addEventListener('click', () => closeWorkspaceMemberDeactivationConfirmation());
-workspaceMemberDeactivationDialog.addEventListener('cancel', (event) => {
-    event.preventDefault();
-    closeWorkspaceMemberDeactivationConfirmation();
-});
-workspaceMemberDeactivationConfirm.addEventListener('click', () => {
-    const target = workspaceMemberDeactivationTarget;
-    if (target === null)
-        return;
-    closeWorkspaceMemberDeactivationConfirmation(false);
-    void setWorkspaceMemberActive(target.member, false);
-});
-workspaceMemberRoleCancel.addEventListener('click', () => closeWorkspaceMemberRoleConfirmation());
-workspaceMemberRoleDialog.addEventListener('cancel', (event) => {
-    event.preventDefault();
-    closeWorkspaceMemberRoleConfirmation();
-});
-workspaceMemberRoleConfirm.addEventListener('click', () => {
-    const target = workspaceMemberRoleChangeTarget;
-    if (target === null)
-        return;
-    closeWorkspaceMemberRoleConfirmation(false);
-    void setWorkspaceMemberRole(target.member, target.role, target.select);
-});
-workspaceGuestProjectsCancel.addEventListener('click', () => closeWorkspaceGuestProjectAccess());
-workspaceGuestProjectsDialog.addEventListener('cancel', (event) => {
-    event.preventDefault();
-    closeWorkspaceGuestProjectAccess();
-});
-workspaceGuestProjectsSave.addEventListener('click', () => void saveWorkspaceGuestProjectAccess());
 function updateMembersPanelTabIndex() {
     const hasFocusableContent = Array.from(membersView.querySelectorAll('a[href], button, input, select, textarea, [tabindex]')).some((element) => element.tabIndex >= 0 && !element.matches(':disabled') && element.closest('[hidden]') === null);
     membersView.tabIndex = hasFocusableContent ? -1 : 0;
@@ -7009,38 +6552,6 @@ projectForm.addEventListener('submit', async (event) => {
         if (!projectFormPanel.hidden)
             projectForm.querySelector('input[name="name"]')?.focus();
         report(error instanceof Error ? error.message : 'Could not create project.', true);
-    }
-});
-inviteRoleInput.addEventListener('change', () => {
-    inviteProjectSelection.hidden = inviteRoleInput.value !== 'guest';
-});
-inviteForm.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    const values = new FormData(inviteForm);
-    const role = values.get('role') === 'guest' ? 'guest' : 'developer';
-    const projectIds = values.getAll('project_ids').map(Number).filter(Number.isSafeInteger);
-    if (role === 'guest' && projectIds.length === 0) {
-        report('Choose at least one project for a guest invite.', true);
-        inviteProjectOptions.querySelector('input')?.focus();
-        return;
-    }
-    try {
-        const result = await api('/users/invites', {
-            method: 'POST',
-            body: JSON.stringify({
-                name: values.get('name'),
-                email: values.get('email'),
-                role,
-                project_ids: role === 'guest' ? projectIds : [],
-            }),
-        });
-        inviteForm.reset();
-        inviteProjectSelection.hidden = true;
-        report(`Invitation sent to ${result.invite.email}.`);
-        await loadWorkspaceAdmin();
-    }
-    catch (error) {
-        report(error instanceof Error ? error.message : 'Could not send the invitation email.', true);
     }
 });
 guestLogoutButton.addEventListener('click', () => { void signOut(); });

@@ -5,6 +5,7 @@ import { resolveShortcut, shouldSendChatOnEnter } from '../../public/assets/shor
 
 const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
+const workspaceAdminUi = await readFile(new URL('../../frontend/src/workspace-admin-ui.ts', import.meta.url), 'utf8');
 const inboxUi = await readFile(new URL('../../frontend/src/inbox-ui.ts', import.meta.url), 'utf8');
 const themeUi = await readFile(new URL('../../frontend/src/theme-ui.ts', import.meta.url), 'utf8');
 const milestoneUi = await readFile(new URL('../../frontend/src/milestone-ui.ts', import.meta.url), 'utf8');
@@ -178,10 +179,10 @@ test('the generated summary dialog participates in modal keyboard handling', () 
 test('Escape from a Workspace Admin field returns to its tab bar for section switching', () => {
   const blurHandler = app.slice(app.indexOf('function blurTextInput'), app.indexOf('function executeShortcut'));
   assert.match(blurHandler, /adminView\.contains\(focused\)/);
-  assert.match(blurHandler, /workspaceAdminTabs\.querySelector[\s\S]{0,120}\.focus\(\)/);
-  assert.match(app, /workspaceAdminTabs\.addEventListener\('keydown'/);
-  assert.match(app, /function updateWorkspaceAdminPanelTabIndex\(/);
-  assert.match(app, /panel\.tabIndex = hasFocusableContent \? -1 : 0/);
+  assert.match(blurHandler, /workspaceAdminUi\.focusSelectedTab\(\)/);
+  assert.match(workspaceAdminUi, /tabs\.addEventListener\('keydown'/);
+  assert.match(workspaceAdminUi, /function updatePanelTabIndex\(/);
+  assert.match(workspaceAdminUi, /panel\.tabIndex = hasFocusableContent \? -1 : 0/);
   assert.match(html, /Switch between My Work tabs and Inbox filters, Issues and Members in a project, or sections in Workspace Administration/);
   assert.match(html, /<kbd>Tab<\/kbd><\/dt><dd>Enter the selected tab's section/);
 });
