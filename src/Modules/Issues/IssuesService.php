@@ -43,6 +43,11 @@ final class IssuesService
         return $this->issues->projectListRevision($user->workspaceId, $projectId, $deleted);
     }
 
+    public function bumpTaskCollectionRevision(int $workspaceId, int $projectId): void
+    {
+        $this->issues->bumpTaskCollectionRevision($workspaceId, $projectId);
+    }
+
     public function listDeleted(AuthenticatedUser $user, int $projectId): array
     {
         $this->requireProjectAccess($user, $projectId, 'issues.read');

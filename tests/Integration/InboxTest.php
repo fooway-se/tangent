@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tangent\Tests\Integration;
 
+use Tangent\Modules\Issues\IssueRepository;
 use Tangent\Tests\Support\ApiTestCase;
 
 final class InboxTest extends ApiTestCase
@@ -85,6 +86,85 @@ final class InboxTest extends ApiTestCase
         self::assertSame(200, $response->status, json_encode($response->body));
         self::assertSame('First delivery', $response->body['issues'][0]['milestone_name']);
         self::assertSame('2027-01-15', $response->body['issues'][0]['milestone_due_date']);
+    }
+
+    public function testTaskInboxRevisionTracksVisibleFieldsDiscussionMilestonesAndProjectScope(): void
+    {
+        $admin = $this->login($this->adminEmail);
+        $projectId = $this->createProject($admin, 'Task revision project');
+        $this->addDeveloperToProject($admin, $projectId);
+        $milestone = $this->cookieRequest(
+            'POST',
+            "/api/v1/projects/{$projectId}/milestones",
+            $admin['cookie'],
+            ['name' => 'First delivery', 'due_date' => '2027-01-15'],
+            $admin['csrf'],
+        );
+        self::assertSame(201, $milestone->status, json_encode($milestone->body));
+
+        $developer = $this->login($this->developerEmail);
+        $issueId = $this->createAssignedIssue($developer, $projectId, 'Prepare release');
+        $this->updateIssue($developer, $issueId, ['milestone_id' => $milestone->body['milestone']['id']]);
+        $repository = new IssueRepository($this->pdo);
+        $initialRevision = $repository->taskCollectionRevision($this->workspaceId, [$projectId]);
+        $initial = $this->listInbox($developer);
+        self::assertSame(200, $initial->status, json_encode($initial->body));
+        $etag = $initial->headers['etag'];
+        self::assertSame(304, $this->listInbox($developer, $etag)->status);
+
+        $this->updateIssue($developer, $issueId, ['title' => 'Prepare production release']);
+        self::assertNotSame($initialRevision, $repository->taskCollectionRevision($this->workspaceId, [$projectId]));
+        $changedIssue = $this->listInbox($developer, $etag);
+        self::assertSame(200, $changedIssue->status);
+        self::assertSame('Prepare production release', $changedIssue->body['issues'][0]['title']);
+        $etag = $changedIssue->headers['etag'];
+
+        $milestoneUpdate = $this->cookieRequest(
+            'PATCH',
+            "/api/v1/projects/{$projectId}/milestones/{$milestone->body['milestone']['id']}",
+            $admin['cookie'],
+            ['name' => 'Second delivery', 'due_date' => '2027-02-15'],
+            $admin['csrf'],
+        );
+        self::assertSame(200, $milestoneUpdate->status, json_encode($milestoneUpdate->body));
+        $changedMilestone = $this->listInbox($developer, $etag);
+        self::assertSame(200, $changedMilestone->status);
+        self::assertSame('Second delivery', $changedMilestone->body['issues'][0]['milestone_name']);
+        self::assertSame('2027-02-15', $changedMilestone->body['issues'][0]['milestone_due_date']);
+        $etag = $changedMilestone->headers['etag'];
+
+        $projectUpdate = $this->cookieRequest(
+            'PATCH', "/api/v1/projects/{$projectId}", $admin['cookie'], ['name' => 'Renamed task project'], $admin['csrf'],
+        );
+        self::assertSame(200, $projectUpdate->status, json_encode($projectUpdate->body));
+        $changedProject = $this->listInbox($developer, $etag);
+        self::assertSame(200, $changedProject->status);
+        self::assertSame('Renamed task project', $changedProject->body['issues'][0]['project_name']);
+        $etag = $changedProject->headers['etag'];
+
+        $discussion = $this->cookieRequest(
+            'POST', "/api/v1/issues/{$issueId}/discussion", $developer['cookie'], ['body' => 'Release is ready.'], $developer['csrf'],
+        );
+        self::assertSame(201, $discussion->status, json_encode($discussion->body));
+        $changedDiscussion = $this->listInbox($developer, $etag);
+        self::assertSame(200, $changedDiscussion->status);
+        self::assertSame(1, $changedDiscussion->body['issues'][0]['discussion_count']);
+        $etag = $changedDiscussion->headers['etag'];
+
+        $removed = $this->cookieRequest(
+            'DELETE', "/api/v1/projects/{$projectId}/members/{$this->developerId}", $admin['cookie'], [], $admin['csrf'],
+        );
+        self::assertSame(204, $removed->status);
+        $changedScope = $this->listInbox($developer, $etag);
+        self::assertSame(200, $changedScope->status);
+        self::assertSame([], $changedScope->body['issues']);
+        self::assertNotSame($etag, $changedScope->headers['etag'] ?? null);
+    }
+
+    private function listInbox(array $user, ?string $etag = null): \Tangent\Core\Response
+    {
+        $headers = $etag === null ? [] : ['If-None-Match' => $etag];
+        return $this->request('GET', '/api/v1/inbox', [], $headers, ['tangent_session' => $user['cookie']]);
     }
 
     private function createProject(array $admin, string $name): int

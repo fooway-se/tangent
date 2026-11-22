@@ -93,6 +93,18 @@ final class IssueRepository
         return $revision === false ? 0 : (int) $revision;
     }
 
+    public function taskCollectionRevision(int $workspaceId, array $projectIds): int
+    {
+        if ($projectIds === []) return 0;
+        [$filter, $parameters] = self::idFilter($projectIds, 'task_project');
+        $statement = $this->pdo->prepare(
+            'SELECT COALESCE(SUM(task_revision), 0) FROM project_issue_revisions
+             WHERE workspace_id = :workspace_id AND project_id IN (' . $filter . ')'
+        );
+        $statement->execute(['workspace_id' => $workspaceId, ...$parameters]);
+        return (int) $statement->fetchColumn();
+    }
+
     public function create(
         int $workspaceId,
         int $projectId,
@@ -698,6 +710,11 @@ final class IssueRepository
     public function bumpDiscussionRevision(int $workspaceId, int $projectId): void
     {
         $this->bumpProjectRevisions($workspaceId, $projectId, true, false, true);
+    }
+
+    public function bumpTaskCollectionRevision(int $workspaceId, int $projectId): void
+    {
+        $this->bumpProjectRevisions($workspaceId, $projectId, false, false, true);
     }
 
     private function projectIdForIssue(int $workspaceId, int $issueId): ?int

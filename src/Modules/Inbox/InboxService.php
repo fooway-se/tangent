@@ -47,4 +47,18 @@ final class InboxService
 
         return $issues;
     }
+
+    public function listRevision(AuthenticatedUser $user): string
+    {
+        if (!Permissions::can($user, 'inbox.read')) {
+            throw new ApiException(403, 'forbidden', 'You cannot read your issue inbox.');
+        }
+        $projectIds = array_map(
+            static fn (array $project): int => (int) $project['id'],
+            $this->projects->list($user),
+        );
+        sort($projectIds, SORT_NUMERIC);
+        $revision = $this->issues->taskCollectionRevision($user->workspaceId, $projectIds);
+        return hash('sha256', $user->workspaceId . ':' . $user->id . ':' . implode(',', $projectIds) . ':' . $revision);
+    }
 }

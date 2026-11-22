@@ -218,6 +218,9 @@ final class ProjectService
             if (!$this->projects->update($user->workspaceId, $projectId, $updated)) {
                 throw new ApiException(404, 'not_found', 'The project was not found.');
             }
+            if ($updated['name'] !== $project['name']) {
+                $this->issues->bumpTaskCollectionRevision($user->workspaceId, $projectId);
+            }
             if ($ownsTransaction) $this->pdo->commit();
             return $this->projects->find($user->workspaceId, $projectId) ?? [];
         } catch (Throwable $exception) {

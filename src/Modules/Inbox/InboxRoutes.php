@@ -8,6 +8,7 @@ use Tangent\Core\AuthenticatedUser;
 use Tangent\Core\Request;
 use Tangent\Core\Response;
 use Tangent\Core\Router;
+use Tangent\Modules\Issues\IssueListResponse;
 
 final class InboxRoutes
 {
@@ -22,7 +23,8 @@ final class InboxRoutes
             array $params,
             AuthenticatedUser $user,
         ): Response {
-            return self::conditionalListResponse($request, 'issues', $this->service->list($user));
+            $etag = IssueListResponse::etagForRevision('task-inbox:' . $this->service->listRevision($user));
+            return IssueListResponse::conditional($request, $etag, fn (): array => $this->service->list($user));
         });
 
         $router->add('GET', '/api/v1/inbox/events', function (Request $request, array $params, AuthenticatedUser $user): Response {

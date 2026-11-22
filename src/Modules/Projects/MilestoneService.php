@@ -46,11 +46,22 @@ final class MilestoneService
             throw new ApiException(422, 'validation_failed', 'Milestone archived must be a boolean.');
         }
         [$name, $dueDate] = self::fields($input, $current['name'], $current['due_date'], true);
-        $this->milestones->update($user->workspaceId, $projectId, $milestoneId, $name, $dueDate);
-        if (array_key_exists('archived', $input)) {
-            $this->milestones->setArchived($user->workspaceId, $projectId, $milestoneId, $input['archived']);
+        $ownsTransaction = !$this->pdo->inTransaction();
+        if ($ownsTransaction) $this->pdo->beginTransaction();
+        try {
+            $this->milestones->update($user->workspaceId, $projectId, $milestoneId, $name, $dueDate);
+            if ($name !== $current['name'] || $dueDate !== $current['due_date']) {
+                $this->issues->bumpTaskCollectionRevision($user->workspaceId, $projectId);
+            }
+            if (array_key_exists('archived', $input)) {
+                $this->milestones->setArchived($user->workspaceId, $projectId, $milestoneId, $input['archived']);
+            }
+            if ($ownsTransaction) $this->pdo->commit();
+            return $this->milestones->find($user->workspaceId, $projectId, $milestoneId) ?? [];
+        } catch (Throwable $exception) {
+            if ($ownsTransaction && $this->pdo->inTransaction()) $this->pdo->rollBack();
+            throw $exception;
         }
-        return $this->milestones->find($user->workspaceId, $projectId, $milestoneId) ?? [];
     }
 
     public function delete(AuthenticatedUser $user, int $projectId, int $milestoneId): void
