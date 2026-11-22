@@ -27,6 +27,7 @@ import { initLoungePresence } from './lounge-presence.js';
 import { initLoungeChatUi } from './lounge-chat-ui.js';
 import { initWorkspaceAdminUi } from './workspace-admin-ui.js';
 import { initProjectChatUi } from './project-chat-ui.js';
+import { initCommandPaletteUi, type PaletteCommand } from './command-palette-ui.js';
 import { parseQuickIssueInput } from './quick-issue.js';
 import { milestoneStatus, type RoadmapMilestone } from './roadmap.js';
 import { formatIssueMarkdown, formatIssuePrompt } from './issue-export.js';
@@ -91,7 +92,6 @@ const {
   },
   shortcuts: {
     toggleProjectFormButton, keyboardHints, goPrefixHint, goPrefixWorkspaceOption, goPrefixProjectOptions,
-    commandPalette, commandPaletteClose, commandSearch, commandResults, shortcutHelp, shortcutHelpClose,
   },
   chat: {
     chatView,
@@ -209,14 +209,8 @@ function populateIssueMilestoneSelect(select: HTMLSelectElement, selectedMilesto
   select.value = selectedMilestoneId === null ? '' : String(selectedMilestoneId);
 }
 
-interface PaletteCommand {
-  label: string;
-  detail: string;
-  shortcut: string;
-  run: () => void;
-}
-
 const themeUi = initThemeUi();
+const commandPaletteUi = initCommandPaletteUi();
 
 
 
@@ -571,7 +565,7 @@ const milestoneUi = initMilestoneUi({
   report,
   onUnauthorized: () => showSignedOut(),
   shouldRestoreFocus: () => !projectView.hidden && activeProject !== null
-    && !commandPalette.open && !shortcutHelp.open && !workspacePicker.open,
+    && !commandPaletteUi.isPaletteOpen() && !commandPaletteUi.isShortcutHelpOpen() && !workspacePicker.open,
 });
 let linkedPullRequests: LinkedPullRequest[] = [];
 let issuePullRequestsRequestVersion = 0;
@@ -611,9 +605,6 @@ let issueStatusPickerReturnFocus: HTMLElement | null = null;
 let issueStatusPickerOptionIndex = 0;
 let issueDeleteTarget: Issue | null = null;
 let memberRemovalTarget: { member: Member; button: HTMLButtonElement } | null = null;
-let paletteCommands: PaletteCommand[] = [];
-let visiblePaletteCommands: PaletteCommand[] = [];
-let activePaletteCommandIndex = 0;
 
 const loungePresenceUi = initLoungePresence({
   navigationButton: loungeNavButton,
@@ -1585,10 +1576,10 @@ function shortcutContext(target: EventTarget | null) {
     issueGroupFocused: target instanceof HTMLElement && target.closest('.issue-group > summary') !== null,
     statusHistoryFocused: issueStatusHistory.open && issueStatusHistory.contains(document.activeElement),
     textInputFocused: shouldBlurOnEscape(target),
-    modalOpen: commandPalette.open || clientSummaryUi.dialog.open || shortcutHelp.open || issueAiPromptDialog.open || issueStatusPicker.open || issueDeleteConfirmation.open || themeUi.aboutDialog.open || projectEditDialog.open
+    modalOpen: commandPaletteUi.isPaletteOpen() || clientSummaryUi.dialog.open || commandPaletteUi.isShortcutHelpOpen() || issueAiPromptDialog.open || issueStatusPicker.open || issueDeleteConfirmation.open || themeUi.aboutDialog.open || projectEditDialog.open
       || memberRemovalConfirmation.open || workspaceAdminUi.hasOpenDialog() || milestoneUi.deleteConfirmation.open || milestoneUi.managerDialog.open
       || workspacePicker.open,
-    canDismiss: commandPalette.open || shortcutHelp.open || (!workspacePanel.hidden && (
+    canDismiss: commandPaletteUi.isPaletteOpen() || commandPaletteUi.isShortcutHelpOpen() || (!workspacePanel.hidden && (
       pendingWorkspaceId !== null
       || (!projectView.hidden && (!issueDetailView.hidden || !issueDetailEditForm.hidden
         || issueQuickAddEscapePending || projectChatUi.hasReplyParent()))
@@ -2031,57 +2022,6 @@ function getPaletteCommands(): PaletteCommand[] {
   return commands;
 }
 
-function renderCommandResults(): void {
-  const query = commandSearch.value.trim().toLocaleLowerCase();
-  visiblePaletteCommands = paletteCommands.filter((command) =>
-    `${command.label} ${command.detail}`.toLocaleLowerCase().includes(query),
-  );
-  activePaletteCommandIndex = Math.min(activePaletteCommandIndex, Math.max(visiblePaletteCommands.length - 1, 0));
-  commandResults.replaceChildren();
-  if (visiblePaletteCommands.length === 0) {
-    const empty = document.createElement('li');
-    empty.className = 'command-empty-state';
-    empty.textContent = 'No matching commands.';
-    commandResults.append(empty);
-    return;
-  }
-
-  visiblePaletteCommands.forEach((command, index) => {
-    const item = document.createElement('li');
-    const button = document.createElement('button');
-    button.className = 'command-item';
-    button.classList.toggle('is-active', index === activePaletteCommandIndex);
-    button.type = 'button';
-    button.setAttribute('role', 'option');
-    button.setAttribute('aria-selected', String(index === activePaletteCommandIndex));
-    button.addEventListener('click', () => runPaletteCommand(index));
-    const label = document.createElement('span');
-    label.textContent = command.label;
-    const detail = document.createElement('span');
-    detail.className = 'command-item-description';
-    detail.textContent = command.detail;
-    button.append(label, detail);
-    if (command.shortcut !== '') {
-      const shortcut = document.createElement('kbd');
-      shortcut.textContent = command.shortcut;
-      button.append(shortcut);
-    }
-    item.append(button);
-    commandResults.append(item);
-  });
-}
-
-function closeCommandPalette(): void {
-  if (commandPalette.open) commandPalette.close();
-}
-
-function runPaletteCommand(index: number): void {
-  const command = visiblePaletteCommands[index];
-  if (command === undefined) return;
-  closeCommandPalette();
-  command.run();
-}
-
 function openCommandPalette(): void {
   if (activeUser === null || milestoneUi.deleteConfirmButton.disabled) return;
   if (themeUi.aboutDialog.open) themeUi.aboutDialog.close();
@@ -2095,17 +2035,7 @@ function openCommandPalette(): void {
   if (issueDeleteConfirmation.open) closeIssueDeleteConfirmation();
   if (memberRemovalConfirmation.open) closeMemberRemovalConfirmation();
   workspaceAdminUi.closeOpenDialogs();
-  if (shortcutHelp.open) shortcutHelp.close();
-  if (commandPalette.open) {
-    closeCommandPalette();
-    return;
-  }
-  paletteCommands = getPaletteCommands();
-  commandSearch.value = '';
-  activePaletteCommandIndex = 0;
-  renderCommandResults();
-  commandPalette.showModal();
-  commandSearch.focus();
+  commandPaletteUi.togglePalette(getPaletteCommands);
 }
 
 function showShortcutHelp(): void {
@@ -2119,13 +2049,7 @@ function showShortcutHelp(): void {
   if (issueDeleteConfirmation.open) closeIssueDeleteConfirmation();
   if (memberRemovalConfirmation.open) closeMemberRemovalConfirmation();
   workspaceAdminUi.closeOpenDialogs();
-  if (commandPalette.open) closeCommandPalette();
-  if (shortcutHelp.open) {
-    shortcutHelp.close();
-    return;
-  }
-  shortcutHelp.showModal();
-  shortcutHelpClose.focus();
+  commandPaletteUi.toggleShortcutHelp();
 }
 
 function dismissCurrentView(): void {
@@ -2152,10 +2076,10 @@ function dismissCurrentView(): void {
     workspaceAdminUi.closeCurrentDialog();
   } else if (issueStatusPicker.open) {
     closeIssueStatusPicker();
-  } else if (commandPalette.open) {
-    closeCommandPalette();
-  } else if (shortcutHelp.open) {
-    shortcutHelp.close();
+  } else if (commandPaletteUi.isPaletteOpen()) {
+    commandPaletteUi.closePalette();
+  } else if (commandPaletteUi.isShortcutHelpOpen()) {
+    commandPaletteUi.closeShortcutHelp();
   } else if (!workspacePanel.hidden && !projectView.hidden && !issueDetailEditForm.hidden) {
     issueDetailCancelButton.click();
   } else if (!workspacePanel.hidden && !projectView.hidden && !issueDetailView.hidden) {
@@ -2566,7 +2490,7 @@ function handleKeyboardShortcut(event: KeyboardEvent): void {
     if (event.key === 'Escape') guestUi.closePreview();
     return;
   }
-  if ((commandPalette.open || clientSummaryUi.dialog.open || shortcutHelp.open || issueAiPromptDialog.open || issueStatusPicker.open || issueDeleteConfirmation.open || memberRemovalConfirmation.open || workspaceAdminUi.hasOpenDialog() || milestoneUi.deleteConfirmation.open || milestoneUi.managerDialog.open || workspacePicker.open || themeUi.aboutDialog.open || projectEditDialog.open)
+  if ((commandPaletteUi.isPaletteOpen() || clientSummaryUi.dialog.open || commandPaletteUi.isShortcutHelpOpen() || issueAiPromptDialog.open || issueStatusPicker.open || issueDeleteConfirmation.open || memberRemovalConfirmation.open || workspaceAdminUi.hasOpenDialog() || milestoneUi.deleteConfirmation.open || milestoneUi.managerDialog.open || workspacePicker.open || themeUi.aboutDialog.open || projectEditDialog.open)
     && event.key !== 'Escape'
     && !((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k')) return;
   const context = shortcutContext(event.target);
@@ -2580,37 +2504,13 @@ function handleKeyboardShortcut(event: KeyboardEvent): void {
   executeShortcut(action);
 }
 
-function movePaletteCommandSelection(direction: -1 | 1): void {
-  if (visiblePaletteCommands.length === 0) return;
-  activePaletteCommandIndex = (activePaletteCommandIndex + direction + visiblePaletteCommands.length) % visiblePaletteCommands.length;
-  renderCommandResults();
-  commandResults.querySelectorAll<HTMLButtonElement>('.command-item')[activePaletteCommandIndex]?.focus();
-}
-
-commandSearch.addEventListener('input', () => {
-  activePaletteCommandIndex = 0;
-  renderCommandResults();
-});
-commandPalette.addEventListener('keydown', (event) => {
-  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-    event.preventDefault();
-    event.stopPropagation();
-    movePaletteCommandSelection(event.key === 'ArrowDown' ? 1 : -1);
-  } else if (event.key === 'Enter') {
-    event.preventDefault();
-    event.stopPropagation();
-    runPaletteCommand(activePaletteCommandIndex);
-  }
-});
-commandPaletteClose.addEventListener('click', closeCommandPalette);
-shortcutHelpClose.addEventListener('click', () => shortcutHelp.close());
 issueStatusPickerClose.addEventListener('click', closeIssueStatusPicker);
 issueStatusPicker.addEventListener('close', () => {
   const returnFocus = issueStatusPickerReturnFocus;
   issueStatusPickerIssue = null;
   issueStatusPickerReturnFocus = null;
   if (returnFocus !== null && returnFocus.isConnected && returnFocus.closest('[hidden]') === null
-    && !commandPalette.open && !shortcutHelp.open && !workspacePicker.open) {
+    && !commandPaletteUi.isPaletteOpen() && !commandPaletteUi.isShortcutHelpOpen() && !workspacePicker.open) {
     returnFocus.focus();
   }
 });
@@ -5508,7 +5408,7 @@ workspacePickerCancel.addEventListener('click', () => resetPendingWorkspaceSwitc
 workspacePickerConfirm.addEventListener('click', commitPendingWorkspaceSwitch);
 workspacePicker.addEventListener('close', () => {
   pendingWorkspaceId = null;
-  if (commandPalette.open || shortcutHelp.open || issueStatusPicker.open) return;
+  if (commandPaletteUi.isPaletteOpen() || commandPaletteUi.isShortcutHelpOpen() || issueStatusPicker.open) return;
   if (guestUi.isShellVisible() && !guestWorkspaceSwitcher.hidden && !guestWorkspaceSwitcher.disabled) {
     guestWorkspaceSwitcher.focus();
   } else if (!workspacePanel.hidden && !workspaceSwitcher.disabled) {

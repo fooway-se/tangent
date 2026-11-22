@@ -17,13 +17,14 @@ import { initLoungePresence } from './lounge-presence.js';
 import { initLoungeChatUi } from './lounge-chat-ui.js';
 import { initWorkspaceAdminUi } from './workspace-admin-ui.js';
 import { initProjectChatUi } from './project-chat-ui.js';
+import { initCommandPaletteUi } from './command-palette-ui.js';
 import { parseQuickIssueInput } from './quick-issue.js';
 import { milestoneStatus } from './roadmap.js';
 import { formatIssueMarkdown, formatIssuePrompt } from './issue-export.js';
 import { filterIssues, filterIssuesByMilestoneArchive, groupIssues, groupIssuesByMilestone, discussionIndicatorLabel, projectProgress, sortIssues, } from './issue-board.js';
 import { diffConditionalIssueCollections, loadIssueCollections, nextIssuePollDelay, refreshDeletedIssuesOnOpen, shouldDeferIssueUpdates, } from './issue-polling.js';
 import { dom } from './dom.js';
-const { project: { projectHeading, projectEditDialog, projectEditForm, projectEditClose, projectEditCancel, projectEditName, projectEditDescription, projectEditStatus, projectEditStatusHelp, projectReadOnlyNotice, projectEditMessage, projectEditSave, editProjectButton, projectGithubRepository, projectEditGithubRepository, githubProjectSelectionStatus, githubProjectEditStatus, connectGithubCreateButton, connectGithubEditButton, projectsNavButton, projectsView, projectView, projectForm, projectList, emptyProjects, projectFormPanel, projectDescription, projectState, projectChatColumn, projectSidebarList, projectSidebarEmpty, projectMain, projectTabs, projectKeyboardHints, }, auth: { loginPanel, loginShell, accountBar, currentUserLabel, loginStatusMessage, logoutButton, }, workspace: { workspacePanel, workspaceNav, workspaceSwitcher, workspaceSwitcherLabel, workspacePicker, workspacePickerCancel, workspacePickerConfirm, workspacePickerDescription, workspacePickerOptions, adminNavButton, adminView, adminHeading, membersView, adminGoPrefixOption, workspaceSwitchHint, membersTabButton, memberList, memberForm, memberAddControls, memberAddStatus, memberSelect, memberRemovalConfirmation, memberRemovalDescription, memberRemovalCancel, memberRemovalConfirm, }, shell: { createWorkspaceForm, breadcrumbProjectsButton, breadcrumbDivider, breadcrumbCurrent, cancelProjectFormButton, linkPullRequestButton, notesTabButton, emptyIssues, addMemberButton, statusMessage, }, roadmap: { roadmapNavButton, roadmapView, roadmapHeading, roadmapSummary, roadmapMilestoneList, roadmapEmptyState, roadmapGoPrefixOption, }, inbox: { inboxNavButton, inboxView, inboxHeading, }, lounge: { loungeNavButton, loungeView, loungeHeading, loungeMessageList, }, shortcuts: { toggleProjectFormButton, keyboardHints, goPrefixHint, goPrefixWorkspaceOption, goPrefixProjectOptions, commandPalette, commandPaletteClose, commandSearch, commandResults, shortcutHelp, shortcutHelpClose, }, chat: { chatView, }, issues: { issuesView, issueDetailView, issueDetailDisplay, issueDetailTitle, issueDetailPriority, issueDetailDueDate, issueDetailDescription, issueDetailBrief, issueDetailContextSection, issueDetailContext, issueDetailExpectedOutcomeSection, issueDetailExpectedOutcome, issueDetailAcceptanceCriteriaSection, issueDetailAcceptanceCriteria, issueDetailStatus, issueDetailStatusLabel, issueSourceLink, issuePullRequests, issuePullRequestsList, issuePullRequestsEmpty, issuePullRequestDialog, issuePullRequestForm, issuePullRequestClose, issuePullRequestCancel, issuePullRequestUrl, issuePullRequestMessage, issuePullRequestSubmit, issueDetailEditForm, issueDetailTitleInput, issueDetailDescriptionInput, issueDetailPriorityInput, issueDetailDueDateInput, issueDetailEditButton, issueAiPromptButton, issueAiPromptDialog, issueAiPromptCloseButton, issueAiPromptStepCount, issueAiPromptContext, issueAiPromptOutcome, issueAiPromptCriteria, issueAiPromptPreview, issueAiPromptStatus, issueAiPromptBackButton, issueAiPromptSkipButton, issueAiPromptNextButton, issueAiPromptActions, issueAiPromptSaveButton, issueAiPromptCopyButton, issueAiPromptCopyMarkdownButton, issueAiPromptDownloadButton, issueDetailDeleteButton, issueDetailSaveButton, issuesTabButton, issueBackButton, issueDetailCancelButton, issueForm, issueQuickAddTitle, issueQuickAddPriority, issueQuickAddDueDate, issueQuickAddAssignee, issueQuickAddMilestone, issueQuickAddOngoing, issueQuickAddShared, issueQuickAddApproval, issueQuickAddCancelButton, issueDetailType, issueDetailAssignee, issueDetailMilestone, issueDetailOngoingRow, issueDetailSharing, issueDetailApproval, issueDetailTypeInput, issueDetailAssigneeInput, issueDetailMilestoneInput, issueDetailOngoingInput, issueDetailSharedInput, issueDetailApprovalInput, issueStatusHistory, issueStatusHistoryCount, issueStatusHistoryEmpty, issueStatusHistoryList, issueDiscussionHeading, issueDiscussionCount, issueDiscussionStatus, issueDiscussionEmpty, issueDiscussionList, issueDiscussionForm, issueDiscussionInput, issueDiscussionSubmit, issueDiscussionReplyContext, issueDiscussionReplyLabel, issueDiscussionReplyCancel, issueDescriptionDetails, issueProgress, issueProgressLabel, issueFilter, issueGrouping, issueOrder, issueScope, issueCountSummary, issueBulkAssignToggle, issueBulkAssignToolbar, issueList, deletedIssuesDetails, deletedIssueCount, deletedIssueList, issueStatusPicker, issueStatusPickerClose, issueStatusPickerDescription, issueStatusPickerOptions, issueDeleteConfirmation, issueDeleteDescription, issueDeleteError, issueDeleteCancel, issueDeleteConfirm, }, guest: { guestWorkspaceSwitcher, guestWorkspaceSwitcherLabel, guestLogoutButton, }, } = dom;
+const { project: { projectHeading, projectEditDialog, projectEditForm, projectEditClose, projectEditCancel, projectEditName, projectEditDescription, projectEditStatus, projectEditStatusHelp, projectReadOnlyNotice, projectEditMessage, projectEditSave, editProjectButton, projectGithubRepository, projectEditGithubRepository, githubProjectSelectionStatus, githubProjectEditStatus, connectGithubCreateButton, connectGithubEditButton, projectsNavButton, projectsView, projectView, projectForm, projectList, emptyProjects, projectFormPanel, projectDescription, projectState, projectChatColumn, projectSidebarList, projectSidebarEmpty, projectMain, projectTabs, projectKeyboardHints, }, auth: { loginPanel, loginShell, accountBar, currentUserLabel, loginStatusMessage, logoutButton, }, workspace: { workspacePanel, workspaceNav, workspaceSwitcher, workspaceSwitcherLabel, workspacePicker, workspacePickerCancel, workspacePickerConfirm, workspacePickerDescription, workspacePickerOptions, adminNavButton, adminView, adminHeading, membersView, adminGoPrefixOption, workspaceSwitchHint, membersTabButton, memberList, memberForm, memberAddControls, memberAddStatus, memberSelect, memberRemovalConfirmation, memberRemovalDescription, memberRemovalCancel, memberRemovalConfirm, }, shell: { createWorkspaceForm, breadcrumbProjectsButton, breadcrumbDivider, breadcrumbCurrent, cancelProjectFormButton, linkPullRequestButton, notesTabButton, emptyIssues, addMemberButton, statusMessage, }, roadmap: { roadmapNavButton, roadmapView, roadmapHeading, roadmapSummary, roadmapMilestoneList, roadmapEmptyState, roadmapGoPrefixOption, }, inbox: { inboxNavButton, inboxView, inboxHeading, }, lounge: { loungeNavButton, loungeView, loungeHeading, loungeMessageList, }, shortcuts: { toggleProjectFormButton, keyboardHints, goPrefixHint, goPrefixWorkspaceOption, goPrefixProjectOptions, }, chat: { chatView, }, issues: { issuesView, issueDetailView, issueDetailDisplay, issueDetailTitle, issueDetailPriority, issueDetailDueDate, issueDetailDescription, issueDetailBrief, issueDetailContextSection, issueDetailContext, issueDetailExpectedOutcomeSection, issueDetailExpectedOutcome, issueDetailAcceptanceCriteriaSection, issueDetailAcceptanceCriteria, issueDetailStatus, issueDetailStatusLabel, issueSourceLink, issuePullRequests, issuePullRequestsList, issuePullRequestsEmpty, issuePullRequestDialog, issuePullRequestForm, issuePullRequestClose, issuePullRequestCancel, issuePullRequestUrl, issuePullRequestMessage, issuePullRequestSubmit, issueDetailEditForm, issueDetailTitleInput, issueDetailDescriptionInput, issueDetailPriorityInput, issueDetailDueDateInput, issueDetailEditButton, issueAiPromptButton, issueAiPromptDialog, issueAiPromptCloseButton, issueAiPromptStepCount, issueAiPromptContext, issueAiPromptOutcome, issueAiPromptCriteria, issueAiPromptPreview, issueAiPromptStatus, issueAiPromptBackButton, issueAiPromptSkipButton, issueAiPromptNextButton, issueAiPromptActions, issueAiPromptSaveButton, issueAiPromptCopyButton, issueAiPromptCopyMarkdownButton, issueAiPromptDownloadButton, issueDetailDeleteButton, issueDetailSaveButton, issuesTabButton, issueBackButton, issueDetailCancelButton, issueForm, issueQuickAddTitle, issueQuickAddPriority, issueQuickAddDueDate, issueQuickAddAssignee, issueQuickAddMilestone, issueQuickAddOngoing, issueQuickAddShared, issueQuickAddApproval, issueQuickAddCancelButton, issueDetailType, issueDetailAssignee, issueDetailMilestone, issueDetailOngoingRow, issueDetailSharing, issueDetailApproval, issueDetailTypeInput, issueDetailAssigneeInput, issueDetailMilestoneInput, issueDetailOngoingInput, issueDetailSharedInput, issueDetailApprovalInput, issueStatusHistory, issueStatusHistoryCount, issueStatusHistoryEmpty, issueStatusHistoryList, issueDiscussionHeading, issueDiscussionCount, issueDiscussionStatus, issueDiscussionEmpty, issueDiscussionList, issueDiscussionForm, issueDiscussionInput, issueDiscussionSubmit, issueDiscussionReplyContext, issueDiscussionReplyLabel, issueDiscussionReplyCancel, issueDescriptionDetails, issueProgress, issueProgressLabel, issueFilter, issueGrouping, issueOrder, issueScope, issueCountSummary, issueBulkAssignToggle, issueBulkAssignToolbar, issueList, deletedIssuesDetails, deletedIssueCount, deletedIssueList, issueStatusPicker, issueStatusPickerClose, issueStatusPickerDescription, issueStatusPickerOptions, issueDeleteConfirmation, issueDeleteDescription, issueDeleteError, issueDeleteCancel, issueDeleteConfirm, }, guest: { guestWorkspaceSwitcher, guestWorkspaceSwitcherLabel, guestLogoutButton, }, } = dom;
 const KEYBOARD_HINTS_STORAGE_KEY = 'tangent.keyboard-hints-visible';
 function loadKeyboardHintsPreference() {
     try {
@@ -96,6 +97,7 @@ function populateIssueMilestoneSelect(select, selectedMilestoneId) {
     select.value = selectedMilestoneId === null ? '' : String(selectedMilestoneId);
 }
 const themeUi = initThemeUi();
+const commandPaletteUi = initCommandPaletteUi();
 const projectSidebarSection = projectSidebarList.closest('.sidebar-projects');
 const projectSidebarMore = createScrollMoreIndicator();
 projectSidebarList.after(projectSidebarMore);
@@ -161,7 +163,7 @@ const milestoneUi = initMilestoneUi({
     report,
     onUnauthorized: () => showSignedOut(),
     shouldRestoreFocus: () => !projectView.hidden && activeProject !== null
-        && !commandPalette.open && !shortcutHelp.open && !workspacePicker.open,
+        && !commandPaletteUi.isPaletteOpen() && !commandPaletteUi.isShortcutHelpOpen() && !workspacePicker.open,
 });
 let linkedPullRequests = [];
 let issuePullRequestsRequestVersion = 0;
@@ -201,9 +203,6 @@ let issueStatusPickerReturnFocus = null;
 let issueStatusPickerOptionIndex = 0;
 let issueDeleteTarget = null;
 let memberRemovalTarget = null;
-let paletteCommands = [];
-let visiblePaletteCommands = [];
-let activePaletteCommandIndex = 0;
 const loungePresenceUi = initLoungePresence({
     navigationButton: loungeNavButton,
     getUser: () => activeUser,
@@ -1178,10 +1177,10 @@ function shortcutContext(target) {
         issueGroupFocused: target instanceof HTMLElement && target.closest('.issue-group > summary') !== null,
         statusHistoryFocused: issueStatusHistory.open && issueStatusHistory.contains(document.activeElement),
         textInputFocused: shouldBlurOnEscape(target),
-        modalOpen: commandPalette.open || clientSummaryUi.dialog.open || shortcutHelp.open || issueAiPromptDialog.open || issueStatusPicker.open || issueDeleteConfirmation.open || themeUi.aboutDialog.open || projectEditDialog.open
+        modalOpen: commandPaletteUi.isPaletteOpen() || clientSummaryUi.dialog.open || commandPaletteUi.isShortcutHelpOpen() || issueAiPromptDialog.open || issueStatusPicker.open || issueDeleteConfirmation.open || themeUi.aboutDialog.open || projectEditDialog.open
             || memberRemovalConfirmation.open || workspaceAdminUi.hasOpenDialog() || milestoneUi.deleteConfirmation.open || milestoneUi.managerDialog.open
             || workspacePicker.open,
-        canDismiss: commandPalette.open || shortcutHelp.open || (!workspacePanel.hidden && (pendingWorkspaceId !== null
+        canDismiss: commandPaletteUi.isPaletteOpen() || commandPaletteUi.isShortcutHelpOpen() || (!workspacePanel.hidden && (pendingWorkspaceId !== null
             || (!projectView.hidden && (!issueDetailView.hidden || !issueDetailEditForm.hidden
                 || issueQuickAddEscapePending || projectChatUi.hasReplyParent()))
             || (!loungeView.hidden && loungeChatUi.hasReplyParent())
@@ -1603,53 +1602,6 @@ function getPaletteCommands() {
     });
     return commands;
 }
-function renderCommandResults() {
-    const query = commandSearch.value.trim().toLocaleLowerCase();
-    visiblePaletteCommands = paletteCommands.filter((command) => `${command.label} ${command.detail}`.toLocaleLowerCase().includes(query));
-    activePaletteCommandIndex = Math.min(activePaletteCommandIndex, Math.max(visiblePaletteCommands.length - 1, 0));
-    commandResults.replaceChildren();
-    if (visiblePaletteCommands.length === 0) {
-        const empty = document.createElement('li');
-        empty.className = 'command-empty-state';
-        empty.textContent = 'No matching commands.';
-        commandResults.append(empty);
-        return;
-    }
-    visiblePaletteCommands.forEach((command, index) => {
-        const item = document.createElement('li');
-        const button = document.createElement('button');
-        button.className = 'command-item';
-        button.classList.toggle('is-active', index === activePaletteCommandIndex);
-        button.type = 'button';
-        button.setAttribute('role', 'option');
-        button.setAttribute('aria-selected', String(index === activePaletteCommandIndex));
-        button.addEventListener('click', () => runPaletteCommand(index));
-        const label = document.createElement('span');
-        label.textContent = command.label;
-        const detail = document.createElement('span');
-        detail.className = 'command-item-description';
-        detail.textContent = command.detail;
-        button.append(label, detail);
-        if (command.shortcut !== '') {
-            const shortcut = document.createElement('kbd');
-            shortcut.textContent = command.shortcut;
-            button.append(shortcut);
-        }
-        item.append(button);
-        commandResults.append(item);
-    });
-}
-function closeCommandPalette() {
-    if (commandPalette.open)
-        commandPalette.close();
-}
-function runPaletteCommand(index) {
-    const command = visiblePaletteCommands[index];
-    if (command === undefined)
-        return;
-    closeCommandPalette();
-    command.run();
-}
 function openCommandPalette() {
     if (activeUser === null || milestoneUi.deleteConfirmButton.disabled)
         return;
@@ -1674,18 +1626,7 @@ function openCommandPalette() {
     if (memberRemovalConfirmation.open)
         closeMemberRemovalConfirmation();
     workspaceAdminUi.closeOpenDialogs();
-    if (shortcutHelp.open)
-        shortcutHelp.close();
-    if (commandPalette.open) {
-        closeCommandPalette();
-        return;
-    }
-    paletteCommands = getPaletteCommands();
-    commandSearch.value = '';
-    activePaletteCommandIndex = 0;
-    renderCommandResults();
-    commandPalette.showModal();
-    commandSearch.focus();
+    commandPaletteUi.togglePalette(getPaletteCommands);
 }
 function showShortcutHelp() {
     if (activeUser === null || milestoneUi.deleteConfirmButton.disabled)
@@ -1707,14 +1648,7 @@ function showShortcutHelp() {
     if (memberRemovalConfirmation.open)
         closeMemberRemovalConfirmation();
     workspaceAdminUi.closeOpenDialogs();
-    if (commandPalette.open)
-        closeCommandPalette();
-    if (shortcutHelp.open) {
-        shortcutHelp.close();
-        return;
-    }
-    shortcutHelp.showModal();
-    shortcutHelpClose.focus();
+    commandPaletteUi.toggleShortcutHelp();
 }
 function dismissCurrentView() {
     if (milestoneUi.deleteConfirmButton.disabled)
@@ -1752,11 +1686,11 @@ function dismissCurrentView() {
     else if (issueStatusPicker.open) {
         closeIssueStatusPicker();
     }
-    else if (commandPalette.open) {
-        closeCommandPalette();
+    else if (commandPaletteUi.isPaletteOpen()) {
+        commandPaletteUi.closePalette();
     }
-    else if (shortcutHelp.open) {
-        shortcutHelp.close();
+    else if (commandPaletteUi.isShortcutHelpOpen()) {
+        commandPaletteUi.closeShortcutHelp();
     }
     else if (!workspacePanel.hidden && !projectView.hidden && !issueDetailEditForm.hidden) {
         issueDetailCancelButton.click();
@@ -2268,7 +2202,7 @@ function handleKeyboardShortcut(event) {
             guestUi.closePreview();
         return;
     }
-    if ((commandPalette.open || clientSummaryUi.dialog.open || shortcutHelp.open || issueAiPromptDialog.open || issueStatusPicker.open || issueDeleteConfirmation.open || memberRemovalConfirmation.open || workspaceAdminUi.hasOpenDialog() || milestoneUi.deleteConfirmation.open || milestoneUi.managerDialog.open || workspacePicker.open || themeUi.aboutDialog.open || projectEditDialog.open)
+    if ((commandPaletteUi.isPaletteOpen() || clientSummaryUi.dialog.open || commandPaletteUi.isShortcutHelpOpen() || issueAiPromptDialog.open || issueStatusPicker.open || issueDeleteConfirmation.open || memberRemovalConfirmation.open || workspaceAdminUi.hasOpenDialog() || milestoneUi.deleteConfirmation.open || milestoneUi.managerDialog.open || workspacePicker.open || themeUi.aboutDialog.open || projectEditDialog.open)
         && event.key !== 'Escape'
         && !((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k'))
         return;
@@ -2284,38 +2218,13 @@ function handleKeyboardShortcut(event) {
         clearGoPrefix();
     executeShortcut(action);
 }
-function movePaletteCommandSelection(direction) {
-    if (visiblePaletteCommands.length === 0)
-        return;
-    activePaletteCommandIndex = (activePaletteCommandIndex + direction + visiblePaletteCommands.length) % visiblePaletteCommands.length;
-    renderCommandResults();
-    commandResults.querySelectorAll('.command-item')[activePaletteCommandIndex]?.focus();
-}
-commandSearch.addEventListener('input', () => {
-    activePaletteCommandIndex = 0;
-    renderCommandResults();
-});
-commandPalette.addEventListener('keydown', (event) => {
-    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-        event.preventDefault();
-        event.stopPropagation();
-        movePaletteCommandSelection(event.key === 'ArrowDown' ? 1 : -1);
-    }
-    else if (event.key === 'Enter') {
-        event.preventDefault();
-        event.stopPropagation();
-        runPaletteCommand(activePaletteCommandIndex);
-    }
-});
-commandPaletteClose.addEventListener('click', closeCommandPalette);
-shortcutHelpClose.addEventListener('click', () => shortcutHelp.close());
 issueStatusPickerClose.addEventListener('click', closeIssueStatusPicker);
 issueStatusPicker.addEventListener('close', () => {
     const returnFocus = issueStatusPickerReturnFocus;
     issueStatusPickerIssue = null;
     issueStatusPickerReturnFocus = null;
     if (returnFocus !== null && returnFocus.isConnected && returnFocus.closest('[hidden]') === null
-        && !commandPalette.open && !shortcutHelp.open && !workspacePicker.open) {
+        && !commandPaletteUi.isPaletteOpen() && !commandPaletteUi.isShortcutHelpOpen() && !workspacePicker.open) {
         returnFocus.focus();
     }
 });
@@ -5207,7 +5116,7 @@ workspacePickerCancel.addEventListener('click', () => resetPendingWorkspaceSwitc
 workspacePickerConfirm.addEventListener('click', commitPendingWorkspaceSwitch);
 workspacePicker.addEventListener('close', () => {
     pendingWorkspaceId = null;
-    if (commandPalette.open || shortcutHelp.open || issueStatusPicker.open)
+    if (commandPaletteUi.isPaletteOpen() || commandPaletteUi.isShortcutHelpOpen() || issueStatusPicker.open)
         return;
     if (guestUi.isShellVisible() && !guestWorkspaceSwitcher.hidden && !guestWorkspaceSwitcher.disabled) {
         guestWorkspaceSwitcher.focus();

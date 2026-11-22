@@ -7,7 +7,7 @@ const dom = await readFile(new URL('../../frontend/src/dom.ts', import.meta.url)
 
 test('central DOM bindings point to elements present in the application shell', () => {
   const selectors = [...dom.matchAll(/document\.querySelector<[^>]+>\('([^']+)'\)!/g)].map((match) => match[1]);
-  assert.equal(selectors.length, 219);
+  assert.equal(selectors.length, 213);
   assert.equal(new Set(selectors).size, selectors.length);
 
   for (const selector of selectors) {

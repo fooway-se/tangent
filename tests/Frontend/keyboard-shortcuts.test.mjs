@@ -167,7 +167,7 @@ test('the AI prompt dialog participates in modal keyboard handling', () => {
   const dismiss = app.slice(app.indexOf('function dismissCurrentView'), app.indexOf('function focusIssueQuickAddReturnTarget'));
   assert.match(dismiss, /issueAiPromptDialog\.open[\s\S]*issueAiPromptDialog\.close\(\)/);
   assert.match(app, /issueAiPromptDialog\.addEventListener\('close'/);
-  assert.match(app, /commandPalette\.open \|\| clientSummaryUi\.dialog\.open \|\| shortcutHelp\.open \|\| issueAiPromptDialog\.open/);
+  assert.match(app, /commandPaletteUi\.isPaletteOpen\(\) \|\| clientSummaryUi\.dialog\.open \|\| commandPaletteUi\.isShortcutHelpOpen\(\) \|\| issueAiPromptDialog\.open/);
 });
 
 test('the generated summary dialog participates in modal keyboard handling', () => {
@@ -297,7 +297,7 @@ test('command palette, shortcut help, and contextual hints are present in the wo
   assert.match(app, /adminGoPrefixOption\.hidden = activeUser\?\.role !== 'admin'/);
   assert.match(app, /workspaceSwitcher\.disabled = activeWorkspaces\.length < 2/);
   assert.match(app, /function openWorkspacePicker[\s\S]{0,120}activeWorkspaces\.length < 2/);
-  const commands = app.slice(app.indexOf('function getPaletteCommands'), app.indexOf('function renderCommandResults'));
+  const commands = app.slice(app.indexOf('function getPaletteCommands'), app.indexOf('function openCommandPalette'));
   assert.ok(commands.indexOf("label: 'Workspace admin'") < commands.indexOf('if (activeProject !== null)'), 'workspace admin command is available outside projects');
   assert.match(commands, /if \(activeWorkspaces\.length > 1\)/);
 });

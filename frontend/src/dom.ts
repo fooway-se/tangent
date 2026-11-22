@@ -108,12 +108,6 @@ export const dom = {
     goPrefixHint: document.querySelector<HTMLElement>('#go-prefix-hint')!,
     goPrefixWorkspaceOption: document.querySelector<HTMLElement>('#go-prefix-workspace-option')!,
     goPrefixProjectOptions: document.querySelector<HTMLElement>('#go-prefix-project-options')!,
-    commandPalette: document.querySelector<HTMLDialogElement>('#command-palette')!,
-    commandPaletteClose: document.querySelector<HTMLButtonElement>('#command-palette-close')!,
-    commandSearch: document.querySelector<HTMLInputElement>('#command-search')!,
-    commandResults: document.querySelector<HTMLUListElement>('#command-results')!,
-    shortcutHelp: document.querySelector<HTMLDialogElement>('#shortcut-help')!,
-    shortcutHelpClose: document.querySelector<HTMLButtonElement>('#shortcut-help-close')!,
   },
   chat: {
     chatView: document.querySelector<HTMLElement>('#chat-view')!,
