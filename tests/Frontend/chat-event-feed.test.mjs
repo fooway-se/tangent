@@ -5,6 +5,7 @@ import * as chatEventModule from '../../public/assets/chat-event-feed.js';
 import { ChatEventFeed } from '../../public/assets/chat-event-feed.js';
 
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
+const projectChatUi = await readFile(new URL('../../frontend/src/project-chat-ui.ts', import.meta.url), 'utf8');
 const types = await readFile(new URL('../../frontend/src/types.ts', import.meta.url), 'utf8');
 
 test('chat polling resumes from the commit-ordered cursor', () => {
@@ -78,10 +79,9 @@ test('chat feed pages advance across project filters and suppress repeated messa
 });
 
 test('project chat consumes commit cursors and uses its rendered-message map for deduplication', () => {
-  const poll = app.slice(app.indexOf('async function pollProjectChat('), app.indexOf('async function loadProjectChatHistory('));
-  assert.match(poll, /chatEventFeed\.requestQuery\(\)/);
-  assert.match(poll, /chatEventFeed\.consume\([\s\S]*chatMessagesById\.has\(messageId\)/);
+  const poll = projectChatUi.slice(projectChatUi.indexOf('async function pollChat('), projectChatUi.indexOf('async function loadHistory('));
+  assert.match(poll, /eventFeed\.requestQuery\(\)/);
+  assert.match(poll, /eventFeed\.consume\([\s\S]*messages\.has\(messageId\)/);
   assert.match(types, /interface ChatEvent extends ChatMessage, ChatFeedEvent/);
-  const append = app.slice(app.indexOf('function appendChatMessage('), app.indexOf('function updateChatMessageReplyCount('));
-  assert.match(append, /chatMessagesById\.set\(message\.id, message\)/);
+  assert.match(projectChatUi, /messages\.set\(message\.id, message\)/);
 });

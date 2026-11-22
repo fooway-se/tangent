@@ -4,6 +4,7 @@ import test from 'node:test';
 
 const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
+const projectChatUi = await readFile(new URL('../../frontend/src/project-chat-ui.ts', import.meta.url), 'utf8');
 const css = await readFile(new URL('../../public/assets/app.css', import.meta.url), 'utf8');
 
 test('project view has a compact progress strip, quick-add, and real issue controls', () => {
@@ -38,9 +39,9 @@ test('quick add parses optional metadata tokens only when creating an issue', ()
   assert.match(submitHandler, /type: parsedIssue\.type \?\? values\.get\('type'\)/);
   assert.match(submitHandler, /parsedIssue\.assigneeId/);
   assert.match(submitHandler, /parsedIssue\.milestoneId/);
-  const chatStart = app.indexOf('function createProjectChat(');
-  const chatEnd = app.indexOf('\n  section.append(heading, chatMessageList, form);', chatStart);
-  assert.doesNotMatch(app.slice(chatStart, chatEnd), /parseQuickIssueInput/);
+  const chatStart = projectChatUi.indexOf('function create(projectId: number)');
+  const chatEnd = projectChatUi.indexOf('\n    section.append(heading, nextMessageList, form);', chatStart);
+  assert.doesNotMatch(projectChatUi.slice(chatStart, chatEnd), /parseQuickIssueInput/);
 });
 
 test('quick add has a mouse cancel action and supports complete issue planning', () => {

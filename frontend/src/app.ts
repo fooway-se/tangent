@@ -2,7 +2,7 @@ import type { InboxEvent } from './inbox-events.js';
 import { api, apiBaseUrl, ApiFailure } from './api.js';
 import {
   ISSUE_STATUS_OPTIONS, ISSUE_TYPE_OPTIONS, PROJECT_STATUS_HINTS, PROJECT_STATUS_LABELS, PROJECT_STATUS_ORDER,
-  type ChatEvent, type ChatMessage, type ConditionalIssueList,
+  type ChatMessage, type ConditionalIssueList,
   type GitHubRepository, type GitHubRepositoryOptionSelection,
   type InboxIssue, type Issue, type IssueBoardGroup,
   type IssueDiscussionMessage, type IssueGrouping, type IssuePriority, type IssueStatusTransition, type IssueType,
@@ -14,20 +14,10 @@ import { initGuestUi } from './guest-ui.js';
 import { initInboxUi } from './inbox-ui.js';
 import { createLogoutController } from './logout.js';
 import { ProjectNavigationOwner, runOwnedRequest } from './project-navigation.js';
-import { ChatEventFeed, pollProjectChatEvents, type ChatFeedEvent } from './chat-event-feed.js';
 import { githubRepositorySelectionValue, parseGitHubRepositorySelection } from './github-repository-selection.js';
 import { switchWorkspaceMembership } from './workspace-switch.js';
 import { initAuthUi } from './auth-ui.js';
 import { initClientSummaryUi } from './client-summary-ui.js';
-import {
-  filterMentionMembers,
-  findMentionQuery,
-  mentionEmptyMessage,
-  replaceMentionQuery,
-  splitMentions,
-  type MentionQuery,
-} from './chat-mentions.js';
-import { formatChatTimestamp } from './chat-time.js';
 import { resolveShortcut, shouldSubmitOnEnter, type ShortcutAction } from './shortcuts.js';
 import { nextTheme, themeLabel } from './theme.js';
 import { initThemeUi } from './theme-ui.js';
@@ -35,8 +25,8 @@ import { initProjectNotesUi } from './project-notes-ui.js';
 import { initMilestoneUi } from './milestone-ui.js';
 import { initLoungePresence } from './lounge-presence.js';
 import { initLoungeChatUi } from './lounge-chat-ui.js';
-import { handleMentionKeydown } from './chat-mentions-ui.js';
 import { initWorkspaceAdminUi } from './workspace-admin-ui.js';
+import { initProjectChatUi } from './project-chat-ui.js';
 import { parseQuickIssueInput } from './quick-issue.js';
 import { milestoneStatus, type RoadmapMilestone } from './roadmap.js';
 import { formatIssueMarkdown, formatIssuePrompt } from './issue-export.js';
@@ -588,7 +578,6 @@ let issuePullRequestsRequestVersion = 0;
 let githubRepositories: GitHubRepository[] = [];
 let issueAiPromptStepIndex = 0;
 let issueAiPromptReturnFocus: HTMLElement | null = null;
-let activeChatProjectId: number | null = null;
 let loungeActive = false;
 let issuePollTimer: number | null = null;
 let issuePollDelay = 1000;
@@ -609,28 +598,7 @@ let editingIssueDiscussionMessageId: number | null = null;
 let confirmingIssueDiscussionDeleteId: number | null = null;
 const issueRowRenderSignatures = new WeakMap<HTMLLIElement, string>();
 const deletedIssueRowRenderSignatures = new WeakMap<HTMLLIElement, string>();
-let chatPollTimer: number | null = null;
-const chatEventFeed = new ChatEventFeed();
-let chatEtag: string | null = null;
-let chatPollDelay = 1000;
-const PROJECT_PRESENCE_INTERVAL_MS = 15_000;
-let projectPresenceTimer: number | null = null;
-let projectPresenceRequestVersion = 0;
-let chatPresenceIndicator: HTMLSpanElement | null = null;
-let chatFollowLatest = true;
-let chatMessageList: HTMLElement | null = null;
-let chatEmptyState: HTMLElement | null = null;
-let chatInput: HTMLTextAreaElement | null = null;
-let chatMentionList: HTMLDivElement | null = null;
-let chatMentionQuery: MentionQuery | null = null;
-let chatMentionMatches: Member[] = [];
-let chatMentionSelectedIndex = 0;
-let chatMentionDismissed = false;
 let selectedChatMessageId: number | null = null;
-const chatMessagesById = new Map<number, ChatMessage>();
-let chatReplyHint: HTMLElement | null = null;
-let chatCancelReply: HTMLButtonElement | null = null;
-let chatReplyParent: { id: number; name: string; body: string } | null = null;
 let issueQuickAddEscapePending = false;
 let issueQuickAddReturnFocus: HTMLElement | null = null;
 let issueQuickAddSourceMessageId: number | null = null;
@@ -667,6 +635,21 @@ const loungeChatUi = initLoungeChatUi({
   onUnauthorized: () => showSignedOut(),
   report,
   presence: loungePresenceUi,
+  avatarInitials,
+  compactMessage: compactChatMessage,
+  submitFormOnEnter,
+});
+
+const projectChatUi = initProjectChatUi({
+  getProject: () => activeProject,
+  getMembers: () => activeProjectMembers,
+  getUser: () => activeUser,
+  isDocumentHidden: () => document.hidden,
+  selectMessage: selectChatMessage,
+  onClearSelection: () => { selectedChatMessageId = null; },
+  onCreateIssue: (message, trigger) => beginCreateIssueFromChatMessage(message, trigger),
+  onUnauthorized: () => showSignedOut(),
+  report,
   avatarInitials,
   compactMessage: compactChatMessage,
   submitFormOnEnter,
@@ -842,7 +825,7 @@ function showSignedOut(): void {
   clearIssueDiscussion();
   inboxUi.reset();
   resetPendingWorkspaceSwitch();
-  stopChatPolling();
+  projectChatUi.stop();
   loungeChatUi.stop();
   loungePresenceUi.reset();
   if (clientSummaryUi.dialog.open) clientSummaryUi.close();
@@ -1053,7 +1036,7 @@ function showWorkspaceView(view: 'projects' | 'roadmap' | 'inbox' | 'lounge' | '
   if (view !== 'lounge') loungeChatUi.stop();
   if (view !== 'project') {
     if (activeProject !== null) projectReturnFocusId = activeProject.id;
-    stopChatPolling();
+    projectChatUi.stop();
     stopIssuePolling();
     clearIssueDiscussion();
     activeProject = null;
@@ -1207,27 +1190,6 @@ function goBackWorkspaceView(): void {
       && focusProjectOpenButton(previousLocation.focusedProjectId)) return;
     projectsNavButton.focus();
   }
-}
-
-function stopChatPolling(): void {
-  stopProjectPresencePolling();
-  activeChatProjectId = null;
-  if (chatPollTimer !== null) window.clearTimeout(chatPollTimer);
-  chatPollTimer = null;
-  chatMessageList = null;
-  chatEmptyState = null;
-  chatInput = null;
-  chatMentionList = null;
-  chatMentionQuery = null;
-  chatMentionMatches = [];
-  chatMentionSelectedIndex = 0;
-  chatMentionDismissed = false;
-  chatReplyHint = null;
-  chatCancelReply = null;
-  chatReplyParent = null;
-  selectedChatMessageId = null;
-  chatFollowLatest = true;
-  chatMessagesById.clear();
 }
 
 function pauseIssuePolling(): void {
@@ -1447,22 +1409,23 @@ function hasSelectedIssueInVisibleView(): boolean {
 }
 
 function latestChatIssueButton(): HTMLButtonElement | null {
-  if (chatMessageList === null) return null;
-  const messages = Array.from(chatMessageList.querySelectorAll<HTMLElement>('.chat-message'))
+  const list = projectChatUi.messageList();
+  if (list === null) return null;
+  const messages = Array.from(list.querySelectorAll<HTMLElement>('.chat-message'))
     .filter((message) => Number(message.dataset.messageId) > 0);
   return messages.at(-1)?.querySelector<HTMLButtonElement>('.chat-create-issue-button:not(:disabled)') ?? null;
 }
 
 function activeChatMessageList(): HTMLElement | null {
-  return loungeView.hidden ? chatMessageList : loungeMessageList;
+  return loungeView.hidden ? projectChatUi.messageList() : loungeMessageList;
 }
 
 function activeChatMessagesById(): Map<number, ChatMessage> {
-  return loungeView.hidden ? chatMessagesById : loungeChatUi.messagesById();
+  return loungeView.hidden ? projectChatUi.messagesById() : loungeChatUi.messagesById();
 }
 
 function focusActiveChatComposer(): void {
-  if (loungeView.hidden) chatInput?.focus();
+  if (loungeView.hidden) projectChatUi.focusComposer();
   else loungeChatUi.focusComposer();
 }
 
@@ -1478,7 +1441,7 @@ function selectChatMessage(id: number, focus = true): void {
   const item = list?.querySelector<HTMLElement>(`.chat-message[data-message-id="${id}"]`);
   if (item === null || item === undefined) return;
   selectedChatMessageId = id;
-  if (loungeView.hidden) chatFollowLatest = chatMessageElements().at(-1) === item;
+  if (loungeView.hidden) projectChatUi.setFollowLatest(chatMessageElements().at(-1) === item);
   else loungeChatUi.setFollowLatest(chatMessageElements().at(-1) === item);
   list?.querySelectorAll<HTMLElement>('.chat-message').forEach((message) => {
     message.classList.toggle('is-keyboard-selected', message === item);
@@ -1526,7 +1489,7 @@ function focusProjectChat(): void {
   if (latest !== undefined) {
     selectChatMessage(Number(latest.dataset.messageId));
   } else {
-    chatInput?.focus();
+    projectChatUi.focusComposer();
   }
 }
 
@@ -1534,13 +1497,13 @@ function replyToSelectedChatMessage(): void {
   if (selectedChatMessageId === null || selectedChatMessageId <= 0) return;
   const message = activeChatMessagesById().get(selectedChatMessageId);
   if (message === undefined) return;
-  if (loungeView.hidden) setChatReplyParent(message);
+  if (loungeView.hidden) projectChatUi.setReplyParent(message);
   else loungeChatUi.setReplyParent(message);
 }
 
 function createIssueFromSelectedChatMessage(): void {
   if (selectedChatMessageId !== null) {
-    const selectedButton = chatMessageList
+    const selectedButton = projectChatUi.messageList()
       ?.querySelector<HTMLElement>(`.chat-message[data-message-id="${selectedChatMessageId}"]`)
       ?.querySelector<HTMLButtonElement>('.chat-create-issue-button:not(:disabled)');
     if (selectedButton !== null && selectedButton !== undefined) {
@@ -1628,7 +1591,7 @@ function shortcutContext(target: EventTarget | null) {
     canDismiss: commandPalette.open || shortcutHelp.open || (!workspacePanel.hidden && (
       pendingWorkspaceId !== null
       || (!projectView.hidden && (!issueDetailView.hidden || !issueDetailEditForm.hidden
-        || issueQuickAddEscapePending || chatReplyParent !== null))
+        || issueQuickAddEscapePending || projectChatUi.hasReplyParent()))
       || (!loungeView.hidden && loungeChatUi.hasReplyParent())
       || (!projectsView.hidden && !projectFormPanel.hidden)
       || !projectView.hidden || !roadmapView.hidden || !inboxView.hidden || !loungeView.hidden || !adminView.hidden
@@ -1847,9 +1810,19 @@ function createIssueFromLatestMessage(): void {
   latestChatIssueButton()?.click();
 }
 
+function compactChatMessage(body: string): string {
+  const normalized = body.replace(/\s+/g, ' ').trim();
+  const characters = Array.from(normalized);
+  return characters.length > 110 ? `${characters.slice(0, 109).join('').trimEnd()}…` : normalized;
+}
+
+function avatarInitials(name: string): string {
+  return name.trim().split(/\s+/).slice(0, 2).map((part) => part[0] ?? '').join('').toUpperCase();
+}
+
 function beginCreateIssueFromChatMessage(message: ChatMessage, trigger: HTMLButtonElement): void {
   const projectId = activeProject?.id;
-  if (projectId === undefined || activeChatProjectId !== projectId) return;
+  if (projectId === undefined || projectChatUi.activeProjectId() !== projectId) return;
   if (issueQuickAddSourceMessageId === message.id && issueQuickAddSourceProjectId === projectId) {
     issueQuickAddTitle.focus();
     return;
@@ -2194,8 +2167,8 @@ function dismissCurrentView(): void {
     cancelIssueQuickAdd();
   } else if (!workspacePanel.hidden && !loungeView.hidden && loungeChatUi.hasReplyParent()) {
     loungeChatUi.clearReplyParent();
-  } else if (!workspacePanel.hidden && !projectView.hidden && chatReplyParent !== null) {
-    clearChatReplyParent();
+  } else if (!workspacePanel.hidden && !projectView.hidden && projectChatUi.hasReplyParent()) {
+    projectChatUi.clearReplyParent();
   } else if (!workspacePanel.hidden && (!projectView.hidden || !inboxView.hidden || !adminView.hidden)) {
     goBackWorkspaceView();
   }
@@ -2380,9 +2353,7 @@ function updateProjectReadOnlyNotice(status: Project['status']): void {
     issueDetailDisplay.hidden = false;
     projectNotesUi.setMode('preview');
   }
-  if (chatInput !== null) chatInput.disabled = readOnly;
-  const chatSend = chatView.querySelector<HTMLButtonElement>('.chat-composer button[type="submit"]');
-  if (chatSend !== null) chatSend.disabled = readOnly;
+  projectChatUi.setReadOnly(readOnly);
   if (status === 'completed') {
     projectReadOnlyNotice.textContent = 'This project is completed and read-only. An admin can reopen it from Edit project.';
   } else if (status === 'archived') {
@@ -2519,11 +2490,11 @@ function blurTextInput(): void {
     else loungeHeading.focus();
     return;
   }
-  if (focused !== chatInput) return;
+  if (!projectChatUi.isComposer(focused)) return;
 
   const selected = selectedChatMessageId === null
     ? null
-    : chatMessageList?.querySelector<HTMLElement>(`.chat-message[data-message-id="${selectedChatMessageId}"]`) ?? null;
+    : projectChatUi.messageList()?.querySelector<HTMLElement>(`.chat-message[data-message-id="${selectedChatMessageId}"]`) ?? null;
   const latest = chatMessageElements().at(-1) ?? null;
   const target = selected ?? latest;
   if (target !== null) {
@@ -2657,642 +2628,8 @@ issueStatusPicker.addEventListener('keydown', (event) => {
 });
 document.addEventListener('keydown', handleKeyboardShortcut);
 
-function scheduleChatPoll(delay = chatPollDelay): void {
-  if (activeChatProjectId === null) return;
-  if (chatPollTimer !== null) window.clearTimeout(chatPollTimer);
-  chatPollTimer = window.setTimeout(() => {
-    chatPollTimer = null;
-    if (activeChatProjectId !== null) void pollProjectChat(activeChatProjectId);
-  }, delay);
-}
-
-function stopProjectPresencePolling(): void {
-  if (projectPresenceTimer !== null) window.clearTimeout(projectPresenceTimer);
-  projectPresenceTimer = null;
-  projectPresenceRequestVersion += 1;
-  chatPresenceIndicator = null;
-}
-
-function scheduleProjectPresencePoll(delay = PROJECT_PRESENCE_INTERVAL_MS): void {
-  if (projectPresenceTimer !== null) window.clearTimeout(projectPresenceTimer);
-  projectPresenceTimer = null;
-  if (activeChatProjectId === null || chatPresenceIndicator === null) return;
-  projectPresenceTimer = window.setTimeout(() => {
-    projectPresenceTimer = null;
-    if (activeChatProjectId !== null) void pollProjectPresence(activeChatProjectId);
-  }, delay);
-}
-
-async function pollProjectPresence(projectId: number): Promise<void> {
-  if (projectPresenceTimer !== null) window.clearTimeout(projectPresenceTimer);
-  projectPresenceTimer = null;
-  if (activeChatProjectId !== projectId || chatPresenceIndicator === null) return;
-  const requestVersion = ++projectPresenceRequestVersion;
-  if (document.hidden) {
-    scheduleProjectPresencePoll();
-    return;
-  }
-
-  try {
-    const result = await api<{ someone_else_viewing?: boolean }>(`/projects/${projectId}/presence`, {
-      method: 'POST',
-      body: JSON.stringify({}),
-    });
-    if (requestVersion !== projectPresenceRequestVersion || activeChatProjectId !== projectId) return;
-    setProjectPresenceState(result.someone_else_viewing === true ? 'active' : 'alone');
-  } catch (error) {
-    if (requestVersion !== projectPresenceRequestVersion || activeChatProjectId !== projectId) return;
-    if (error instanceof ApiFailure && error.status === 401) {
-      showSignedOut();
-      return;
-    }
-    setProjectPresenceState('unknown');
-  } finally {
-    if (requestVersion === projectPresenceRequestVersion && activeChatProjectId === projectId) {
-      scheduleProjectPresencePoll();
-    }
-  }
-}
-
-function setProjectPresenceState(state: 'active' | 'alone' | 'unknown'): void {
-  if (chatPresenceIndicator === null) return;
-  const isActive = state === 'active';
-  const light = chatPresenceIndicator.querySelector<HTMLElement>('.chat-presence-light');
-  chatPresenceIndicator.className = state === 'active'
-    ? 'chat-presence is-active'
-    : state === 'unknown' ? 'chat-presence is-unknown' : 'chat-presence is-alone';
-  light?.classList.toggle('is-on', isActive);
-  light?.classList.toggle('is-off', !isActive);
-  const label = state === 'active'
-    ? 'Another person is viewing this project'
-    : state === 'unknown' ? 'Could not check whether anyone else is viewing this project' : 'No other active viewers';
-  chatPresenceIndicator.setAttribute('aria-label', label);
-  chatPresenceIndicator.title = label;
-}
-
-async function pollProjectChat(projectId: number): Promise<void> {
-  if (activeChatProjectId !== projectId) return;
-  if (document.hidden) {
-    chatPollDelay = Math.min(10_000, Math.max(5_000, chatPollDelay * 1.5));
-    scheduleChatPoll();
-    return;
-  }
-
-  const cursor = chatEventFeed.requestQuery();
-  try {
-    const result = await pollProjectChatEvents(
-      fetch,
-      apiBaseUrl,
-      projectId,
-      cursor,
-      chatEtag,
-      chatPollDelay,
-    );
-    if (activeChatProjectId !== projectId) return;
-    if (!result.notModified && (result.status < 200 || result.status >= 300)) {
-      throw new ApiFailure(result.errorMessage ?? 'Could not load project chat.', result.status);
-    }
-    chatPollDelay = result.nextDelay;
-    if (!result.notModified) {
-      chatEtag = result.etag;
-      const received = result.events as ChatEvent[];
-      chatEventFeed.consume(
-        received,
-        projectId,
-        (messageId) => chatMessagesById.has(messageId),
-        (event) => appendChatMessage(event, chatFollowLatest),
-      );
-    }
-  } catch (error) {
-    if (error instanceof ApiFailure && error.status === 401) {
-      showSignedOut();
-      return;
-    }
-    report(error instanceof Error ? error.message : 'Could not load project chat.', true);
-    chatPollDelay = Math.min(10_000, chatPollDelay * 1.5);
-  }
-
-  if (activeChatProjectId === projectId) scheduleChatPoll();
-}
-
-async function loadProjectChatHistory(projectId: number): Promise<void> {
-  try {
-    const result = await api<{ messages: ChatMessage[] }>(`/projects/${projectId}/messages`);
-    if (activeChatProjectId !== projectId) return;
-    for (const message of result.messages) appendChatMessage(message);
-    if (chatFollowLatest) scrollChatToBottom();
-    void pollProjectChat(projectId);
-  } catch (error) {
-    if (error instanceof ApiFailure && error.status === 401) {
-      showSignedOut();
-      return;
-    }
-    report(error instanceof Error ? error.message : 'Could not load project chat.', true);
-    scheduleChatPoll();
-  }
-}
-
-function appendChatMessage(message: ChatMessage, scrollToBottom = false): void {
-  if (chatMessageList === null) return;
-  if (chatMessageList.querySelector(`[data-message-id="${message.id}"]`)) {
-    if (scrollToBottom) scrollChatToBottom();
-    return;
-  }
-  chatMessagesById.set(message.id, message);
-  if (message.parent_id !== null && message.id > 0) {
-    const parent = chatMessagesById.get(message.parent_id);
-    if (parent !== undefined) updateChatMessageReplyCount(parent);
-  }
-
-  const item = document.createElement('article');
-  item.className = message.parent_id === null ? 'chat-message' : 'chat-message chat-reply';
-  item.dataset.messageId = String(message.id);
-  item.tabIndex = -1;
-  item.setAttribute('aria-keyshortcuts', 'j k ArrowUp ArrowDown Home End PageUp PageDown Enter r i');
-  item.addEventListener('focusin', () => selectChatMessage(message.id, false));
-  item.addEventListener('click', (event) => {
-    if (!(event.target instanceof HTMLElement) || event.target.closest('button') === null) {
-      selectChatMessage(message.id);
-    }
-  });
-
-  const heading = document.createElement('div');
-  heading.className = 'chat-message-heading';
-  const avatar = document.createElement('span');
-  avatar.className = 'chat-message-avatar';
-  avatar.setAttribute('aria-hidden', 'true');
-  avatar.textContent = avatarInitials(message.author_name);
-  const authorDetails = document.createElement('span');
-  authorDetails.className = 'chat-message-author';
-  const author = document.createElement('strong');
-  author.textContent = message.author_name;
-  const time = document.createElement('time');
-  time.className = 'chat-message-time';
-  time.dateTime = message.created_at;
-  const parsedDate = new Date(message.created_at);
-  time.textContent = Number.isNaN(parsedDate.getTime())
-    ? ''
-    : new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' }).format(parsedDate);
-  authorDetails.append(author);
-  if (message.author_role === 'guest') authorDetails.append(chatMessageMarker('client'));
-  if (message.is_client_visible) authorDetails.append(chatMessageMarker('visible'));
-  authorDetails.append(time);
-  const reply = document.createElement('button');
-  reply.className = 'button button-quiet chat-reply-button';
-  reply.type = 'button';
-  reply.textContent = 'Reply';
-  reply.disabled = activeProject !== null && projectStatusIsReadOnly(activeProject.status);
-  reply.addEventListener('click', () => {
-    selectChatMessage(message.id, false);
-    setChatReplyParent(message);
-  });
-  const createIssue = document.createElement('button');
-  createIssue.className = 'button button-quiet chat-create-issue-button';
-  createIssue.type = 'button';
-  createIssue.textContent = 'Create issue';
-  createIssue.disabled = activeProject !== null && projectStatusIsReadOnly(activeProject.status);
-  createIssue.addEventListener('click', () => {
-    selectChatMessage(message.id, false);
-    const projectId = activeProject?.id;
-    if (projectId === undefined || activeChatProjectId !== projectId) return;
-    beginCreateIssueFromChatMessage(message, createIssue);
-  });
-  const actions = document.createElement('div');
-  actions.className = 'chat-message-actions';
-  actions.append(reply, createIssue);
-  heading.append(avatar, authorDetails, actions);
-
-  const body = document.createElement('p');
-  body.className = 'chat-message-body';
-  body.textContent = message.body;
-  item.append(heading);
-  if (message.parent_id !== null) {
-    const parentMessage = chatMessagesById.get(message.parent_id);
-    const parentAuthor = message.parent_author_name ?? parentMessage?.author_name ?? null;
-    const parentBody = message.parent_body ?? parentMessage?.body ?? null;
-    const parentExcerpt = parentBody === null ? '' : compactChatMessage(parentBody);
-    const parentLabel = parentAuthor === null
-      ? parentExcerpt || `Message #${message.parent_id}`
-      : parentExcerpt === '' ? parentAuthor : `${parentAuthor}: ${parentExcerpt}`;
-    const context = document.createElement('button');
-    context.className = 'chat-reply-context';
-    context.type = 'button';
-    context.textContent = `↳ ${parentLabel}`;
-    context.title = `Reply to ${parentLabel}`;
-    context.setAttribute('aria-label', `Jump to message #${message.parent_id}: ${parentLabel}`);
-    context.addEventListener('click', () => void focusChatMessageById(message.parent_id!));
-    item.append(context);
-  }
-  item.append(body);
-  const followingMessage = scrollToBottom ? null : Array.from(chatMessageList.children).find((child) => {
-    const existingId = Number((child as HTMLElement).dataset.messageId);
-    return Number.isFinite(existingId) && existingId > message.id;
-  });
-  chatMessageList.insertBefore(item, followingMessage ?? null);
-  updateChatMessageReplyCount(message);
-  chatEmptyState!.hidden = true;
-  if (scrollToBottom) scrollChatToBottom();
-}
-
-function updateChatMessageReplyCount(message: ChatMessage): void {
-  const item = chatMessageList?.querySelector<HTMLElement>(`.chat-message[data-message-id="${message.id}"]`);
-  if (item === null || item === undefined) return;
-
-  const replies = Array.from(chatMessagesById.values()).filter((candidate) =>
-    candidate.id > 0 && candidate.parent_id === message.id,
-  );
-  const replyCount = Math.max(message.reply_count ?? 0, replies.length);
-  const loadedFirstReplyId = replies.reduce<number | null>((firstId, reply) =>
-    firstId === null || reply.id < firstId ? reply.id : firstId, null);
-  const firstReplyId = message.first_reply_id === null || message.first_reply_id === undefined
-    ? loadedFirstReplyId
-    : loadedFirstReplyId === null ? message.first_reply_id : Math.min(message.first_reply_id, loadedFirstReplyId);
-  message.reply_count = replyCount;
-  message.first_reply_id = firstReplyId;
-
-  const existing = item.querySelector<HTMLButtonElement>('.chat-message-reply-count');
-  if (replyCount === 0 || firstReplyId === null) {
-    existing?.remove();
-    return;
-  }
-
-  const button = existing ?? document.createElement('button');
-  button.className = 'chat-message-reply-count';
-  button.type = 'button';
-  button.dataset.firstReplyId = String(firstReplyId);
-  const label = `${replyCount} ${replyCount === 1 ? 'reply' : 'replies'}`;
-  button.textContent = label;
-  button.title = `Show ${label} to ${message.author_name}'s message`;
-  button.setAttribute('aria-label', `Jump to the first of ${label} to ${message.author_name}'s message`);
-  if (existing === null) {
-    button.addEventListener('click', () => {
-      const firstReplyId = Number(button.dataset.firstReplyId);
-      if (Number.isSafeInteger(firstReplyId)) void focusChatMessageById(firstReplyId);
-    });
-    item.append(button);
-  }
-}
-
-function isChatNearBottom(): boolean {
-  if (chatMessageList === null) return true;
-  return chatMessageList.scrollHeight - chatMessageList.scrollTop - chatMessageList.clientHeight <= 24;
-}
-
-function scrollChatToBottom(): void {
-  chatFollowLatest = true;
-  if (chatMessageList !== null) chatMessageList.scrollTop = chatMessageList.scrollHeight;
-}
-
-function compactChatMessage(body: string): string {
-  const normalized = body.replace(/\s+/g, ' ').trim();
-  const characters = Array.from(normalized);
-  return characters.length > 110 ? `${characters.slice(0, 109).join('').trimEnd()}…` : normalized;
-}
-
-async function focusChatMessageById(messageId: number): Promise<void> {
-  const projectId = activeProject?.id;
-  if (projectId === undefined || activeChatProjectId !== projectId || !Number.isSafeInteger(messageId) || messageId < 1) return;
-
-  let sourceMessage = chatMessageList?.querySelector<HTMLElement>(`.chat-message[data-message-id="${messageId}"]`) ?? null;
-  if (sourceMessage === null) {
-    try {
-      const result = await api<{ messages: ChatMessage[] }>(`/projects/${projectId}/messages?since=${messageId - 1}`);
-      if (activeProject?.id !== projectId || activeChatProjectId !== projectId) return;
-      for (const message of result.messages) appendChatMessage(message);
-      sourceMessage = chatMessageList?.querySelector<HTMLElement>(`.chat-message[data-message-id="${messageId}"]`) ?? null;
-    } catch (error) {
-      report(error instanceof Error ? error.message : 'Could not open the replied-to message.', true);
-      return;
-    }
-  }
-
-  if (sourceMessage === null) {
-    report('The replied-to message is unavailable in this project chat.', true);
-    return;
-  }
-  chatMessageList?.querySelector('.is-chat-source')?.classList.remove('is-chat-source');
-  sourceMessage.classList.add('is-chat-source');
-  sourceMessage.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  selectChatMessage(messageId);
-}
-
-function avatarInitials(name: string): string {
-  return name.trim().split(/\s+/).slice(0, 2).map((part) => part[0] ?? '').join('').toUpperCase();
-}
-
-function chatMessageMarker(kind: 'client' | 'visible'): SVGSVGElement {
-  const namespace = 'http://www.w3.org/2000/svg';
-  const label = kind === 'client' ? 'Client message' : 'Visible to client';
-  const marker = document.createElementNS(namespace, 'svg');
-  marker.classList.add('chat-message-marker', `is-${kind}`);
-  marker.setAttribute('viewBox', '0 0 16 16');
-  marker.setAttribute('role', 'img');
-  marker.setAttribute('aria-label', label);
-  marker.setAttribute('title', label);
-
-  const shapes = kind === 'client'
-    ? [
-      { tag: 'circle', attrs: { cx: '8', cy: '5', r: '2.25' } },
-      { tag: 'path', attrs: { d: 'M3 14c.45-2.5 2.15-3.8 5-3.8s4.55 1.3 5 3.8' } },
-    ]
-    : [
-      { tag: 'path', attrs: { d: 'M1.5 8s2.2-4 6.5-4 6.5 4 6.5 4-2.2 4-6.5 4-6.5-4-6.5-4Z' } },
-      { tag: 'circle', attrs: { cx: '8', cy: '8', r: '1.7' } },
-    ];
-  for (const shape of shapes) {
-    const element = document.createElementNS(namespace, shape.tag);
-    for (const [name, value] of Object.entries(shape.attrs)) element.setAttribute(name, value);
-    element.setAttribute('fill', 'none');
-    element.setAttribute('stroke', 'currentColor');
-    element.setAttribute('stroke-width', '1.35');
-    element.setAttribute('stroke-linecap', 'round');
-    element.setAttribute('stroke-linejoin', 'round');
-    marker.append(element);
-  }
-  return marker;
-}
-
-function setChatReplyParent(message: ChatMessage): void {
-  const clientVisible = message.is_client_visible === true;
-  chatReplyParent = { id: message.id, name: message.author_name, body: message.body };
-  if (chatReplyHint !== null) {
-    const replyContext = `Replying to ${message.author_name}: ${compactChatMessage(message.body)}`;
-    chatReplyHint.textContent = clientVisible
-      ? `${replyContext}. Your reply will be visible to the guest.`
-      : replyContext;
-    chatReplyHint.classList.toggle('is-client-visible', clientVisible);
-    chatReplyHint.hidden = false;
-  }
-  if (chatCancelReply !== null) chatCancelReply.hidden = false;
-  chatInput?.focus();
-}
-
-function clearChatReplyParent(): void {
-  chatReplyParent = null;
-  if (chatReplyHint !== null) {
-    chatReplyHint.hidden = true;
-    chatReplyHint.classList.remove('is-client-visible');
-  }
-  if (chatCancelReply !== null) chatCancelReply.hidden = true;
-}
-
-function updateChatMentionSuggestions(): void {
-  if (chatInput === null || chatMentionList === null || chatMentionDismissed) return;
-  const query = findMentionQuery(chatInput.value, chatInput.selectionStart);
-  if (query === null) {
-    hideChatMentionSuggestions();
-    return;
-  }
-  const matches = filterMentionMembers(activeProjectMembers, query.query, activeUser?.id ?? null);
-  if (matches.length === 0) {
-    chatMentionQuery = query;
-    chatMentionMatches = [];
-    chatMentionSelectedIndex = 0;
-    const empty = document.createElement('div');
-    empty.className = 'chat-mention-empty';
-    empty.setAttribute('role', 'option');
-    empty.setAttribute('aria-disabled', 'true');
-    empty.setAttribute('aria-selected', 'false');
-    empty.textContent = mentionEmptyMessage(activeProjectMembers, query.query, activeUser?.id ?? null);
-    chatMentionList.replaceChildren(empty);
-    chatMentionList.hidden = false;
-    chatInput.setAttribute('aria-expanded', 'true');
-    chatInput.removeAttribute('aria-activedescendant');
-    return;
-  }
-
-  chatMentionQuery = query;
-  chatMentionMatches = matches;
-  chatMentionSelectedIndex = Math.min(chatMentionSelectedIndex, matches.length - 1);
-  chatMentionList.replaceChildren(...matches.map((member, index) => {
-    const option = document.createElement('button');
-    option.type = 'button';
-    option.id = `chat-mention-option-${index}`;
-    option.className = 'chat-mention-option';
-    option.setAttribute('role', 'option');
-    option.setAttribute('aria-selected', String(index === chatMentionSelectedIndex));
-    const name = document.createElement('strong');
-    name.textContent = member.name;
-    const email = document.createElement('span');
-    email.textContent = member.email;
-    option.append(name, email);
-    option.addEventListener('mousedown', (event) => event.preventDefault());
-    option.addEventListener('click', () => selectChatMention(member));
-    return option;
-  }));
-  chatMentionList.hidden = false;
-  chatInput.setAttribute('aria-expanded', 'true');
-  chatInput.setAttribute('aria-activedescendant', `chat-mention-option-${chatMentionSelectedIndex}`);
-}
-
-function hideChatMentionSuggestions(): void {
-  chatMentionQuery = null;
-  chatMentionMatches = [];
-  chatMentionSelectedIndex = 0;
-  if (chatMentionList !== null) {
-    chatMentionList.hidden = true;
-    chatMentionList.replaceChildren();
-  }
-  chatInput?.setAttribute('aria-expanded', 'false');
-  chatInput?.removeAttribute('aria-activedescendant');
-}
-
-function selectChatMention(member: Member): void {
-  if (chatInput === null || chatMentionQuery === null) return;
-  const insertion = replaceMentionQuery(chatInput.value, chatMentionQuery, member.name);
-  chatInput.value = insertion.value;
-  chatInput.setSelectionRange(insertion.cursor, insertion.cursor);
-  chatMentionDismissed = true;
-  hideChatMentionSuggestions();
-  chatInput.focus();
-}
-
-function handleChatMentionKeydown(event: KeyboardEvent): boolean {
-  if (chatMentionList === null || chatMentionList.hidden) return false;
-  if (chatInput === null) return false;
-  return handleMentionKeydown(
-    event,
-    chatInput,
-    chatMentionList,
-    chatMentionMatches,
-    chatMentionSelectedIndex,
-    (index) => { chatMentionSelectedIndex = index; },
-    selectChatMention,
-    () => {
-      chatMentionDismissed = true;
-      hideChatMentionSuggestions();
-    },
-  );
-}
-
-function createProjectChat(projectId: number): HTMLElement {
-  stopProjectPresencePolling();
-  const section = document.createElement('section');
-  section.className = 'project-chat';
-
-  const heading = document.createElement('h3');
-  heading.className = 'chat-heading';
-  heading.tabIndex = -1;
-  const channelName = document.createElement('span');
-  channelName.className = 'chat-channel-name';
-  const channelHash = document.createElement('span');
-  channelHash.className = 'chat-channel-hash';
-  channelHash.textContent = '#';
-  const channelSlug = document.createElement('span');
-  channelSlug.textContent = activeProject?.slug ?? 'project';
-  channelName.append(channelHash, channelSlug);
-  const memberCount = document.createElement('span');
-  memberCount.className = 'chat-members-count';
-  memberCount.textContent = `${activeProjectMembers.length} ${activeProjectMembers.length === 1 ? 'member' : 'members'}`;
-  const activity = document.createElement('span');
-  activity.className = 'chat-heading-activity';
-  const presenceIndicator = document.createElement('span');
-  presenceIndicator.className = 'chat-presence is-unknown';
-  presenceIndicator.setAttribute('role', 'status');
-  presenceIndicator.setAttribute('aria-label', 'Checking project viewer status');
-  presenceIndicator.title = 'Checking project viewer status';
-  const presenceLight = document.createElement('span');
-  presenceLight.className = 'login-power-light chat-presence-light is-off';
-  presenceLight.setAttribute('aria-hidden', 'true');
-  presenceIndicator.append(presenceLight);
-  activity.append(memberCount, presenceIndicator);
-  heading.append(channelName, activity);
-
-  chatFollowLatest = true;
-  const messageList = document.createElement('div');
-  messageList.className = 'chat-message-list';
-  chatMessageList = messageList;
-  const emptyState = document.createElement('p');
-  emptyState.className = 'chat-empty-state';
-  emptyState.textContent = 'No messages yet.';
-  chatEmptyState = emptyState;
-  messageList.append(emptyState);
-  messageList.addEventListener('scroll', () => {
-    if (chatMessageList !== messageList) return;
-    chatFollowLatest = isChatNearBottom();
-  });
-
-  const form = document.createElement('form');
-  form.className = 'chat-composer form-stack';
-  chatMentionList = document.createElement('div');
-  chatMentionList.id = `chat-mention-suggestions-${projectId}`;
-  chatMentionList.className = 'chat-mention-suggestions';
-  chatMentionList.setAttribute('role', 'listbox');
-  chatMentionList.setAttribute('aria-label', 'Mention a project member');
-  chatMentionList.hidden = true;
-  const label = document.createElement('label');
-  label.textContent = 'Message';
-  chatInput = document.createElement('textarea');
-  chatInput.name = 'body';
-  chatInput.rows = 2;
-  chatInput.maxLength = 10_000;
-  chatInput.required = true;
-  chatInput.disabled = activeProject !== null && projectStatusIsReadOnly(activeProject.status);
-  chatInput.placeholder = `Message #${activeProject?.slug ?? 'project'}…`;
-  chatInput.setAttribute('aria-label', 'Message');
-  chatInput.setAttribute('aria-autocomplete', 'list');
-  chatInput.setAttribute('aria-controls', chatMentionList.id);
-  chatInput.setAttribute('aria-expanded', 'false');
-  chatInput.addEventListener('input', () => {
-    chatMentionDismissed = false;
-    updateChatMentionSuggestions();
-  });
-  chatInput.addEventListener('click', updateChatMentionSuggestions);
-  chatInput.addEventListener('select', updateChatMentionSuggestions);
-  chatInput.addEventListener('keyup', updateChatMentionSuggestions);
-  chatInput.addEventListener('blur', hideChatMentionSuggestions);
-  chatInput.addEventListener('keydown', (event) => {
-    if (!handleChatMentionKeydown(event)) submitFormOnEnter(event, form);
-  });
-  label.append(chatInput);
-
-  chatReplyHint = document.createElement('p');
-  chatReplyHint.className = 'chat-reply-hint';
-  chatReplyHint.hidden = true;
-  const actions = document.createElement('div');
-  actions.className = 'chat-composer-actions';
-  chatCancelReply = document.createElement('button');
-  chatCancelReply.className = 'button button-quiet';
-  chatCancelReply.type = 'button';
-  chatCancelReply.textContent = 'Cancel reply';
-  chatCancelReply.hidden = true;
-  chatCancelReply.addEventListener('click', clearChatReplyParent);
-  const send = document.createElement('button');
-  send.className = 'button button-primary';
-  send.type = 'submit';
-  send.textContent = 'Send';
-  send.disabled = activeProject !== null && projectStatusIsReadOnly(activeProject.status);
-  actions.append(chatCancelReply, send);
-
-  form.append(chatMentionList, label, chatReplyHint, actions);
-  form.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    const body = chatInput?.value.trim() ?? '';
-    if (body === '') return;
-    const messageBody: { body: string; parent_id?: number } = { body };
-    if (chatReplyParent !== null) messageBody.parent_id = chatReplyParent.id;
-    const optimisticId = -Date.now();
-    const optimisticMessage: ChatMessage = {
-      id: optimisticId,
-      channel_id: 0,
-      parent_id: messageBody.parent_id ?? null,
-      author_id: activeUser?.id ?? 0,
-      author_name: activeUser?.name ?? 'You',
-      parent_author_name: chatReplyParent?.name ?? null,
-      parent_body: chatReplyParent?.body ?? null,
-      body,
-      created_at: new Date().toISOString(),
-    };
-    if (activeChatProjectId === projectId) appendChatMessage(optimisticMessage, true);
-    send.disabled = true;
-    try {
-      const result = await api<{ message: ChatMessage }>(`/projects/${projectId}/messages`, {
-        method: 'POST',
-        body: JSON.stringify(messageBody),
-      });
-      if (activeChatProjectId === projectId) {
-        chatMessageList?.querySelector(`[data-message-id="${optimisticId}"]`)?.remove();
-        chatMessagesById.delete(optimisticId);
-        appendChatMessage(result.message);
-        scrollChatToBottom();
-        selectChatMessage(result.message.id, false);
-        chatInput!.value = '';
-        chatMentionDismissed = false;
-        hideChatMentionSuggestions();
-        clearChatReplyParent();
-        chatEtag = null;
-        chatPollDelay = 1000;
-        scheduleChatPoll(0);
-      }
-    } catch (error) {
-      if (activeChatProjectId === projectId) {
-        chatMessageList?.querySelector(`[data-message-id="${optimisticId}"]`)?.remove();
-        chatMessagesById.delete(optimisticId);
-        report(error instanceof Error ? error.message : 'Could not send the message.', true);
-      }
-    } finally {
-      send.disabled = false;
-    }
-  });
-
-  section.append(heading, chatMessageList, form);
-  activeChatProjectId = projectId;
-  chatPresenceIndicator = presenceIndicator;
-  chatEventFeed.reset();
-  chatEtag = null;
-  chatPollDelay = 1000;
-  void pollProjectPresence(projectId);
-  void loadProjectChatHistory(projectId);
-
-  return section;
-}
-
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden && activeChatProjectId !== null) {
-    chatPollDelay = 1000;
-    scheduleChatPoll(0);
-    void pollProjectPresence(activeChatProjectId);
-  }
+  if (!document.hidden && projectChatUi.activeProjectId() !== null) projectChatUi.resume();
   if (!document.hidden && loungeActive) {
     loungeChatUi.resume();
     void loungePresenceUi.pollLoungePresence();
@@ -3763,10 +3100,10 @@ async function openInboxEvent(event: InboxEvent): Promise<void> {
     const result = await api<{ message: ChatMessage }>(
       `/projects/${event.project_id}/messages/${event.message_id}`,
     );
-    if (activeProject?.id !== event.project_id || activeChatProjectId !== event.project_id) return;
-    appendChatMessage(result.message);
+    if (activeProject?.id !== event.project_id || projectChatUi.activeProjectId() !== event.project_id) return;
+    projectChatUi.appendMessage(result.message);
     selectChatMessage(result.message.id);
-    chatFollowLatest = false;
+    projectChatUi.setFollowLatest(false);
   } catch (error) {
     if (error instanceof ApiFailure && error.status === 404) {
       report('The source message is no longer available.', true);
@@ -3798,7 +3135,7 @@ async function loadProjectDetail(
   clearBulkAssignSelection();
   const previousLocation = currentWorkspaceLocation();
   if (milestoneUi.managerDialog.open) milestoneUi.close();
-  stopChatPolling();
+  projectChatUi.stop();
   stopIssuePolling();
   if (issueQuickAddSourceProjectId !== null && issueQuickAddSourceProjectId !== projectId) {
     issueForm.reset();
@@ -3856,7 +3193,7 @@ async function loadProjectDetail(
         issueDescriptionDetails.open = false;
         renderProjectIssueBoard();
         showWorkspaceView('project');
-        chatView.replaceChildren(createProjectChat(projectId));
+        chatView.replaceChildren(projectChatUi.create(projectId));
         switchProjectTab(tab);
         (tab === 'issues' ? issuesTabButton : tab === 'members' ? membersTabButton : notesTabButton).focus();
       },
@@ -6018,13 +5355,13 @@ issueSourceLink.addEventListener('click', async (event) => {
   const messageId = Number(issueSourceLink.dataset.messageId);
   if (issue === null || projectId === undefined || !Number.isSafeInteger(messageId) || messageId < 1) return;
 
-  let sourceMessage = chatMessageList?.querySelector<HTMLElement>(`[data-message-id="${messageId}"]`) ?? null;
+  let sourceMessage = projectChatUi.messageList()?.querySelector<HTMLElement>(`[data-message-id="${messageId}"]`) ?? null;
   if (sourceMessage === null) {
     try {
       const result = await api<{ messages: ChatMessage[] }>(`/projects/${projectId}/messages?since=${messageId - 1}`);
       if (activeProject?.id !== projectId || selectedIssue?.id !== issue.id) return;
-      for (const message of result.messages) appendChatMessage(message);
-      sourceMessage = chatMessageList?.querySelector<HTMLElement>(`[data-message-id="${messageId}"]`) ?? null;
+      for (const message of result.messages) projectChatUi.appendMessage(message);
+      sourceMessage = projectChatUi.messageList()?.querySelector<HTMLElement>(`[data-message-id="${messageId}"]`) ?? null;
     } catch (error) {
       report(error instanceof Error ? error.message : 'Could not open the source chat thread.', true);
       return;
@@ -6035,7 +5372,7 @@ issueSourceLink.addEventListener('click', async (event) => {
     report('The source message is unavailable in this project chat.', true);
     return;
   }
-  chatMessageList?.querySelector('.is-chat-source')?.classList.remove('is-chat-source');
+  projectChatUi.messageList()?.querySelector('.is-chat-source')?.classList.remove('is-chat-source');
   sourceMessage.classList.add('is-chat-source');
   sourceMessage.scrollIntoView({ behavior: 'smooth', block: 'center' });
 });

@@ -7,6 +7,7 @@ const html = await readFile(new URL('../../public/app.html', import.meta.url), '
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
 const workspaceAdminUi = await readFile(new URL('../../frontend/src/workspace-admin-ui.ts', import.meta.url), 'utf8');
 const loungeChatUi = await readFile(new URL('../../frontend/src/lounge-chat-ui.ts', import.meta.url), 'utf8');
+const projectChatUi = await readFile(new URL('../../frontend/src/project-chat-ui.ts', import.meta.url), 'utf8');
 const inboxUi = await readFile(new URL('../../frontend/src/inbox-ui.ts', import.meta.url), 'utf8');
 const themeUi = await readFile(new URL('../../frontend/src/theme-ui.ts', import.meta.url), 'utf8');
 const milestoneUi = await readFile(new URL('../../frontend/src/milestone-ui.ts', import.meta.url), 'utf8');
@@ -218,8 +219,8 @@ test('chat message selection supports navigation, reply, issue creation, and com
   assert.equal(resolve('Enter', chatSelection), 'focus-chat-composer');
   assert.equal(resolve('r'), null);
   assert.match(app, /chatMessagesFocused:[\s\S]{0,100}target\.closest\('\.chat-message'\)/);
-  assert.match(app, /item\.addEventListener\('focusin', \(\) => selectChatMessage\(message\.id, false\)\)/);
-  assert.match(app, /aria-keyshortcuts', 'j k ArrowUp ArrowDown Home End PageUp PageDown Enter r i'/);
+  assert.match(projectChatUi, /item\.addEventListener\('focusin', \(\) => options\.selectMessage\(message\.id, false\)\)/);
+  assert.match(projectChatUi, /aria-keyshortcuts', 'j k ArrowUp ArrowDown Home End PageUp PageDown Enter r i'/);
 });
 
 test('Lounge messages use the same keyboard traversal and reply shortcuts as project chat', () => {

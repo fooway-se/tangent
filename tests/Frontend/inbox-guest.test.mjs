@@ -7,6 +7,7 @@ const events = await import('../../public/assets/inbox-events.js');
 const guest = await import('../../public/assets/guest-view.js');
 const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
+const projectChatUi = await readFile(new URL('../../frontend/src/project-chat-ui.ts', import.meta.url), 'utf8');
 const authUi = await readFile(new URL('../../frontend/src/auth-ui.ts', import.meta.url), 'utf8');
 const inboxUi = await readFile(new URL('../../frontend/src/inbox-ui.ts', import.meta.url), 'utf8');
 const css = await readFile(new URL('../../public/assets/app.css', import.meta.url), 'utf8');
@@ -89,56 +90,56 @@ test('guest view renders its shared conversation alongside the composer', () => 
   assert.match(guestSource, /message\.author_id === handlers\.userId/);
   assert.match(guestSource, /message\.author_name/);
   assert.match(guestUi, /await request\(`\/projects\/\$\{projectId\}\/client-comments`[\s\S]*?await loadClientView\(projectId\)/);
-  assert.match(app, /Your reply will be visible to the guest/);
+  assert.match(projectChatUi, /Your reply will be visible to the guest/);
   assert.doesNotMatch(app, /Message sent to the team/);
   assert.match(css, /\.guest-conversation-message\.is-own\s*\{[^}]*margin-left:\s*0/);
   assert.match(css, /\.guest-conversation-message\.is-reply\s*\{[^}]*margin-left:\s*auto/);
 });
 
 test('project chat identifies client authors and client-visible messages with compact icons', () => {
-  assert.match(app, /message\.author_role === 'guest'/);
-  assert.match(app, /message\.is_client_visible/);
-  assert.match(app, /chat-message-marker/);
-  assert.match(app, /Client message/);
-  assert.match(app, /Visible to client/);
+  assert.match(projectChatUi, /message\.author_role === 'guest'/);
+  assert.match(projectChatUi, /message\.is_client_visible/);
+  assert.match(projectChatUi, /chat-message-marker/);
+  assert.match(projectChatUi, /Client message/);
+  assert.match(projectChatUi, /Visible to client/);
   assert.match(css, /\.chat-message-marker\s*\{[^}]*width:\s*12px/);
 });
 
 test('project chat replies quote their parent and can jump back to it', () => {
-  assert.match(app, /parent_author_name/);
-  assert.match(app, /parent_body/);
-  assert.match(app, /chat-reply-context/);
-  assert.match(app, /context\.textContent = `↳ \$\{parentLabel\}`/);
-  assert.match(app, /context\.addEventListener\('click', \(\) => void focusChatMessageById/);
-  assert.match(app, /function focusChatMessageById\(/);
-  assert.match(app, /sourceMessage\.scrollIntoView\(\{ behavior: 'smooth', block: 'center' \}\)/);
+  assert.match(projectChatUi, /parent_author_name/);
+  assert.match(projectChatUi, /parent_body/);
+  assert.match(projectChatUi, /chat-reply-context/);
+  assert.match(projectChatUi, /context\.textContent = `↳ \$\{parentLabel\}`/);
+  assert.match(projectChatUi, /context\.addEventListener\('click', \(\) => void focusMessageById/);
+  assert.match(projectChatUi, /async function focusMessageById\(/);
+  assert.match(projectChatUi, /sourceMessage\.scrollIntoView\(\{ behavior: 'smooth', block: 'center' \}\)/);
   assert.match(css, /\.chat-reply-context\s*\{[^}]*white-space:\s*nowrap/);
 });
 
 test('project chat shows reply counts that jump to the first reply', () => {
-  assert.match(app, /reply_count/);
-  assert.match(app, /first_reply_id/);
-  assert.match(app, /chat-message-reply-count/);
-  assert.match(app, /focusChatMessageById\(firstReplyId\)/);
+  assert.match(projectChatUi, /reply_count/);
+  assert.match(projectChatUi, /first_reply_id/);
+  assert.match(projectChatUi, /chat-message-reply-count/);
+  assert.match(projectChatUi, /focusMessageById\(firstReplyId\)/);
   assert.match(css, /\.chat-message-reply-count\s*\{/);
 });
 
 test('chat follows incoming messages until someone navigates into history', () => {
-  assert.match(app, /function appendChatMessage\(message: ChatMessage, scrollToBottom = false\)/);
-  assert.match(app, /const followingMessage = scrollToBottom \? null/);
-  assert.match(app, /let chatFollowLatest = true/);
-  assert.match(app, /appendChatMessage\(event, chatFollowLatest\)/);
-  assert.match(app, /function loadProjectChatHistory[\s\S]*?if \(chatFollowLatest\) scrollChatToBottom\(\)/);
-  assert.match(app, /function isChatNearBottom\(\): boolean[\s\S]*?<= 24/);
-  assert.match(app, /messageList\.addEventListener\('scroll', \(\) => \{\s*if \(chatMessageList !== messageList\) return;\s*chatFollowLatest = isChatNearBottom\(\)/);
-  assert.match(app, /chatFollowLatest = chatMessageElements\(\)\.at\(-1\) === item/);
-  assert.match(app, /item\.addEventListener\('focusin', \(\) => selectChatMessage\(message\.id, false\)\)/);
-  assert.match(app, /function scrollChatToBottom\(\)[\s\S]*?chatFollowLatest = true[\s\S]*?chatMessageList\.scrollTop = chatMessageList\.scrollHeight/);
+  assert.match(projectChatUi, /function appendMessage\(message: ChatMessage, scrollToBottom = false\)/);
+  assert.match(projectChatUi, /const followingMessage = scrollToBottom \? null/);
+  assert.match(projectChatUi, /let followLatest = true/);
+  assert.match(projectChatUi, /appendMessage\(event, followLatest\)/);
+  assert.match(projectChatUi, /async function loadHistory[\s\S]*?if \(followLatest\) scrollToBottom\(\)/);
+  assert.match(projectChatUi, /function isNearBottom\(\): boolean[\s\S]*?<= 24/);
+  assert.match(projectChatUi, /nextMessageList\.addEventListener\('scroll', \(\) => \{\s*if \(messageListElement !== nextMessageList\) return;\s*followLatest = isNearBottom\(\)/);
+  assert.match(app, /projectChatUi\.setFollowLatest\(chatMessageElements\(\)\.at\(-1\) === item\)/);
+  assert.match(projectChatUi, /item\.addEventListener\('focusin', \(\) => options\.selectMessage\(message\.id, false\)\)/);
+  assert.match(projectChatUi, /function scrollToBottom\(\): void \{\s*followLatest = true;[\s\S]*?messageListElement\.scrollTop = messageListElement\.scrollHeight/);
 });
 
 test('sending a chat message returns the conversation to the latest message', () => {
-  assert.match(app, /appendChatMessage\(optimisticMessage, true\)/);
-  assert.match(app, /appendChatMessage\(result\.message\);\s*scrollChatToBottom\(\)/);
+  assert.match(projectChatUi, /appendMessage\(optimisticMessage, true\)/);
+  assert.match(projectChatUi, /appendMessage\(result\.message\);\s*scrollToBottom\(\)/);
 });
 
 test('guest with no projects gets the same framed customer screen', () => {
@@ -196,6 +197,6 @@ test('inbox message events select their source chat message', () => {
   const openEvent = app.slice(app.indexOf('async function openInboxEvent('), app.indexOf('async function openInboxIssue('));
   assert.match(openEvent, /event\.message_id/);
   assert.match(openEvent, /selectChatMessage\(/);
-  assert.match(openEvent, /selectChatMessage\(result\.message\.id\);\s*chatFollowLatest = false/);
+  assert.match(openEvent, /selectChatMessage\(result\.message\.id\);\s*projectChatUi\.setFollowLatest\(false\)/);
   assert.match(openEvent, /This issue is no longer available/);
 });

@@ -6,6 +6,7 @@ import { resolveShortcut } from '../../public/assets/shortcuts.js';
 const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
 const loungeChatUi = await readFile(new URL('../../frontend/src/lounge-chat-ui.ts', import.meta.url), 'utf8');
+const projectChatUi = await readFile(new URL('../../frontend/src/project-chat-ui.ts', import.meta.url), 'utf8');
 const mentionsUi = await readFile(new URL('../../frontend/src/chat-mentions-ui.ts', import.meta.url), 'utf8');
 const css = await readFile(new URL('../../public/assets/app.css', import.meta.url), 'utf8');
 const shortcuts = await readFile(new URL('../../frontend/src/shortcuts.ts', import.meta.url), 'utf8');
@@ -65,7 +66,7 @@ test('Lounge composer uses the project chat mention autocomplete for workspace m
   assert.match(loungeChatUi, /replaceMentionQuery\(loungeInput\.value, mentionQuery, member\.name\)/);
   assert.match(loungeChatUi, /function handleMentionKeydown\(/);
   assert.match(loungeChatUi, /handleMentionKeydownUi\([\s\S]{0,100}event,\s*loungeInput,\s*loungeMentionList/);
-  assert.match(app, /return handleMentionKeydown\([\s\S]{0,80}event,\s*chatInput,\s*chatMentionList/);
+  assert.match(projectChatUi, /return handleMentionKeydown\([\s\S]{0,100}event,\s*input,\s*mentionList/);
   assert.match(loungeChatUi, /splitMentions\(message\.body, members\)/);
   assert.match(loungeChatUi, /chat-message-mention/);
   assert.match(mentionsUi, /event\.key === 'ArrowDown'/);
