@@ -1,4 +1,4 @@
-export type ThemeId = 'putty' | 'rainbow' | 'breadbin' | 'broadcast' | 'cassette' | 'mono' | 'stripe' | 'paper' | 'desk' | 'silver' | 'blue' | 'cartridge' | 'nordic' | 'desktop' | 'copper' | 'clean';
+export type ThemeId = 'putty' | 'rainbow' | 'breadbin' | 'broadcast' | 'cassette' | 'mono' | 'stripe' | 'paper' | 'desk' | 'silver' | 'blue' | 'cartridge' | 'nordic' | 'desktop' | 'copper' | 'clean' | 'clean-dark';
 
 export interface ThemeOption {
   id: ThemeId;
@@ -24,6 +24,7 @@ export const THEMES: readonly ThemeOption[] = [
   { id: 'desktop', label: 'Icon & Mouse' },
   { id: 'copper', label: 'Copper & Chroma' },
   { id: 'clean', label: 'Clean' },
+  { id: 'clean-dark', label: 'Clean (dark)' },
 ];
 
 export function normalizeTheme(value: unknown): ThemeId {

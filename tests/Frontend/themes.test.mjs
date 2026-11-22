@@ -65,7 +65,9 @@ test('theme helpers normalise and cycle', () => {
   assert.equal(nextTheme('nordic'), 'desktop');
   assert.equal(nextTheme('desktop'), 'copper');
   assert.equal(nextTheme('copper'), 'clean');
-  assert.equal(nextTheme('clean'), 'putty');
+  assert.equal(nextTheme('clean'), 'clean-dark');
+  assert.equal(nextTheme('clean-dark'), 'putty');
+  assert.equal(normalizeTheme('clean-dark'), 'clean-dark');
   assert.equal(normalizeTheme('clean'), 'clean');
 });
 
@@ -124,4 +126,18 @@ test('clean theme is a light, flat theme that keeps code monospaced', () => {
     assert.equal(clean[top], clean[bottom], `${top} and ${bottom} match, so the surface is flat`);
   }
   assert.ok(luminance(clean['--screen']) > 0.8, 'the screen area is light');
+});
+
+test('clean-dark theme is the flat sans-serif Clean theme on a dark palette', () => {
+  const dark = themes['clean-dark'];
+  assert.ok(dark, 'clean-dark theme exists');
+  assert.match(block(':root[data-theme="clean-dark"]'), /color-scheme:\s*dark/);
+  assert.equal(dark['--font-mono'], themes.clean['--font-mono'], 'interface text uses the same sans font as Clean');
+  assert.equal(dark['--key-depth'], '1px');
+  assert.match(dark['--inset-shade'], /, 0\)$/, 'recessed fields have no inset shadow');
+  for (const [top, bottom] of [['--case-top', '--case-bottom'], ['--key-top', '--key-bottom'], ['--cap-top', '--cap-bottom']]) {
+    assert.equal(dark[top], dark[bottom], `${top} and ${bottom} match, so the surface is flat`);
+  }
+  assert.ok(luminance(dark['--screen']) < 0.05, 'the screen area is dark');
+  assert.equal(dark['--radius-panel'], themes.clean['--radius-panel'], 'corners match Clean');
 });

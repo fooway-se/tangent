@@ -1045,4 +1045,4 @@ dialog::backdrop { background: var(--backdrop); }
 .retro-computer-icon::after { position: absolute; bottom: -7px; left: 1px; width: 8px; height: 2px; background: currentColor; content: ""; }
 
 /* Clean has no case vents: hide the striped vent above the brand plate. */
-:root[data-theme="clean"] .workspace-sidebar::before { display: none; }
+:root[data-theme="clean"] .workspace-sidebar::before, :root[data-theme="clean-dark"] .workspace-sidebar::before { display: none; }

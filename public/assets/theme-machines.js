@@ -127,4 +127,12 @@ export const THEME_MACHINES = {
         historyUrl: 'https://en.wikipedia.org/wiki/History_of_laptops',
         facts: ['Has a screen. Has a keyboard.', 'Does what laptops do.'],
     },
+    'clean-dark': {
+        model: 'Laptop, dark mode', year: 'After dark', imageFile: 'generic-laptop-dark.svg',
+        imageUrl: './assets/machines/generic-laptop-dark.svg',
+        imagePage: 'https://fooway.se/tangent',
+        photoCredit: 'Drawn for Tangent', license: 'MIT', illustration: true,
+        historyUrl: 'https://en.wikipedia.org/wiki/History_of_laptops',
+        facts: ['Same laptop. Lights off.', 'Easier on the eyes after dark.'],
+    },
 };

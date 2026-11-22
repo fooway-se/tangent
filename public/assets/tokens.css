@@ -1080,3 +1080,85 @@
   --radius-key: 6px;
   --radius-cap: 4px;
 }
+
+/*
+ * Clean (dark): the same neutral, flat, sans-serif theme as Clean on a dark,
+ * VS Code-style charcoal palette that is easy on the eyes after dark.
+ */
+:root[data-theme="clean-dark"] {
+  color-scheme: dark;
+  --font-mono: "Inter", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, "Liberation Sans", sans-serif;
+  --key-depth: 1px;
+  --key-depth-lg: 1px;
+
+  --night: #14161a;
+  --night-glow: #1c1f26;
+  --night-muted: #a3abb9;
+
+  --case-top: #252830;
+  --case-mid: #252830;
+  --case-bottom: #252830;
+  --case-shade: #181a1f;
+  --case-edge: #3a3f4a;
+  --case-light: #2f333c;
+  --case-ink: #e6e9ef;
+  --case-muted: #a5adbb;
+  --case-error: #ff8a80;
+  --vent-dark: #343944;
+  --vent-light: #2f333c;
+  --footer-top: #1f2227;
+  --footer-bottom: #1f2227;
+
+  --key-top: #2f333c;
+  --key-bottom: #2f333c;
+  --key-highlight: #3b404b;
+
+  --cap-top: #3a3f4a;
+  --cap-bottom: #3a3f4a;
+  --cap-edge: #4a505d;
+  --plate: #14161a;
+  --plate-ink: #e6e9ef;
+  --plate-muted: #aab2c0;
+
+  --screen: #1c1f26;
+  --screen-rim: #343944;
+  --screen-glow: rgba(0, 0, 0, 0);
+  --screen-vignette: rgba(0, 0, 0, 0);
+  --screen-ink: #e3e6ec;
+  --screen-muted: #9aa3b2;
+  --screen-header: rgba(255, 255, 255, 0.03);
+  --screen-highlight: rgba(255, 255, 255, 0.05);
+  --backdrop: rgba(0, 0, 0, 0.6);
+  --screen-panel: #232730;
+  --screen-control-top: #2a2e38;
+  --screen-inset: #1f232b;
+  --screen-field: #171a20;
+  --screen-border: #363b47;
+  --screen-line: #2c313b;
+  --screen-hover: #2a2f3a;
+  --screen-track: #2e333e;
+  --screen-group: #20242c;
+  --screen-group-top: #282c36;
+  --screen-group-bottom: #282c36;
+
+  --accent: #6ea8ff;
+  --accent-edge: #4a86e0;
+  --accent-ink: #0b1426;
+  --accent-shine: rgba(255, 255, 255, 0);
+  --success: #5fcf80;
+  --danger: #ff7b72;
+  --power-light: #3ddc84;
+  --focus-ring: rgba(110, 168, 255, 0.45);
+  --signal-stripe: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0 100%);
+
+  --scanline: rgba(0, 0, 0, 0);
+  --inset-shade: rgba(0, 0, 0, 0);
+  --inset-shade-soft: rgba(0, 0, 0, 0);
+  --inset-wash: rgba(0, 0, 0, 0);
+  --inset-wash-strong: rgba(0, 0, 0, 0);
+
+  --radius-screen: 10px;
+  --radius-panel: 6px;
+  --radius-key: 6px;
+  --radius-cap: 4px;
+}
