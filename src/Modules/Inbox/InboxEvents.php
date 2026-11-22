@@ -103,9 +103,31 @@ final class InboxEvents
 
     public function recordAssigned(int $workspaceId, int $projectId, int $actorId, ?int $recipientId, int $issueId, string $title): void
     {
-        if ($recipientId !== null && $recipientId !== $actorId) {
-            $this->record($workspaceId, $projectId, [$recipientId], $actorId, 'assigned', $issueId, null, 'assigned you an issue', $title);
+        $this->recordAssignedBatch($workspaceId, $projectId, $actorId, $recipientId, [['id' => $issueId, 'title' => $title]]);
+    }
+
+    public function recordAssignedBatch(int $workspaceId, int $projectId, int $actorId, ?int $recipientId, array $issues): void
+    {
+        if ($recipientId === null || $recipientId === $actorId || $issues === []) return;
+
+        $isAllowedRecipient = false;
+        foreach ($this->projects->members($workspaceId, $projectId) as $member) {
+            if ((bool) ($member['is_active'] ?? true) && (int) $member['id'] === $recipientId) {
+                $isAllowedRecipient = true;
+                break;
+            }
         }
+        if (!$isAllowedRecipient) {
+            foreach ($this->users->list($workspaceId) as $user) {
+                if ((int) $user['id'] === $recipientId && (bool) $user['is_active'] && $user['role'] === 'admin') {
+                    $isAllowedRecipient = true;
+                    break;
+                }
+            }
+        }
+        if (!$isAllowedRecipient) return;
+
+        $this->events->recordAssignedBatch($workspaceId, $projectId, $actorId, $recipientId, $issues);
     }
 
     public function recordStatus(int $workspaceId, int $projectId, int $actorId, array $recipientIds, int $issueId, string $title, string $status): void

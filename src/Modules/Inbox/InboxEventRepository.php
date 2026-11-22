@@ -59,6 +59,34 @@ final class InboxEventRepository
         }
     }
 
+    public function recordAssignedBatch(int $workspaceId, int $projectId, int $actorId, int $recipientId, array $issues): void
+    {
+        if ($issues === [] || $recipientId === $actorId) return;
+
+        $rows = [];
+        $parameters = [];
+        foreach (array_values($issues) as $index => $issue) {
+            $rows[] = '(:workspace_id_' . $index . ', :recipient_id_' . $index . ', :actor_id_' . $index
+                . ', :event_type_' . $index . ', :project_id_' . $index . ', :issue_id_' . $index
+                . ', NULL, :summary_' . $index . ', :detail_' . $index . ')';
+            $parameters['workspace_id_' . $index] = $workspaceId;
+            $parameters['recipient_id_' . $index] = $recipientId;
+            $parameters['actor_id_' . $index] = $actorId;
+            $parameters['event_type_' . $index] = 'assigned';
+            $parameters['project_id_' . $index] = $projectId;
+            $parameters['issue_id_' . $index] = (int) $issue['id'];
+            $parameters['summary_' . $index] = 'assigned you an issue';
+            $parameters['detail_' . $index] = mb_substr((string) $issue['title'], 0, 500, 'UTF-8');
+        }
+
+        $statement = $this->pdo->prepare(
+            'INSERT INTO inbox_events
+                (workspace_id, recipient_id, actor_id, event_type, project_id, issue_id, message_id, summary, detail)
+             VALUES ' . implode(', ', $rows)
+        );
+        $statement->execute($parameters);
+    }
+
     public function listForUser(int $workspaceId, int $userId, array $projectIds): array
     {
         if ($projectIds === []) return [];

@@ -34,6 +34,17 @@ final class MilestoneRepository
         return $row === false ? null : self::normalize($row);
     }
 
+    public function findForUpdate(int $workspaceId, int $projectId, int $milestoneId): ?array
+    {
+        $statement = $this->pdo->prepare(
+            'SELECT id, workspace_id, project_id, name, due_date, archived_at, created_at FROM milestones
+             WHERE workspace_id = :workspace_id AND project_id = :project_id AND id = :id LIMIT 1 FOR UPDATE'
+        );
+        $statement->execute(['workspace_id' => $workspaceId, 'project_id' => $projectId, 'id' => $milestoneId]);
+        $row = $statement->fetch(PDO::FETCH_ASSOC);
+        return $row === false ? null : self::normalize($row);
+    }
+
     public function create(int $workspaceId, int $projectId, string $name, ?string $dueDate): array
     {
         $statement = $this->pdo->prepare(

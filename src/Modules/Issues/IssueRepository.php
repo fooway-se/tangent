@@ -157,6 +157,42 @@ final class IssueRepository
         return $issue === false ? null : self::normalize($issue);
     }
 
+    public function findManyForProjectForUpdate(int $workspaceId, int $projectId, array $issueIds): array
+    {
+        if ($issueIds === []) return [];
+        [$idFilter, $idParameters] = self::idFilter($issueIds, 'issue_id');
+        $statement = $this->pdo->prepare(
+            'SELECT id, title, assignee_id, is_shared, is_ongoing, milestone_id
+             FROM issues
+             WHERE workspace_id = :workspace_id AND project_id = :project_id AND deleted_at IS NULL
+               AND id IN (' . $idFilter . ')
+             ORDER BY id FOR UPDATE'
+        );
+        $statement->execute([
+            'workspace_id' => $workspaceId,
+            'project_id' => $projectId,
+            ...$idParameters,
+        ]);
+        $byId = [];
+        foreach ($statement->fetchAll(PDO::FETCH_ASSOC) as $issue) {
+            $normalized = [
+                'id' => (int) $issue['id'],
+                'title' => (string) $issue['title'],
+                'assignee_id' => $issue['assignee_id'] === null ? null : (int) $issue['assignee_id'],
+                'is_shared' => (bool) $issue['is_shared'],
+                'is_ongoing' => (bool) $issue['is_ongoing'],
+                'milestone_id' => $issue['milestone_id'] === null ? null : (int) $issue['milestone_id'],
+            ];
+            $byId[$normalized['id']] = $normalized;
+        }
+
+        $ordered = [];
+        foreach ($issueIds as $issueId) {
+            if (isset($byId[$issueId])) $ordered[] = $byId[$issueId];
+        }
+        return $ordered;
+    }
+
     public function findDeleted(int $workspaceId, int $issueId): ?array
     {
         $statement = $this->pdo->prepare(
@@ -207,65 +243,79 @@ final class IssueRepository
         ]);
     }
 
-    public function setShared(int $workspaceId, int $projectId, int $issueId, bool $isShared): bool
+    public function bulkSetShared(int $workspaceId, int $projectId, array $issueIds, bool $isShared): int
     {
+        if ($issueIds === []) return 0;
+        [$idFilter, $idParameters] = self::idFilter($issueIds, 'issue_id');
         $statement = $this->pdo->prepare(
             'UPDATE issues SET is_shared = :is_shared
-             WHERE workspace_id = :workspace_id AND project_id = :project_id AND id = :id
-               AND is_shared <> :current_is_shared AND deleted_at IS NULL'
+             WHERE workspace_id = :workspace_id AND project_id = :project_id
+               AND deleted_at IS NULL AND is_shared <> :current_is_shared
+               AND id IN (' . $idFilter . ')'
         );
         $statement->execute([
             'workspace_id' => $workspaceId,
             'project_id' => $projectId,
-            'id' => $issueId,
             'is_shared' => $isShared ? 1 : 0,
             'current_is_shared' => $isShared ? 1 : 0,
+            ...$idParameters,
         ]);
-        return $statement->rowCount() === 1;
+        return $statement->rowCount();
     }
 
-    public function moveUnassignedToMilestone(
-        int $workspaceId,
-        int $projectId,
-        int $issueId,
-        int $milestoneId,
-        int $sortOrder,
-    ): bool {
-        $statement = $this->pdo->prepare(
-            'UPDATE issues SET milestone_id = :milestone_id, sort_order = :sort_order
-             WHERE workspace_id = :workspace_id AND project_id = :project_id AND id = :id
-               AND milestone_id IS NULL AND is_ongoing = 0 AND deleted_at IS NULL'
-        );
-        $statement->execute([
-            'workspace_id' => $workspaceId,
-            'project_id' => $projectId,
-            'id' => $issueId,
-            'milestone_id' => $milestoneId,
-            'sort_order' => $sortOrder,
-        ]);
-        return $statement->rowCount() === 1;
-    }
-
-    public function assignToMember(
-        int $workspaceId,
-        int $projectId,
-        int $issueId,
-        ?int $previousAssigneeId,
-        ?int $assigneeId,
-    ): bool {
+    public function bulkAssignToMember(int $workspaceId, int $projectId, array $issueIds, ?int $assigneeId): int
+    {
+        if ($issueIds === []) return 0;
+        [$idFilter, $idParameters] = self::idFilter($issueIds, 'issue_id');
         $statement = $this->pdo->prepare(
             'UPDATE issues SET assignee_id = :assignee_id
-             WHERE workspace_id = :workspace_id AND project_id = :project_id AND id = :id
-               AND deleted_at IS NULL AND assignee_id <=> :previous_assignee_id'
+             WHERE workspace_id = :workspace_id AND project_id = :project_id AND deleted_at IS NULL
+               AND NOT (assignee_id <=> :current_assignee_id)
+               AND id IN (' . $idFilter . ')'
         );
         $statement->execute([
             'workspace_id' => $workspaceId,
             'project_id' => $projectId,
-            'id' => $issueId,
-            'previous_assignee_id' => $previousAssigneeId,
             'assignee_id' => $assigneeId,
+            'current_assignee_id' => $assigneeId,
+            ...$idParameters,
         ]);
-        return $statement->rowCount() === 1;
+        return $statement->rowCount();
+    }
+
+    public function moveUnassignedToMilestoneBatch(
+        int $workspaceId,
+        int $projectId,
+        array $issueIds,
+        int $milestoneId,
+        int $firstSortOrder,
+    ): int {
+        if ($issueIds === []) return 0;
+        [$idFilter, $idParameters] = self::idFilter($issueIds, 'issue_id');
+        $sortOrderCases = [];
+        $caseParameters = [];
+        foreach (array_values($issueIds) as $index => $issueId) {
+            $issueParameter = 'sort_issue_' . $index;
+            $sortParameter = 'sort_order_' . $index;
+            $sortOrderCases[] = 'WHEN :' . $issueParameter . ' THEN :' . $sortParameter;
+            $caseParameters[$issueParameter] = $issueId;
+            $caseParameters[$sortParameter] = $firstSortOrder + $index;
+        }
+        $statement = $this->pdo->prepare(
+            'UPDATE issues SET milestone_id = :milestone_id,
+                 sort_order = CASE id ' . implode(' ', $sortOrderCases) . ' ELSE sort_order END
+             WHERE workspace_id = :workspace_id AND project_id = :project_id
+               AND milestone_id IS NULL AND is_ongoing = 0 AND deleted_at IS NULL
+               AND id IN (' . $idFilter . ')'
+        );
+        $statement->execute([
+            'workspace_id' => $workspaceId,
+            'project_id' => $projectId,
+            'milestone_id' => $milestoneId,
+            ...$idParameters,
+            ...$caseParameters,
+        ]);
+        return $statement->rowCount();
     }
 
     public function maxSortOrder(int $workspaceId, int $projectId, ?int $milestoneId): int
@@ -560,6 +610,18 @@ final class IssueRepository
             'project_id' => $projectId,
             'user_id' => $userId,
         ]);
+    }
+
+    private static function idFilter(array $ids, string $prefix): array
+    {
+        $placeholders = [];
+        $parameters = [];
+        foreach (array_values($ids) as $index => $id) {
+            $name = $prefix . '_' . $index;
+            $placeholders[] = ':' . $name;
+            $parameters[$name] = $id;
+        }
+        return [implode(', ', $placeholders), $parameters];
     }
 
     private static function normalize(array $issue): array

@@ -462,43 +462,42 @@ final class IssuesService
         if (!is_int($milestoneId) || $milestoneId < 1) {
             throw new ApiException(422, 'validation_failed', 'milestone_id must be a positive integer.');
         }
-        $milestone = $this->milestones->find($user->workspaceId, $projectId, $milestoneId);
-        if ($milestone === null) throw new ApiException(404, 'not_found', 'The milestone was not found.');
-        if ($milestone['archived_at'] !== null) {
-            throw new ApiException(422, 'validation_failed', 'Issues can only be moved to an active milestone.');
-        }
-
-        foreach ($issueIds as $issueId) {
-            $issue = $this->issues->find($user->workspaceId, $issueId);
-            if ($issue === null || $issue['project_id'] !== $projectId) {
-                throw new ApiException(404, 'not_found', 'One or more issues were not found in this project.');
-            }
-            if ($issue['milestone_id'] !== null) {
-                throw new ApiException(409, 'issue_already_planned', 'One or more selected issues already belong to a milestone. Refresh and try again.');
-            }
-            if ($issue['is_ongoing']) {
-                throw new ApiException(409, 'issue_ongoing', 'Ongoing issues cannot be moved into a milestone. Remove the ongoing classification first.');
-            }
-        }
 
         $ownsTransaction = !$this->pdo->inTransaction();
         if ($ownsTransaction) $this->pdo->beginTransaction();
         try {
-            $sortOrder = $this->issues->maxSortOrder($user->workspaceId, $projectId, $milestoneId) + 1;
-            foreach ($issueIds as $issueId) {
-                if (!$this->issues->moveUnassignedToMilestone(
-                    $user->workspaceId,
-                    $projectId,
-                    $issueId,
-                    $milestoneId,
-                    $sortOrder,
-                )) {
-                    throw new ApiException(409, 'issue_already_planned', 'One or more selected issues changed. Refresh and try again.');
+            $milestone = $this->milestones->findForUpdate($user->workspaceId, $projectId, $milestoneId);
+            if ($milestone === null) throw new ApiException(404, 'not_found', 'The milestone was not found.');
+            if ($milestone['archived_at'] !== null) {
+                throw new ApiException(422, 'validation_failed', 'Issues can only be moved to an active milestone.');
+            }
+
+            $issues = $this->issues->findManyForProjectForUpdate($user->workspaceId, $projectId, $issueIds);
+            if (count($issues) !== count($issueIds)) {
+                throw new ApiException(404, 'not_found', 'One or more issues were not found in this project.');
+            }
+            foreach ($issues as $issue) {
+                if ($issue['milestone_id'] !== null) {
+                    throw new ApiException(409, 'issue_already_planned', 'One or more selected issues already belong to a milestone. Refresh and try again.');
                 }
-                $sortOrder += 1;
+                if ($issue['is_ongoing']) {
+                    throw new ApiException(409, 'issue_ongoing', 'Ongoing issues cannot be moved into a milestone. Remove the ongoing classification first.');
+                }
+            }
+
+            $sortOrder = $this->issues->maxSortOrder($user->workspaceId, $projectId, $milestoneId) + 1;
+            $movedCount = $this->issues->moveUnassignedToMilestoneBatch(
+                $user->workspaceId,
+                $projectId,
+                $issueIds,
+                $milestoneId,
+                $sortOrder,
+            );
+            if ($movedCount !== count($issueIds)) {
+                throw new ApiException(409, 'issue_already_planned', 'One or more selected issues changed. Refresh and try again.');
             }
             if ($ownsTransaction) $this->pdo->commit();
-            return count($issueIds);
+            return $movedCount;
         } catch (Throwable $exception) {
             if ($ownsTransaction && $this->pdo->inTransaction()) $this->pdo->rollBack();
             throw $exception;
@@ -528,38 +527,34 @@ final class IssuesService
         $assigneeId = self::assigneeId($input['assignee_id']);
         $this->requireProjectMemberAssignee($user->workspaceId, $projectId, $assigneeId);
 
-        $issues = [];
-        foreach ($issueIds as $issueId) {
-            $issue = $this->issues->find($user->workspaceId, $issueId);
-            if ($issue === null || $issue['project_id'] !== $projectId) {
-                throw new ApiException(404, 'not_found', 'One or more issues were not found in this project.');
-            }
-            $issues[] = $issue;
-        }
-
         $ownsTransaction = !$this->pdo->inTransaction();
         if ($ownsTransaction) $this->pdo->beginTransaction();
         try {
-            foreach ($issues as $issue) {
-                if ($issue['assignee_id'] === $assigneeId) continue;
-                if (!$this->issues->assignToMember(
-                    $user->workspaceId,
-                    $projectId,
-                    $issue['id'],
-                    $issue['assignee_id'],
-                    $assigneeId,
-                )) {
-                    throw new ApiException(409, 'issue_changed', 'One or more selected issues changed. Refresh and try again.');
-                }
-                $this->inboxEvents->recordAssigned(
-                    $user->workspaceId,
-                    $projectId,
-                    $user->id,
-                    $assigneeId,
-                    $issue['id'],
-                    $issue['title'],
-                );
+            $issues = $this->issues->findManyForProjectForUpdate($user->workspaceId, $projectId, $issueIds);
+            if (count($issues) !== count($issueIds)) {
+                throw new ApiException(404, 'not_found', 'One or more issues were not found in this project.');
             }
+            $changedIssues = array_values(array_filter(
+                $issues,
+                static fn (array $issue): bool => $issue['assignee_id'] !== $assigneeId,
+            ));
+            $changedIssueIds = array_column($changedIssues, 'id');
+            $updatedCount = $this->issues->bulkAssignToMember(
+                $user->workspaceId,
+                $projectId,
+                $changedIssueIds,
+                $assigneeId,
+            );
+            if ($updatedCount !== count($changedIssues)) {
+                throw new ApiException(409, 'issue_changed', 'One or more selected issues changed. Refresh and try again.');
+            }
+            $this->inboxEvents->recordAssignedBatch(
+                $user->workspaceId,
+                $projectId,
+                $user->id,
+                $assigneeId,
+                $changedIssues,
+            );
             if ($ownsTransaction) $this->pdo->commit();
             return count($issues);
         } catch (Throwable $exception) {
@@ -590,32 +585,25 @@ final class IssuesService
             throw new ApiException(422, 'validation_failed', 'is_shared must be a boolean.');
         }
 
-        $issues = [];
-        foreach ($issueIds as $issueId) {
-            $issue = $this->issues->find($user->workspaceId, $issueId);
-            if ($issue === null || $issue['project_id'] !== $projectId) {
-                throw new ApiException(404, 'not_found', 'One or more issues were not found in this project.');
-            }
-            $issues[] = $issue;
-        }
-
         $ownsTransaction = !$this->pdo->inTransaction();
         if ($ownsTransaction) $this->pdo->beginTransaction();
         try {
-            $updatedCount = 0;
-            foreach ($issues as $issue) {
-                if ($issue['is_shared'] === $isShared) continue;
-                if (!$this->issues->setShared($user->workspaceId, $projectId, $issue['id'], $isShared)) {
-                    $current = $this->issues->find($user->workspaceId, $issue['id']);
-                    if ($current === null || $current['project_id'] !== $projectId) {
-                        throw new ApiException(404, 'not_found', 'One or more issues were not found in this project.');
-                    }
-                    if ($current['is_shared'] !== $isShared) {
-                        throw new ApiException(409, 'issue_changed', 'One or more selected issues changed. Refresh and try again.');
-                    }
-                    continue;
-                }
-                $updatedCount++;
+            $issues = $this->issues->findManyForProjectForUpdate($user->workspaceId, $projectId, $issueIds);
+            if (count($issues) !== count($issueIds)) {
+                throw new ApiException(404, 'not_found', 'One or more issues were not found in this project.');
+            }
+            $changedIssueIds = array_column(array_values(array_filter(
+                $issues,
+                static fn (array $issue): bool => $issue['is_shared'] !== $isShared,
+            )), 'id');
+            $updatedCount = $this->issues->bulkSetShared(
+                $user->workspaceId,
+                $projectId,
+                $changedIssueIds,
+                $isShared,
+            );
+            if ($updatedCount !== count($changedIssueIds)) {
+                throw new ApiException(409, 'issue_changed', 'One or more selected issues changed. Refresh and try again.');
             }
             if ($ownsTransaction) $this->pdo->commit();
             return $updatedCount;
