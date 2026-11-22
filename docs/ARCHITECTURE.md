@@ -71,7 +71,7 @@ Each module registers its own routes. Modules do not touch each other's tables; 
 ## Database and migrations
 
 - MySQL or MariaDB, `utf8mb4`, InnoDB.
-- Migrations are numbered SQL files in `migrations/`, with a table that records which have run. The installer and later upgrades use the same mechanism.
+- Migrations are numbered SQL files in `migrations/`, with a table that records which have run. The installer, web upgrader, and CLI use the same runner, which serializes work with a database-scoped advisory lock. Add-column, add-index, and add-constraint steps are reconciled against `information_schema` so a retry can continue when those objects already exist; migration 009 keeps these operations separate for that recovery path. Back up the database before upgrading, and restore it if a failed step leaves an incompatible schema object.
 
 ## Inbox events and guest visibility
 

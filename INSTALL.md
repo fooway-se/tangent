@@ -14,7 +14,7 @@ Tangent requires PHP 8.4.27 or later within PHP 8, with `pdo_mysql`, `mbstring`,
 6. Visit the public URL for Tangent, such as `https://fooway.se/tangent/install.php`. Enter that URL's base (`https://fooway.se/tangent` in this example), the setup key, database settings, workspace details, and first admin credentials. The public URL is a web address; it is separate from the filesystem paths above. Tangent checks the server, runs the migrations, creates the workspace and admin, and writes `config.php` in the private application directory with private file permissions. It removes the setup key after success.
 7. Sign in. The installer cannot be used again after `config.php` has been created.
 
-Use a dedicated database. If setup is interrupted after migrations begin, correct the reported issue and retry with the same key and database. If a migration stopped partway through, restore the database to an empty state before retrying rather than manually editing migration records.
+Use a dedicated database. If setup is interrupted after migrations begin, correct the reported issue and retry with the same key and database. The migration runner reconciles existing add-column, add-index, and add-constraint steps so covered partial migrations can resume. If the failed step left an incompatible schema object, restore a known-good database backup before retrying. Do not edit migration records manually.
 
 ## Updating an installation
 

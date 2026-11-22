@@ -52,6 +52,9 @@ final class MigrationRunner
                 }
 
                 foreach ($this->statements($sql) as $statement) {
+                    if ($this->isDdlObjectPresent($statement)) {
+                        continue;
+                    }
                     $this->pdo->exec($statement);
                 }
 
@@ -70,6 +73,53 @@ final class MigrationRunner
         $database = (string) $this->pdo->query('SELECT DATABASE()')->fetchColumn();
 
         return 'tangent:migrate:' . substr(hash('sha256', $database), 0, 48);
+    }
+
+    private function isDdlObjectPresent(string $statement): bool
+    {
+        if (preg_match('/^ALTER\s+TABLE\s+`?([a-zA-Z0-9_]+)`?\s+ADD\s+COLUMN\s+`?([a-zA-Z0-9_]+)`?/i', $statement, $matches)) {
+            return $this->schemaObjectExists(
+                'COLUMNS',
+                'TABLE_NAME = :table_name AND COLUMN_NAME = :object_name',
+                $matches[1],
+                $matches[2],
+            );
+        }
+
+        if (preg_match('/^ALTER\s+TABLE\s+`?([a-zA-Z0-9_]+)`?\s+ADD\s+(?:UNIQUE\s+)?(?:KEY|INDEX)\s+`?([a-zA-Z0-9_]+)`?/i', $statement, $matches)) {
+            return $this->schemaObjectExists(
+                'STATISTICS',
+                'TABLE_NAME = :table_name AND INDEX_NAME = :object_name',
+                $matches[1],
+                $matches[2],
+            );
+        }
+
+        if (preg_match('/^ALTER\s+TABLE\s+`?([a-zA-Z0-9_]+)`?\s+ADD\s+CONSTRAINT\s+`?([a-zA-Z0-9_]+)`?/i', $statement, $matches)) {
+            return $this->schemaObjectExists(
+                'TABLE_CONSTRAINTS',
+                'TABLE_NAME = :table_name AND CONSTRAINT_NAME = :object_name',
+                $matches[1],
+                $matches[2],
+            );
+        }
+
+        return false;
+    }
+
+    private function schemaObjectExists(
+        string $metadataTable,
+        string $condition,
+        string $tableName,
+        string $objectName,
+    ): bool {
+        $statement = $this->pdo->prepare(
+            'SELECT 1 FROM information_schema.' . $metadataTable
+                . ' WHERE TABLE_SCHEMA = DATABASE() AND ' . $condition . ' LIMIT 1',
+        );
+        $statement->execute(['table_name' => $tableName, 'object_name' => $objectName]);
+
+        return $statement->fetchColumn() !== false;
     }
 
     private function assertMigrationPreconditions(string $version): void
