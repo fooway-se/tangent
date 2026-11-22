@@ -143,6 +143,14 @@ final class GitHubService
         throw new ApiException(422, 'validation_failed', 'Choose a GitHub repository connected to this workspace.');
     }
 
+    public function revalidateRepositoryConnection(int $workspaceId, array $repository): void
+    {
+        $installationId = (int) ($repository['installation_id'] ?? 0);
+        if ($installationId < 1 || !$this->installations->isConnectedForWorkspaceForUpdate($workspaceId, $installationId)) {
+            throw new ApiException(422, 'validation_failed', 'Choose a GitHub repository connected to this workspace.');
+        }
+    }
+
     public function listPullRequests(AuthenticatedUser $user, int $issueId): array
     {
         $this->requireInternalUser($user);

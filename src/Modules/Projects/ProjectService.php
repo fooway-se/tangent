@@ -130,77 +130,101 @@ final class ProjectService
 
     public function update(AuthenticatedUser $user, int $projectId, array $body): array
     {
-        $project = $this->projects->find($user->workspaceId, $projectId);
-        if ($project === null) {
+        if ($this->projects->find($user->workspaceId, $projectId) === null) {
             throw new ApiException(404, 'not_found', 'The project was not found.');
         }
         if (!Permissions::can($user, 'projects.update')) {
             throw new ApiException(403, 'forbidden', 'You cannot update projects.');
         }
 
-        $updated = [
-            'name' => $project['name'],
-            'description' => $project['description'],
-            'status' => $project['status'],
-            'archived_from_status' => $project['archived_from_status'],
-            'github_repository' => $project['github_repository'],
-        ];
-        if (array_key_exists('name', $body)) {
-            if (!is_string($body['name'])) {
-                throw new ApiException(422, 'validation_failed', 'Project name must be text.');
-            }
-            $updated['name'] = trim($body['name']);
-        }
-        if (mb_strlen($updated['name'], 'UTF-8') < 2 || mb_strlen($updated['name'], 'UTF-8') > 120) {
-            throw new ApiException(422, 'validation_failed', 'Project name must be between 2 and 120 characters.');
-        }
-        if (array_key_exists('description', $body)) {
-            if (!is_string($body['description'])) {
-                throw new ApiException(422, 'validation_failed', 'Project description must be text.');
-            }
-            $updated['description'] = trim($body['description']);
-        }
-        if (mb_strlen($updated['description'], 'UTF-8') > 5000) {
-            throw new ApiException(422, 'validation_failed', 'Project description cannot exceed 5000 characters.');
-        }
+        $requestedGitHubRepository = null;
         if (array_key_exists('github_repository_id', $body)) {
-            if ($body['github_repository_id'] === null) {
-                $updated['github_repository'] = null;
-            } elseif (is_int($body['github_repository_id']) && $body['github_repository_id'] > 0) {
-                if ($project['github_repository'] === null || $project['github_repository']['id'] !== $body['github_repository_id']) {
-                    $updated['github_repository'] = $this->github->repositoryForWorkspace($user->workspaceId, $body['github_repository_id']);
-                }
-            } else {
+            if ($body['github_repository_id'] !== null
+                && (!is_int($body['github_repository_id']) || $body['github_repository_id'] < 1)) {
                 throw new ApiException(422, 'validation_failed', 'GitHub repository ID must be a positive integer or null.');
             }
-        }
-        if (array_key_exists('status', $body)) {
-            if (!is_string($body['status']) || !in_array($body['status'], ProjectLifecycle::STATUSES, true)) {
-                throw new ApiException(422, 'validation_failed', 'Project status must be active, paused, completed, or archived.');
+            if ($body['github_repository_id'] !== null) {
+                $requestedGitHubRepository = $this->github->repositoryForWorkspace(
+                    $user->workspaceId,
+                    $body['github_repository_id'],
+                );
             }
-            $updated['status'] = $body['status'];
-        }
-        if (!array_intersect(['name', 'description', 'status', 'github_repository_id'], array_keys($body))) {
-            throw new ApiException(422, 'validation_failed', 'At least one project field must be supplied.');
         }
 
-        $metadataChanged = $updated['name'] !== $project['name']
-            || $updated['description'] !== $project['description']
-            || $updated['github_repository'] !== $project['github_repository'];
-        $staysReadOnly = ($project['status'] === 'completed'
-                && !in_array($updated['status'], ['active', 'paused'], true))
-            || ($project['status'] === 'archived' && $updated['status'] === 'archived');
-        if ($staysReadOnly && $metadataChanged) {
-            ProjectLifecycle::requireWritable($project['status']);
-        }
-        if ($updated['status'] === 'archived' && $project['status'] !== 'archived') {
-            $updated['archived_from_status'] = $project['status'];
-        } elseif ($project['status'] === 'archived' && $updated['status'] !== 'archived') {
-            $updated['archived_from_status'] = null;
+        $ownsTransaction = !$this->pdo->inTransaction();
+        if ($ownsTransaction) $this->pdo->beginTransaction();
+        try {
+            $project = $this->projects->find($user->workspaceId, $projectId, true);
+            if ($project === null) {
+                throw new ApiException(404, 'not_found', 'The project was not found.');
+            }
+
+            $updated = [
+                'name' => $project['name'],
+                'description' => $project['description'],
+                'status' => $project['status'],
+                'archived_from_status' => $project['archived_from_status'],
+                'github_repository' => $project['github_repository'],
+            ];
+            if (array_key_exists('name', $body)) {
+                if (!is_string($body['name'])) {
+                    throw new ApiException(422, 'validation_failed', 'Project name must be text.');
+                }
+                $updated['name'] = trim($body['name']);
+            }
+            if (mb_strlen($updated['name'], 'UTF-8') < 2 || mb_strlen($updated['name'], 'UTF-8') > 120) {
+                throw new ApiException(422, 'validation_failed', 'Project name must be between 2 and 120 characters.');
+            }
+            if (array_key_exists('description', $body)) {
+                if (!is_string($body['description'])) {
+                    throw new ApiException(422, 'validation_failed', 'Project description must be text.');
+                }
+                $updated['description'] = trim($body['description']);
+            }
+            if (mb_strlen($updated['description'], 'UTF-8') > 5000) {
+                throw new ApiException(422, 'validation_failed', 'Project description cannot exceed 5000 characters.');
+            }
+            if (array_key_exists('github_repository_id', $body)) {
+                $updated['github_repository'] = $requestedGitHubRepository;
+            }
+            if (array_key_exists('status', $body)) {
+                if (!is_string($body['status']) || !in_array($body['status'], ProjectLifecycle::STATUSES, true)) {
+                    throw new ApiException(422, 'validation_failed', 'Project status must be active, paused, completed, or archived.');
+                }
+                $updated['status'] = $body['status'];
+            }
+            if (!array_intersect(['name', 'description', 'status', 'github_repository_id'], array_keys($body))) {
+                throw new ApiException(422, 'validation_failed', 'At least one project field must be supplied.');
+            }
+
+            $metadataChanged = $updated['name'] !== $project['name']
+                || $updated['description'] !== $project['description']
+                || $updated['github_repository'] !== $project['github_repository'];
+            $staysReadOnly = ($project['status'] === 'completed'
+                    && !in_array($updated['status'], ['active', 'paused'], true))
+                || ($project['status'] === 'archived' && $updated['status'] === 'archived');
+            if ($staysReadOnly && $metadataChanged) {
+                ProjectLifecycle::requireWritable($project['status']);
+            }
+            if ($updated['status'] === 'archived' && $project['status'] !== 'archived') {
+                $updated['archived_from_status'] = $project['status'];
+            } elseif ($project['status'] === 'archived' && $updated['status'] !== 'archived') {
+                $updated['archived_from_status'] = null;
+            }
+
+            if ($requestedGitHubRepository !== null) {
+                $this->github->revalidateRepositoryConnection($user->workspaceId, $requestedGitHubRepository);
+            }
+            if (!$this->projects->update($user->workspaceId, $projectId, $updated)) {
+                throw new ApiException(404, 'not_found', 'The project was not found.');
+            }
+            if ($ownsTransaction) $this->pdo->commit();
+            return $this->projects->find($user->workspaceId, $projectId) ?? [];
+        } catch (Throwable $exception) {
+            if ($ownsTransaction && $this->pdo->inTransaction()) $this->pdo->rollBack();
+            throw $exception;
         }
 
-        $this->projects->update($user->workspaceId, $projectId, $updated);
-        return $this->projects->find($user->workspaceId, $projectId) ?? [];
     }
 
     public function members(AuthenticatedUser $user, int $projectId): array

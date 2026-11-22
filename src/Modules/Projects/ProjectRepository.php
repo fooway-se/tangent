@@ -39,7 +39,7 @@ final class ProjectRepository
         }, $statement->fetchAll(PDO::FETCH_ASSOC));
     }
 
-    public function find(int $workspaceId, int $projectId): ?array
+    public function find(int $workspaceId, int $projectId, bool $forUpdate = false): ?array
     {
         $statement = $this->pdo->prepare(
             'SELECT id, workspace_id, name, slug, description, status, archived_from_status,
@@ -47,7 +47,7 @@ final class ProjectRepository
                     github_repository_full_name, github_repository_url, created_by, created_at, updated_at
              FROM projects
              WHERE workspace_id = :workspace_id AND id = :id
-             LIMIT 1'
+             LIMIT 1' . ($forUpdate ? ' FOR UPDATE' : '')
         );
         $statement->execute(['workspace_id' => $workspaceId, 'id' => $projectId]);
         $project = $statement->fetch(PDO::FETCH_ASSOC);
@@ -159,7 +159,7 @@ final class ProjectRepository
         return $this->find($workspaceId, $projectId) ?? [];
     }
 
-    public function update(int $workspaceId, int $projectId, array $project): void
+    public function update(int $workspaceId, int $projectId, array $project): bool
     {
         $statement = $this->pdo->prepare(
             'UPDATE projects
@@ -184,6 +184,14 @@ final class ProjectRepository
             'github_repository_full_name' => $project['github_repository']['full_name'] ?? null,
             'github_repository_url' => $project['github_repository']['html_url'] ?? null,
         ]);
+
+        if ($statement->rowCount() > 0) return true;
+
+        $exists = $this->pdo->prepare(
+            'SELECT 1 FROM projects WHERE workspace_id = :workspace_id AND id = :id LIMIT 1 FOR UPDATE'
+        );
+        $exists->execute(['workspace_id' => $workspaceId, 'id' => $projectId]);
+        return $exists->fetchColumn() !== false;
     }
 
     public function notes(int $workspaceId, int $projectId): array
