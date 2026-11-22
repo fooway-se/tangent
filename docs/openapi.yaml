@@ -20,9 +20,10 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [configured, connected, repositories]
+                required: [configured, can_connect, connected, repositories]
                 properties:
                   configured: { type: boolean }
+                  can_connect: { type: boolean, description: GitHub App and OAuth user authorization are configured. }
                   connected: { type: boolean }
                   repositories:
                     type: array
@@ -35,7 +36,7 @@ paths:
         - $ref: '#/components/parameters/CsrfToken'
       responses:
         '200':
-          description: Single-use GitHub installation URL.
+          description: GitHub App installation URL. The callback then requests user authorization before associating the installation.
           content:
             application/json:
               schema:
@@ -44,10 +45,11 @@ paths:
                 properties:
                   url: { type: string, format: uri }
         '403': { $ref: '#/components/responses/Forbidden' }
-        '503': { description: GitHub App credentials are not configured. }
+        '503': { description: GitHub App or OAuth user authorization credentials are not configured. }
   /github/setup:
     get:
-      summary: Complete the GitHub App installation callback
+      summary: Continue GitHub installation setup with user authorization
+      description: The GitHub App callback binds its installation ID to the original Tangent browser session and redirects to the GitHub OAuth callback. It does not associate the installation yet.
       parameters:
         - name: installation_id
           in: query
@@ -58,8 +60,24 @@ paths:
           required: true
           schema: { type: string, minLength: 64, maxLength: 64 }
       responses:
+        '302': { description: Browser redirects to GitHub user authorization. }
+        '403': { description: The setup state is invalid, expired, or belongs to another session. }
+  /github/setup/authorize:
+    get:
+      summary: Verify GitHub user access and complete installation setup
+      description: Exchanges the one-time OAuth code and calls GitHub's list installations accessible to the authorized GitHub user endpoint before associating the installation with the workspace. The state is bound to the Tangent session that started setup and is consumed once.
+      parameters:
+        - name: code
+          in: query
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 2048 }
+        - name: state
+          in: query
+          required: true
+          schema: { type: string, minLength: 64, maxLength: 64 }
+      responses:
         '302': { description: Installation recorded; browser redirects to Tangent. }
-        '403': { description: The installation state is invalid or expired. }
+        '403': { description: The state is invalid or expired, or the authorized GitHub user cannot access the installation. }
   /github/webhook:
     post:
       security: []

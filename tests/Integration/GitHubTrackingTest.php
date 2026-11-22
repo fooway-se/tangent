@@ -4,15 +4,164 @@ declare(strict_types=1);
 
 namespace Tangent\Tests\Integration;
 
+use Tangent\Core\ApiException;
 use Tangent\Core\AppConfig;
 use Tangent\Core\Application;
+use Tangent\Core\Database;
 use Tangent\Core\Request;
 use Tangent\Core\Response;
 use Tangent\Modules\GitHub\GitHubApiClient;
+use Tangent\Modules\GitHub\GitHubInstallationRepository;
 use Tangent\Tests\Support\ApiTestCase;
 
 final class GitHubTrackingTest extends ApiTestCase
 {
+    public function testGitHubInstallationCallbackDoesNotAssociateBeforeUserAuthorization(): void
+    {
+        [$state, $installationCallback] = $this->startGitHubInstallationSetup(new FakeGitHubApiClient([], []));
+
+        self::assertSame(302, $installationCallback->status);
+        self::assertSame(
+            'https://github.com/login/oauth/authorize?client_id=test-client&redirect_uri=https%3A%2F%2Ftangent.example%2Fapi%2Fv1%2Fgithub%2Fsetup%2Fauthorize&state=' . $state,
+            $installationCallback->headers['location'] ?? null,
+        );
+        self::assertSame(0, $this->installationCount(445566), 'The App callback alone must not associate an installation.');
+    }
+
+    public function testGitHubInstallationAssociationRequiresOAuthUserAccessAndConsumesStateOnce(): void
+    {
+        $client = new FakeGitHubApiClient([], []);
+        $client->userCanAccessInstallation = true;
+        [$state, , $admin] = $this->startGitHubInstallationSetup($client);
+
+        $authorized = $this->githubOAuthCallback($admin['cookie'], $state, 'github-code');
+        self::assertSame(302, $authorized->status);
+        self::assertSame('https://tangent.example/app.html?github=connected', $authorized->headers['location'] ?? null);
+        self::assertSame(1, $this->installationCount(445566));
+        self::assertSame(1, $client->authorizationChecks);
+
+        $replay = $this->githubOAuthCallback($admin['cookie'], $state, 'github-code');
+        self::assertSame(403, $replay->status, 'A completed OAuth state cannot be reused.');
+        self::assertSame(1, $this->installationCount(445566));
+    }
+
+    public function testGitHubInstallationCannotBeAssociatedWhenOAuthUserLacksAccess(): void
+    {
+        $client = new FakeGitHubApiClient([], []);
+        $client->userCanAccessInstallation = false;
+        [$state, , $admin] = $this->startGitHubInstallationSetup($client);
+
+        $unauthorized = $this->githubOAuthCallback($admin['cookie'], $state, 'github-code');
+
+        self::assertSame(403, $unauthorized->status);
+        self::assertSame(0, $this->installationCount(445566));
+    }
+
+    public function testGitHubOAuthSetupStateIsBoundToTheInitiatingBrowserSession(): void
+    {
+        [$state] = $this->startGitHubInstallationSetup(new FakeGitHubApiClient([], []), false);
+        $secondSession = $this->login($this->adminEmail);
+
+        $unauthorized = $this->githubInstallationCallback($secondSession['cookie'], $state);
+
+        self::assertSame(403, $unauthorized->status);
+        self::assertSame(0, $this->installationCount(445566));
+    }
+
+    public function testExpiredGitHubOAuthSetupStateCannotAssociateAnInstallation(): void
+    {
+        [$state, , $admin] = $this->startGitHubInstallationSetup(new FakeGitHubApiClient([], []));
+        $expire = $this->pdo->prepare(
+            'UPDATE github_installation_states SET expires_at = UTC_TIMESTAMP() - INTERVAL 1 SECOND WHERE state_hash = :state_hash'
+        );
+        $expire->execute(['state_hash' => hash('sha256', $state)]);
+
+        $expired = $this->githubOAuthCallback($admin['cookie'], $state, 'github-code');
+
+        self::assertSame(403, $expired->status);
+        self::assertSame(0, $this->installationCount(445566));
+    }
+
+    public function testConcurrentGitHubInstallationClaimCannotChangeTheWorkspaceOwner(): void
+    {
+        $this->pdo->query('SELECT workspace_id FROM github_installations WHERE installation_id = 445566')->fetchColumn();
+        $otherPdo = Database::connect(
+            getenv('TANGENT_TEST_DB_HOST') ?: '127.0.0.1',
+            (int) (getenv('TANGENT_TEST_DB_PORT') ?: 3306),
+            getenv('TANGENT_TEST_DB_NAME') ?: 'tangent_test_suite',
+            getenv('TANGENT_TEST_DB_USER') ?: 'tangent',
+            getenv('TANGENT_TEST_DB_PASSWORD') ?: 'tangent_dev_password',
+        )->pdo();
+        $otherPdo->beginTransaction();
+        try {
+            $workspace = $otherPdo->prepare('INSERT INTO workspaces (name, slug) VALUES (:name, :slug)');
+            $workspace->execute(['name' => 'Concurrent GitHub owner', 'slug' => 'github-owner-' . bin2hex(random_bytes(4))]);
+            $otherWorkspaceId = (int) $otherPdo->lastInsertId();
+            $ownerEmail = 'github-owner-' . bin2hex(random_bytes(4)) . '@example.test';
+            $account = $otherPdo->prepare('INSERT INTO user_accounts (email, password_hash) VALUES (:email, :password_hash)');
+            $account->execute([
+                'email' => $ownerEmail,
+                'password_hash' => password_hash('github owner secure password', PASSWORD_ARGON2ID),
+            ]);
+            $accountId = (int) $otherPdo->lastInsertId();
+            $membership = $otherPdo->prepare(
+                'INSERT INTO users (workspace_id, account_id, name, email, role, is_active)
+                 VALUES (:workspace_id, :account_id, :name, :email, :role, 1)'
+            );
+            $membership->execute([
+                'workspace_id' => $otherWorkspaceId,
+                'account_id' => $accountId,
+                'name' => 'GitHub Owner',
+                'email' => $ownerEmail,
+                'role' => 'admin',
+            ]);
+            $otherUserId = (int) $otherPdo->lastInsertId();
+            $installation = $otherPdo->prepare(
+                'INSERT INTO github_installations (workspace_id, installation_id, account_login, connected_by)
+                 VALUES (:workspace_id, :installation_id, :account_login, :connected_by)'
+            );
+            $installation->execute([
+                'workspace_id' => $otherWorkspaceId,
+                'installation_id' => 445566,
+                'account_login' => 'original-owner',
+                'connected_by' => $otherUserId,
+            ]);
+            $otherPdo->commit();
+
+            try {
+                (new GitHubInstallationRepository($this->pdo))->add($this->workspaceId, 445566, 'replacement-owner', $this->adminId);
+                self::fail('A concurrent installation claim must not succeed for a second workspace.');
+            } catch (ApiException $exception) {
+                self::assertSame(409, $exception->status);
+            }
+
+            $owner = $otherPdo->prepare('SELECT workspace_id, account_login, connected_by FROM github_installations WHERE installation_id = 445566');
+            $owner->execute();
+            $ownerData = $owner->fetch(\PDO::FETCH_ASSOC);
+            self::assertSame($otherWorkspaceId, (int) $ownerData['workspace_id']);
+            self::assertSame('original-owner', $ownerData['account_login']);
+            self::assertSame($otherUserId, (int) $ownerData['connected_by']);
+        } finally {
+            if ($this->pdo->inTransaction()) $this->pdo->rollBack();
+            if ($otherPdo->inTransaction()) $otherPdo->rollBack();
+            if (isset($otherWorkspaceId, $accountId)) {
+                $cleanup = Database::connect(
+                    getenv('TANGENT_TEST_DB_HOST') ?: '127.0.0.1',
+                    (int) (getenv('TANGENT_TEST_DB_PORT') ?: 3306),
+                    getenv('TANGENT_TEST_DB_NAME') ?: 'tangent_test_suite',
+                    getenv('TANGENT_TEST_DB_USER') ?: 'tangent',
+                    getenv('TANGENT_TEST_DB_PASSWORD') ?: 'tangent_dev_password',
+                )->pdo();
+                $cleanup->beginTransaction();
+                $cleanup->prepare('DELETE FROM github_installations WHERE installation_id = 445566')->execute();
+                $cleanup->prepare('DELETE FROM users WHERE workspace_id = :workspace_id')->execute(['workspace_id' => $otherWorkspaceId]);
+                $cleanup->prepare('DELETE FROM workspaces WHERE id = :id')->execute(['id' => $otherWorkspaceId]);
+                $cleanup->prepare('DELETE FROM user_accounts WHERE id = :id')->execute(['id' => $accountId]);
+                $cleanup->commit();
+            }
+        }
+    }
+
     public function testAdminCanConnectRepositoryLinkPullRequestAndReceiveSignedUpdates(): void
     {
         $admin = $this->login($this->adminEmail);
@@ -243,6 +392,63 @@ final class GitHubTrackingTest extends ApiTestCase
         self::assertSame(0, (int) $count->fetchColumn());
     }
 
+    private function startGitHubInstallationSetup(FakeGitHubApiClient $client, bool $completeAppCallback = true): array
+    {
+        $admin = $this->login($this->adminEmail);
+        $this->application = Application::create(
+            $this->pdo,
+            new AppConfig($this->workspaceId, false, 43200, 'https://tangent.example', false, '123', 'test-app', 'unused'),
+            $client,
+        );
+        $started = $this->cookieRequest('POST', '/api/v1/github/install', $admin['cookie'], [], $admin['csrf']);
+        self::assertSame(200, $started->status, json_encode($started->body));
+        $query = [];
+        parse_str((string) parse_url($started->body['url'], PHP_URL_QUERY), $query);
+        $state = is_string($query['state'] ?? null) ? $query['state'] : '';
+        self::assertMatchesRegularExpression('/^[a-f0-9]{64}$/', $state);
+
+        return [
+            $state,
+            $completeAppCallback ? $this->githubInstallationCallback($admin['cookie'], $state) : null,
+            $admin,
+        ];
+    }
+
+    private function githubInstallationCallback(string $sessionCookie, string $state): Response
+    {
+        return $this->application->handle(new Request(
+            'GET',
+            '/api/v1/github/setup',
+            [],
+            [],
+            ['tangent_session' => $sessionCookie],
+            '127.0.0.1',
+            true,
+            ['installation_id' => '445566', 'state' => $state],
+        ));
+    }
+
+    private function githubOAuthCallback(string $sessionCookie, string $state, string $code): Response
+    {
+        return $this->application->handle(new Request(
+            'GET',
+            '/api/v1/github/setup/authorize',
+            [],
+            [],
+            ['tangent_session' => $sessionCookie],
+            '127.0.0.1',
+            true,
+            ['code' => $code, 'state' => $state],
+        ));
+    }
+
+    private function installationCount(int $installationId): int
+    {
+        $query = $this->pdo->prepare('SELECT COUNT(*) FROM github_installations WHERE installation_id = :id');
+        $query->execute(['id' => $installationId]);
+        return (int) $query->fetchColumn();
+    }
+
     private function webhookRequest(string $rawBody, array $body, array $headers): Response
     {
         return $this->application->handle(Request::json(
@@ -291,6 +497,9 @@ final class GitHubTrackingTest extends ApiTestCase
 
 final class FakeGitHubApiClient implements GitHubApiClient
 {
+    public bool $userCanAccessInstallation = false;
+    public int $authorizationChecks = 0;
+
     public function __construct(private readonly array $repository, private readonly array $pullRequest)
     {
     }
@@ -300,9 +509,29 @@ final class FakeGitHubApiClient implements GitHubApiClient
         return true;
     }
 
+    public function isUserAuthorizationConfigured(): bool
+    {
+        return true;
+    }
+
+    public function userAuthorizationUrl(string $state, string $redirectUri): string
+    {
+        return 'https://github.com/login/oauth/authorize?' . http_build_query([
+            'client_id' => 'test-client',
+            'redirect_uri' => $redirectUri,
+            'state' => $state,
+        ]);
+    }
+
+    public function canUserAccessInstallation(string $code, int $installationId): bool
+    {
+        $this->authorizationChecks++;
+        return $this->userCanAccessInstallation;
+    }
+
     public function verifyInstallation(int $installationId): array
     {
-        return ['account' => ['login' => $this->repository['owner']]];
+        return ['account' => ['login' => $this->repository['owner'] ?? 'test-org']];
     }
 
     public function repositories(int $installationId): array

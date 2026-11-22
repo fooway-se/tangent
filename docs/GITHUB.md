@@ -8,6 +8,7 @@ Create a GitHub App for your Tangent installation and configure:
 
 - **Homepage URL:** your Tangent base URL, for example `https://tangent.example`.
 - **Setup URL:** `{TANGENT_APP_URL}/api/v1/github/setup`, for example `https://tangent.example/api/v1/github/setup`.
+- **Callback URL:** `{TANGENT_APP_URL}/api/v1/github/setup/authorize`.
 - **Webhook URL:** `{TANGENT_APP_URL}/api/v1/github/webhook`.
 - **Webhook secret:** generate a long random secret and keep it for the Tangent environment setting below.
 - **Repository permissions:** `Metadata: Read-only` and `Pull requests: Read-only`.
@@ -24,8 +25,10 @@ Set these variables in the PHP process environment. In Docker Compose, they can 
 | `TANGENT_GITHUB_APP_ID` | The GitHub App's numeric ID. |
 | `TANGENT_GITHUB_APP_SLUG` | The GitHub App URL slug used in `github.com/apps/{slug}`. |
 | `TANGENT_GITHUB_PRIVATE_KEY` | The complete PEM private key. For an environment variable, encode line breaks as `\n`; Tangent converts those to newlines. |
+| `TANGENT_GITHUB_OAUTH_CLIENT_ID` | The GitHub App OAuth client ID. |
+| `TANGENT_GITHUB_OAUTH_CLIENT_SECRET` | The GitHub App OAuth client secret. |
 | `TANGENT_GITHUB_WEBHOOK_SECRET` | The same secret configured in GitHub App settings. |
 
-Restart the PHP service after changing its environment. GitHub connection is workspace-scoped: a workspace admin starts the connection from a project's create or edit form, completes the GitHub installation flow, then selects a repository. Project developers can link and unlink pull requests on issues after a repository is selected.
+Restart the PHP service after changing its environment. GitHub connection is workspace-scoped: a workspace admin starts the connection from a project's create or edit form, installs the App, then authorizes their GitHub account. Tangent binds both callbacks to the same browser session and associates the installation only if the authorized GitHub user can access it. Project developers can link and unlink pull requests on issues after a repository is selected.
 
 The webhook endpoint is public and verifies every request against the raw body using `X-Hub-Signature-256`. GitHub delivery IDs are stored for 30 days to ignore retries. If an issue is unlinked from a pull request, later webhook events no longer update that link.

@@ -3336,7 +3336,7 @@ function populateGithubRepositorySelect(select: HTMLSelectElement, selectedId: n
 async function loadGithubRepositories(): Promise<void> {
   if (activeUser?.role !== 'admin') return;
   try {
-    const result = await api<{ repositories: GitHubRepository[]; connected: boolean; configured: boolean }>('/github/repositories');
+    const result = await api<{ repositories: GitHubRepository[]; connected: boolean; configured: boolean; can_connect: boolean }>('/github/repositories');
     githubRepositories = result.repositories;
     const createSelectedId = projectGithubRepository.value === '' ? null : Number(projectGithubRepository.value);
     const editSelectedId = activeProject?.github_repository?.id
@@ -3345,6 +3345,8 @@ async function loadGithubRepositories(): Promise<void> {
     populateGithubRepositorySelect(projectEditGithubRepository, editSelectedId);
     const status = !result.configured
       ? 'GitHub App settings are not configured for this Tangent installation.'
+      : !result.can_connect && !result.connected
+        ? 'Configure GitHub user authorization before connecting an installation.'
       : !result.connected
         ? 'Connect a GitHub App installation to choose a repository.'
         : result.repositories.length === 0
@@ -3352,8 +3354,8 @@ async function loadGithubRepositories(): Promise<void> {
           : 'Choose a repository available to this workspace.';
     githubProjectSelectionStatus.textContent = status;
     githubProjectEditStatus.textContent = status;
-    connectGithubCreateButton.hidden = !result.configured;
-    connectGithubEditButton.hidden = !result.configured;
+    connectGithubCreateButton.hidden = !result.can_connect;
+    connectGithubEditButton.hidden = !result.can_connect;
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Could not load GitHub repositories.';
     githubProjectSelectionStatus.textContent = message;

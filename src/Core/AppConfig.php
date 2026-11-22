@@ -17,6 +17,8 @@ final class AppConfig
         public readonly string $githubPrivateKey = '',
         public readonly string $githubWebhookSecret = '',
         public readonly string $mailFrom = '',
+        public readonly string $githubOAuthClientId = '',
+        public readonly string $githubOAuthClientSecret = '',
     ) {
     }
 
@@ -33,6 +35,8 @@ final class AppConfig
             str_replace('\\n', "\n", getenv('TANGENT_GITHUB_PRIVATE_KEY') ?: ''),
             getenv('TANGENT_GITHUB_WEBHOOK_SECRET') ?: '',
             getenv('TANGENT_MAIL_FROM') ?: '',
+            getenv('TANGENT_GITHUB_OAUTH_CLIENT_ID') ?: '',
+            getenv('TANGENT_GITHUB_OAUTH_CLIENT_SECRET') ?: '',
         );
     }
 }

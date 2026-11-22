@@ -3107,15 +3107,17 @@ async function loadGithubRepositories() {
         populateGithubRepositorySelect(projectEditGithubRepository, editSelectedId);
         const status = !result.configured
             ? 'GitHub App settings are not configured for this Tangent installation.'
-            : !result.connected
-                ? 'Connect a GitHub App installation to choose a repository.'
-                : result.repositories.length === 0
-                    ? 'No repositories are available. Check which repositories the GitHub App can access.'
-                    : 'Choose a repository available to this workspace.';
+            : !result.can_connect && !result.connected
+                ? 'Configure GitHub user authorization before connecting an installation.'
+                : !result.connected
+                    ? 'Connect a GitHub App installation to choose a repository.'
+                    : result.repositories.length === 0
+                        ? 'No repositories are available. Check which repositories the GitHub App can access.'
+                        : 'Choose a repository available to this workspace.';
         githubProjectSelectionStatus.textContent = status;
         githubProjectEditStatus.textContent = status;
-        connectGithubCreateButton.hidden = !result.configured;
-        connectGithubEditButton.hidden = !result.configured;
+        connectGithubCreateButton.hidden = !result.can_connect;
+        connectGithubEditButton.hidden = !result.can_connect;
     }
     catch (error) {
         const message = error instanceof Error ? error.message : 'Could not load GitHub repositories.';

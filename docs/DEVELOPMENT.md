@@ -61,9 +61,13 @@ Configure these values in the host environment or in `config.php` for production
 | `TANGENT_GITHUB_APP_ID` | — | Numeric GitHub App ID for repository selection and pull-request tracking. | unset |
 | `TANGENT_GITHUB_APP_SLUG` | — | GitHub App URL slug. | unset |
 | `TANGENT_GITHUB_PRIVATE_KEY` | — | GitHub App PEM private key; environment values may use `\n` for newlines. | unset |
+| `TANGENT_GITHUB_OAUTH_CLIENT_ID` | `github_oauth_client_id` | OAuth client ID for the GitHub App user authorization step. | unset |
+| `TANGENT_GITHUB_OAUTH_CLIENT_SECRET` | `github_oauth_client_secret` | OAuth client secret for the GitHub App user authorization step. | unset |
 | `TANGENT_GITHUB_WEBHOOK_SECRET` | — | Secret used to verify GitHub webhook signatures. | unset |
 
 Tangent sends plain-text verification and recovery email through PHP's configured mail transport. New-account invites fail closed when delivery is unavailable; existing-account invites still require the account password. The optional breach lookup sends only the first five hexadecimal characters of the password's SHA-1 hash to the service, verifies the full hash against the returned suffix list, and fails open when the network check is unavailable. Leave it disabled on hosts without outbound HTTPS access.
+
+Configure the GitHub App's Setup URL as `{TANGENT_APP_URL}/api/v1/github/setup` and its OAuth callback URL as `{TANGENT_APP_URL}/api/v1/github/setup/authorize`. Use the App's OAuth client ID and secret for the OAuth settings above; the user who starts setup must remain signed into the same Tangent browser session and must be able to manage the selected GitHub installation.
 
 Passwords are NFC-normalized and checked by one shared policy for seed, direct API account creation, invite acceptance, and reset: 15–128 Unicode code points, all characters allowed, no silent truncation, common-password and contextual checks, Argon2id hashing, and hash upgrades at login. This follows the password guidance in [NIST SP 800-63B-4](https://pages.nist.gov/800-63-4/sp800-63b.html): 15 characters for single-factor passwords, blocklist checks, Unicode code-point counting, and no composition rules. Paste and password-manager autofill are supported; scheduled password rotations are not used. The bundled common-password blocklist and its license attribution are in `resources/`.
 

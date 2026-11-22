@@ -11,12 +11,54 @@ final class GitHubAppClient implements GitHubApiClient
     public function __construct(
         private readonly string $appId,
         private readonly string $privateKey,
+        private readonly string $oauthClientId = '',
+        private readonly string $oauthClientSecret = '',
     ) {
     }
 
     public function isConfigured(): bool
     {
         return $this->appId !== '' && $this->privateKey !== '';
+    }
+
+    public function isUserAuthorizationConfigured(): bool
+    {
+        return $this->oauthClientId !== '' && $this->oauthClientSecret !== '';
+    }
+
+    public function userAuthorizationUrl(string $state, string $redirectUri): string
+    {
+        if (!$this->isUserAuthorizationConfigured()) {
+            throw new ApiException(503, 'github_not_configured', 'GitHub user authorization is not configured.');
+        }
+        return 'https://github.com/login/oauth/authorize?' . http_build_query([
+            'client_id' => $this->oauthClientId,
+            'redirect_uri' => $redirectUri,
+            'state' => $state,
+        ]);
+    }
+
+    public function canUserAccessInstallation(string $code, int $installationId): bool
+    {
+        $accessToken = $this->userAccessToken($code);
+        for ($page = 1; $page <= 20; $page++) {
+            $response = $this->request(
+                'GET',
+                '/user/installations?per_page=100&page=' . $page,
+                $accessToken,
+            );
+            $installations = $response['installations'] ?? null;
+            if (!is_array($installations)) {
+                throw new ApiException(502, 'github_invalid_response', 'GitHub returned an invalid installation authorization response.');
+            }
+            foreach ($installations as $installation) {
+                if (is_array($installation) && (int) ($installation['id'] ?? 0) === $installationId) {
+                    return true;
+                }
+            }
+            if (count($installations) < 100) break;
+        }
+        return false;
     }
 
     public function verifyInstallation(int $installationId): array
@@ -77,6 +119,42 @@ final class GitHubAppClient implements GitHubApiClient
             throw new ApiException(502, 'github_unavailable', 'GitHub did not return an installation token.');
         }
         return $token;
+    }
+
+    private function userAccessToken(string $code): string
+    {
+        if (!$this->isUserAuthorizationConfigured()) {
+            throw new ApiException(503, 'github_not_configured', 'GitHub user authorization is not configured.');
+        }
+        $context = stream_context_create(['http' => [
+            'method' => 'POST',
+            'header' => "Accept: application/json\r\nContent-Type: application/json\r\nUser-Agent: Tangent",
+            'content' => json_encode([
+                'client_id' => $this->oauthClientId,
+                'client_secret' => $this->oauthClientSecret,
+                'code' => $code,
+            ], JSON_THROW_ON_ERROR),
+            'ignore_errors' => true,
+            'timeout' => 15,
+        ]]);
+        $response = @file_get_contents('https://github.com/login/oauth/access_token', false, $context);
+        $status = 0;
+        foreach ($http_response_header ?? [] as $header) {
+            if (preg_match('/^HTTP\/\S+\s+(\d{3})/', $header, $matches)) $status = (int) $matches[1];
+        }
+        if (!is_string($response) || $status >= 500 || $status === 0) {
+            throw new ApiException(502, 'github_unavailable', 'GitHub could not complete user authorization.');
+        }
+        try {
+            $decoded = json_decode($response, true, 512, JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            throw new ApiException(502, 'github_invalid_response', 'GitHub returned an invalid authorization response.');
+        }
+        $accessToken = is_array($decoded) ? ($decoded['access_token'] ?? null) : null;
+        if ($status < 200 || $status >= 300 || !is_string($accessToken) || $accessToken === '') {
+            throw new ApiException(403, 'github_user_authorization_failed', 'GitHub user authorization failed. Start the connection again.');
+        }
+        return $accessToken;
     }
 
     private function appJwt(): string

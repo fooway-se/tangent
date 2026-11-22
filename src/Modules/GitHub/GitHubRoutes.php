@@ -33,7 +33,14 @@ final class GitHubRoutes
             $installationId = self::positiveId(is_scalar($request->query['installation_id'] ?? null)
                 ? (string) $request->query['installation_id'] : '');
             $state = is_string($request->query['state'] ?? null) ? $request->query['state'] : '';
-            $this->service->completeInstallation($user, $installationId, $state);
+            $authorizationUrl = $this->service->beginInstallationAuthorization($user, $installationId, $state);
+            return new Response(302, [], ['location' => $authorizationUrl]);
+        });
+
+        $router->add('GET', '/api/v1/github/setup/authorize', function (Request $request, array $params, AuthenticatedUser $user): Response {
+            $code = is_string($request->query['code'] ?? null) ? $request->query['code'] : '';
+            $state = is_string($request->query['state'] ?? null) ? $request->query['state'] : '';
+            $this->service->completeInstallation($user, $code, $state);
             return new Response(302, [], ['location' => $this->config->publicAppUrl . '/app.html?github=connected']);
         });
 

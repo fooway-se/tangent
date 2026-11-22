@@ -51,6 +51,7 @@ final class GitHubService
         usort($repositories, static fn (array $left, array $right): int => strcasecmp($left['full_name'], $right['full_name']));
         return [
             'configured' => $configured,
+            'can_connect' => $configured && $this->client->isUserAuthorizationConfigured(),
             'connected' => $installations !== [],
             'repositories' => $repositories,
         ];
@@ -59,29 +60,70 @@ final class GitHubService
     public function startInstallation(AuthenticatedUser $user): array
     {
         $this->requireAdmin($user);
-        if (!$this->client->isConfigured() || $this->config->githubAppSlug === '') {
-            throw new ApiException(503, 'github_not_configured', 'Configure the GitHub App before connecting a repository.');
+        $this->requireSetupSession($user);
+        if (!$this->client->isConfigured() || $this->config->githubAppSlug === '' || !$this->client->isUserAuthorizationConfigured()) {
+            throw new ApiException(503, 'github_not_configured', 'Configure the GitHub App and user authorization before connecting a repository.');
         }
         $state = bin2hex(random_bytes(32));
-        $this->installations->createState($user->workspaceId, $user->id, hash('sha256', $state));
+        $this->installations->createState($user->workspaceId, $user->id, $user->tokenId, hash('sha256', $state));
         $url = 'https://github.com/apps/' . rawurlencode($this->config->githubAppSlug)
             . '/installations/new?state=' . rawurlencode($state);
         return ['url' => $url];
     }
 
-    public function completeInstallation(AuthenticatedUser $user, int $installationId, string $state): void
+    public function beginInstallationAuthorization(AuthenticatedUser $user, int $installationId, string $state): string
     {
         $this->requireAdmin($user);
+        $this->requireSetupSession($user);
         if ($installationId < 1 || preg_match('/^[a-f0-9]{64}$/', $state) !== 1) {
             throw new ApiException(400, 'github_setup_invalid', 'The GitHub setup response is invalid. Start the connection again.');
         }
-        if (!$this->installations->consumeState($user->workspaceId, $user->id, hash('sha256', $state))) {
+        if (!$this->installations->bindInstallation(
+            $user->workspaceId,
+            $user->id,
+            $user->tokenId,
+            hash('sha256', $state),
+            $installationId,
+        )) {
             throw new ApiException(403, 'github_setup_state_invalid', 'The GitHub setup link expired or was already used. Start the connection again.');
+        }
+        $callbackUrl = rtrim($this->config->publicAppUrl, '/') . '/api/v1/github/setup/authorize';
+        return $this->client->userAuthorizationUrl($state, $callbackUrl);
+    }
+
+    public function completeInstallation(AuthenticatedUser $user, string $code, string $state): void
+    {
+        $this->requireAdmin($user);
+        $this->requireSetupSession($user);
+        if ($code === '' || strlen($code) > 2048 || preg_match('/^[a-f0-9]{64}$/', $state) !== 1) {
+            throw new ApiException(400, 'github_setup_invalid', 'The GitHub authorization response is invalid. Start the connection again.');
+        }
+        $stateHash = hash('sha256', $state);
+        $installationId = $this->installations->installationForState(
+            $user->workspaceId,
+            $user->id,
+            $user->tokenId,
+            $stateHash,
+        );
+        if ($installationId === null) {
+            throw new ApiException(403, 'github_setup_state_invalid', 'The GitHub setup link expired or was already used. Start the connection again.');
+        }
+        if (!$this->client->canUserAccessInstallation($code, $installationId)) {
+            throw new ApiException(403, 'github_installation_not_authorized', 'The authorized GitHub user cannot access this installation. Start the connection again with an account that can manage it.');
         }
         $installation = $this->client->verifyInstallation($installationId);
         $accountLogin = $installation['account']['login'] ?? null;
         if (!is_string($accountLogin) || $accountLogin === '') {
             throw new ApiException(422, 'github_setup_invalid', 'GitHub did not identify the installation account.');
+        }
+        if (!$this->installations->consumeState(
+            $user->workspaceId,
+            $user->id,
+            $user->tokenId,
+            $stateHash,
+            $installationId,
+        )) {
+            throw new ApiException(403, 'github_setup_state_invalid', 'The GitHub setup link expired or was already used. Start the connection again.');
         }
         $this->installations->add($user->workspaceId, $installationId, $accountLogin, $user->id);
     }
@@ -243,6 +285,13 @@ final class GitHubService
     private function requireAdmin(AuthenticatedUser $user): void
     {
         if ($user->role !== 'admin') throw new ApiException(403, 'forbidden', 'Only workspace admins can connect GitHub.');
+    }
+
+    private function requireSetupSession(AuthenticatedUser $user): void
+    {
+        if ($user->authenticationMethod !== 'cookie') {
+            throw new ApiException(403, 'github_setup_session_required', 'Connect a GitHub installation from a signed-in browser session.');
+        }
     }
 
     private function requireInternalUser(AuthenticatedUser $user): void

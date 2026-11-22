@@ -92,7 +92,12 @@ final class Application
             new IssueDiscussionRepository($pdo),
         );
         $github = new GitHubService(
-            $githubApiClient ?? new GitHubAppClient($config->githubAppId, $config->githubPrivateKey),
+            $githubApiClient ?? new GitHubAppClient(
+                $config->githubAppId,
+                $config->githubPrivateKey,
+                $config->githubOAuthClientId,
+                $config->githubOAuthClientSecret,
+            ),
             new GitHubInstallationRepository($pdo),
             new GitHubPullRequestRepository($pdo),
             $projectRepository,

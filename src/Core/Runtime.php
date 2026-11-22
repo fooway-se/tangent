@@ -45,6 +45,8 @@ final class Runtime
             str_replace('\\n', "\n", self::environment('TANGENT_GITHUB_PRIVATE_KEY', '')),
             self::environment('TANGENT_GITHUB_WEBHOOK_SECRET', ''),
             self::environment('TANGENT_MAIL_FROM', $fileConfig['mail_from'] ?? ''),
+            self::environment('TANGENT_GITHUB_OAUTH_CLIENT_ID', $fileConfig['github_oauth_client_id'] ?? ''),
+            self::environment('TANGENT_GITHUB_OAUTH_CLIENT_SECRET', $fileConfig['github_oauth_client_secret'] ?? ''),
         );
     }
 
