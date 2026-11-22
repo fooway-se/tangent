@@ -92,8 +92,8 @@ final class AuthRoutes
             return Response::json(201, ['invite' => $this->credentials->createInvite($user, $request->body, $request->remoteAddress)]);
         });
 
-        $router->add('POST', '/api/v1/users/invites/{id}/link', function (Request $request, array $params, AuthenticatedUser $user): Response {
-            return Response::json(200, ['invite' => $this->credentials->regenerateInviteLink(
+        $router->add('POST', '/api/v1/users/invites/{id}/resend', function (Request $request, array $params, AuthenticatedUser $user): Response {
+            return Response::json(200, ['invite' => $this->credentials->resendInvite(
                 $user,
                 PositiveId::parse($params['id']),
                 $request->remoteAddress,

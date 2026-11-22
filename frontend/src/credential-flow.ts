@@ -7,8 +7,11 @@ export interface InviteCredentialPresentation {
   description: string;
 }
 
-export function inviteCredentialPresentation(emailVerificationRequired: boolean): InviteCredentialPresentation {
-  if (!emailVerificationRequired) {
+export function inviteCredentialPresentation(
+  passwordSetupRequired: boolean,
+  emailVerificationRequired = false,
+): InviteCredentialPresentation {
+  if (!passwordSetupRequired) {
     return {
       passwordAutocomplete: 'current-password',
       showVerificationCode: false,
@@ -20,14 +23,16 @@ export function inviteCredentialPresentation(emailVerificationRequired: boolean)
   }
   return {
     passwordAutocomplete: 'new-password',
-    showVerificationCode: true,
+    showVerificationCode: emailVerificationRequired,
     showConfirmation: true,
     passwordLabel: 'New password',
-    submitLabel: 'Verify email and join',
-    description: 'Enter the code sent to your email, then choose a password to join the workspace.',
+    submitLabel: emailVerificationRequired ? 'Verify email and join' : 'Create account and join',
+    description: emailVerificationRequired
+      ? 'Enter the code sent to your email, then choose a password to join the workspace.'
+      : 'Choose a password to create your Tangent account and join the workspace.',
   };
 }
 
-export function credentialNeedsConfirmation(type: 'invite' | 'reset', emailVerificationRequired = false): boolean {
-  return type === 'reset' || emailVerificationRequired;
+export function credentialNeedsConfirmation(type: 'invite' | 'reset', passwordSetupRequired = false): boolean {
+  return type === 'reset' || passwordSetupRequired;
 }

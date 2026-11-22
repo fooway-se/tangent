@@ -63,7 +63,7 @@ Each module registers its own routes. Modules do not touch each other's tables; 
 - The polling endpoint supports `ETag` and `304` so empty polls are almost free.
 - Non-empty API request bodies must use `Content-Type: application/json`. The gateway accepts request bodies up to 1 MiB and returns `413 payload_too_large` above that limit.
 - Browser sessions use the `tangent_workspace` cookie to select the active workspace. Bearer tokens are workspace-scoped; non-default workspaces use the `X-Tangent-Workspace` header.
-- Workspace admins generate one-use invite and password-reset links to copy and send manually; Tangent has no mail integration. Invite acceptance creates or links the global account, workspace membership, guest project access, and session in one transaction. Admin-generated password reset links use the same typed, one-use credential-token table and revoke all sessions and API tokens for the account across workspaces after a successful reset.
+- Workspace admins create one-use invites that Tangent emails to the invited address; raw invite tokens are never returned to the admin. Invite acceptance creates or links the global account, workspace membership, guest project access, and session in one transaction. Admin-initiated password recovery emails use the same typed, one-use credential-token table and revoke all sessions and API tokens for the account across workspaces after a successful reset.
 - Cursor-based pagination.
 - One consistent JSON error format.
 - Unexpected server errors return a generic 500 with an `X-Request-ID`. The matching error log records only that ID, the exception class, and the event type.

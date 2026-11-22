@@ -12,7 +12,7 @@ docker compose exec -it php php bin/seed-admin.php
 ```
 
 Composer installs PHPUnit from the `require-dev` section of `composer.json`. It does not add a runtime dependency to the release.
-The seed command is enabled only when `TANGENT_ENV=development`; enter an admin name, email, and password when prompted. Then open [http://localhost:8080](http://localhost:8080) to sign in. The seed command is for local development; production setup creates the workspace and first admin through the installer.
+The seed command is enabled only when `TANGENT_ENV=development`; enter an admin name, email, and password when prompted. Then open [http://localhost:8080](http://localhost:8080) to sign in. The seed command is for local development; production setup creates the workspace and first admin through the installer, which also saves the public site URL and sender email address in the private config.
 If port 8080 is already in use, start the stack with `TANGENT_HTTP_PORT=8081 docker compose up -d --build` and open [http://localhost:8081](http://localhost:8081).
 
 To sign in from a phone on the same network, set `TANGENT_APP_URL` to the development machine’s LAN address and use that exact URL on the phone. For example, replace `192.168.1.50` with the machine’s address and run:
@@ -47,7 +47,7 @@ Migration 011 stops before applying if one normalized email belongs to multiple 
 
 ## Workspace invites and password resets
 
-Workspace admins create developer or guest invites from **Workspace admin**. A guest invite must select at least one active project. Tangent generates a random one-use link that expires after seven days and displays it once so the admin can copy and send it manually. Only SHA-256 hashes of the invite token and email verification code are stored; pending invite lists never expose secrets. New global accounts must enter a one-time code emailed to the invited address before choosing a password. Existing accounts must enter their current password before Tangent links the membership. Admins can generate a replacement link, which invalidates the previous link and code, or revoke the invite.
+Workspace admins create developer or guest invites from **Workspace admin**. A guest invite must select at least one active project. Tangent emails a random single-use link to the invited address; it expires after seven days and is never returned to the admin or shown in pending invite lists. Only the SHA-256 token hash is stored for new invites. New global accounts choose a password after opening the emailed link, which verifies access to the invited mailbox. Existing accounts must enter their current password before Tangent links the membership. Admins can resend an invite, which invalidates the previous link, or revoke it. Pending invites created before this email flow may still require their emailed verification code.
 
 Tangent has no self-service **Forgot password?** form. After the login attempt limit is reached, the sign-in screen tells the user to contact a workspace admin. An admin can request a one-use, one-hour password reset email from the member list; the reset URL is sent directly to the account email and is never returned to the admin. Completing the reset revokes every active session and API token for the account across workspaces, so a reset also cuts off integrations using that account's tokens.
 
@@ -56,7 +56,7 @@ Configure these values in the host environment or in `config.php` for production
 | Environment variable | `config.php` key | Purpose | Default |
 |---|---|---|---|
 | `TANGENT_APP_URL` | `app_url` | Public base URL used to build invite links and emailed password recovery links; set this to the exact HTTPS site address. | `http://localhost:8080` |
-| `TANGENT_MAIL_FROM` | `mail_from` | Valid sender address used for invitation verification and password recovery email. Configure PHP's mail transport on the host. | unset |
+| `TANGENT_MAIL_FROM` | `mail_from` | Sender address used for workspace invitations and password recovery email. The installer saves it in `config.php`; this environment variable overrides that value. | unset |
 | `TANGENT_HIBP_ENABLED` | `hibp_enabled` | Enables the optional Have I Been Pwned Pwned Passwords range lookup. | `false` |
 | `TANGENT_GITHUB_APP_ID` | — | Numeric GitHub App ID for repository selection and pull-request tracking. | unset |
 | `TANGENT_GITHUB_APP_SLUG` | — | GitHub App URL slug. | unset |
@@ -65,7 +65,7 @@ Configure these values in the host environment or in `config.php` for production
 | `TANGENT_GITHUB_OAUTH_CLIENT_SECRET` | `github_oauth_client_secret` | OAuth client secret for the GitHub App user authorization step. | unset |
 | `TANGENT_GITHUB_WEBHOOK_SECRET` | — | Secret used to verify GitHub webhook signatures. | unset |
 
-Tangent sends plain-text verification and recovery email through PHP's configured mail transport. New-account invites fail closed when delivery is unavailable; existing-account invites still require the account password. The optional breach lookup sends only the first five hexadecimal characters of the password's SHA-1 hash to the service, verifies the full hash against the returned suffix list, and fails open when the network check is unavailable. Leave it disabled on hosts without outbound HTTPS access.
+Tangent sends plain-text invitation and recovery email through PHP's configured mail transport. Invites fail closed when delivery is unavailable, and no usable invite link is issued. Existing-account invite acceptance still requires the account password. The optional breach lookup sends only the first five hexadecimal characters of the password's SHA-1 hash to the service, verifies the full hash against the returned suffix list, and fails open when the network check is unavailable. Leave it disabled on hosts without outbound HTTPS access.
 
 Configure the GitHub App's Setup URL as `{TANGENT_APP_URL}/api/v1/github/setup` and its OAuth callback URL as `{TANGENT_APP_URL}/api/v1/github/setup/authorize`. Use the App's OAuth client ID and secret for the OAuth settings above; the user who starts setup must remain signed into the same Tangent browser session and must be able to manage the selected GitHub installation.
 

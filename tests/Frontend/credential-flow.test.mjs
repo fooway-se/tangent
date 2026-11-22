@@ -5,8 +5,20 @@ import {
   inviteCredentialPresentation,
 } from '../../public/assets/credential-flow.js';
 
-test('new invitees verify their email before choosing a password', () => {
+test('new invitees set a password after opening their emailed invitation link', () => {
   assert.deepEqual(inviteCredentialPresentation(true), {
+    passwordAutocomplete: 'new-password',
+    showVerificationCode: false,
+    showConfirmation: true,
+    passwordLabel: 'New password',
+    submitLabel: 'Create account and join',
+    description: 'Choose a password to create your Tangent account and join the workspace.',
+  });
+  assert.equal(credentialNeedsConfirmation('invite', true), true);
+});
+
+test('legacy invites can still require their existing verification code', () => {
+  assert.deepEqual(inviteCredentialPresentation(true, true), {
     passwordAutocomplete: 'new-password',
     showVerificationCode: true,
     showConfirmation: true,
@@ -14,7 +26,6 @@ test('new invitees verify their email before choosing a password', () => {
     submitLabel: 'Verify email and join',
     description: 'Enter the code sent to your email, then choose a password to join the workspace.',
   });
-  assert.equal(credentialNeedsConfirmation('invite', true), true);
 });
 
 test('existing accounts prove identity with their current password', () => {

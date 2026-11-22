@@ -16,17 +16,17 @@ test('workspace admin invites members without creating their passwords', () => {
   assert.ok(/id="workspace-admin-members-tab"[^>]*role="tab"/.test(html), 'Members tab exists.');
   assert.ok(/id="workspace-admin-invites-tab"[^>]*role="tab"/.test(html), 'Invites tab exists.');
   assert.ok(/id="workspace-admin-workspaces-tab"[^>]*role="tab"/.test(html), 'Workspaces tab exists.');
-  assert.match(html, /id="generated-credential-link"/);
-  assert.match(html, /id="copy-generated-credential-link"/);
+  assert.doesNotMatch(html, /id="generated-credential-link"/);
   assert.match(app, /checkbox\.name = 'project_ids'/);
   assert.doesNotMatch(html, /id="developer-form"/);
   assert.doesNotMatch(html, /Forgot password\?/);
   assert.match(app, /'\/users\/invites'/);
-  assert.match(app, /\/users\/invites\/\$\{inviteId\}\/link/);
+  assert.match(app, /\/users\/invites\/\$\{inviteId\}\/resend/);
   assert.match(app, /\/users\/invites\/\$\{inviteId\}/);
   assert.match(app, /\/users\/\$\{member\.id\}\/password-reset/);
-  assert.match(app, /function showGeneratedCredentialLink\(/);
-  assert.match(app, /If this creates a new account, Tangent emails a verification code to the invited address\./);
+  assert.match(html, /Send invite/);
+  assert.match(app, /Invitation sent to/);
+  assert.match(app, /Invite resent to/);
 });
 
 test('member deactivation explains permanent workspace credential revocation', () => {
@@ -48,7 +48,7 @@ test('pending invite details and actions fit narrow phone screens', () => {
   assert.match(css, /\.workspace-invite-actions \.button\s*\{[^}]*min-height:\s*44px/);
 });
 
-test('generated credential links use the same host port as the development app', () => {
+test('credential email links use the same host port as the development app', () => {
   assert.match(compose, /"\$\{TANGENT_HTTP_PORT:-8081\}:8080"/);
   assert.match(compose, /TANGENT_APP_URL:\s*"\$\{TANGENT_APP_URL:-http:\/\/localhost:\$\{TANGENT_HTTP_PORT:-8081\}\}"/);
 });
@@ -74,7 +74,8 @@ test('invite and password reset fragments are removed before public requests', (
   );
   assert.match(inviteCopy, /result\.invite\.workspace_name/);
   assert.doesNotMatch(inviteCopy, /result\.invite\.email/);
-  assert.match(inviteFlow, /inviteCredentialPresentation\(result\.invite\.email_verification_required\)/);
+  assert.match(inviteFlow, /inviteCredentialPresentation\([\s\S]*result\.invite\.password_setup_required[\s\S]*result\.invite\.email_verification_required/);
+  assert.match(app, /password_setup_required: boolean/);
   assert.match(app, /verification_code: values\.get\('verification_code'\)/);
   assert.match(app, /api\('\/auth\/password-reset\/complete'/);
   assert.match(app, /const credentialState = consumeCredentialFragment\(\)/);
@@ -120,8 +121,9 @@ test('workspace administration renders member and invite data as text', () => {
   assert.match(app, /await loadWorkspaceAdmin\(\)/);
 });
 
-test('generated credential links remain visible outside the hidden admin tabs', () => {
-  assert.match(html, /id="workspace-admin-workspaces-panel"[\s\S]*?<\/section>\s*<section id="generated-credential-link"/);
+test('workspace admins can resend emailed invites without retrieving their secrets', () => {
+  assert.doesNotMatch(html, /id="generated-credential-link"/);
+  assert.match(app, /\/users\/invites\/\$\{inviteId\}\/resend/);
 });
 
 test('workspace administration has keyboard tabs and member activation controls', () => {
@@ -183,7 +185,7 @@ test('workspace member rows give identity its own line and group role/actions be
 test('OpenAPI exposes public token completion and admin initiated email recovery', () => {
   for (const path of [
     '/auth/invites/inspect', '/auth/invites/accept', '/auth/password-reset/complete',
-    '/users/invites', '/users/invites/{id}/link', '/users/{id}/password-reset', '/users/{id}/status', '/users/{id}/role',
+    '/users/invites', '/users/invites/{id}/resend', '/users/{id}/password-reset', '/users/{id}/status', '/users/{id}/role',
     '/users/{id}/projects',
   ]) {
     assert.ok(openapi.includes(`  ${path}:`), `Missing ${path}`);
@@ -192,7 +194,7 @@ test('OpenAPI exposes public token completion and admin initiated email recovery
   assert.match(openapi, /password: \{ type: string, minLength: 15, maxLength: 128/);
   const resetDelivery = app.slice(
     app.indexOf('async function sendMemberPasswordRecoveryEmail('),
-    app.indexOf('async function generateNewInviteLink('),
+    app.indexOf('async function resendWorkspaceInvite('),
   );
   assert.doesNotMatch(resetDelivery, /reset_url/);
   assert.match(resetDelivery, /Password recovery email sent to/);

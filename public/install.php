@@ -176,6 +176,11 @@ function installerValue(string $key, string $default = ''): string
                     <legend>Site</legend>
                     <label>Public site URL <input name="app_url" type="url" required maxlength="500" placeholder="https://example.com/tangent" value="<?= installerEscape(installerValue('app_url', $defaultAppUrl)) ?>"></label>
                 </fieldset>
+                <fieldset>
+                    <legend>Email</legend>
+                    <label>Sender email address <input name="mail_from" type="email" required maxlength="254" placeholder="no-reply@example.com" value="<?= installerEscape(installerValue('mail_from')) ?>"></label>
+                    <p class="help">Used as the From address for workspace invitations and password recovery emails.</p>
+                </fieldset>
                 <label>One-time setup key <input name="install_key" type="password" required minlength="64" maxlength="64" autocomplete="off"></label>
                 <p class="help">Setup runs the migrations and creates the workspace and admin. Tangent stores the config outside the public web directory and consumes the key.</p>
                 <button type="submit">Install Tangent</button>

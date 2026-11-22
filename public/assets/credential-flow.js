@@ -1,5 +1,5 @@
-export function inviteCredentialPresentation(emailVerificationRequired) {
-    if (!emailVerificationRequired) {
+export function inviteCredentialPresentation(passwordSetupRequired, emailVerificationRequired = false) {
+    if (!passwordSetupRequired) {
         return {
             passwordAutocomplete: 'current-password',
             showVerificationCode: false,
@@ -11,13 +11,15 @@ export function inviteCredentialPresentation(emailVerificationRequired) {
     }
     return {
         passwordAutocomplete: 'new-password',
-        showVerificationCode: true,
+        showVerificationCode: emailVerificationRequired,
         showConfirmation: true,
         passwordLabel: 'New password',
-        submitLabel: 'Verify email and join',
-        description: 'Enter the code sent to your email, then choose a password to join the workspace.',
+        submitLabel: emailVerificationRequired ? 'Verify email and join' : 'Create account and join',
+        description: emailVerificationRequired
+            ? 'Enter the code sent to your email, then choose a password to join the workspace.'
+            : 'Choose a password to create your Tangent account and join the workspace.',
     };
 }
-export function credentialNeedsConfirmation(type, emailVerificationRequired = false) {
-    return type === 'reset' || emailVerificationRequired;
+export function credentialNeedsConfirmation(type, passwordSetupRequired = false) {
+    return type === 'reset' || passwordSetupRequired;
 }

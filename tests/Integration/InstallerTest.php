@@ -51,6 +51,7 @@ final class InstallerTest extends ApiTestCase
                 'admin_password' => 'install integration password 4827',
                 'admin_password_confirm' => 'install integration password 4827',
                 'app_url' => 'https://install.example.test',
+                'mail_from' => 'no-reply@install.example.test',
             ];
 
             $workspaceId = (new InstallService(
@@ -64,6 +65,7 @@ final class InstallerTest extends ApiTestCase
             self::assertFileDoesNotExist($keyPath);
             $config = require $configPath;
             self::assertSame($workspaceId, $config['workspace_id']);
+            self::assertSame('no-reply@install.example.test', $config['mail_from']);
 
             $workspace = $database->prepare('SELECT name, slug FROM workspaces WHERE id = :id');
             $workspace->execute(['id' => $workspaceId]);

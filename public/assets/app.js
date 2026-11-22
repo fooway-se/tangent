@@ -267,12 +267,6 @@ const workspaceAdminWorkspacesPanel = document.querySelector('#workspace-admin-w
 const workspaceMembersList = document.querySelector('#workspace-members-list');
 const workspaceMembersEmpty = document.querySelector('#workspace-members-empty');
 const inviteForm = document.querySelector('#invite-form');
-const generatedCredentialLink = document.querySelector('#generated-credential-link');
-const generatedCredentialHeading = document.querySelector('#generated-credential-heading');
-const generatedCredentialDescription = document.querySelector('#generated-credential-description');
-const generatedCredentialUrl = document.querySelector('#generated-credential-url');
-const copyGeneratedCredentialLink = document.querySelector('#copy-generated-credential-link');
-const generatedCredentialCopyStatus = document.querySelector('#generated-credential-copy-status');
 const inviteRoleInput = document.querySelector('#invite-role');
 const inviteProjectSelection = document.querySelector('#invite-project-selection');
 const inviteProjectOptions = document.querySelector('#invite-project-options');
@@ -1427,13 +1421,13 @@ function renderWorkspaceInvites(invites) {
         details.textContent = `${invite.name} · ${invite.email} · ${invite.role} · Expires ${new Date(`${invite.expires_at}Z`).toLocaleDateString()}`;
         const actions = document.createElement('div');
         actions.className = 'workspace-invite-actions';
-        const newLink = document.createElement('button');
-        newLink.type = 'button';
-        newLink.className = 'button button-quiet';
-        newLink.textContent = 'Generate new link';
-        newLink.dataset.inviteId = String(invite.id);
-        newLink.dataset.inviteAction = 'link';
-        newLink.addEventListener('click', () => void generateNewInviteLink(invite.id));
+        const resend = document.createElement('button');
+        resend.type = 'button';
+        resend.className = 'button button-quiet';
+        resend.textContent = 'Resend invite';
+        resend.dataset.inviteId = String(invite.id);
+        resend.dataset.inviteAction = 'resend';
+        resend.addEventListener('click', () => void resendWorkspaceInvite(invite.id));
         const revoke = document.createElement('button');
         revoke.type = 'button';
         revoke.className = 'button button-quiet button-danger';
@@ -1441,7 +1435,7 @@ function renderWorkspaceInvites(invites) {
         revoke.dataset.inviteId = String(invite.id);
         revoke.dataset.inviteAction = 'revoke';
         revoke.addEventListener('click', () => void revokeWorkspaceInvite(invite.id));
-        actions.append(newLink, revoke);
+        actions.append(resend, revoke);
         item.append(details, actions);
         workspaceInvitesList.append(item);
     }
@@ -1466,16 +1460,7 @@ function renderInviteProjectOptions() {
         inviteProjectOptions.append(empty);
     }
 }
-function showGeneratedCredentialLink(heading, description, url) {
-    generatedCredentialHeading.textContent = heading;
-    generatedCredentialDescription.textContent = description;
-    generatedCredentialUrl.value = url;
-    generatedCredentialCopyStatus.textContent = '';
-    generatedCredentialLink.hidden = false;
-    copyGeneratedCredentialLink.focus();
-}
 async function sendMemberPasswordRecoveryEmail(member) {
-    generatedCredentialLink.hidden = true;
     try {
         await api(`/users/${member.id}/password-reset`, {
             method: 'POST',
@@ -1487,33 +1472,19 @@ async function sendMemberPasswordRecoveryEmail(member) {
         report(error instanceof Error ? error.message : 'Could not send the password recovery email.', true);
     }
 }
-async function generateNewInviteLink(inviteId) {
-    generatedCredentialLink.hidden = true;
+async function resendWorkspaceInvite(inviteId) {
     try {
-        const result = await api(`/users/invites/${inviteId}/link`, {
+        const result = await api(`/users/invites/${inviteId}/resend`, {
             method: 'POST',
             body: JSON.stringify({}),
         });
-        showGeneratedCredentialLink('New invite link', `Copy this seven-day link and send it to ${result.invite.email}. If this creates a new account, Tangent emails a verification code to the invited address. The previous link no longer works.`, result.invite.invite_url);
-        report('New invite link generated.');
+        report(`Invite resent to ${result.invite.email}. The previous link no longer works.`);
         await loadWorkspaceAdmin();
-        copyGeneratedCredentialLink.focus();
     }
     catch (error) {
-        report(error instanceof Error ? error.message : 'Could not generate a new invite link.', true);
+        report(error instanceof Error ? error.message : 'Could not resend the invite.', true);
     }
 }
-copyGeneratedCredentialLink.addEventListener('click', async () => {
-    try {
-        await navigator.clipboard.writeText(generatedCredentialUrl.value);
-        generatedCredentialCopyStatus.textContent = 'Link copied.';
-    }
-    catch {
-        generatedCredentialUrl.focus();
-        generatedCredentialUrl.select();
-        generatedCredentialCopyStatus.textContent = 'Link selected. Copy it with Ctrl+C or Command+C.';
-    }
-});
 async function revokeWorkspaceInvite(inviteId) {
     try {
         await api(`/users/invites/${inviteId}`, { method: 'DELETE' });
@@ -8238,7 +8209,7 @@ async function openCredentialFlow(credential) {
             body: JSON.stringify({ token: credential.token }),
         });
         invitePreview = result.invite;
-        const presentation = inviteCredentialPresentation(result.invite.email_verification_required);
+        const presentation = inviteCredentialPresentation(result.invite.password_setup_required, result.invite.email_verification_required);
         credentialFlowDescription.textContent = `You’re invited to join “${result.invite.workspace_name}” as a ${result.invite.role}. ${presentation.description}`;
         credentialPasswordFields.hidden = !result.invite.password_required;
         const password = credentialForm.elements.namedItem('password');
@@ -8283,7 +8254,7 @@ credentialForm.addEventListener('submit', async (event) => {
     const values = new FormData(credentialForm);
     const password = values.get('password');
     const confirmation = values.get('confirmation');
-    if (!credentialPasswordFields.hidden && credentialNeedsConfirmation(credential.type, invitePreview?.email_verification_required === true) && password !== confirmation) {
+    if (!credentialPasswordFields.hidden && credentialNeedsConfirmation(credential.type, invitePreview?.password_setup_required === true) && password !== confirmation) {
         credentialFlowError.textContent = 'The passwords do not match.';
         credentialFlowError.hidden = false;
         credentialForm.querySelector('input[name="confirmation"]')?.focus();
@@ -8425,7 +8396,6 @@ inviteRoleInput.addEventListener('change', () => {
 });
 inviteForm.addEventListener('submit', async (event) => {
     event.preventDefault();
-    generatedCredentialLink.hidden = true;
     const values = new FormData(inviteForm);
     const role = values.get('role') === 'guest' ? 'guest' : 'developer';
     const projectIds = values.getAll('project_ids').map(Number).filter(Number.isSafeInteger);
@@ -8446,13 +8416,11 @@ inviteForm.addEventListener('submit', async (event) => {
         });
         inviteForm.reset();
         inviteProjectSelection.hidden = true;
-        showGeneratedCredentialLink('Invite link', `Copy this seven-day link and send it to ${result.invite.email}. If this creates a new account, Tangent emails a verification code to the invited address.`, result.invite.invite_url);
-        report('Invite link generated. Copy and send it manually.');
+        report(`Invitation sent to ${result.invite.email}.`);
         await loadWorkspaceAdmin();
-        copyGeneratedCredentialLink.focus();
     }
     catch (error) {
-        report(error instanceof Error ? error.message : 'Could not create the invite link.', true);
+        report(error instanceof Error ? error.message : 'Could not send the invitation email.', true);
     }
 });
 function showGuestShell(user) {

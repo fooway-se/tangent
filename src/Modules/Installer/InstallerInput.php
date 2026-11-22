@@ -49,6 +49,11 @@ final class InstallerInput
             throw new InvalidArgumentException('Enter a valid admin email address.');
         }
 
+        $mailFrom = self::text($input, 'mail_from', 'Sender email address', 254);
+        if (!filter_var($mailFrom, FILTER_VALIDATE_EMAIL)) {
+            throw new InvalidArgumentException('Enter a valid sender email address.');
+        }
+
         $adminPassword = self::string($input, 'admin_password');
         if (!hash_equals($adminPassword, self::string($input, 'admin_password_confirm'))) {
             throw new InvalidArgumentException('The admin password entries do not match.');
@@ -98,6 +103,7 @@ final class InstallerInput
             'admin_email' => $adminEmail,
             'admin_password' => $adminPassword,
             'app_url' => $appUrl,
+            'mail_from' => $mailFrom,
             'cookie_secure' => $scheme === 'https',
         ];
     }

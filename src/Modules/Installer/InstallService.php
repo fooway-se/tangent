@@ -51,6 +51,7 @@ final class InstallService
                 'workspace_id' => $workspaceId,
                 'cookie_secure' => $input['cookie_secure'],
                 'app_url' => $input['app_url'],
+                'mail_from' => $input['mail_from'],
                 'hibp_enabled' => false,
             ]);
             if (!InstallerKey::consume($this->keyPath)) {

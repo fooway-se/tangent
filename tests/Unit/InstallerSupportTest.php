@@ -128,6 +128,7 @@ final class InstallerSupportTest extends TestCase
             'workspace_id' => 12,
             'cookie_secure' => true,
             'app_url' => 'https://tangent.example.test',
+            'mail_from' => 'no-reply@tangent.example.test',
             'hibp_enabled' => false,
         ], require $configPath);
     }
@@ -165,6 +166,26 @@ final class InstallerSupportTest extends TestCase
             self::fail('Expected an insecure URL to be rejected.');
         } catch (\InvalidArgumentException $exception) {
             self::assertStringContainsString('HTTPS', $exception->getMessage());
+        }
+
+        self::assertSame(0, $database->calls);
+    }
+
+    public function testInstallerRequiresAValidSenderEmailBeforeDatabaseSetup(): void
+    {
+        $directory = $this->temporaryDirectory();
+        $keyPath = $directory . '/.install-key';
+        $key = str_repeat('f', 64);
+        file_put_contents($keyPath, $key);
+        $database = new RecordingInstallDatabase(12);
+        $input = $this->validInput();
+        $input['mail_from'] = 'not-an-email';
+
+        try {
+            (new InstallService($keyPath, $directory . '/config.php', $database))->install($input, $key);
+            self::fail('Expected an invalid sender address to be rejected.');
+        } catch (\InvalidArgumentException $exception) {
+            self::assertStringContainsString('sender email address', strtolower($exception->getMessage()));
         }
 
         self::assertSame(0, $database->calls);
@@ -267,6 +288,7 @@ final class InstallerSupportTest extends TestCase
             'admin_password' => 'unique password for install 4391',
             'admin_password_confirm' => 'unique password for install 4391',
             'app_url' => 'https://tangent.example.test',
+            'mail_from' => 'no-reply@tangent.example.test',
         ];
     }
 

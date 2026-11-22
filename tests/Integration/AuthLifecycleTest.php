@@ -79,9 +79,10 @@ final class AuthLifecycleTest extends ApiTestCase
             ['tangent_session' => rawurldecode($matches[1])],
         ));
         self::assertSame(201, $invite->status, json_encode($invite->body));
-        self::assertStringStartsWith(
+        self::assertArrayNotHasKey('invite_url', $invite->body['invite']);
+        self::assertStringContainsString(
             'https://fooway.se/tangent/app.html#invite=',
-            $invite->body['invite']['invite_url'],
+            $this->mailer->messages[0]['body'],
         );
     }
 
@@ -98,29 +99,30 @@ final class AuthLifecycleTest extends ApiTestCase
 
         self::assertSame(201, $created->status, json_encode($created->body));
         self::assertArrayNotHasKey('token', $created->body['invite']);
-        self::assertArrayHasKey('invite_url', $created->body['invite']);
-        $plainToken = $this->tokenFromCredentialUrl($created->body['invite']['invite_url'], 'invite');
+        self::assertArrayNotHasKey('invite_url', $created->body['invite']);
+        self::assertSame('client@example.test', $this->mailer->messages[0]['to']);
+        self::assertStringContainsString('Tangent workspace invitation', $this->mailer->messages[0]['subject']);
+        self::assertStringNotContainsString('Verification code:', $this->mailer->messages[0]['body']);
+        $plainToken = $this->inviteTokenFromLastEmail();
 
         $inspection = $this->request('POST', '/api/v1/auth/invites/inspect', ['token' => $plainToken]);
         self::assertSame(200, $inspection->status, json_encode($inspection->body));
         self::assertTrue($inspection->body['invite']['password_required']);
         self::assertSame('client@example.test', $inspection->body['invite']['email']);
         self::assertSame('Test workspace', $inspection->body['invite']['workspace_name']);
-        self::assertSame(1, preg_match('/Verification code: ([a-f0-9]{64})/', $this->mailer->messages[0]['body'], $matches));
-        $verificationCode = $matches[1];
-
+        self::assertTrue($inspection->body['invite']['password_setup_required']);
+        self::assertFalse($inspection->body['invite']['email_verification_required']);
         $stored = $this->pdo->prepare('SELECT token_hash, email_verification_hash, token_type FROM credential_tokens WHERE id = :id');
         $stored->execute(['id' => $created->body['invite']['id']]);
         self::assertSame([
             'token_hash' => hash('sha256', $plainToken),
-            'email_verification_hash' => hash('sha256', $verificationCode),
+            'email_verification_hash' => null,
             'token_type' => 'invite',
         ], $stored->fetch(\PDO::FETCH_ASSOC));
 
         $accepted = $this->request('POST', '/api/v1/auth/invites/accept', [
             'token' => $plainToken,
             'password' => 'a calm orchard under winter stars',
-            'verification_code' => $verificationCode,
         ]);
         self::assertSame(200, $accepted->status, json_encode($accepted->body));
         self::assertSame('guest', $accepted->body['user']['role']);
@@ -158,8 +160,7 @@ final class AuthLifecycleTest extends ApiTestCase
             'project_ids' => [$archivedProjectId, $eligibleProjectId],
         ], $admin['csrf']);
         self::assertSame(201, $created->status, json_encode($created->body));
-        $plainToken = $this->tokenFromCredentialUrl($created->body['invite']['invite_url'], 'invite');
-        self::assertSame(1, preg_match('/Verification code: ([a-f0-9]{64})/', $this->mailer->messages[0]['body'], $matches));
+        $plainToken = $this->inviteTokenFromLastEmail();
 
         $lifecycle = $this->pdo->prepare('UPDATE projects SET status = :status WHERE workspace_id = :workspace_id AND id = :id');
         $lifecycle->execute(['status' => 'archived', 'workspace_id' => $this->workspaceId, 'id' => $archivedProjectId]);
@@ -167,7 +168,6 @@ final class AuthLifecycleTest extends ApiTestCase
         $accepted = $this->request('POST', '/api/v1/auth/invites/accept', [
             'token' => $plainToken,
             'password' => 'a thoughtful guest password phrase',
-            'verification_code' => $matches[1],
         ]);
 
         self::assertSame(200, $accepted->status, json_encode($accepted->body));
@@ -188,15 +188,13 @@ final class AuthLifecycleTest extends ApiTestCase
             'project_ids' => [$projectId],
         ], $admin['csrf']);
         self::assertSame(201, $created->status, json_encode($created->body));
-        $plainToken = $this->tokenFromCredentialUrl($created->body['invite']['invite_url'], 'invite');
-        self::assertSame(1, preg_match('/Verification code: ([a-f0-9]{64})/', $this->mailer->messages[0]['body'], $matches));
+        $plainToken = $this->inviteTokenFromLastEmail();
         $this->pdo->prepare('UPDATE projects SET status = :status WHERE workspace_id = :workspace_id AND id = :id')
             ->execute(['status' => 'completed', 'workspace_id' => $this->workspaceId, 'id' => $projectId]);
 
         $failed = $this->request('POST', '/api/v1/auth/invites/accept', [
             'token' => $plainToken,
             'password' => 'a thoughtful guest password phrase',
-            'verification_code' => $matches[1],
         ]);
 
         self::assertSame(409, $failed->status, json_encode($failed->body));
@@ -231,11 +229,11 @@ final class AuthLifecycleTest extends ApiTestCase
             'role' => 'developer',
         ], $admin['csrf']);
         self::assertSame(201, $created->status, json_encode($created->body));
-        $inviteToken = $this->tokenFromCredentialUrl($created->body['invite']['invite_url'], 'invite');
+        $inviteToken = $this->inviteTokenFromLastEmail();
         $inspection = $this->request('POST', '/api/v1/auth/invites/inspect', ['token' => $inviteToken]);
         self::assertSame(200, $inspection->status, json_encode($inspection->body));
         self::assertTrue($inspection->body['invite']['password_required']);
-        self::assertFalse($inspection->body['invite']['email_verification_required']);
+        self::assertFalse($inspection->body['invite']['password_setup_required']);
 
         $unauthenticated = $this->request('POST', '/api/v1/auth/invites/accept', ['token' => $inviteToken]);
         self::assertSame(401, $unauthenticated->status);
@@ -260,7 +258,7 @@ final class AuthLifecycleTest extends ApiTestCase
         self::assertSame($accountId, (int) $membership->fetchColumn());
     }
 
-    public function testNewAccountInviteRequiresEmailVerificationCode(): void
+    public function testNewAccountInviteEmailsLinkAndAllowsPasswordSetupWithoutCode(): void
     {
         $admin = $this->login($this->adminEmail);
         $email = 'new-invitee@example.test';
@@ -274,34 +272,17 @@ final class AuthLifecycleTest extends ApiTestCase
         self::assertCount(1, $this->mailer->messages);
         self::assertSame($email, $this->mailer->messages[0]['to']);
         self::assertArrayNotHasKey('verification_code', $created->body['invite']);
-        self::assertSame(1, preg_match('/Verification code: ([a-f0-9]{64})/', $this->mailer->messages[0]['body'], $matches));
-        $verificationCode = $matches[1];
-        $inviteToken = $this->tokenFromCredentialUrl($created->body['invite']['invite_url'], 'invite');
+        self::assertArrayNotHasKey('invite_url', $created->body['invite']);
+        $inviteToken = $this->inviteTokenFromLastEmail();
 
         $inspection = $this->request('POST', '/api/v1/auth/invites/inspect', ['token' => $inviteToken]);
         self::assertSame(200, $inspection->status, json_encode($inspection->body));
         self::assertTrue($inspection->body['invite']['password_required']);
-        self::assertTrue($inspection->body['invite']['email_verification_required']);
-
-        $withoutCode = $this->request('POST', '/api/v1/auth/invites/accept', [
-            'token' => $inviteToken,
-            'password' => 'a calm orchard under winter stars',
-        ]);
-        self::assertSame(400, $withoutCode->status);
-        self::assertSame(0, $this->workspaceMembershipCount($email));
-
-        $wrongCode = $this->request('POST', '/api/v1/auth/invites/accept', [
-            'token' => $inviteToken,
-            'password' => 'a calm orchard under winter stars',
-            'verification_code' => str_repeat('0', 64),
-        ]);
-        self::assertSame(400, $wrongCode->status);
-        self::assertSame(0, $this->workspaceMembershipCount($email));
+        self::assertTrue($inspection->body['invite']['password_setup_required']);
 
         $accepted = $this->request('POST', '/api/v1/auth/invites/accept', [
             'token' => $inviteToken,
             'password' => 'a calm orchard under winter stars',
-            'verification_code' => $verificationCode,
         ]);
         self::assertSame(200, $accepted->status, json_encode($accepted->body));
         self::assertSame($email, $accepted->body['user']['email']);
@@ -316,7 +297,8 @@ final class AuthLifecycleTest extends ApiTestCase
             'role' => 'developer',
         ], $admin['csrf']);
         self::assertSame(201, $created->status, json_encode($created->body));
-        $firstToken = $this->tokenFromCredentialUrl($created->body['invite']['invite_url'], 'invite');
+        self::assertArrayNotHasKey('invite_url', $created->body['invite']);
+        $firstToken = $this->inviteTokenFromLastEmail();
 
         $listed = $this->cookieRequest('GET', '/api/v1/users/invites', $admin['cookie']);
         self::assertSame(200, $listed->status);
@@ -326,13 +308,15 @@ final class AuthLifecycleTest extends ApiTestCase
 
         $resent = $this->cookieRequest(
             'POST',
-            '/api/v1/users/invites/' . $created->body['invite']['id'] . '/link',
+            '/api/v1/users/invites/' . $created->body['invite']['id'] . '/resend',
             $admin['cookie'],
             [],
             $admin['csrf'],
         );
         self::assertSame(200, $resent->status, json_encode($resent->body));
-        $secondToken = $this->tokenFromCredentialUrl($resent->body['invite']['invite_url'], 'invite');
+        self::assertArrayNotHasKey('invite_url', $resent->body['invite']);
+        self::assertSame('mira@example.test', $this->mailer->messages[1]['to']);
+        $secondToken = $this->inviteTokenFromLastEmail();
         self::assertNotSame($firstToken, $secondToken);
         self::assertSame(400, $this->request('POST', '/api/v1/auth/invites/accept', [
             'token' => $firstToken,
@@ -352,6 +336,78 @@ final class AuthLifecycleTest extends ApiTestCase
             'password' => 'a strong password phrase under stars',
         ])->status);
         self::assertSame([], $this->cookieRequest('GET', '/api/v1/users/invites', $admin['cookie'])->body['invites']);
+    }
+
+    public function testInviteCreationFailsClosedWhenInviteEmailCannotBeDelivered(): void
+    {
+        $admin = $this->login($this->adminEmail);
+        $this->insertAccount('existing-invite-account@example.test', 'existing account password phrase');
+        $this->mailer->deliveryResult = false;
+        $failed = $this->cookieRequest('POST', '/api/v1/users/invites', $admin['cookie'], [
+            'name' => 'Existing account',
+            'email' => 'existing-invite-account@example.test',
+            'role' => 'developer',
+        ], $admin['csrf']);
+
+        self::assertSame(503, $failed->status, json_encode($failed->body));
+        self::assertSame('email_delivery_failed', $failed->body['error']['code']);
+        self::assertSame([], $this->cookieRequest('GET', '/api/v1/users/invites', $admin['cookie'])->body['invites']);
+    }
+
+    public function testInviteResendDeliveryFailureRevokesTheReplacementToken(): void
+    {
+        $admin = $this->login($this->adminEmail);
+        $created = $this->cookieRequest('POST', '/api/v1/users/invites', $admin['cookie'], [
+            'name' => 'Resend failure invite',
+            'email' => 'resend-failure@example.test',
+            'role' => 'developer',
+        ], $admin['csrf']);
+        self::assertSame(201, $created->status, json_encode($created->body));
+        $oldToken = $this->inviteTokenFromLastEmail();
+        $this->mailer->deliveryResult = false;
+
+        $failed = $this->cookieRequest(
+            'POST',
+            '/api/v1/users/invites/' . $created->body['invite']['id'] . '/resend',
+            $admin['cookie'],
+            [],
+            $admin['csrf'],
+        );
+
+        self::assertSame(503, $failed->status, json_encode($failed->body));
+        self::assertSame(400, $this->request('POST', '/api/v1/auth/invites/inspect', ['token' => $oldToken])->status);
+        self::assertSame([], $this->cookieRequest('GET', '/api/v1/users/invites', $admin['cookie'])->body['invites']);
+    }
+
+    public function testPendingLegacyInviteStillRequiresItsVerificationCode(): void
+    {
+        $admin = $this->login($this->adminEmail);
+        $created = $this->cookieRequest('POST', '/api/v1/users/invites', $admin['cookie'], [
+            'name' => 'Legacy invite recipient',
+            'email' => 'legacy-invite@example.test',
+            'role' => 'developer',
+        ], $admin['csrf']);
+        self::assertSame(201, $created->status, json_encode($created->body));
+        $token = $this->inviteTokenFromLastEmail();
+        $verificationCode = bin2hex(random_bytes(32));
+        $this->pdo->prepare('UPDATE credential_tokens SET email_verification_hash = :hash WHERE id = :id')
+            ->execute(['hash' => hash('sha256', $verificationCode), 'id' => $created->body['invite']['id']]);
+
+        $inspection = $this->request('POST', '/api/v1/auth/invites/inspect', ['token' => $token]);
+        self::assertSame(200, $inspection->status);
+        self::assertTrue($inspection->body['invite']['password_setup_required']);
+        self::assertTrue($inspection->body['invite']['email_verification_required']);
+        self::assertSame(400, $this->request('POST', '/api/v1/auth/invites/accept', [
+            'token' => $token,
+            'password' => 'a secure legacy account password',
+        ])->status);
+
+        $accepted = $this->request('POST', '/api/v1/auth/invites/accept', [
+            'token' => $token,
+            'password' => 'a secure legacy account password',
+            'verification_code' => $verificationCode,
+        ]);
+        self::assertSame(200, $accepted->status, json_encode($accepted->body));
     }
 
     public function testNonAdminMembersCannotManageWorkspaceInvites(): void
@@ -374,7 +430,7 @@ final class AuthLifecycleTest extends ApiTestCase
         ], $developer['csrf'])->status);
         self::assertSame(403, $this->cookieRequest(
             'POST',
-            '/api/v1/users/invites/1/link',
+            '/api/v1/users/invites/1/resend',
             $developer['cookie'],
             [],
             $developer['csrf'],
@@ -748,12 +804,12 @@ final class AuthLifecycleTest extends ApiTestCase
             'role' => 'developer',
         ], $admin['csrf']);
         self::assertSame(201, $invite->status, json_encode($invite->body));
-        $token = $this->tokenFromCredentialUrl($invite->body['invite']['invite_url'], 'invite');
+        $token = $this->inviteTokenFromLastEmail();
 
         $inspection = $this->request('POST', '/api/v1/auth/invites/inspect', ['token' => $token]);
         self::assertSame(200, $inspection->status);
         self::assertTrue($inspection->body['invite']['password_required']);
-        self::assertFalse($inspection->body['invite']['email_verification_required']);
+        self::assertFalse($inspection->body['invite']['password_setup_required']);
 
         $accepted = $this->request('POST', '/api/v1/auth/invites/accept', ['token' => $token, 'password' => $password]);
         self::assertSame(200, $accepted->status, json_encode($accepted->body));
@@ -935,10 +991,11 @@ final class AuthLifecycleTest extends ApiTestCase
         )->status);
     }
 
-    private function tokenFromCredentialUrl(string $url, string $type): string
+    private function inviteTokenFromLastEmail(): string
     {
-        self::assertMatchesRegularExpression('/#' . preg_quote($type, '/') . '=([a-f0-9]{64})$/', $url);
-        preg_match('/#' . preg_quote($type, '/') . '=([a-f0-9]{64})$/', $url, $matches);
+        self::assertNotEmpty($this->mailer->messages, 'Expected an invitation email.');
+        $body = $this->mailer->messages[array_key_last($this->mailer->messages)]['body'];
+        self::assertSame(1, preg_match('/#invite=([a-f0-9]{64})/', $body, $matches), 'Invitation email contains a link token.');
         return $matches[1];
     }
 

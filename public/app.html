@@ -595,7 +595,7 @@
             <section id="workspace-admin-invites-panel" class="project-tab-view workspace-admin-tab-panel" role="tabpanel" tabindex="0" hidden aria-labelledby="workspace-admin-invites-tab">
               <article class="panel admin-panel">
                 <h2>Invite a member</h2>
-                <p class="panel-description">Tangent creates a single-use link. Copy it and send it manually; the invitee sets a password when they accept.</p>
+                <p class="panel-description">Tangent emails a single-use invitation link to the address. New members choose a password; existing members enter their current password.</p>
                 <form id="invite-form" class="form-stack">
                   <label>Name
                     <input name="name" maxlength="120" required>
@@ -613,7 +613,7 @@
                     <span class="field-label">Projects this guest can see</span>
                     <div id="invite-project-options" class="admin-project-options"></div>
                   </div>
-                  <button class="button button-primary" type="submit">Create invite link</button>
+                  <button class="button button-primary" type="submit">Send invite</button>
                 </form>
               </article>
               <article class="panel admin-panel">
@@ -633,15 +633,6 @@
                   <button class="button button-primary" type="submit">Create workspace</button>
                 </form>
               </article>
-            </section>
-            <section id="generated-credential-link" class="panel admin-panel generated-credential-link" hidden aria-live="polite" aria-labelledby="generated-credential-heading">
-              <h3 id="generated-credential-heading"></h3>
-              <p id="generated-credential-description" class="panel-description"></p>
-              <label>Link
-                <input id="generated-credential-url" type="url" readonly aria-label="Generated credential link">
-              </label>
-              <button id="copy-generated-credential-link" class="button button-quiet" type="button">Copy link</button>
-              <p id="generated-credential-copy-status" class="panel-description" role="status" aria-live="polite"></p>
             </section>
             <dialog id="workspace-member-deactivation-dialog" class="issue-delete-confirmation" aria-labelledby="workspace-member-deactivation-heading" aria-describedby="workspace-member-deactivation-description">
               <section class="issue-delete-confirmation-content">
