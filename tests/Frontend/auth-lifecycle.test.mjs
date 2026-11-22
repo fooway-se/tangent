@@ -37,7 +37,7 @@ test('pending invite details and actions fit narrow phone screens', () => {
 
 test('generated credential links use the same host port as the development app', () => {
   assert.match(compose, /"\$\{TANGENT_HTTP_PORT:-8081\}:8080"/);
-  assert.match(compose, /TANGENT_APP_URL:\s*"http:\/\/localhost:\$\{TANGENT_HTTP_PORT:-8081\}"/);
+  assert.match(compose, /TANGENT_APP_URL:\s*"\$\{TANGENT_APP_URL:-http:\/\/localhost:\$\{TANGENT_HTTP_PORT:-8081\}\}"/);
 });
 
 test('invite and password reset fragments are removed before public requests', () => {
