@@ -4,6 +4,8 @@ Issues can be created from the project issue list or from a chat message. An iss
 
 Issue statuses are **Backlog**, **Todo**, **Doing**, **Testing**, **Done**, and **Cancelled**. Move an issue to **Testing** when implementation is ready for verification; move it to **Done** after it passes.
 
+Share an issue when quick-adding it or from **Details**. A share icon below the status marker identifies issues shared with guests. To update several issues at once, choose **Select issues**, select up to 500 issues, then choose **Share** or **Unshare** under **Guest access**.
+
 For work that continues throughout the project, check **Ongoing work** when quick-adding an issue or edit it in Details. Ongoing issues appear in their own group when the board is grouped by milestone, are not assigned to milestones, and are counted separately from planned issue progress. They remain internal and do not appear in the guest portal. To finish one, clear the ongoing classification first; it can then be moved to a milestone and marked Done.
 
 Milestones can be archived at any point, including while work is unfinished. Archived milestones and their issues move out of **Current work** and remain available in **History**. Restore a milestone to return it and its issues to the active board; archiving does not change issue statuses or client-visible history.

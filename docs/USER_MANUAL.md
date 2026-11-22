@@ -113,6 +113,7 @@ Open the status picker from an issue row or issue details to change status. Stat
 - Filter by title, identifier, description, priority, due date, type, or assignee.
 - Group by **Status** for a workflow view, or by **Milestone** to see planned delivery groups. Choose an order such as Updated, Priority, or Next up.
 - Choose **Current work** or **History**. Archived milestone work is kept in History. Deleted issues appear in a separate list and can be restored.
+- A share icon below an issue's status marker means it is shared with guests. To share or unshare several issues, choose **Select issues**, select up to 500 issues, and choose **Share** or **Unshare** in **Guest access**.
 - For unassigned issues, use **Select issues** in **No milestone**, select several issues, choose an active milestone, and select **Move selected**. Up to 500 issues can be moved together.
 
 > **Ongoing work:** Use Ongoing work for recurring or continuous tasks that do not finish with a milestone. These issues have a separate group, do not count toward planned progress, cannot be assigned to a milestone, and cannot be marked Done. Clear the Ongoing work setting before completing the issue. Ongoing issues remain internal and do not appear in the guest portal.
