@@ -5,6 +5,7 @@ import { resolveShortcut, shouldSendChatOnEnter } from '../../public/assets/shor
 
 const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
+const inboxUi = await readFile(new URL('../../frontend/src/inbox-ui.ts', import.meta.url), 'utf8');
 const themeUi = await readFile(new URL('../../frontend/src/theme-ui.ts', import.meta.url), 'utf8');
 const milestoneUi = await readFile(new URL('../../frontend/src/milestone-ui.ts', import.meta.url), 'utf8');
 const summaryUi = await readFile(new URL('../../frontend/src/client-summary-ui.ts', import.meta.url), 'utf8');
@@ -186,9 +187,9 @@ test('Escape from a Workspace Admin field returns to its tab bar for section swi
 });
 
 test('Inbox tabs use the same arrow and Home/End navigation as other tab bars', () => {
-  const tabs = app.slice(app.indexOf('function renderInboxTabs'), app.indexOf('function selectInboxTab'));
+  const tabs = inboxUi.slice(inboxUi.indexOf('function renderInboxTabs'), inboxUi.indexOf('function selectInboxTab'));
   assert.match(tabs, /button\.tabIndex = tab\.id === inboxTab \? 0 : -1/);
-  assert.match(app, /inboxTabsElement\.addEventListener\('keydown'/);
+  assert.match(inboxUi, /inboxTabsElement\.addEventListener\('keydown'/);
   assert.match(html, /<kbd>Home<\/kbd>\/<kbd>End<\/kbd>[\s\S]*My Work/);
   assert.match(html, /<kbd>←<\/kbd>\/<kbd>→<\/kbd>[\s\S]*My Work tabs and Inbox filters/);
 });

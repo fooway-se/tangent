@@ -7,6 +7,7 @@ const events = await import('../../public/assets/inbox-events.js');
 const guest = await import('../../public/assets/guest-view.js');
 const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
+const inboxUi = await readFile(new URL('../../frontend/src/inbox-ui.ts', import.meta.url), 'utf8');
 const css = await readFile(new URL('../../public/assets/app.css', import.meta.url), 'utf8');
 const guestSource = await readFile(new URL('../../frontend/src/guest-view.ts', import.meta.url), 'utf8');
 const guestUi = await readFile(new URL('../../frontend/src/guest-ui.ts', import.meta.url), 'utf8');
@@ -157,9 +158,9 @@ test('admin can create a guest account from the existing user form', () => {
 });
 
 test('assigned issue type and status align with the title column', () => {
-  assert.match(app, /primary\.className = 'inbox-issue-primary'/);
-  assert.match(app, /primary\.append\(title, metadata\)/);
-  assert.match(app, /mainline\.append\(key, primary\)/);
+  assert.match(inboxUi, /primary\.className = 'inbox-issue-primary'/);
+  assert.match(inboxUi, /primary\.append\(title, metadata\)/);
+  assert.match(inboxUi, /mainline\.append\(key, primary\)/);
   assert.match(css, /\.inbox-issue-card \.inbox-issue-metadata\s*\{\s*margin:\s*4px 0 0;\s*\}/);
 });
 
@@ -188,7 +189,7 @@ test('guest sign-in loads workspace choices and skips internal project loading',
 });
 
 test('inbox message events select their source chat message', () => {
-  const openEvent = app.slice(app.indexOf('async function openInboxEvent('), app.indexOf('function renderInboxIssues('));
+  const openEvent = app.slice(app.indexOf('async function openInboxEvent('), app.indexOf('async function openInboxIssue('));
   assert.match(openEvent, /event\.message_id/);
   assert.match(openEvent, /selectChatMessage\(/);
   assert.match(openEvent, /selectChatMessage\(result\.message\.id\);\s*chatFollowLatest = false/);

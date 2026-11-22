@@ -9,7 +9,7 @@ import {
 import { inboxEventPagePath, mergeInboxEventPage } from '../../public/assets/inbox-events.js';
 
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
-const dom = await readFile(new URL('../../frontend/src/dom.ts', import.meta.url), 'utf8');
+const inboxUi = await readFile(new URL('../../frontend/src/inbox-ui.ts', import.meta.url), 'utf8');
 const inboxEventsSource = await readFile(new URL('../../frontend/src/inbox-events.ts', import.meta.url), 'utf8');
 
 test('inbox collection diff reports only changed, added, removed, and reordered rows', () => {
@@ -46,19 +46,19 @@ test('inbox updates defer while the user is working in the list or an action is 
 });
 
 test('inbox polling uses conditional requests and reconciles rows in place', () => {
-  assert.match(app, /function fetchConditionalInboxCollection/);
-  assert.match(app, /headers\.set\('If-None-Match', etag\)/);
-  assert.match(app, /response\.status === 304/);
-  assert.match(app, /fetchConditionalInboxCollection<InboxIssue>\('\/inbox', 'issues'/);
-  assert.match(app, /fetchConditionalInboxCollection<InboxEvent>\(inboxEventPagePath\(inboxTab\), 'events'/);
-  assert.match(app, /function scheduleInboxPoll\(/);
-  assert.match(app, /function stopInboxPolling\(/);
-  assert.match(app, /function resumeDeferredInboxPolling\(/);
-  assert.match(app, /inboxPollHasDeferredChanges/);
-  assert.match(app, /function reconcileInboxRows/);
-  assert.doesNotMatch(app, /inboxIssueList\.replaceChildren\(\.\.\.inboxIssues\.map/);
-  assert.doesNotMatch(app, /inboxIssueList\.replaceChildren\(\.\.\.events\.map/);
-  assert.doesNotMatch(app, /inboxTabsElement\.replaceChildren/);
+  assert.match(inboxUi, /function fetchConditionalInboxCollection/);
+  assert.match(inboxUi, /headers\.set\('If-None-Match', etag\)/);
+  assert.match(inboxUi, /response\.status === 304/);
+  assert.match(inboxUi, /fetchConditionalInboxCollection<InboxIssue>\('\/inbox', 'issues'/);
+  assert.match(inboxUi, /fetchConditionalInboxCollection<InboxEvent>\(inboxEventPagePath\(inboxTab\), 'events'/);
+  assert.match(inboxUi, /function schedulePoll\(/);
+  assert.match(inboxUi, /function stopPolling\(/);
+  assert.match(inboxUi, /function resumeDeferredPolling\(/);
+  assert.match(inboxUi, /inboxPollHasDeferredChanges/);
+  assert.match(inboxUi, /function reconcileInboxRows/);
+  assert.doesNotMatch(inboxUi, /inboxIssueList\.replaceChildren\(\.\.\.inboxIssues\.map/);
+  assert.doesNotMatch(inboxUi, /inboxIssueList\.replaceChildren\(\.\.\.events\.map/);
+  assert.doesNotMatch(inboxUi, /inboxTabsElement\.replaceChildren/);
 });
 
 test('inbox event pages request the selected tab and merge without duplicates', () => {
@@ -72,26 +72,26 @@ test('inbox event pages request the selected tab and merge without duplicates', 
     { id: 18 },
     { id: 17 },
   ]);
-  assert.match(app, /inboxEventPagePath\(inboxTab/);
-  assert.match(dom, /inbox-load-more/);
-  assert.match(app, /loadMoreInboxEvents/);
+  assert.match(inboxUi, /inboxEventPagePath\(inboxTab/);
+  assert.match(inboxUi, /inbox-load-more/);
+  assert.match(inboxUi, /loadMoreEvents/);
 });
 
 test('inbox row reconciliation preserves focus on event actions', () => {
-  assert.match(app, /focused\?\.matches\('\.inbox-event-read'\)/);
-  assert.match(app, /focused\?\.matches\('\.inbox-event-done'\)/);
+  assert.match(inboxUi, /focused\?\.matches\('\.inbox-event-read'\)/);
+  assert.match(inboxUi, /focused\?\.matches\('\.inbox-event-done'\)/);
   assert.match(inboxEventsSource, /inbox-event-read/);
   assert.match(inboxEventsSource, /inbox-event-done/);
-  assert.match(app, /const nextFocusTarget = nextRow\?\.querySelector<HTMLElement>\('\.issue-title-button'\)[\s\S]*?nextFocusTarget\?\.focus\(\)/);
+  assert.match(inboxUi, /const nextFocusTarget = nextRow\?\.querySelector<HTMLElement>\('\.issue-title-button'\)[\s\S]*?nextFocusTarget\?\.focus\(\)/);
 });
 
 test('local event actions preserve pending refreshes for the other inbox collection', () => {
-  const updateStart = app.indexOf('async function updateInboxEvent(');
-  const updateEnd = app.indexOf('\nasync function markAllInboxEventsRead(', updateStart + 1);
-  const update = app.slice(updateStart, updateEnd);
+  const updateStart = inboxUi.indexOf('async function updateEvent(');
+  const updateEnd = inboxUi.indexOf('\nasync function markAllEventsRead(', updateStart + 1);
+  const update = inboxUi.slice(updateStart, updateEnd);
   const markAllStart = updateEnd;
-  const markAllEnd = app.indexOf('\nasync function openInboxEvent(', markAllStart + 1);
-  const markAll = app.slice(markAllStart, markAllEnd);
+  const markAllEnd = inboxUi.indexOf('\nfunction renderInboxIssues(', markAllStart + 1);
+  const markAll = inboxUi.slice(markAllStart, markAllEnd);
   assert.doesNotMatch(update, /inboxPollHasDeferredChanges = false/);
   assert.doesNotMatch(markAll, /inboxPollHasDeferredChanges = false/);
 });

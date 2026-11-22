@@ -5,6 +5,7 @@ import { groupMyWorkTasks } from '../../public/assets/my-work.js';
 
 const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
+const inboxUi = await readFile(new URL('../../frontend/src/inbox-ui.ts', import.meta.url), 'utf8');
 const css = await readFile(new URL('../../public/assets/app.css', import.meta.url), 'utf8');
 const inboxEvents = await import('../../public/assets/inbox-events.js');
 
@@ -32,9 +33,9 @@ test('My Work has Inbox and Tasks tabs and keeps task filters separate from inbo
   assert.match(html, /id="my-work-tab-tasks"[^>]*aria-selected="false"[^>]*>Tasks<\/button>/);
   assert.match(html, /id="my-work-tasks-panel"[^>]*hidden/);
   assert.match(html, /id="my-work-task-groups"/);
-  assert.match(app, /groupMyWorkTasks\(inboxIssues\)/);
-  assert.match(app, /function selectMyWorkTab\(/);
-  assert.match(app, /closest<HTMLDetailsElement>\('\.my-work-task-group'\)\?\.open !== false/);
+  assert.match(inboxUi, /groupMyWorkTasks\(inboxIssues\)/);
+  assert.match(inboxUi, /function selectMyWorkTab\(/);
+  assert.match(inboxUi, /closest<HTMLDetailsElement>\('\.my-work-task-group'\)\?\.open !== false/);
   assert.deepEqual(inboxEvents.INBOX_TABS.map((tab) => tab.id), ['unread', 'all', 'mentions', 'done']);
   assert.match(css, /\.my-work-tabs\s*\{/);
   assert.match(css, /\.my-work-task-group\s*\{/);

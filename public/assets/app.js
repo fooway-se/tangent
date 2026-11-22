@@ -1,8 +1,7 @@
-import { INBOX_TABS, createEventRow, eventsForTab, inboxEventPagePath, mergeInboxEventPage, } from './inbox-events.js';
 import { api, apiBaseUrl, ApiFailure } from './api.js';
 import { ISSUE_STATUS_OPTIONS, ISSUE_TYPE_OPTIONS, PROJECT_STATUS_HINTS, PROJECT_STATUS_LABELS, PROJECT_STATUS_ORDER, } from './types.js';
-import { diffInboxCollections, nextInboxPollDelay, shouldDeferInboxUpdates, } from './inbox-polling.js';
 import { initGuestUi } from './guest-ui.js';
+import { initInboxUi } from './inbox-ui.js';
 import { createLogoutController } from './logout.js';
 import { ProjectNavigationOwner, runOwnedRequest } from './project-navigation.js';
 import { ChatEventFeed, pollProjectChatEvents } from './chat-event-feed.js';
@@ -21,11 +20,10 @@ import { initLoungePresence } from './lounge-presence.js';
 import { parseQuickIssueInput } from './quick-issue.js';
 import { milestoneStatus } from './roadmap.js';
 import { formatIssueMarkdown, formatIssuePrompt } from './issue-export.js';
-import { groupMyWorkTasks } from './my-work.js';
 import { filterIssues, filterIssuesByMilestoneArchive, groupIssues, groupIssuesByMilestone, discussionIndicatorLabel, projectProgress, sortIssues, } from './issue-board.js';
 import { diffConditionalIssueCollections, loadIssueCollections, nextIssuePollDelay, refreshDeletedIssuesOnOpen, shouldDeferIssueUpdates, } from './issue-polling.js';
 import { dom } from './dom.js';
-const { project: { projectHeading, projectEditDialog, projectEditForm, projectEditClose, projectEditCancel, projectEditName, projectEditDescription, projectEditStatus, projectEditStatusHelp, projectReadOnlyNotice, projectEditMessage, projectEditSave, editProjectButton, projectGithubRepository, projectEditGithubRepository, githubProjectSelectionStatus, githubProjectEditStatus, connectGithubCreateButton, connectGithubEditButton, projectsNavButton, projectsView, projectView, projectForm, projectList, emptyProjects, projectFormPanel, projectDescription, projectState, projectChatColumn, projectSidebarList, projectSidebarEmpty, projectMain, projectTabs, projectKeyboardHints, }, auth: { loginPanel, loginShell, accountBar, currentUserLabel, loginAdminHelp, loginKeyboardHints, credentialFlow, credentialFlowHeading, credentialFlowDescription, credentialFlowError, credentialForm, credentialPasswordFields, credentialPasswordLabel, credentialVerificationField, credentialVerificationInput, credentialConfirmationField, credentialSubmit, credentialCancel, loginForm, loginStatusMessage, logoutButton, }, workspace: { workspacePanel, workspaceNav, workspaceSwitcher, workspaceSwitcherLabel, workspacePicker, workspacePickerCancel, workspacePickerConfirm, workspacePickerDescription, workspacePickerOptions, adminNavButton, adminView, adminHeading, workspaceAdminTabs, workspaceAdminMembersTab, workspaceAdminInvitesTab, workspaceAdminWorkspacesTab, workspaceAdminMembersPanel, workspaceAdminInvitesPanel, workspaceAdminWorkspacesPanel, workspaceMembersList, workspaceMembersEmpty, inviteForm, inviteRoleInput, inviteProjectSelection, inviteProjectOptions, workspaceInvitesList, workspaceInvitesEmpty, workspaceMemberDeactivationDialog, workspaceMemberDeactivationDescription, workspaceMemberDeactivationCancel, workspaceMemberDeactivationConfirm, workspaceMemberRoleDialog, workspaceMemberRoleHeading, workspaceMemberRoleDescription, workspaceMemberRoleCancel, workspaceMemberRoleConfirm, workspaceGuestProjectsDialog, workspaceGuestProjectsDescription, workspaceGuestProjectOptions, workspaceGuestProjectsEmpty, workspaceGuestProjectsStatus, workspaceGuestProjectsCancel, workspaceGuestProjectsSave, membersView, adminGoPrefixOption, workspaceSwitchHint, membersTabButton, memberList, memberForm, memberAddControls, memberAddStatus, memberSelect, memberRemovalConfirmation, memberRemovalDescription, memberRemovalCancel, memberRemovalConfirm, }, shell: { createWorkspaceForm, breadcrumbProjectsButton, breadcrumbDivider, breadcrumbCurrent, cancelProjectFormButton, linkPullRequestButton, notesTabButton, emptyIssues, addMemberButton, statusMessage, }, roadmap: { roadmapNavButton, roadmapView, roadmapHeading, roadmapSummary, roadmapMilestoneList, roadmapEmptyState, roadmapGoPrefixOption, }, inbox: { inboxNavButton, inboxView, inboxHeading, myWorkTabsElement, myWorkInboxTab, myWorkTasksTab, myWorkInboxPanel, myWorkTasksPanel, myWorkTasksSummary, myWorkTaskGroups, myWorkTasksEmptyState, inboxSummary, inboxIssueList, inboxEmptyState, inboxTabsElement, inboxMarkAllReadButton, inboxLoadMoreButton, }, lounge: { loungeNavButton, loungeView, loungeHeading, loungeMessageList, loungeEmptyState, loungeForm, loungeInput, loungeMentionList, loungeReplyHint, loungeCancelReply, }, shortcuts: { toggleProjectFormButton, keyboardHints, goPrefixHint, goPrefixWorkspaceOption, goPrefixProjectOptions, commandPalette, commandPaletteClose, commandSearch, commandResults, shortcutHelp, shortcutHelpClose, }, chat: { chatView, }, issues: { issuesView, issueDetailView, issueDetailDisplay, issueDetailTitle, issueDetailPriority, issueDetailDueDate, issueDetailDescription, issueDetailBrief, issueDetailContextSection, issueDetailContext, issueDetailExpectedOutcomeSection, issueDetailExpectedOutcome, issueDetailAcceptanceCriteriaSection, issueDetailAcceptanceCriteria, issueDetailStatus, issueDetailStatusLabel, issueSourceLink, issuePullRequests, issuePullRequestsList, issuePullRequestsEmpty, issuePullRequestDialog, issuePullRequestForm, issuePullRequestClose, issuePullRequestCancel, issuePullRequestUrl, issuePullRequestMessage, issuePullRequestSubmit, issueDetailEditForm, issueDetailTitleInput, issueDetailDescriptionInput, issueDetailPriorityInput, issueDetailDueDateInput, issueDetailEditButton, issueAiPromptButton, issueAiPromptDialog, issueAiPromptCloseButton, issueAiPromptStepCount, issueAiPromptContext, issueAiPromptOutcome, issueAiPromptCriteria, issueAiPromptPreview, issueAiPromptStatus, issueAiPromptBackButton, issueAiPromptSkipButton, issueAiPromptNextButton, issueAiPromptActions, issueAiPromptSaveButton, issueAiPromptCopyButton, issueAiPromptCopyMarkdownButton, issueAiPromptDownloadButton, issueDetailDeleteButton, issueDetailSaveButton, issuesTabButton, issueBackButton, issueDetailCancelButton, issueForm, issueQuickAddTitle, issueQuickAddPriority, issueQuickAddDueDate, issueQuickAddAssignee, issueQuickAddMilestone, issueQuickAddOngoing, issueQuickAddShared, issueQuickAddApproval, issueQuickAddCancelButton, issueDetailType, issueDetailAssignee, issueDetailMilestone, issueDetailOngoingRow, issueDetailSharing, issueDetailApproval, issueDetailTypeInput, issueDetailAssigneeInput, issueDetailMilestoneInput, issueDetailOngoingInput, issueDetailSharedInput, issueDetailApprovalInput, issueStatusHistory, issueStatusHistoryCount, issueStatusHistoryEmpty, issueStatusHistoryList, issueDiscussionHeading, issueDiscussionCount, issueDiscussionStatus, issueDiscussionEmpty, issueDiscussionList, issueDiscussionForm, issueDiscussionInput, issueDiscussionSubmit, issueDiscussionReplyContext, issueDiscussionReplyLabel, issueDiscussionReplyCancel, issueDescriptionDetails, issueProgress, issueProgressLabel, issueFilter, issueGrouping, issueOrder, issueScope, issueCountSummary, issueBulkAssignToggle, issueBulkAssignToolbar, issueList, deletedIssuesDetails, deletedIssueCount, deletedIssueList, issueStatusPicker, issueStatusPickerClose, issueStatusPickerDescription, issueStatusPickerOptions, issueDeleteConfirmation, issueDeleteDescription, issueDeleteError, issueDeleteCancel, issueDeleteConfirm, }, guest: { guestWorkspaceSwitcher, guestWorkspaceSwitcherLabel, guestLogoutButton, }, } = dom;
+const { project: { projectHeading, projectEditDialog, projectEditForm, projectEditClose, projectEditCancel, projectEditName, projectEditDescription, projectEditStatus, projectEditStatusHelp, projectReadOnlyNotice, projectEditMessage, projectEditSave, editProjectButton, projectGithubRepository, projectEditGithubRepository, githubProjectSelectionStatus, githubProjectEditStatus, connectGithubCreateButton, connectGithubEditButton, projectsNavButton, projectsView, projectView, projectForm, projectList, emptyProjects, projectFormPanel, projectDescription, projectState, projectChatColumn, projectSidebarList, projectSidebarEmpty, projectMain, projectTabs, projectKeyboardHints, }, auth: { loginPanel, loginShell, accountBar, currentUserLabel, loginAdminHelp, loginKeyboardHints, credentialFlow, credentialFlowHeading, credentialFlowDescription, credentialFlowError, credentialForm, credentialPasswordFields, credentialPasswordLabel, credentialVerificationField, credentialVerificationInput, credentialConfirmationField, credentialSubmit, credentialCancel, loginForm, loginStatusMessage, logoutButton, }, workspace: { workspacePanel, workspaceNav, workspaceSwitcher, workspaceSwitcherLabel, workspacePicker, workspacePickerCancel, workspacePickerConfirm, workspacePickerDescription, workspacePickerOptions, adminNavButton, adminView, adminHeading, workspaceAdminTabs, workspaceAdminMembersTab, workspaceAdminInvitesTab, workspaceAdminWorkspacesTab, workspaceAdminMembersPanel, workspaceAdminInvitesPanel, workspaceAdminWorkspacesPanel, workspaceMembersList, workspaceMembersEmpty, inviteForm, inviteRoleInput, inviteProjectSelection, inviteProjectOptions, workspaceInvitesList, workspaceInvitesEmpty, workspaceMemberDeactivationDialog, workspaceMemberDeactivationDescription, workspaceMemberDeactivationCancel, workspaceMemberDeactivationConfirm, workspaceMemberRoleDialog, workspaceMemberRoleHeading, workspaceMemberRoleDescription, workspaceMemberRoleCancel, workspaceMemberRoleConfirm, workspaceGuestProjectsDialog, workspaceGuestProjectsDescription, workspaceGuestProjectOptions, workspaceGuestProjectsEmpty, workspaceGuestProjectsStatus, workspaceGuestProjectsCancel, workspaceGuestProjectsSave, membersView, adminGoPrefixOption, workspaceSwitchHint, membersTabButton, memberList, memberForm, memberAddControls, memberAddStatus, memberSelect, memberRemovalConfirmation, memberRemovalDescription, memberRemovalCancel, memberRemovalConfirm, }, shell: { createWorkspaceForm, breadcrumbProjectsButton, breadcrumbDivider, breadcrumbCurrent, cancelProjectFormButton, linkPullRequestButton, notesTabButton, emptyIssues, addMemberButton, statusMessage, }, roadmap: { roadmapNavButton, roadmapView, roadmapHeading, roadmapSummary, roadmapMilestoneList, roadmapEmptyState, roadmapGoPrefixOption, }, inbox: { inboxNavButton, inboxView, inboxHeading, }, lounge: { loungeNavButton, loungeView, loungeHeading, loungeMessageList, loungeEmptyState, loungeForm, loungeInput, loungeMentionList, loungeReplyHint, loungeCancelReply, }, shortcuts: { toggleProjectFormButton, keyboardHints, goPrefixHint, goPrefixWorkspaceOption, goPrefixProjectOptions, commandPalette, commandPaletteClose, commandSearch, commandResults, shortcutHelp, shortcutHelpClose, }, chat: { chatView, }, issues: { issuesView, issueDetailView, issueDetailDisplay, issueDetailTitle, issueDetailPriority, issueDetailDueDate, issueDetailDescription, issueDetailBrief, issueDetailContextSection, issueDetailContext, issueDetailExpectedOutcomeSection, issueDetailExpectedOutcome, issueDetailAcceptanceCriteriaSection, issueDetailAcceptanceCriteria, issueDetailStatus, issueDetailStatusLabel, issueSourceLink, issuePullRequests, issuePullRequestsList, issuePullRequestsEmpty, issuePullRequestDialog, issuePullRequestForm, issuePullRequestClose, issuePullRequestCancel, issuePullRequestUrl, issuePullRequestMessage, issuePullRequestSubmit, issueDetailEditForm, issueDetailTitleInput, issueDetailDescriptionInput, issueDetailPriorityInput, issueDetailDueDateInput, issueDetailEditButton, issueAiPromptButton, issueAiPromptDialog, issueAiPromptCloseButton, issueAiPromptStepCount, issueAiPromptContext, issueAiPromptOutcome, issueAiPromptCriteria, issueAiPromptPreview, issueAiPromptStatus, issueAiPromptBackButton, issueAiPromptSkipButton, issueAiPromptNextButton, issueAiPromptActions, issueAiPromptSaveButton, issueAiPromptCopyButton, issueAiPromptCopyMarkdownButton, issueAiPromptDownloadButton, issueDetailDeleteButton, issueDetailSaveButton, issuesTabButton, issueBackButton, issueDetailCancelButton, issueForm, issueQuickAddTitle, issueQuickAddPriority, issueQuickAddDueDate, issueQuickAddAssignee, issueQuickAddMilestone, issueQuickAddOngoing, issueQuickAddShared, issueQuickAddApproval, issueQuickAddCancelButton, issueDetailType, issueDetailAssignee, issueDetailMilestone, issueDetailOngoingRow, issueDetailSharing, issueDetailApproval, issueDetailTypeInput, issueDetailAssigneeInput, issueDetailMilestoneInput, issueDetailOngoingInput, issueDetailSharedInput, issueDetailApprovalInput, issueStatusHistory, issueStatusHistoryCount, issueStatusHistoryEmpty, issueStatusHistoryList, issueDiscussionHeading, issueDiscussionCount, issueDiscussionStatus, issueDiscussionEmpty, issueDiscussionList, issueDiscussionForm, issueDiscussionInput, issueDiscussionSubmit, issueDiscussionReplyContext, issueDiscussionReplyLabel, issueDiscussionReplyCancel, issueDescriptionDetails, issueProgress, issueProgressLabel, issueFilter, issueGrouping, issueOrder, issueScope, issueCountSummary, issueBulkAssignToggle, issueBulkAssignToolbar, issueList, deletedIssuesDetails, deletedIssueCount, deletedIssueList, issueStatusPicker, issueStatusPickerClose, issueStatusPickerDescription, issueStatusPickerOptions, issueDeleteConfirmation, issueDeleteDescription, issueDeleteError, issueDeleteCancel, issueDeleteConfirm, }, guest: { guestWorkspaceSwitcher, guestWorkspaceSwitcherLabel, guestLogoutButton, }, } = dom;
 const KEYBOARD_HINTS_STORAGE_KEY = 'tangent.keyboard-hints-visible';
 function loadKeyboardHintsPreference() {
     try {
@@ -154,23 +152,6 @@ let visibleBulkAssignIssueIds = new Set();
 let bulkAssignTargetValue = '';
 let issueGroupingBeforeNextUp = 'status';
 let issueGroupingForcedByNextUp = false;
-let inboxIssues = [];
-let inboxEvents = [];
-let inboxEventCounts = { unread: 0, mentions: 0 };
-let inboxEventsHasMore = false;
-let inboxEventsNextCursor = null;
-let inboxMorePageLoading = false;
-let myWorkTab = 'inbox';
-let inboxTab = 'unread';
-let inboxIssuesEtag = null;
-let inboxEventsEtag = null;
-let inboxPollTimer = null;
-let inboxPollDelay = 1000;
-let inboxPollInFlight = false;
-let inboxPollRequestVersion = 0;
-let inboxPollHasDeferredChanges = false;
-let inboxMutationPending = 0;
-const inboxEventRowRenderSignatures = new WeakMap();
 let deletedProjectIssues = [];
 let selectedIssue = null;
 const milestoneUi = initMilestoneUi({
@@ -272,6 +253,20 @@ const loungePresenceUi = initLoungePresence({
     isWorkspaceVisible: () => !workspacePanel.hidden,
     isDocumentHidden: () => document.hidden,
     onUnauthorized: () => showSignedOut(),
+});
+const inboxUi = initInboxUi({
+    isVisible: () => !workspacePanel.hidden && !inboxView.hidden,
+    isDocumentHidden: () => document.hidden,
+    onUnauthorized: () => showSignedOut(),
+    report,
+    onOpenEvent: (event) => { void openInboxEvent(event); },
+    onOpenIssue: (issue) => { void openInboxIssue(issue); },
+    issueStatusLabel,
+    issueTypeLabel,
+    issuePriorityLabel,
+    formatDueDate: formatIssueDueDate,
+    isIssueOverdue,
+    createDiscussionIndicator,
 });
 const guestUi = initGuestUi({
     getUser: () => activeUser,
@@ -417,7 +412,7 @@ function showSignedOut() {
     issueQuickAddReturnFocus = null;
     stopIssuePolling();
     clearIssueDiscussion();
-    stopInboxPolling();
+    inboxUi.reset();
     resetPendingWorkspaceSwitch();
     stopChatPolling();
     stopLoungePolling();
@@ -456,20 +451,6 @@ function showSignedOut() {
     document.body.classList.remove('is-project-view', 'is-guest');
     guestUi.reset();
     guestLogoutButton.hidden = false;
-    myWorkTab = 'inbox';
-    inboxTab = 'unread';
-    inboxIssues = [];
-    inboxEvents = [];
-    inboxEventCounts = { unread: 0, mentions: 0 };
-    inboxEventsHasMore = false;
-    inboxEventsNextCursor = null;
-    inboxIssueList.replaceChildren();
-    myWorkTaskGroups.replaceChildren();
-    inboxEmptyState.hidden = false;
-    inboxEmptyState.textContent = 'Nothing here.';
-    myWorkTasksEmptyState.hidden = false;
-    myWorkTasksEmptyState.textContent = 'You have no open issues assigned to you.';
-    renderMyWorkTabs();
     projectList.replaceChildren();
     projectSidebarList.replaceChildren();
     issueList.replaceChildren();
@@ -638,12 +619,7 @@ function showWorkspaceView(view) {
         invalidateProjectNavigation();
     const wasLoungeActive = view !== 'lounge' && loungeActive;
     if (view !== 'inbox') {
-        stopInboxPolling();
-        inboxIssues = [];
-        inboxEvents = [];
-        inboxEventCounts = { unread: 0, mentions: 0 };
-        inboxEventsHasMore = false;
-        inboxEventsNextCursor = null;
+        inboxUi.clearForNavigation();
     }
     if (view !== 'lounge')
         stopLoungePolling();
@@ -1152,7 +1128,7 @@ function goToInbox() {
         workspaceViewHistory.push(currentLocation);
     showWorkspaceView('inbox');
     inboxHeading.focus();
-    void loadInboxIssues();
+    inboxUi.load();
 }
 function goToLounge() {
     const currentLocation = currentWorkspaceLocation();
@@ -1173,7 +1149,7 @@ function goBackWorkspaceView() {
     else if (previousLocation?.view === 'inbox') {
         showWorkspaceView('inbox');
         inboxHeading.focus();
-        void loadInboxIssues();
+        inboxUi.load();
     }
     else if (previousLocation?.view === 'roadmap') {
         showWorkspaceView('roadmap');
@@ -1805,27 +1781,6 @@ function visibleIssueTitleButtons() {
     return Array.from(issueList.querySelectorAll('.issue-title-button'))
         .filter((button) => button.closest('.issue-group')?.open !== false);
 }
-function visibleInboxIssueTitleButtons() {
-    return Array.from(activeMyWorkListRoot().querySelectorAll('.issue-title-button'))
-        .filter((button) => button.closest('.my-work-task-group')?.open !== false);
-}
-function selectedInboxIssueButton() {
-    const focused = document.activeElement;
-    const activeList = activeMyWorkListRoot();
-    if (focused instanceof HTMLElement && activeList.contains(focused)) {
-        const focusedRow = focused.closest('.inbox-issue-card');
-        if (focusedRow !== null)
-            return focusedRow.querySelector('.issue-title-button');
-    }
-    const selected = activeList.querySelector('.inbox-issue-card.is-keyboard-selected .issue-title-button');
-    return selected?.closest('.my-work-task-group')?.open === false ? null : selected;
-}
-function activeMyWorkListRoot() {
-    return myWorkTab === 'tasks' ? myWorkTaskGroups : inboxIssueList;
-}
-function hasSelectedInboxIssue() {
-    return selectedInboxIssueButton() !== null;
-}
 function hasSelectedIssueInVisibleView() {
     return !projectView.hidden && (!issuesView.hidden || !issueDetailView.hidden)
         && (selectedIssue !== null || selectedIssueButton() !== null);
@@ -1994,7 +1949,7 @@ function shortcutContext(target) {
         hasProject: activeProject !== null && !projectView.hidden,
         projectListVisible: !workspacePanel.hidden && !projectsView.hidden,
         inboxListVisible: !workspacePanel.hidden && !inboxView.hidden,
-        hasSelectedInboxIssue: hasSelectedInboxIssue(),
+        hasSelectedInboxIssue: inboxUi.hasSelectedIssue(),
         issueFilterFocused: target === issueFilter,
         hasSelectedProject: selectedProjectButton() !== null,
         issueListVisible: !projectView.hidden && !issuesView.hidden,
@@ -2104,7 +2059,7 @@ function moveFocusToBoundary(buttons, rowSelector, edge) {
 }
 function moveIssueSelection(direction) {
     if (!inboxView.hidden) {
-        moveFocusWithin(visibleInboxIssueTitleButtons(), '.inbox-issue-card', direction);
+        moveFocusWithin(inboxUi.visibleIssueTitleButtons(), '.inbox-issue-card', direction);
         return;
     }
     if (document.activeElement instanceof HTMLElement
@@ -2142,7 +2097,7 @@ function moveIssueSelectionFromGroup(direction) {
 }
 function moveIssueSelectionToBoundary(edge) {
     if (!inboxView.hidden) {
-        moveFocusToBoundary(visibleInboxIssueTitleButtons(), '.inbox-issue-card', edge);
+        moveFocusToBoundary(inboxUi.visibleIssueTitleButtons(), '.inbox-issue-card', edge);
         return;
     }
     const buttons = visibleIssueTitleButtons();
@@ -2173,7 +2128,7 @@ function moveSelectionByPage(direction) {
         moveFocusByPage(Array.from(projectList.querySelectorAll('.project-card button')), '.project-card', projectsView, direction);
     }
     else if (!inboxView.hidden) {
-        moveFocusByPage(visibleInboxIssueTitleButtons(), '.inbox-issue-card', inboxView, direction);
+        moveFocusByPage(inboxUi.visibleIssueTitleButtons(), '.inbox-issue-card', inboxView, direction);
     }
     else if (!issuesView.hidden) {
         moveFocusByPage(visibleIssueTitleButtons(), '.issue-card', projectMain, direction);
@@ -3056,7 +3011,7 @@ function executeShortcut(action) {
             break;
         case 'open-selected':
             if (!inboxView.hidden)
-                selectedInboxIssueButton()?.click();
+                inboxUi.selectedIssueButton()?.click();
             else
                 selectedIssueButton()?.click();
             break;
@@ -3850,14 +3805,12 @@ document.addEventListener('visibilitychange', () => {
         issuePollDelay = 1000;
         scheduleIssuePoll(0);
     }
-    if (!document.hidden && inboxPollingIsActive()) {
-        inboxPollDelay = 1000;
-        scheduleInboxPoll(0);
-    }
+    if (!document.hidden && inboxUi.isPollingActive())
+        inboxUi.resumePolling();
 });
 document.addEventListener('focusout', () => {
     window.setTimeout(resumeDeferredIssuePolling, 0);
-    window.setTimeout(resumeDeferredInboxPolling, 0);
+    window.setTimeout(() => inboxUi.resumeDeferredUpdates(), 0);
 });
 projectsNavButton.addEventListener('click', goToProjects);
 projectSidebarList.addEventListener('scroll', updateProjectSidebarMoreCue, { passive: true });
@@ -4348,440 +4301,7 @@ function formatRoadmapDate(value) {
         timeZone: 'UTC',
     }).format(new Date(`${value}T00:00:00Z`));
 }
-function loadInboxIssues() {
-    renderMyWorkTabs();
-    renderInboxTabs();
-    if (!inboxPollingIsActive())
-        return;
-    if (myWorkTab === 'tasks')
-        renderInboxIssues();
-    else
-        renderInboxEvents();
-    inboxPollDelay = 1000;
-    scheduleInboxPoll(0);
-}
-async function fetchConditionalInboxCollection(path, key, etag) {
-    const headers = new Headers();
-    if (etag !== null)
-        headers.set('If-None-Match', etag);
-    const response = await fetch(`${apiBaseUrl}${path}`, {
-        headers,
-        credentials: 'same-origin',
-    });
-    const responseEtag = response.headers.get('ETag') ?? etag;
-    if (response.status === 304)
-        return { items: null, etag: responseEtag };
-    const payload = await response.json();
-    if (!response.ok) {
-        throw new ApiFailure(payload.error?.message ?? 'Could not refresh your inbox.', response.status);
-    }
-    return {
-        items: Array.isArray(payload[key]) ? payload[key] : [],
-        etag: responseEtag,
-        hasMore: payload.has_more,
-        nextCursor: payload.next_cursor,
-        counts: payload.counts,
-    };
-}
-function inboxPollingIsActive() {
-    return !workspacePanel.hidden && !inboxView.hidden;
-}
-function stopInboxPolling() {
-    if (inboxPollTimer !== null)
-        window.clearTimeout(inboxPollTimer);
-    inboxPollTimer = null;
-    inboxPollRequestVersion += 1;
-    inboxPollInFlight = false;
-    inboxPollDelay = 1000;
-    inboxIssuesEtag = null;
-    inboxEventsEtag = null;
-    inboxPollHasDeferredChanges = false;
-}
-function scheduleInboxPoll(delay = inboxPollDelay) {
-    if (!inboxPollingIsActive()) {
-        stopInboxPolling();
-        return;
-    }
-    if (inboxPollTimer !== null)
-        window.clearTimeout(inboxPollTimer);
-    inboxPollTimer = window.setTimeout(() => {
-        inboxPollTimer = null;
-        void pollInbox();
-    }, delay);
-}
-function inboxUpdatesAreDeferred() {
-    return shouldDeferInboxUpdates({
-        listFocused: inboxIssueList.contains(document.activeElement) || myWorkTaskGroups.contains(document.activeElement),
-        mutationPending: inboxMutationPending > 0,
-    });
-}
-function resumeDeferredInboxPolling() {
-    if (inboxPollHasDeferredChanges && inboxPollingIsActive() && !inboxUpdatesAreDeferred()) {
-        inboxPollDelay = 1000;
-        scheduleInboxPoll(0);
-    }
-}
-async function pollInbox() {
-    if (!inboxPollingIsActive() || inboxPollInFlight)
-        return;
-    if (document.hidden) {
-        inboxPollDelay = nextInboxPollDelay(inboxPollDelay, false, true);
-        scheduleInboxPoll(inboxPollDelay);
-        return;
-    }
-    const deferUpdatesAtStart = inboxUpdatesAreDeferred();
-    const forceDeferredRefresh = inboxPollHasDeferredChanges && !deferUpdatesAtStart;
-    const requestVersion = ++inboxPollRequestVersion;
-    inboxPollInFlight = true;
-    let changed = false;
-    try {
-        const [issuesResult, eventsResult] = await Promise.all([
-            fetchConditionalInboxCollection('/inbox', 'issues', forceDeferredRefresh ? null : inboxIssuesEtag),
-            fetchConditionalInboxCollection(inboxEventPagePath(inboxTab), 'events', forceDeferredRefresh ? null : inboxEventsEtag),
-        ]);
-        if (requestVersion !== inboxPollRequestVersion || !inboxPollingIsActive())
-            return;
-        const incomingIssues = issuesResult.items ?? inboxIssues;
-        const incomingEvents = eventsResult.items === null
-            ? inboxEvents
-            : mergeInboxEventPage(inboxEvents, eventsResult.items);
-        const issuesDiff = diffInboxCollections(inboxIssues, incomingIssues);
-        const eventsDiff = diffInboxCollections(inboxEvents, incomingEvents);
-        const issuesChanged = issuesDiff.added.length > 0 || issuesDiff.changed.length > 0
-            || issuesDiff.removed.length > 0 || issuesDiff.orderChanged;
-        const eventsChanged = eventsDiff.added.length > 0 || eventsDiff.changed.length > 0
-            || eventsDiff.removed.length > 0 || eventsDiff.orderChanged;
-        const incomingCounts = eventsResult.counts ?? inboxEventCounts;
-        const countsChanged = incomingCounts.unread !== inboxEventCounts.unread
-            || incomingCounts.mentions !== inboxEventCounts.mentions;
-        changed = issuesChanged || eventsChanged || countsChanged;
-        inboxIssuesEtag = issuesResult.etag;
-        inboxEventsEtag = eventsResult.etag;
-        const deferUpdates = deferUpdatesAtStart || inboxUpdatesAreDeferred();
-        if (deferUpdates && changed) {
-            inboxPollHasDeferredChanges = true;
-        }
-        else if (!deferUpdates) {
-            inboxEventCounts = incomingCounts;
-            if (eventsResult.hasMore !== undefined)
-                inboxEventsHasMore = eventsResult.hasMore;
-            if (eventsResult.nextCursor !== undefined)
-                inboxEventsNextCursor = eventsResult.nextCursor;
-            if (issuesChanged)
-                inboxIssues = incomingIssues;
-            if (eventsChanged)
-                inboxEvents = incomingEvents;
-            inboxPollHasDeferredChanges = false;
-            if (issuesChanged && myWorkTab === 'tasks')
-                renderInboxIssues();
-            if (eventsChanged || countsChanged) {
-                renderInboxTabs();
-                if (myWorkTab === 'inbox')
-                    renderInboxEvents();
-            }
-        }
-        inboxPollDelay = nextInboxPollDelay(inboxPollDelay, changed && !deferUpdates, false);
-    }
-    catch (error) {
-        if (error instanceof ApiFailure && error.status === 401) {
-            showSignedOut();
-            return;
-        }
-        if (inboxPollingIsActive())
-            report(error instanceof Error ? error.message : 'Could not refresh your inbox.', true);
-        inboxPollDelay = nextInboxPollDelay(inboxPollDelay, false, false);
-    }
-    finally {
-        if (requestVersion === inboxPollRequestVersion) {
-            inboxPollInFlight = false;
-            const readyToApplyDeferredChanges = inboxPollHasDeferredChanges && !inboxUpdatesAreDeferred();
-            if (readyToApplyDeferredChanges)
-                inboxPollDelay = 1000;
-            if (inboxPollingIsActive())
-                scheduleInboxPoll(readyToApplyDeferredChanges ? 0 : inboxPollDelay);
-        }
-    }
-}
-function renderMyWorkTabs() {
-    const inboxSelected = myWorkTab === 'inbox';
-    myWorkInboxTab.classList.toggle('is-active', inboxSelected);
-    myWorkInboxTab.setAttribute('aria-selected', String(inboxSelected));
-    myWorkInboxTab.tabIndex = inboxSelected ? 0 : -1;
-    myWorkTasksTab.classList.toggle('is-active', !inboxSelected);
-    myWorkTasksTab.setAttribute('aria-selected', String(!inboxSelected));
-    myWorkTasksTab.tabIndex = inboxSelected ? -1 : 0;
-    myWorkInboxPanel.hidden = !inboxSelected;
-    myWorkTasksPanel.hidden = inboxSelected;
-    inboxMarkAllReadButton.hidden = !inboxSelected || inboxTab === 'done';
-}
-function selectMyWorkTab(tab) {
-    myWorkTab = tab;
-    renderMyWorkTabs();
-    if (tab === 'tasks') {
-        renderInboxIssues();
-    }
-    else {
-        renderInboxTabs();
-        renderInboxEvents();
-    }
-    scheduleInboxPoll(0);
-}
-function renderInboxTabs() {
-    const existing = new Map(Array.from(inboxTabsElement.querySelectorAll(':scope > .inbox-tab'))
-        .map((button) => [button.dataset.inboxTab ?? '', button]));
-    for (const [index, tab] of INBOX_TABS.entries()) {
-        let button = existing.get(tab.id);
-        if (button === undefined) {
-            button = document.createElement('button');
-            button.type = 'button';
-            button.id = `inbox-tab-${tab.id}`;
-            button.className = 'inbox-tab';
-            button.dataset.inboxTab = tab.id;
-            button.setAttribute('role', 'tab');
-            button.addEventListener('click', () => selectInboxTab(tab.id));
-        }
-        button.classList.toggle('is-active', tab.id === inboxTab);
-        button.setAttribute('aria-selected', String(tab.id === inboxTab));
-        button.tabIndex = tab.id === inboxTab ? 0 : -1;
-        const count = tab.id === 'unread' ? inboxEventCounts.unread
-            : tab.id === 'mentions' ? inboxEventCounts.mentions
-                : null;
-        button.textContent = count === null || count === 0 ? tab.label : `${tab.label} ${count}`;
-        placeNodeAtPosition(inboxTabsElement, button, index);
-        existing.delete(tab.id);
-    }
-    for (const button of existing.values())
-        button.remove();
-    inboxMarkAllReadButton.hidden = myWorkTab !== 'inbox' || inboxTab === 'done';
-}
-function selectInboxTab(tab) {
-    inboxTab = tab;
-    inboxEvents = [];
-    inboxEventsEtag = null;
-    inboxEventsHasMore = false;
-    inboxEventsNextCursor = null;
-    inboxLoadMoreButton.hidden = true;
-    inboxPollRequestVersion += 1;
-    inboxPollInFlight = false;
-    renderInboxTabs();
-    renderInboxEvents();
-    scheduleInboxPoll(0);
-}
-myWorkInboxTab.addEventListener('click', () => selectMyWorkTab('inbox'));
-myWorkTasksTab.addEventListener('click', () => selectMyWorkTab('tasks'));
-myWorkTabsElement.addEventListener('keydown', (event) => {
-    const target = event.target;
-    if (!(target instanceof HTMLButtonElement) || event.altKey || event.ctrlKey || event.metaKey)
-        return;
-    const currentIndex = target === myWorkInboxTab ? 0 : target === myWorkTasksTab ? 1 : -1;
-    if (currentIndex < 0)
-        return;
-    let nextIndex;
-    if (event.key === 'ArrowRight')
-        nextIndex = currentIndex === 0 ? 1 : 0;
-    else if (event.key === 'ArrowLeft')
-        nextIndex = currentIndex === 0 ? 1 : 0;
-    else if (event.key === 'Home')
-        nextIndex = 0;
-    else if (event.key === 'End')
-        nextIndex = 1;
-    else
-        return;
-    event.preventDefault();
-    event.stopPropagation();
-    const nextTab = nextIndex === 0 ? myWorkInboxTab : myWorkTasksTab;
-    selectMyWorkTab(nextIndex === 0 ? 'inbox' : 'tasks');
-    nextTab.focus();
-});
-inboxTabsElement.addEventListener('keydown', (event) => {
-    const target = event.target;
-    if (!(target instanceof HTMLButtonElement) || event.altKey || event.ctrlKey || event.metaKey)
-        return;
-    const currentIndex = INBOX_TABS.findIndex((tab) => tab.id === target.dataset.inboxTab);
-    if (currentIndex < 0)
-        return;
-    let nextIndex;
-    if (event.key === 'ArrowRight')
-        nextIndex = (currentIndex + 1) % INBOX_TABS.length;
-    else if (event.key === 'ArrowLeft')
-        nextIndex = (currentIndex - 1 + INBOX_TABS.length) % INBOX_TABS.length;
-    else if (event.key === 'Home')
-        nextIndex = 0;
-    else if (event.key === 'End')
-        nextIndex = INBOX_TABS.length - 1;
-    else
-        return;
-    const nextTab = INBOX_TABS[nextIndex];
-    if (nextTab === undefined)
-        return;
-    event.preventDefault();
-    event.stopPropagation();
-    selectInboxTab(nextTab.id);
-    inboxTabsElement.querySelector(`#inbox-tab-${nextTab.id}`)?.focus();
-});
-function reconcileInboxRows(list, items, dataKey, signatures, create) {
-    const existingRows = new Map();
-    const rowsFromOtherCollections = [];
-    for (const row of Array.from(list.querySelectorAll(':scope > .inbox-issue-card'))) {
-        const rowId = row.dataset[dataKey];
-        if (rowId === undefined || !Number.isSafeInteger(Number(rowId))) {
-            rowsFromOtherCollections.push(row);
-        }
-        else {
-            existingRows.set(Number(rowId), row);
-        }
-    }
-    const focused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const focusedRow = focused?.closest('.inbox-issue-card') ?? null;
-    const focusedRowId = focusedRow === null ? null : Number(focusedRow.dataset[dataKey]);
-    const focusedIndex = focusedRow === null ? -1 : Array.from(list.children).indexOf(focusedRow);
-    const focusSelector = focused?.matches('.issue-title-button') ? '.issue-title-button'
-        : focused?.matches('.inbox-event-read') ? '.inbox-event-read'
-            : focused?.matches('.inbox-event-done') ? '.inbox-event-done'
-                : null;
-    const expectedIds = new Set();
-    rowsFromOtherCollections.forEach((row) => row.remove());
-    for (const [index, item] of items.entries()) {
-        expectedIds.add(item.id);
-        const existingRow = existingRows.get(item.id);
-        const signature = inboxItemSignature(item);
-        let row = existingRow;
-        if (row === undefined || signatures.get(row) !== signature) {
-            row = create(item);
-            signatures.set(row, signature);
-            if (existingRow !== undefined) {
-                row.classList.toggle('is-keyboard-selected', existingRow.classList.contains('is-keyboard-selected'));
-                existingRow.replaceWith(row);
-            }
-        }
-        placeNodeAtPosition(list, row, index);
-    }
-    for (const [id, row] of existingRows) {
-        if (!expectedIds.has(id))
-            row.remove();
-    }
-    if (focusedRowId === null || focusSelector === null)
-        return;
-    const focusedReplacement = Array.from(list.querySelectorAll(':scope > .inbox-issue-card'))
-        .find((row) => Number(row.dataset[dataKey]) === focusedRowId);
-    const focusTarget = focusedReplacement?.querySelector(focusSelector);
-    if (focusTarget !== null && focusTarget !== undefined && focusedRow !== focusedReplacement) {
-        focusTarget.focus();
-    }
-    else if (focusedRow !== null && !focusedRow.isConnected) {
-        const nextRow = list.children.item(Math.min(Math.max(focusedIndex, 0), list.children.length - 1));
-        const nextFocusTarget = nextRow?.querySelector('.issue-title-button')
-            ?? inboxTabsElement.querySelector('.inbox-tab.is-active');
-        nextFocusTarget?.focus();
-    }
-}
-function inboxItemSignature(item) {
-    return JSON.stringify(Object.entries(item).sort(([left], [right]) => left.localeCompare(right)));
-}
-function renderInboxEvents() {
-    const events = inboxEvents;
-    const unread = inboxEventCounts.unread;
-    inboxSummary.textContent = `${unread} unread ${unread === 1 ? 'event' : 'events'}.`;
-    reconcileInboxRows(inboxIssueList, events, 'eventId', inboxEventRowRenderSignatures, (event) => createEventRow(event, {
-        open: (target) => void openInboxEvent(target),
-        toggleRead: (target) => void updateInboxEvent(target, { read: !target.read }),
-        toggleDone: (target) => void updateInboxEvent(target, { done: !target.done, read: true }),
-    }));
-    inboxEmptyState.textContent = 'Nothing here.';
-    inboxEmptyState.hidden = events.length > 0;
-    inboxLoadMoreButton.hidden = !inboxEventsHasMore;
-    inboxLoadMoreButton.disabled = inboxMorePageLoading;
-}
-async function loadMoreInboxEvents() {
-    if (inboxMorePageLoading || !inboxEventsHasMore || inboxEventsNextCursor === null)
-        return;
-    inboxMorePageLoading = true;
-    const requestVersion = ++inboxPollRequestVersion;
-    inboxPollInFlight = true;
-    renderInboxEvents();
-    try {
-        const page = await fetchConditionalInboxCollection(inboxEventPagePath(inboxTab, inboxEventsNextCursor), 'events', null);
-        if (requestVersion !== inboxPollRequestVersion || !inboxPollingIsActive() || page.items === null)
-            return;
-        inboxEvents = mergeInboxEventPage(inboxEvents, page.items);
-        inboxEventCounts = page.counts ?? inboxEventCounts;
-        inboxEventsHasMore = page.hasMore ?? false;
-        inboxEventsNextCursor = page.nextCursor ?? null;
-        renderInboxTabs();
-        renderInboxEvents();
-    }
-    catch (error) {
-        if (error instanceof ApiFailure && error.status === 401) {
-            showSignedOut();
-            return;
-        }
-        report(error instanceof Error ? error.message : 'Could not load older inbox events.', true);
-    }
-    finally {
-        inboxMorePageLoading = false;
-        if (requestVersion === inboxPollRequestVersion) {
-            inboxPollInFlight = false;
-            if (inboxPollingIsActive())
-                scheduleInboxPoll(1000);
-        }
-        renderInboxEvents();
-    }
-}
-async function updateInboxEvent(event, change) {
-    inboxMutationPending += 1;
-    try {
-        const result = await api(`/inbox/events/${event.id}`, {
-            method: 'PATCH',
-            body: JSON.stringify(change),
-        });
-        inboxEvents = inboxEvents.map((candidate) => (candidate.id === event.id ? result.event : candidate));
-        inboxEvents = eventsForTab(inboxEvents, inboxTab);
-        inboxEventsEtag = null;
-        inboxPollDelay = 1000;
-        renderInboxTabs();
-        renderInboxEvents();
-        inboxPollRequestVersion += 1;
-        inboxPollInFlight = false;
-        scheduleInboxPoll(0);
-    }
-    catch (error) {
-        report(error instanceof Error ? error.message : 'Could not update the event.', true);
-    }
-    finally {
-        inboxMutationPending -= 1;
-        resumeDeferredInboxPolling();
-    }
-}
-async function markAllInboxEventsRead() {
-    inboxMutationPending += 1;
-    try {
-        await api('/inbox/events/read-all', { method: 'POST' });
-        inboxEvents = inboxEvents.map((event) => ({ ...event, read: true }));
-        if (inboxTab === 'unread') {
-            inboxEvents = [];
-            inboxEventsHasMore = false;
-            inboxEventsNextCursor = null;
-        }
-        inboxEventCounts = { ...inboxEventCounts, unread: 0 };
-        inboxEventsEtag = null;
-        inboxPollDelay = 1000;
-        renderInboxTabs();
-        renderInboxEvents();
-        inboxPollRequestVersion += 1;
-        inboxPollInFlight = false;
-        scheduleInboxPoll(0);
-    }
-    catch (error) {
-        report(error instanceof Error ? error.message : 'Could not mark events as read.', true);
-    }
-    finally {
-        inboxMutationPending -= 1;
-        resumeDeferredInboxPolling();
-    }
-}
 async function openInboxEvent(event) {
-    if (!event.read)
-        void updateInboxEvent(event, { read: true });
     await loadProjectDetail(event.project_id);
     if (activeProject?.id !== event.project_id || projectView.hidden)
         return;
@@ -4811,123 +4331,6 @@ async function openInboxEvent(event) {
         }
         report(error instanceof Error ? error.message : 'Could not open the source message.', true);
     }
-}
-function renderInboxIssues() {
-    const projectCount = new Set(inboxIssues.map((issue) => issue.project_id)).size;
-    myWorkTasksSummary.textContent = inboxIssues.length === 0
-        ? 'Open issues assigned to you across your projects.'
-        : `${inboxIssues.length} open ${inboxIssues.length === 1 ? 'issue' : 'issues'} assigned to you in ${projectCount} ${projectCount === 1 ? 'project' : 'projects'}.`;
-    const openGroups = new Map(Array.from(myWorkTaskGroups.querySelectorAll('.my-work-task-group'))
-        .map((group) => [group.dataset.groupKey ?? '', group.open]));
-    const selectedIssueId = myWorkTaskGroups.querySelector('.inbox-issue-card.is-keyboard-selected')?.dataset.issueId;
-    const fragment = document.createDocumentFragment();
-    for (const project of groupMyWorkTasks(inboxIssues)) {
-        const projectSection = document.createElement('section');
-        projectSection.className = 'my-work-project-group';
-        projectSection.setAttribute('aria-label', project.projectName);
-        const projectHeading = document.createElement('h2');
-        projectHeading.className = 'my-work-project-heading';
-        projectHeading.textContent = project.projectName;
-        projectSection.append(projectHeading);
-        for (const milestone of project.milestones) {
-            const group = document.createElement('details');
-            group.className = 'my-work-task-group';
-            group.dataset.groupKey = milestone.key;
-            group.open = openGroups.get(milestone.key) ?? true;
-            const summary = document.createElement('summary');
-            summary.className = 'my-work-task-group-summary';
-            const name = document.createElement('span');
-            name.className = 'my-work-task-group-name';
-            name.textContent = milestone.name;
-            const count = document.createElement('span');
-            count.className = 'my-work-task-group-count';
-            count.textContent = `${milestone.tasks.length} ${milestone.tasks.length === 1 ? 'task' : 'tasks'}`;
-            summary.append(name, count);
-            if (milestone.dueDate !== null) {
-                const dueDate = document.createElement('span');
-                dueDate.className = 'my-work-task-group-date';
-                dueDate.textContent = `Due ${formatIssueDueDate(milestone.dueDate)}`;
-                summary.append(dueDate);
-            }
-            const list = document.createElement('ul');
-            list.className = 'issue-list inbox-issue-list';
-            list.setAttribute('aria-label', `${project.projectName}, ${milestone.name}`);
-            for (const issue of milestone.tasks) {
-                const row = createInboxIssueRow(issue);
-                if (String(issue.id) === selectedIssueId)
-                    row.classList.add('is-keyboard-selected');
-                list.append(row);
-            }
-            group.append(summary, list);
-            projectSection.append(group);
-        }
-        fragment.append(projectSection);
-    }
-    myWorkTaskGroups.replaceChildren(fragment);
-    myWorkTasksEmptyState.textContent = 'You have no open issues assigned to you.';
-    myWorkTasksEmptyState.hidden = inboxIssues.length > 0;
-}
-function createInboxIssueRow(issue) {
-    const item = document.createElement('li');
-    item.className = 'issue-card inbox-issue-card';
-    item.dataset.issueId = String(issue.id);
-    const marker = document.createElement('span');
-    marker.className = `inbox-marker is-${issue.status}`;
-    marker.setAttribute('aria-hidden', 'true');
-    const content = document.createElement('div');
-    content.className = 'issue-content';
-    const mainline = document.createElement('div');
-    mainline.className = 'issue-mainline';
-    const key = document.createElement('span');
-    key.className = 'issue-key';
-    key.textContent = `#${issue.id}`;
-    const title = document.createElement('button');
-    title.className = 'issue-title issue-title-button';
-    title.type = 'button';
-    title.textContent = issue.title;
-    title.setAttribute('aria-label', `Open ${issue.title} in ${issue.project_name}`);
-    title.addEventListener('click', () => void openInboxIssue(issue));
-    const primary = document.createElement('div');
-    primary.className = 'inbox-issue-primary';
-    const metadata = document.createElement('div');
-    metadata.className = 'issue-metadata inbox-issue-metadata';
-    const status = document.createElement('span');
-    status.className = `inbox-issue-status is-${issue.status}`;
-    status.textContent = issueStatusLabel(issue.status);
-    metadata.append(status);
-    if (issue.type !== 'task') {
-        const type = document.createElement('span');
-        type.className = 'issue-type-tag';
-        type.textContent = issueTypeLabel(issue.type);
-        metadata.append(type);
-    }
-    if (issue.priority !== 'medium') {
-        const priority = document.createElement('span');
-        priority.className = `issue-priority-tag is-${issue.priority}`;
-        priority.textContent = `${issuePriorityLabel(issue.priority)} priority`;
-        metadata.append(priority);
-    }
-    if (issue.due_date !== null) {
-        const dueDate = document.createElement('span');
-        const overdue = isIssueOverdue(issue);
-        dueDate.className = `issue-due-date-tag${overdue ? ' is-overdue' : ''}`;
-        dueDate.textContent = `${overdue ? 'Overdue' : 'Due'} ${formatIssueDueDate(issue.due_date)}`;
-        metadata.append(dueDate);
-    }
-    const discussionIndicator = createDiscussionIndicator(issue.discussion_count ?? 0);
-    if (discussionIndicator !== null)
-        metadata.append(discussionIndicator);
-    primary.append(title, metadata);
-    mainline.append(key, primary);
-    content.append(mainline);
-    const updated = document.createElement('time');
-    updated.className = 'inbox-updated';
-    updated.dateTime = issue.updated_at;
-    updated.textContent = new Date(issue.updated_at).toLocaleString(undefined, {
-        day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
-    });
-    item.append(marker, content, updated);
-    return item;
 }
 async function openInboxIssue(issue) {
     await loadProjectDetail(issue.project_id);
@@ -6018,11 +5421,7 @@ function updateProjectIssueDiscussionCount(issueId, count) {
     if (selectedIssue?.id === issueId && (selectedIssue.discussion_count ?? 0) !== count) {
         selectedIssue = { ...selectedIssue, discussion_count: count };
     }
-    inboxIssues = inboxIssues.map((issue) => issue.id === issueId && (issue.discussion_count ?? 0) !== count
-        ? { ...issue, discussion_count: count }
-        : issue);
-    if (!inboxView.hidden && myWorkTab === 'tasks')
-        renderInboxIssues();
+    inboxUi.updateIssueDiscussionCount(issueId, count);
 }
 function renderIssueDiscussion() {
     issueDiscussionCount.textContent = String(issueDiscussionMessages.length);
@@ -7645,8 +7044,6 @@ inviteForm.addEventListener('submit', async (event) => {
     }
 });
 guestLogoutButton.addEventListener('click', () => { void signOut(); });
-inboxMarkAllReadButton.addEventListener('click', () => { void markAllInboxEventsRead(); });
-inboxLoadMoreButton.addEventListener('click', () => { void loadMoreInboxEvents(); });
 window.addEventListener('storage', (event) => {
     if (event.key === 'tangent-github-connected' && activeUser?.role === 'admin')
         void loadGithubRepositories();
