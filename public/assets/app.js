@@ -2,6 +2,7 @@ import { INBOX_TABS, createEventRow, eventsForTab, tabCount, } from './inbox-eve
 import { diffInboxCollections, nextInboxPollDelay, shouldDeferInboxUpdates, } from './inbox-polling.js';
 import { renderClientEmptyState, renderClientView } from './guest-view.js';
 import { createLogoutController } from './logout.js';
+import { ProjectNavigationOwner, runOwnedRequest } from './project-navigation.js';
 import { generateClientSummary } from './client-summary.js';
 import { filterMentionMembers, findMentionQuery, mentionEmptyMessage, nextMentionSelectionIndex, replaceMentionQuery, splitMentions, } from './chat-mentions.js';
 import { formatChatTimestamp } from './chat-time.js';
@@ -527,6 +528,8 @@ let projectReturnFocusId = null;
 let pendingWorkspaceId = null;
 let workspacePickerOptionIndex = 0;
 const workspaceViewHistory = [];
+const projectNavigation = new ProjectNavigationOwner();
+let projectDetailAbortController = null;
 let activeProjectMembers = [];
 let projectMilestones = [];
 let editingMilestoneId = null;
@@ -779,7 +782,16 @@ function toggleKeyboardHints() {
     }
     updateKeyboardHintsVisibility();
 }
+function invalidateProjectNavigation(sessionChanged = false) {
+    if (sessionChanged)
+        projectNavigation.changeSession();
+    else
+        projectNavigation.invalidate();
+    projectDetailAbortController?.abort();
+    projectDetailAbortController = null;
+}
 function showSignedOut() {
+    invalidateProjectNavigation(true);
     resetAuthForms();
     workspaceViewHistory.length = 0;
     projectReturnFocusId = null;
@@ -854,6 +866,7 @@ function showSignedOut() {
     report('');
 }
 function showSignedIn(user) {
+    invalidateProjectNavigation(true);
     workspaceViewHistory.length = 0;
     projectReturnFocusId = null;
     activeProject = null;
@@ -1008,6 +1021,8 @@ function moveWorkspaceStatusToCurrentHeading() {
     }
 }
 function showWorkspaceView(view) {
+    if (view !== 'project')
+        invalidateProjectNavigation();
     const wasLoungeActive = view !== 'lounge' && loungeActive;
     if (view !== 'inbox') {
         stopInboxPolling();
@@ -5547,6 +5562,10 @@ async function deleteMilestone(milestone, button) {
     }
 }
 async function loadProjectDetail(projectId, tab = 'issues', recordHistory = true) {
+    projectDetailAbortController?.abort();
+    const abortController = new AbortController();
+    projectDetailAbortController = abortController;
+    const navigationTicket = projectNavigation.begin();
     clearBulkMoveSelection();
     clearBulkAssignSelection();
     const previousLocation = currentWorkspaceLocation();
@@ -5575,48 +5594,55 @@ async function loadProjectDetail(projectId, tab = 'issues', recordHistory = true
     issueDetailEditForm.hidden = true;
     issueDetailDisplay.hidden = false;
     try {
-        const [result, milestoneResult] = await Promise.all([
-            api(`/projects/${projectId}`),
-            api(`/projects/${projectId}/milestones`),
-        ]);
-        const nextLocation = { view: 'project', projectId, tab };
-        if (recordHistory && !sameWorkspaceLocation(previousLocation, nextLocation)) {
-            workspaceViewHistory.push(previousLocation);
-        }
-        activeProject = result.project;
-        activeProjectMembers = result.members;
-        projectHeading.textContent = result.project.name;
-        projectMilestones = milestoneResult.milestones;
-        populateIssueAssigneeSelect(issueQuickAddAssignee, null);
-        populateIssueMilestoneSelect(issueQuickAddMilestone, null);
-        populateIssueAssigneeSelect(issueDetailAssigneeInput, null);
-        projectSidebarList.querySelectorAll('.project-sidebar-link').forEach((button) => {
-            button.classList.toggle('is-active', button.dataset.projectId === String(result.project.id));
+        await runOwnedRequest(projectNavigation, navigationTicket, async () => {
+            const [result, milestoneResult] = await Promise.all([
+                api(`/projects/${projectId}`, { signal: abortController.signal }),
+                api(`/projects/${projectId}/milestones`, { signal: abortController.signal }),
+            ]);
+            return { result, milestoneResult };
+        }, ({ result, milestoneResult }) => {
+            const nextLocation = { view: 'project', projectId, tab };
+            if (recordHistory && !sameWorkspaceLocation(previousLocation, nextLocation)) {
+                workspaceViewHistory.push(previousLocation);
+            }
+            activeProject = result.project;
+            activeProjectMembers = result.members;
+            projectHeading.textContent = result.project.name;
+            projectMilestones = milestoneResult.milestones;
+            populateIssueAssigneeSelect(issueQuickAddAssignee, null);
+            populateIssueMilestoneSelect(issueQuickAddMilestone, null);
+            populateIssueAssigneeSelect(issueDetailAssigneeInput, null);
+            projectSidebarList.querySelectorAll('.project-sidebar-link').forEach((button) => {
+                button.classList.toggle('is-active', button.dataset.projectId === String(result.project.id));
+            });
+            projectDescription.textContent = result.project.description;
+            projectDescription.hidden = result.project.description.trim() === '';
+            projectState.textContent = projectStatusLabel(result.project.status);
+            projectState.classList.toggle('is-paused', result.project.status === 'paused');
+            projectState.classList.toggle('is-read-only', result.project.status === 'completed' || result.project.status === 'archived');
+            updateProjectReadOnlyNotice(result.project.status);
+            projectIssues = [];
+            deletedProjectIssues = [];
+            deletedIssuesDetails.open = false;
+            issueFilter.value = '';
+            issueScope.value = 'active';
+            issueOrder.value = 'updated';
+            synchronizeIssueGroupingForOrder();
+            issueDescriptionDetails.open = false;
+            renderProjectIssueBoard();
+            showWorkspaceView('project');
+            chatView.replaceChildren(createProjectChat(projectId));
+            switchProjectTab(tab);
+            (tab === 'issues' ? issuesTabButton : tab === 'members' ? membersTabButton : notesTabButton).focus();
+        }, (error) => {
+            workspaceViewHistory.length = 0;
+            report(error instanceof Error ? error.message : 'Could not load the project.', true);
+            showWorkspaceView('projects');
         });
-        projectDescription.textContent = result.project.description;
-        projectDescription.hidden = result.project.description.trim() === '';
-        projectState.textContent = projectStatusLabel(result.project.status);
-        projectState.classList.toggle('is-paused', result.project.status === 'paused');
-        projectState.classList.toggle('is-read-only', result.project.status === 'completed' || result.project.status === 'archived');
-        updateProjectReadOnlyNotice(result.project.status);
-        projectIssues = [];
-        deletedProjectIssues = [];
-        deletedIssuesDetails.open = false;
-        issueFilter.value = '';
-        issueScope.value = 'active';
-        issueOrder.value = 'updated';
-        synchronizeIssueGroupingForOrder();
-        issueDescriptionDetails.open = false;
-        renderProjectIssueBoard();
-        showWorkspaceView('project');
-        chatView.replaceChildren(createProjectChat(projectId));
-        switchProjectTab(tab);
-        (tab === 'issues' ? issuesTabButton : tab === 'members' ? membersTabButton : notesTabButton).focus();
     }
-    catch (error) {
-        workspaceViewHistory.length = 0;
-        report(error instanceof Error ? error.message : 'Could not load the project.', true);
-        showWorkspaceView('projects');
+    finally {
+        if (projectDetailAbortController === abortController)
+            projectDetailAbortController = null;
     }
 }
 function switchProjectTab(tab, returnFocusIssueId, loadIssues = true) {
