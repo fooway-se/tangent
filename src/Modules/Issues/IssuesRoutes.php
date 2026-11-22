@@ -56,9 +56,12 @@ final class IssuesRoutes
             array $params,
             AuthenticatedUser $user,
         ): Response {
-            return self::issueListResponse(
+            $projectId = self::positiveId($params['id']);
+            $revision = $this->service->listRevision($user, $projectId, true);
+            return IssueListResponse::conditional(
                 $request,
-                $this->service->listDeleted($user, self::positiveId($params['id'])),
+                IssueListResponse::etagForRevision($user->workspaceId . ':' . $projectId . ':deleted:' . $revision),
+                fn (): array => $this->service->listDeleted($user, $projectId),
             );
         });
 
@@ -214,27 +217,6 @@ final class IssuesRoutes
                 'issue' => $this->service->restore($user, self::positiveId($params['id'])),
             ]);
         });
-    }
-
-    private static function issueListResponse(Request $request, array $issues): Response
-    {
-        $etag = '"' . hash('sha256', json_encode($issues, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR)) . '"';
-        $headers = ['ETag' => $etag, 'Cache-Control' => 'no-cache'];
-        $ifNoneMatch = $request->header('If-None-Match');
-        if ($ifNoneMatch !== null && self::matchesEtag($ifNoneMatch, $etag)) {
-            return Response::notModified($headers);
-        }
-
-        return Response::json(200, ['issues' => $issues], $headers);
-    }
-
-    private static function matchesEtag(string $header, string $etag): bool
-    {
-        foreach (explode(',', $header) as $candidate) {
-            $candidate = trim($candidate);
-            if ($candidate === '*' || preg_replace('/^W\//', '', $candidate) === $etag) return true;
-        }
-        return false;
     }
 
     private static function positiveId(string $value): int
