@@ -600,6 +600,40 @@ final class AuthLifecycleTest extends ApiTestCase
         ]);
 
         $developer = $this->login($this->developerEmail);
+        $apiTokenResponse = $this->cookieRequest(
+            'POST',
+            '/api/v1/tokens',
+            $developer['cookie'],
+            ['label' => 'Membership access token'],
+            $developer['csrf'],
+        );
+        self::assertSame(201, $apiTokenResponse->status, json_encode($apiTokenResponse->body));
+        $apiToken = $apiTokenResponse->body['token'];
+
+        $otherWorkspaceSource = $this->login($this->developerEmail);
+        $otherWorkspaceSession = $this->cookieRequest(
+            'POST',
+            '/api/v1/workspaces/' . $otherWorkspaceId . '/switch',
+            $otherWorkspaceSource['cookie'],
+            [],
+            $otherWorkspaceSource['csrf'],
+        );
+        self::assertSame(200, $otherWorkspaceSession->status, json_encode($otherWorkspaceSession->body));
+        $otherWorkspaceCookie = $this->responseCookie($otherWorkspaceSession, 'tangent_session');
+        $otherWorkspaceCsrf = $this->responseCookie($otherWorkspaceSession, 'tangent_csrf');
+        $otherApiTokenResponse = $this->request(
+            'POST',
+            '/api/v1/tokens',
+            ['label' => 'Other workspace token'],
+            ['X-CSRF-Token' => $otherWorkspaceCsrf],
+            [
+                'tangent_session' => $otherWorkspaceCookie,
+                'tangent_workspace' => (string) $otherWorkspaceId,
+            ],
+        );
+        self::assertSame(201, $otherApiTokenResponse->status, json_encode($otherApiTokenResponse->body));
+        $otherApiToken = $otherApiTokenResponse->body['token'];
+
         $admin = $this->login($this->adminEmail);
         $deactivated = $this->cookieRequest(
             'PATCH',
@@ -614,6 +648,14 @@ final class AuthLifecycleTest extends ApiTestCase
         self::assertSame(401, $this->request('GET', '/api/v1/auth/me', cookies: [
             'tangent_session' => $developer['cookie'],
         ])->status);
+        self::assertSame(401, $this->request('GET', '/api/v1/auth/me', headers: [
+            'Authorization' => 'Bearer ' . $apiToken,
+            'X-Tangent-Workspace' => (string) $this->workspaceId,
+        ])->status);
+        self::assertSame(200, $this->request('GET', '/api/v1/auth/me', headers: [
+            'Authorization' => 'Bearer ' . $otherApiToken,
+            'X-Tangent-Workspace' => (string) $otherWorkspaceId,
+        ])->status, 'Deactivation must preserve credentials for the account\'s other workspace.');
         $secondaryLogin = $this->request('POST', '/api/v1/auth/login', [
             'email' => $this->developerEmail,
             'password' => $this->password,
@@ -650,7 +692,29 @@ final class AuthLifecycleTest extends ApiTestCase
         self::assertSame(401, $this->request('GET', '/api/v1/auth/me', cookies: [
             'tangent_session' => $developer['cookie'],
         ])->status, 'Deactivation revokes old sessions permanently.');
-        self::assertSame($this->developerEmail, $this->login($this->developerEmail)['user']['email']);
+        self::assertSame(401, $this->request('GET', '/api/v1/auth/me', headers: [
+            'Authorization' => 'Bearer ' . $apiToken,
+            'X-Tangent-Workspace' => (string) $this->workspaceId,
+        ])->status, 'Deactivation revokes API tokens permanently.');
+        self::assertSame(200, $this->request('GET', '/api/v1/auth/me', headers: [
+            'Authorization' => 'Bearer ' . $otherApiToken,
+            'X-Tangent-Workspace' => (string) $otherWorkspaceId,
+        ])->status, 'Reactivation must not affect API tokens for other workspaces.');
+
+        $reactivatedDeveloper = $this->login($this->developerEmail);
+        self::assertSame($this->workspaceId, $reactivatedDeveloper['user']['workspace_id']);
+        $newApiTokenResponse = $this->cookieRequest(
+            'POST',
+            '/api/v1/tokens',
+            $reactivatedDeveloper['cookie'],
+            ['label' => 'Fresh membership token'],
+            $reactivatedDeveloper['csrf'],
+        );
+        self::assertSame(201, $newApiTokenResponse->status, json_encode($newApiTokenResponse->body));
+        self::assertSame(200, $this->request('GET', '/api/v1/auth/me', headers: [
+            'Authorization' => 'Bearer ' . $newApiTokenResponse->body['token'],
+            'X-Tangent-Workspace' => (string) $this->workspaceId,
+        ])->status, 'A new API token works after the membership is reactivated.');
     }
 
     public function testWorkspaceAdminCannotDeactivateTheLastActiveAdmin(): void
@@ -886,6 +950,16 @@ final class AuthLifecycleTest extends ApiTestCase
             }
         }
         self::fail('Expected session cookie.');
+    }
+
+    private function responseCookie(\Tangent\Core\Response $response, string $name): string
+    {
+        foreach ((array) ($response->headers['set-cookie'] ?? []) as $cookie) {
+            if (preg_match('/(?:^|;\s*)' . preg_quote($name, '/') . '=([^;]*)/', $cookie, $matches) === 1) {
+                return rawurldecode($matches[1]);
+            }
+        }
+        self::fail("Expected {$name} cookie.");
     }
 
     private function projectHasMember(int $projectId, int $userId): bool

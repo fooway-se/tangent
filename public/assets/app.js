@@ -1258,7 +1258,7 @@ function renderWorkspaceMembers(members) {
 }
 function openWorkspaceMemberDeactivationConfirmation(member, button) {
     workspaceMemberDeactivationTarget = { member, button };
-    workspaceMemberDeactivationDescription.textContent = `${member.name} will lose access to this workspace, its projects, and existing sessions.`;
+    workspaceMemberDeactivationDescription.textContent = `${member.name} will lose access to this workspace and its projects. Existing browser sessions and API tokens for this workspace will be revoked.`;
     workspaceMemberDeactivationDialog.showModal();
     workspaceMemberDeactivationCancel.focus();
 }

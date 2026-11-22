@@ -29,6 +29,18 @@ test('workspace admin invites members without creating their passwords', () => {
   assert.match(app, /If this creates a new account, Tangent emails a verification code to the invited address\./);
 });
 
+test('member deactivation explains permanent workspace credential revocation', () => {
+  const deactivationDialog = html.slice(
+    html.indexOf('id="workspace-member-deactivation-dialog"'),
+    html.indexOf('id="workspace-member-role-confirmation-dialog"'),
+  );
+  assert.match(app, /existing browser sessions and API tokens for this workspace will be revoked/i);
+  assert.match(deactivationDialog, /reactivating won't restore old credentials/i);
+  const endpoint = openapi.slice(openapi.indexOf('  /users/{id}/status:'), openapi.indexOf('  /users/{id}/role:'));
+  assert.match(endpoint, /Deactivation revokes the member's browser sessions and API tokens in this workspace/);
+  assert.match(endpoint, /Reactivating the membership does not restore those credentials/);
+});
+
 test('pending invite details and actions fit narrow phone screens', () => {
   assert.match(app, /details\.className = 'workspace-invite-details'/);
   assert.match(css, /@media \(max-width: 520px\)[\s\S]*\.workspace-invite-row\s*\{[^}]*flex-direction:\s*column/);

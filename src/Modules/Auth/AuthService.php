@@ -227,7 +227,7 @@ final class AuthService
                 }
 
                 $this->users->setActive($actor->workspaceId, $memberId, false);
-                $this->tokens->revokeSessionsForMember($actor->workspaceId, $memberId);
+                $this->tokens->revokeAllForMember($actor->workspaceId, $memberId);
             } elseif (!$currentlyActive && $isActive) {
                 $this->users->setActive($actor->workspaceId, $memberId, true);
             }

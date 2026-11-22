@@ -525,7 +525,7 @@ paths:
   /users/{id}/status:
     patch:
       summary: Activate or deactivate a workspace membership (admin only)
-      description: Deactivation revokes the member's sessions in this workspace and blocks workspace and project access. The account and memberships in other workspaces remain. At least one active workspace admin must remain.
+      description: Deactivation revokes the member's browser sessions and API tokens in this workspace and blocks workspace and project access. Reactivating the membership does not restore those credentials; the member must sign in again and create new API tokens. The account, credentials, and access in other workspaces remain. At least one active workspace admin must remain.
       parameters:
         - $ref: '#/components/parameters/Id'
         - $ref: '#/components/parameters/CsrfToken'

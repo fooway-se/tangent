@@ -1523,7 +1523,7 @@ function renderWorkspaceMembers(members: readonly WorkspaceMember[]): void {
 
 function openWorkspaceMemberDeactivationConfirmation(member: WorkspaceMember, button: HTMLButtonElement): void {
   workspaceMemberDeactivationTarget = { member, button };
-  workspaceMemberDeactivationDescription.textContent = `${member.name} will lose access to this workspace, its projects, and existing sessions.`;
+  workspaceMemberDeactivationDescription.textContent = `${member.name} will lose access to this workspace and its projects. Existing browser sessions and API tokens for this workspace will be revoked.`;
   workspaceMemberDeactivationDialog.showModal();
   workspaceMemberDeactivationCancel.focus();
 }
