@@ -209,13 +209,16 @@ kbd {
 .workspace-breadcrumb strong { color: var(--screen-ink); font-weight: 800; letter-spacing: 0.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .breadcrumb-link { border: 0; padding: 0; color: var(--screen-muted); background: transparent; font: inherit; cursor: pointer; }
 .breadcrumb-link:hover { color: var(--screen-ink); }
-.workspace-content { display: flex; flex: 1; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; }
+.workspace-content { position: relative; display: flex; flex: 1; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; }
 .status-message { display: flex; align-items: center; gap: 8px; min-height: 0; margin: 0; padding: 0; color: var(--accent); }
 .status-message:not(:empty) { min-height: 24px; padding: 4px 22px; }
 .status-message.error { color: var(--danger); }
 .status-message-text { min-width: 0; overflow-wrap: anywhere; }
 .status-message-dismiss { flex: 0 0 auto; margin-left: auto; border: 0; padding: 0 4px; color: inherit; background: transparent; font: 700 16px/1 var(--font-display); cursor: pointer; }
 .status-message-dismiss:hover { color: var(--screen-ink); }
+#status-message { position: absolute; z-index: 1; top: 0; right: 0; width: min(52%, 440px); min-width: 0; justify-content: flex-end; overflow: hidden; padding: 0; font-size: 12px; }
+#status-message:not(:empty) { min-height: 0; padding: 0; }
+#status-message .status-message-text { overflow: hidden; overflow-wrap: normal; text-overflow: ellipsis; white-space: nowrap; }
 .workspace-view { flex: 1; min-height: 0; }
 .projects-view, .inbox-view, .admin-view { overflow: auto; padding: 14px 22px 22px; }
 .roadmap-view { overflow: auto; padding: 14px 22px 22px; }
@@ -239,7 +242,7 @@ kbd {
 .inbox-issue-metadata { margin-left: 0; }
 .inbox-issue-status.is-doing, .inbox-issue-status.is-testing { color: var(--accent); }
 .eyebrow { margin-bottom: 4px; color: var(--screen-muted); font: 700 11px/1.4 var(--font-display); letter-spacing: 2px; text-transform: uppercase; }
-.page-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin: 4px 0 16px; border-bottom: 1px solid var(--screen-border); padding-bottom: 12px; }
+.page-heading { position: relative; display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin: 4px 0 16px; border-bottom: 1px solid var(--screen-border); padding-bottom: 12px; }
 .project-page-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
 .workspace-content .section-title { color: var(--screen-muted); }
 

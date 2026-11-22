@@ -4,6 +4,7 @@ import test from 'node:test';
 
 const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
 const css = await readFile(new URL('../../public/assets/app.css', import.meta.url), 'utf8');
+const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
 const tokens = await readFile(new URL('../../public/assets/tokens.css', import.meta.url), 'utf8');
 const workspaceStart = html.indexOf('id="workspace-panel"');
 const sidebarStart = html.indexOf('class="workspace-sidebar"', workspaceStart);
@@ -19,6 +20,14 @@ test('workspace navigation is a persistent left rail beside the main stage', () 
   assert.match(sidebar, /id="workspace-nav"/);
   assert.match(sidebar, /id="project-sidebar-list"/);
   assert.match(sidebar, /id="account-bar"/);
+});
+
+test('workspace notifications attach to the active page heading without shifting its content', () => {
+  assert.match(app, /function moveWorkspaceStatusToCurrentHeading\([\s\S]*?querySelector<HTMLElement>\('\.page-heading'\)[\s\S]*?append\(statusMessage\)/);
+  assert.match(app, /function showWorkspaceView\([\s\S]*?moveWorkspaceStatusToCurrentHeading\(\)/);
+  assert.match(app, /function report\([\s\S]*?moveWorkspaceStatusToCurrentHeading\(\)/);
+  assert.match(css, /\.page-heading\s*\{[^}]*position:\s*relative/);
+  assert.match(css, /#status-message\s*\{[^}]*position:\s*absolute[^}]*top:\s*0[^}]*right:\s*0/);
 });
 
 test('the sidebar can switch workspaces and workspace admins can create one', () => {

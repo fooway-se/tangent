@@ -316,6 +316,16 @@ final class IssuesTest extends ApiTestCase
         self::assertSame('low', $updated->body['issue']['priority']);
         self::assertNull($updated->body['issue']['due_date']);
 
+        $urgent = $this->apiCookieRequest(
+            'PATCH',
+            "/api/v1/issues/{$issueId}",
+            $admin['cookie'],
+            ['priority' => 'urgent'],
+            $admin['csrf'],
+        );
+        self::assertSame(200, $urgent->status, json_encode($urgent->body));
+        self::assertSame('urgent', $urgent->body['issue']['priority']);
+
         $invalidPriority = $this->apiCookieRequest(
             'PATCH',
             "/api/v1/issues/{$issueId}",

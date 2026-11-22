@@ -722,6 +722,8 @@ function report(message, isError = false) {
         window.clearTimeout(statusMessageTimer);
     statusMessageTimer = null;
     const target = workspacePanel.hidden ? loginStatusMessage : statusMessage;
+    if (target === statusMessage)
+        moveWorkspaceStatusToCurrentHeading();
     target.replaceChildren();
     target.classList.toggle('error', isError);
     const text = target === loginStatusMessage
@@ -994,6 +996,14 @@ function commitPendingWorkspaceSwitch() {
         return;
     void switchWorkspace(workspaceId, true);
 }
+function moveWorkspaceStatusToCurrentHeading() {
+    const currentView = Array.from(workspacePanel.querySelectorAll('.workspace-view'))
+        .find((view) => !view.hidden);
+    const heading = currentView?.querySelector('.page-heading');
+    if (heading !== undefined && heading !== null && statusMessage.parentElement !== heading) {
+        heading.append(statusMessage);
+    }
+}
 function showWorkspaceView(view) {
     const wasLoungeActive = view !== 'lounge' && loungeActive;
     if (view !== 'inbox') {
@@ -1022,6 +1032,7 @@ function showWorkspaceView(view) {
     adminView.hidden = view !== 'admin';
     projectView.hidden = view !== 'project';
     projectChatColumn.hidden = view !== 'project';
+    moveWorkspaceStatusToCurrentHeading();
     workspaceNav.hidden = false;
     updateKeyboardHintsVisibility();
     projectKeyboardHints.hidden = view !== 'project';

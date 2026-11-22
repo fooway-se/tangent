@@ -995,6 +995,7 @@ function report(message: string, isError = false): void {
   if (statusMessageTimer !== null) window.clearTimeout(statusMessageTimer);
   statusMessageTimer = null;
   const target = workspacePanel.hidden ? loginStatusMessage : statusMessage;
+  if (target === statusMessage) moveWorkspaceStatusToCurrentHeading();
   target.replaceChildren();
   target.classList.toggle('error', isError);
   const text = target === loginStatusMessage
@@ -1259,6 +1260,15 @@ function commitPendingWorkspaceSwitch(): void {
   void switchWorkspace(workspaceId, true);
 }
 
+function moveWorkspaceStatusToCurrentHeading(): void {
+  const currentView = Array.from(workspacePanel.querySelectorAll<HTMLElement>('.workspace-view'))
+    .find((view) => !view.hidden);
+  const heading = currentView?.querySelector<HTMLElement>('.page-heading');
+  if (heading !== undefined && heading !== null && statusMessage.parentElement !== heading) {
+    heading.append(statusMessage);
+  }
+}
+
 function showWorkspaceView(view: 'projects' | 'roadmap' | 'inbox' | 'lounge' | 'admin' | 'project'): void {
   const wasLoungeActive = view !== 'lounge' && loungeActive;
   if (view !== 'inbox') {
@@ -1285,6 +1295,7 @@ function showWorkspaceView(view: 'projects' | 'roadmap' | 'inbox' | 'lounge' | '
   adminView.hidden = view !== 'admin';
   projectView.hidden = view !== 'project';
   projectChatColumn.hidden = view !== 'project';
+  moveWorkspaceStatusToCurrentHeading();
   workspaceNav.hidden = false;
   updateKeyboardHintsVisibility();
   projectKeyboardHints.hidden = view !== 'project';
