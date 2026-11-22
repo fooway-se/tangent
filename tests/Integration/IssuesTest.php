@@ -6,10 +6,124 @@ namespace Tangent\Tests\Integration;
 
 use Tangent\Core\Request;
 use Tangent\Core\Response;
+use Tangent\Core\Database;
 use Tangent\Tests\Support\ApiTestCase;
 
 final class IssuesTest extends ApiTestCase
 {
+    public function testConcurrentIssueChangesPreserveApprovalAndRecordEffectiveStatusHistory(): void
+    {
+        $admin = $this->login($this->adminEmail);
+        $projectId = $this->createProject($admin, 'Concurrent issue updates');
+        $issueIds = [];
+        foreach (['Preserve independent state', 'Do not record skipped transitions'] as $title) {
+            $created = $this->apiCookieRequest(
+                'POST',
+                "/api/v1/projects/{$projectId}/issues",
+                $admin['cookie'],
+                ['title' => $title],
+                $admin['csrf'],
+            );
+            self::assertSame(201, $created->status, json_encode($created->body));
+            $issueIds[] = (int) $created->body['issue']['id'];
+        }
+        [$updatedIssueId, $deletedIssueId] = $issueIds;
+        $workspaceId = $this->workspaceId;
+
+        $this->pdo->commit();
+        $this->pdo->beginTransaction();
+        foreach ($issueIds as $issueId) {
+            $snapshot = $this->pdo->prepare('SELECT status FROM issues WHERE workspace_id = :workspace_id AND id = :id');
+            $snapshot->execute(['workspace_id' => $workspaceId, 'id' => $issueId]);
+            self::assertSame('backlog', $snapshot->fetchColumn());
+        }
+
+        $otherPdo = $this->testDatabaseConnection();
+        try {
+            $otherPdo->beginTransaction();
+            $approval = $otherPdo->prepare(
+                "UPDATE issues
+                 SET status = 'doing', is_shared = 1, approval_requested_at = UTC_TIMESTAMP(),
+                     approved_by = :approved_by, approved_at = UTC_TIMESTAMP()
+                 WHERE workspace_id = :workspace_id AND id = :id"
+            );
+            $approval->execute([
+                'approved_by' => $this->developerId,
+                'workspace_id' => $workspaceId,
+                'id' => $updatedIssueId,
+            ]);
+            $history = $otherPdo->prepare(
+                "INSERT INTO issue_status_history (workspace_id, issue_id, actor_id, from_status, to_status)
+                 VALUES (:workspace_id, :issue_id, :actor_id, 'backlog', 'doing')"
+            );
+            $history->execute([
+                'workspace_id' => $workspaceId,
+                'issue_id' => $updatedIssueId,
+                'actor_id' => $this->developerId,
+            ]);
+            $otherPdo->prepare(
+                'UPDATE issues SET deleted_at = UTC_TIMESTAMP() WHERE workspace_id = :workspace_id AND id = :id'
+            )->execute(['workspace_id' => $workspaceId, 'id' => $deletedIssueId]);
+            $otherPdo->commit();
+
+            $updated = $this->apiCookieRequest(
+                'PATCH',
+                "/api/v1/issues/{$updatedIssueId}",
+                $admin['cookie'],
+                ['title' => 'Preserved title', 'status' => 'done'],
+                $admin['csrf'],
+            );
+            self::assertSame(200, $updated->status, json_encode($updated->body));
+            self::assertTrue($updated->body['issue']['is_shared']);
+            self::assertSame($this->developerId, $updated->body['issue']['approved_by']);
+            self::assertNotNull($updated->body['issue']['approved_at']);
+
+            $skipped = $this->apiCookieRequest(
+                'PATCH',
+                "/api/v1/issues/{$deletedIssueId}",
+                $admin['cookie'],
+                ['status' => 'done'],
+                $admin['csrf'],
+            );
+            self::assertSame(404, $skipped->status, json_encode($skipped->body));
+            $this->pdo->commit();
+
+            $finalIssue = $otherPdo->prepare(
+                'SELECT status, is_shared, approved_by, approved_at FROM issues WHERE workspace_id = :workspace_id AND id = :id'
+            );
+            $finalIssue->execute(['workspace_id' => $workspaceId, 'id' => $updatedIssueId]);
+            $final = $finalIssue->fetch(\PDO::FETCH_ASSOC);
+            self::assertSame('done', $final['status']);
+            self::assertSame(1, (int) $final['is_shared']);
+            self::assertSame($this->developerId, (int) $final['approved_by']);
+            self::assertNotNull($final['approved_at']);
+
+            $statusHistory = $otherPdo->prepare(
+                'SELECT from_status, to_status FROM issue_status_history WHERE workspace_id = :workspace_id AND issue_id = :id ORDER BY id'
+            );
+            $statusHistory->execute(['workspace_id' => $workspaceId, 'id' => $updatedIssueId]);
+            self::assertSame([
+                ['from_status' => 'backlog', 'to_status' => 'doing'],
+                ['from_status' => 'doing', 'to_status' => 'done'],
+            ], $statusHistory->fetchAll(\PDO::FETCH_ASSOC));
+
+            $skippedHistory = $otherPdo->prepare(
+                'SELECT COUNT(*) FROM issue_status_history WHERE workspace_id = :workspace_id AND issue_id = :id'
+            );
+            $skippedHistory->execute(['workspace_id' => $workspaceId, 'id' => $deletedIssueId]);
+            self::assertSame(0, (int) $skippedHistory->fetchColumn());
+            $skippedEvents = $otherPdo->prepare(
+                "SELECT COUNT(*) FROM inbox_events WHERE workspace_id = :workspace_id AND issue_id = :id AND event_type = 'status'"
+            );
+            $skippedEvents->execute(['workspace_id' => $workspaceId, 'id' => $deletedIssueId]);
+            self::assertSame(0, (int) $skippedEvents->fetchColumn());
+        } finally {
+            if ($otherPdo->inTransaction()) $otherPdo->rollBack();
+            if ($this->pdo->inTransaction()) $this->pdo->rollBack();
+            $this->cleanCommittedWorkspace($workspaceId);
+        }
+    }
+
     public function testProjectMemberCanCreateListAndChangeIssueStatus(): void
     {
         $admin = $this->login($this->adminEmail);
@@ -769,6 +883,41 @@ final class IssuesTest extends ApiTestCase
 
         $listed = $this->apiCookieRequest('GET', "/api/v1/projects/{$projectId}/issues", $admin['cookie']);
         self::assertNull($listed->body['issues'][0]['assignee_id']);
+    }
+
+    private function testDatabaseConnection(): \PDO
+    {
+        return Database::connect(
+            getenv('TANGENT_TEST_DB_HOST') ?: '127.0.0.1',
+            (int) (getenv('TANGENT_TEST_DB_PORT') ?: 3306),
+            getenv('TANGENT_TEST_DB_NAME') ?: 'tangent_test_suite',
+            getenv('TANGENT_TEST_DB_USER') ?: 'tangent',
+            getenv('TANGENT_TEST_DB_PASSWORD') ?: 'tangent_dev_password',
+        )->pdo();
+    }
+
+    private function cleanCommittedWorkspace(int $workspaceId): void
+    {
+        $cleanup = $this->testDatabaseConnection();
+        $accounts = $cleanup->prepare('SELECT account_id FROM users WHERE workspace_id = :workspace_id');
+        $accounts->execute(['workspace_id' => $workspaceId]);
+        $accountIds = array_map('intval', $accounts->fetchAll(\PDO::FETCH_COLUMN));
+
+        $cleanup->exec('SET FOREIGN_KEY_CHECKS = 0');
+        $tables = $cleanup->query(
+            'SELECT TABLE_NAME FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE() AND COLUMN_NAME = \'workspace_id\'
+             GROUP BY TABLE_NAME'
+        )->fetchAll(\PDO::FETCH_COLUMN);
+        foreach ($tables as $table) {
+            $cleanup->prepare('DELETE FROM `' . str_replace('`', '``', (string) $table) . '` WHERE workspace_id = :workspace_id')
+                ->execute(['workspace_id' => $workspaceId]);
+        }
+        $cleanup->prepare('DELETE FROM workspaces WHERE id = :id')->execute(['id' => $workspaceId]);
+        foreach ($accountIds as $accountId) {
+            $cleanup->prepare('DELETE FROM user_accounts WHERE id = :id')->execute(['id' => $accountId]);
+        }
+        $cleanup->exec('SET FOREIGN_KEY_CHECKS = 1');
     }
 
     private function createProject(array $admin, string $name): int

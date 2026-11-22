@@ -286,135 +286,137 @@ final class IssuesService
 
     public function update(AuthenticatedUser $user, int $issueId, array $input): array
     {
-        $issue = $this->issues->find($user->workspaceId, $issueId);
-        if ($issue === null) {
-            throw new ApiException(404, 'not_found', 'The issue was not found.');
-        }
-        $shareFields = ['is_shared', 'is_ongoing', 'milestone_id', 'approval_requested'];
-        $issueFields = [
-            'title', 'description', 'status', 'type', 'assignee_id', 'priority', 'due_date',
-            'context', 'expected_outcome', 'acceptance_criteria',
-        ];
-        $hasShareFields = array_intersect($shareFields, array_keys($input)) !== [];
-        $hasIssueFields = array_intersect($issueFields, array_keys($input)) !== [];
-        if (!$hasShareFields && !$hasIssueFields) {
-            throw new ApiException(422, 'validation_failed', 'At least one issue field must be supplied.');
-        }
-        if ($hasIssueFields) $this->requireProjectAccess($user, $issue['project_id'], 'issues.update');
-        if ($hasShareFields) $this->requireProjectAccess($user, $issue['project_id'], 'issues.share');
-
-        $updated = [
-            'title' => $issue['title'],
-            'description' => $issue['description'],
-            'context' => $issue['context'],
-            'expected_outcome' => $issue['expected_outcome'],
-            'acceptance_criteria' => $issue['acceptance_criteria'],
-            'type' => $issue['type'],
-            'assignee_id' => $issue['assignee_id'],
-            'status' => $issue['status'],
-            'priority' => $issue['priority'],
-            'due_date' => $issue['due_date'],
-            'is_shared' => $issue['is_shared'],
-            'is_ongoing' => $issue['is_ongoing'],
-            'milestone_id' => $issue['milestone_id'],
-            'sort_order' => $issue['sort_order'],
-            'approval_requested_at' => $issue['approval_requested_at'],
-            'approved_by' => $issue['approved_by'],
-            'approved_at' => $issue['approved_at'],
-        ];
-        if (array_key_exists('title', $input)) {
-            if (!is_string($input['title'])) {
-                throw new ApiException(422, 'validation_failed', 'Issue title must be text.');
-            }
-            $updated['title'] = trim($input['title']);
-        }
-        if (mb_strlen($updated['title'], 'UTF-8') < 1 || mb_strlen($updated['title'], 'UTF-8') > 200) {
-            throw new ApiException(422, 'validation_failed', 'Issue title must be between 1 and 200 characters.');
-        }
-        if (array_key_exists('description', $input)) {
-            if (!is_string($input['description'])) {
-                throw new ApiException(422, 'validation_failed', 'Issue description must be text.');
-            }
-            $updated['description'] = trim($input['description']);
-        }
-        if (mb_strlen($updated['description'], 'UTF-8') > 10_000) {
-            throw new ApiException(422, 'validation_failed', 'Issue description cannot exceed 10000 characters.');
-        }
-        foreach (['context', 'expected_outcome', 'acceptance_criteria'] as $field) {
-            $updated[$field] = self::issueBriefText($input, $field, $updated[$field]);
-        }
-        if (array_key_exists('type', $input)) {
-            $updated['type'] = self::issueType($input['type']);
-        }
-        if (array_key_exists('assignee_id', $input)) {
-            $updated['assignee_id'] = self::assigneeId($input['assignee_id']);
-            $this->requireProjectMemberAssignee($user->workspaceId, $issue['project_id'], $updated['assignee_id']);
-        }
-        if (array_key_exists('priority', $input)) {
-            $updated['priority'] = self::issuePriority($input['priority']);
-        }
-        if (array_key_exists('due_date', $input)) {
-            $updated['due_date'] = self::issueDueDate($input['due_date']);
-        }
-        if (array_key_exists('status', $input)) {
-            if (!is_string($input['status']) || !in_array($input['status'], ['backlog', 'todo', 'doing', 'testing', 'done', 'cancelled'], true)) {
-                throw new ApiException(422, 'validation_failed', 'Issue status must be backlog, todo, doing, testing, done, or cancelled.');
-            }
-            $updated['status'] = $input['status'];
-        }
-        if (array_key_exists('is_shared', $input)) {
-            if (!is_bool($input['is_shared'])) throw new ApiException(422, 'validation_failed', 'is_shared must be a boolean.');
-            $updated['is_shared'] = $input['is_shared'];
-        }
-        if (array_key_exists('is_ongoing', $input)) {
-            if (!is_bool($input['is_ongoing'])) throw new ApiException(422, 'validation_failed', 'is_ongoing must be a boolean.');
-            $updated['is_ongoing'] = $input['is_ongoing'];
-        }
-        if (array_key_exists('milestone_id', $input)) {
-            if ($input['milestone_id'] !== null && (!is_int($input['milestone_id']) || $input['milestone_id'] < 1)) {
-                throw new ApiException(422, 'validation_failed', 'milestone_id must be a positive integer or null.');
-            }
-            $updated['milestone_id'] = $input['milestone_id'];
-            if ($updated['milestone_id'] !== null
-                && $this->milestones->find($user->workspaceId, $issue['project_id'], $updated['milestone_id']) === null) {
-                throw new ApiException(422, 'validation_failed', 'Milestones must belong to the issue project.');
-            }
-            if ($updated['milestone_id'] !== $issue['milestone_id']) {
-                $updated['sort_order'] = $this->issues->maxSortOrder(
-                    $user->workspaceId,
-                    $issue['project_id'],
-                    $updated['milestone_id'],
-                ) + 1;
-            }
-        }
-        if (array_key_exists('approval_requested', $input)) {
-            if (!is_bool($input['approval_requested'])) throw new ApiException(422, 'validation_failed', 'approval_requested must be a boolean.');
-            if ($input['approval_requested']) {
-                if ($issue['approval_requested_at'] === null) $updated['approval_requested_at'] = gmdate('Y-m-d H:i:s');
-            } else {
-                $updated['approval_requested_at'] = null;
-                $updated['approved_by'] = null;
-                $updated['approved_at'] = null;
-            }
-        }
-
-        if ($updated['is_ongoing'] && $updated['status'] === 'done') {
-            throw new ApiException(422, 'validation_failed', 'Ongoing issues cannot be marked done. Remove the ongoing classification first.');
-        }
-        if ($updated['is_ongoing'] && $updated['milestone_id'] !== null) {
-            if (array_key_exists('milestone_id', $input) && $input['milestone_id'] !== null) {
-                throw new ApiException(422, 'validation_failed', 'Ongoing issues cannot belong to a milestone.');
-            }
-            $updated['milestone_id'] = null;
-            $updated['sort_order'] = $this->issues->maxSortOrder($user->workspaceId, $issue['project_id'], null) + 1;
-        }
-
-        $assigneeChanged = $updated['assignee_id'] !== $issue['assignee_id'];
-        $statusChanged = $updated['status'] !== $issue['status'];
         $ownsTransaction = !$this->pdo->inTransaction();
         if ($ownsTransaction) $this->pdo->beginTransaction();
         try {
-            $this->issues->update($user->workspaceId, $issueId, $updated);
+            $issue = $this->issues->find($user->workspaceId, $issueId, true);
+            if ($issue === null) {
+                throw new ApiException(404, 'not_found', 'The issue was not found.');
+            }
+            $shareFields = ['is_shared', 'is_ongoing', 'milestone_id', 'approval_requested'];
+            $issueFields = [
+                'title', 'description', 'status', 'type', 'assignee_id', 'priority', 'due_date',
+                'context', 'expected_outcome', 'acceptance_criteria',
+            ];
+            $hasShareFields = array_intersect($shareFields, array_keys($input)) !== [];
+            $hasIssueFields = array_intersect($issueFields, array_keys($input)) !== [];
+            if (!$hasShareFields && !$hasIssueFields) {
+                throw new ApiException(422, 'validation_failed', 'At least one issue field must be supplied.');
+            }
+            if ($hasIssueFields) $this->requireProjectAccess($user, $issue['project_id'], 'issues.update');
+            if ($hasShareFields) $this->requireProjectAccess($user, $issue['project_id'], 'issues.share');
+
+            $updated = [
+                'title' => $issue['title'],
+                'description' => $issue['description'],
+                'context' => $issue['context'],
+                'expected_outcome' => $issue['expected_outcome'],
+                'acceptance_criteria' => $issue['acceptance_criteria'],
+                'type' => $issue['type'],
+                'assignee_id' => $issue['assignee_id'],
+                'status' => $issue['status'],
+                'priority' => $issue['priority'],
+                'due_date' => $issue['due_date'],
+                'is_shared' => $issue['is_shared'],
+                'is_ongoing' => $issue['is_ongoing'],
+                'milestone_id' => $issue['milestone_id'],
+                'sort_order' => $issue['sort_order'],
+                'approval_requested_at' => $issue['approval_requested_at'],
+                'approved_by' => $issue['approved_by'],
+                'approved_at' => $issue['approved_at'],
+            ];
+            if (array_key_exists('title', $input)) {
+                if (!is_string($input['title'])) {
+                    throw new ApiException(422, 'validation_failed', 'Issue title must be text.');
+                }
+                $updated['title'] = trim($input['title']);
+            }
+            if (mb_strlen($updated['title'], 'UTF-8') < 1 || mb_strlen($updated['title'], 'UTF-8') > 200) {
+                throw new ApiException(422, 'validation_failed', 'Issue title must be between 1 and 200 characters.');
+            }
+            if (array_key_exists('description', $input)) {
+                if (!is_string($input['description'])) {
+                    throw new ApiException(422, 'validation_failed', 'Issue description must be text.');
+                }
+                $updated['description'] = trim($input['description']);
+            }
+            if (mb_strlen($updated['description'], 'UTF-8') > 10_000) {
+                throw new ApiException(422, 'validation_failed', 'Issue description cannot exceed 10000 characters.');
+            }
+            foreach (['context', 'expected_outcome', 'acceptance_criteria'] as $field) {
+                $updated[$field] = self::issueBriefText($input, $field, $updated[$field]);
+            }
+            if (array_key_exists('type', $input)) {
+                $updated['type'] = self::issueType($input['type']);
+            }
+            if (array_key_exists('assignee_id', $input)) {
+                $updated['assignee_id'] = self::assigneeId($input['assignee_id']);
+                $this->requireProjectMemberAssignee($user->workspaceId, $issue['project_id'], $updated['assignee_id']);
+            }
+            if (array_key_exists('priority', $input)) {
+                $updated['priority'] = self::issuePriority($input['priority']);
+            }
+            if (array_key_exists('due_date', $input)) {
+                $updated['due_date'] = self::issueDueDate($input['due_date']);
+            }
+            if (array_key_exists('status', $input)) {
+                if (!is_string($input['status']) || !in_array($input['status'], ['backlog', 'todo', 'doing', 'testing', 'done', 'cancelled'], true)) {
+                    throw new ApiException(422, 'validation_failed', 'Issue status must be backlog, todo, doing, testing, done, or cancelled.');
+                }
+                $updated['status'] = $input['status'];
+            }
+            if (array_key_exists('is_shared', $input)) {
+                if (!is_bool($input['is_shared'])) throw new ApiException(422, 'validation_failed', 'is_shared must be a boolean.');
+                $updated['is_shared'] = $input['is_shared'];
+            }
+            if (array_key_exists('is_ongoing', $input)) {
+                if (!is_bool($input['is_ongoing'])) throw new ApiException(422, 'validation_failed', 'is_ongoing must be a boolean.');
+                $updated['is_ongoing'] = $input['is_ongoing'];
+            }
+            if (array_key_exists('milestone_id', $input)) {
+                if ($input['milestone_id'] !== null && (!is_int($input['milestone_id']) || $input['milestone_id'] < 1)) {
+                    throw new ApiException(422, 'validation_failed', 'milestone_id must be a positive integer or null.');
+                }
+                $updated['milestone_id'] = $input['milestone_id'];
+                if ($updated['milestone_id'] !== null
+                    && $this->milestones->find($user->workspaceId, $issue['project_id'], $updated['milestone_id']) === null) {
+                    throw new ApiException(422, 'validation_failed', 'Milestones must belong to the issue project.');
+                }
+                if ($updated['milestone_id'] !== $issue['milestone_id']) {
+                    $updated['sort_order'] = $this->issues->maxSortOrder(
+                        $user->workspaceId,
+                        $issue['project_id'],
+                        $updated['milestone_id'],
+                    ) + 1;
+                }
+            }
+            if (array_key_exists('approval_requested', $input)) {
+                if (!is_bool($input['approval_requested'])) throw new ApiException(422, 'validation_failed', 'approval_requested must be a boolean.');
+                if ($input['approval_requested']) {
+                    if ($issue['approval_requested_at'] === null) $updated['approval_requested_at'] = gmdate('Y-m-d H:i:s');
+                } else {
+                    $updated['approval_requested_at'] = null;
+                    $updated['approved_by'] = null;
+                    $updated['approved_at'] = null;
+                }
+            }
+
+            if ($updated['is_ongoing'] && $updated['status'] === 'done') {
+                throw new ApiException(422, 'validation_failed', 'Ongoing issues cannot be marked done. Remove the ongoing classification first.');
+            }
+            if ($updated['is_ongoing'] && $updated['milestone_id'] !== null) {
+                if (array_key_exists('milestone_id', $input) && $input['milestone_id'] !== null) {
+                    throw new ApiException(422, 'validation_failed', 'Ongoing issues cannot belong to a milestone.');
+                }
+                $updated['milestone_id'] = null;
+                $updated['sort_order'] = $this->issues->maxSortOrder($user->workspaceId, $issue['project_id'], null) + 1;
+            }
+
+            $assigneeChanged = $updated['assignee_id'] !== $issue['assignee_id'];
+            $statusChanged = $updated['status'] !== $issue['status'];
+            if (!$this->issues->update($user->workspaceId, $issueId, $updated)) {
+                throw new ApiException(404, 'not_found', 'The issue was not found.');
+            }
             if ($statusChanged) {
                 $this->issues->recordStatusTransition($user->workspaceId, $issueId, $user->id, $issue['status'], $updated['status']);
             }

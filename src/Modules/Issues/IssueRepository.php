@@ -143,7 +143,7 @@ final class IssueRepository
         return $this->find($workspaceId, $issueId) ?? [];
     }
 
-    public function find(int $workspaceId, int $issueId): ?array
+    public function find(int $workspaceId, int $issueId, bool $forUpdate = false): ?array
     {
         $statement = $this->pdo->prepare(
             'SELECT id, workspace_id, project_id, title, description, context, expected_outcome, acceptance_criteria,
@@ -153,6 +153,7 @@ final class IssueRepository
                     (SELECT COUNT(*) FROM issue_discussion_messages discussion
                      WHERE discussion.workspace_id = issues.workspace_id AND discussion.issue_id = issues.id) AS discussion_count
              FROM issues WHERE workspace_id = :workspace_id AND id = :id AND deleted_at IS NULL LIMIT 1'
+                . ($forUpdate ? ' FOR UPDATE' : '')
         );
         $statement->execute(['workspace_id' => $workspaceId, 'id' => $issueId]);
         $issue = $statement->fetch(PDO::FETCH_ASSOC);
@@ -211,7 +212,7 @@ final class IssueRepository
         return $issue === false ? null : self::normalize($issue);
     }
 
-    public function update(int $workspaceId, int $issueId, array $issue): void
+    public function update(int $workspaceId, int $issueId, array $issue): bool
     {
         $statement = $this->pdo->prepare(
             'UPDATE issues
@@ -243,6 +244,16 @@ final class IssueRepository
             'approved_by' => $issue['approved_by'],
             'approved_at' => $issue['approved_at'],
         ]);
+
+        if ($statement->rowCount() > 0) return true;
+
+        $exists = $this->pdo->prepare(
+            'SELECT 1 FROM issues
+             WHERE workspace_id = :workspace_id AND id = :id AND deleted_at IS NULL
+             LIMIT 1 FOR UPDATE'
+        );
+        $exists->execute(['workspace_id' => $workspaceId, 'id' => $issueId]);
+        return $exists->fetchColumn() !== false;
     }
 
     public function bulkSetShared(int $workspaceId, int $projectId, array $issueIds, bool $isShared): int
