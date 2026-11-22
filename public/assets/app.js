@@ -2339,6 +2339,7 @@ function shortcutContext(target) {
         targetIsEditable: isEditableTarget(target),
         goPrefixPending,
         hasWorkspace: activeUser !== null,
+        canToggleKeyboardHints: activeUser !== null && activeUser.role !== 'guest' && !workspacePanel.hidden,
         canSwitchWorkspace: activeWorkspaces.length > 1,
         canAdmin: activeUser?.role === 'admin',
         canRoadmap: activeUser?.role === 'admin' || activeUser?.role === 'developer',
@@ -2618,7 +2619,7 @@ function getPaletteCommands() {
             detail: keyboardHintsVisible
                 ? 'Hide the shortcut hints along the bottom of the workspace'
                 : 'Show the shortcut hints along the bottom of the workspace',
-            shortcut: '',
+            shortcut: 'h',
             run: toggleKeyboardHints,
         });
     }
@@ -3268,6 +3269,9 @@ function executeShortcut(action) {
             break;
         case 'shortcut-help':
             showShortcutHelp();
+            break;
+        case 'toggle-keyboard-hints':
+            toggleKeyboardHints();
             break;
         case 'theme-selector':
             focusThemeSelector();

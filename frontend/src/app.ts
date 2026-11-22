@@ -2594,6 +2594,7 @@ function shortcutContext(target: EventTarget | null) {
     targetIsEditable: isEditableTarget(target),
     goPrefixPending,
     hasWorkspace: activeUser !== null,
+    canToggleKeyboardHints: activeUser !== null && activeUser.role !== 'guest' && !workspacePanel.hidden,
     canSwitchWorkspace: activeWorkspaces.length > 1,
     canAdmin: activeUser?.role === 'admin',
     canRoadmap: activeUser?.role === 'admin' || activeUser?.role === 'developer',
@@ -2889,7 +2890,7 @@ function getPaletteCommands(): PaletteCommand[] {
       detail: keyboardHintsVisible
         ? 'Hide the shortcut hints along the bottom of the workspace'
         : 'Show the shortcut hints along the bottom of the workspace',
-      shortcut: '',
+      shortcut: 'h',
       run: toggleKeyboardHints,
     });
   }
@@ -3492,6 +3493,7 @@ function executeShortcut(action: ShortcutAction): void {
   switch (action) {
     case 'command-palette': openCommandPalette(); break;
     case 'shortcut-help': showShortcutHelp(); break;
+    case 'toggle-keyboard-hints': toggleKeyboardHints(); break;
     case 'theme-selector': focusThemeSelector(); break;
     case 'await-projects-key': startGoPrefix(); break;
     case 'projects': clearGoPrefix(); goToProjects(); break;

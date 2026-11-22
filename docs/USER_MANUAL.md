@@ -195,12 +195,13 @@ Workspace admins use **Workspace admin** to manage members, invitations, and wor
 
 ## 10. Keyboard shortcuts
 
-Keyboard shortcuts vary by view and pause while you type. Press **?** for the full list. Use **Ctrl/Cmd+K** to run **Hide keyboard hints** or **Show keyboard hints**; your choice is saved in this browser.
+Keyboard shortcuts vary by view and pause while you type. Press **?** for the full list. Use **Ctrl/Cmd+K** to open the command palette, or press **h** to show or hide the keyboard hints. Your choice is saved in this browser.
 
 | Shortcut | Action |
 | --- | --- |
 | Ctrl/Cmd+K | Open the command palette. |
 | ? | Open keyboard shortcut help. |
+| h | Show or hide keyboard hints. |
 | g, then p / r / n / l | Open Projects / Roadmap / My Work / Lounge. |
 | g, then i / c / m | Focus project Issues / Chat / Members. |
 | / | Focus the issue filter. |

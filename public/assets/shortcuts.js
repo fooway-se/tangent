@@ -55,6 +55,8 @@ export function resolveShortcut(event, context) {
             return 'workspace-admin';
         return null;
     }
+    if (key === 'h' && context.canToggleKeyboardHints === true)
+        return 'toggle-keyboard-hints';
     if (event.key === '?' && context.hasWorkspace)
         return 'shortcut-help';
     if (key === 'g' && context.hasWorkspace)
