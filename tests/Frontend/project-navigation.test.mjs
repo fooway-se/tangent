@@ -4,6 +4,7 @@ import test from 'node:test';
 import { ProjectNavigationOwner, runOwnedRequest } from '../../public/assets/project-navigation.js';
 
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
+const navigation = await readFile(new URL('../../frontend/src/project-navigation.ts', import.meta.url), 'utf8');
 
 function deferred() {
   let resolve;
@@ -28,6 +29,37 @@ test('only the latest project navigation applies its result', async () => {
   firstRequest.resolve('old project');
   await first;
   assert.deepEqual(applied, ['new project']);
+});
+
+test('superseding or invalidating a navigation aborts its request signal', async () => {
+  const owner = new ProjectNavigationOwner();
+  const firstRequest = deferred();
+  const firstTicket = owner.begin();
+  let firstSignal;
+  const first = runOwnedRequest(
+    owner,
+    firstTicket,
+    (signal) => { firstSignal = signal; return firstRequest.promise; },
+    () => undefined,
+    () => undefined,
+  );
+  const secondTicket = owner.begin();
+  assert.equal(firstSignal.aborted, true);
+
+  const secondRequest = deferred();
+  let secondSignal;
+  const second = runOwnedRequest(
+    owner,
+    secondTicket,
+    (signal) => { secondSignal = signal; return secondRequest.promise; },
+    () => undefined,
+    () => undefined,
+  );
+  owner.changeSession();
+  assert.equal(secondSignal.aborted, true);
+  firstRequest.resolve('stale');
+  secondRequest.resolve('signed out');
+  await Promise.all([first, second]);
 });
 
 test('a stale navigation failure cannot replace the current view', async () => {
@@ -67,9 +99,11 @@ test('the current navigation still applies results and reports failures', async 
 
 test('project detail wiring aborts obsolete requests and invalidates on navigation or session changes', () => {
   const loader = app.slice(app.indexOf('async function loadProjectDetail('), app.indexOf('\nfunction switchProjectTab(', app.indexOf('async function loadProjectDetail(')));
-  assert.match(loader, /projectDetailAbortController\?\.abort\(\)/);
   assert.match(loader, /runOwnedRequest\(/);
-  assert.match(loader, /signal: abortController\.signal/);
+  assert.match(loader, /async \(signal\)/);
+  assert.match(loader, /signal \}/);
+  assert.doesNotMatch(app, /projectDetailAbortController/);
+  assert.match(navigation, /this\.controller\?\.abort\(\)/);
   assert.match(app, /function showSignedOut\(\): void \{\s*invalidateProjectNavigation\(true\)/);
   assert.match(app, /function showSignedIn\(user: User\): void \{\s*invalidateProjectNavigation\(true\)/);
   assert.match(app, /if \(view !== 'project'\) invalidateProjectNavigation\(\)/);

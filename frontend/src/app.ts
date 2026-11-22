@@ -813,7 +813,6 @@ let pendingWorkspaceId: number | null = null;
 let workspacePickerOptionIndex = 0;
 const workspaceViewHistory: WorkspaceLocation[] = [];
 const projectNavigation = new ProjectNavigationOwner();
-let projectDetailAbortController: AbortController | null = null;
 let activeProjectMembers: Member[] = [];
 let projectMilestones: Milestone[] = [];
 let editingMilestoneId: number | null = null;
@@ -1075,8 +1074,6 @@ function toggleKeyboardHints(): void {
 function invalidateProjectNavigation(sessionChanged = false): void {
   if (sessionChanged) projectNavigation.changeSession();
   else projectNavigation.invalidate();
-  projectDetailAbortController?.abort();
-  projectDetailAbortController = null;
 }
 
 function showSignedOut(): void {
@@ -5796,9 +5793,6 @@ async function loadProjectDetail(
   tab: 'issues' | 'members' | 'notes' = 'issues',
   recordHistory = true,
 ): Promise<void> {
-  projectDetailAbortController?.abort();
-  const abortController = new AbortController();
-  projectDetailAbortController = abortController;
   const navigationTicket = projectNavigation.begin();
   clearBulkMoveSelection();
   clearBulkAssignSelection();
@@ -5826,14 +5820,13 @@ async function loadProjectDetail(
   setProjectNotesMode(DEFAULT_PROJECT_NOTES_MODE);
   issueDetailEditForm.hidden = true;
   issueDetailDisplay.hidden = false;
-  try {
-    await runOwnedRequest(
+  await runOwnedRequest(
       projectNavigation,
       navigationTicket,
-      async () => {
+      async (signal) => {
         const [result, milestoneResult] = await Promise.all([
-          api<{ project: Project; members: Member[] }>(`/projects/${projectId}`, { signal: abortController.signal }),
-          api<{ milestones: Milestone[] }>(`/projects/${projectId}/milestones`, { signal: abortController.signal }),
+          api<{ project: Project; members: Member[] }>(`/projects/${projectId}`, { signal }),
+          api<{ milestones: Milestone[] }>(`/projects/${projectId}/milestones`, { signal }),
         ]);
         return { result, milestoneResult };
       },
@@ -5878,9 +5871,6 @@ async function loadProjectDetail(
         showWorkspaceView('projects');
       },
     );
-  } finally {
-    if (projectDetailAbortController === abortController) projectDetailAbortController = null;
-  }
 }
 
 function switchProjectTab(tab: 'issues' | 'members' | 'notes', returnFocusIssueId?: number, loadIssues = true): void {
