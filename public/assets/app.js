@@ -5930,6 +5930,7 @@ function renderMilestoneIssueBoard(visibleIssues) {
         issues: group.issues,
         isOngoing: group.isOngoing,
         allowBulkMove: group.milestoneId === null && group.isOngoing !== true && hasActiveMilestones,
+        openByDefault: issueScope.value !== 'history',
     })));
 }
 function renderNextUpIssueBoard(visibleIssues, allOpenIssues) {
@@ -5969,7 +5970,7 @@ function reconcileIssueBoardGroups(groups) {
         let details = existingGroups.get(group.key);
         if (details === undefined) {
             details = document.createElement('details');
-            details.open = true;
+            details.open = group.openByDefault ?? true;
             details.dataset.groupKey = group.key;
         }
         if (details.className !== group.className)

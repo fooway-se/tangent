@@ -32,12 +32,23 @@ test('Next Up keeps keyboard focus when a move disables the selected arrow', () 
 
 test('milestone groups are collapsible and their headings show issue counts', () => {
   assert.match(app, /function createIssueGroupSummary\(name: string, count: number\)/);
-  assert.match(app, /details\.open = true/);
+  assert.match(app, /details\.open = group\.openByDefault \?\? true/);
   assert.match(app, /summary\.className = 'issue-group-summary'/);
   assert.match(app, /groupCount\.textContent = String\(count\)/);
   assert.match(app, /createIssueGroupSummary\(group\.name, group\.issues\.length\)/);
-  assert.match(app, /details\.open = true/);
   assert.match(app, /reconcileIssueBoardGroups\(groups\)/);
+});
+
+test('history milestone groups start collapsed and existing disclosure state is preserved', () => {
+  const milestoneBoardStart = app.indexOf('function renderMilestoneIssueBoard(');
+  const milestoneBoardEnd = app.indexOf('\nfunction renderNextUpIssueBoard(', milestoneBoardStart);
+  const milestoneBoard = app.slice(milestoneBoardStart, milestoneBoardEnd);
+  const reconcileStart = app.indexOf('function reconcileIssueBoardGroups(');
+  const reconcileEnd = app.indexOf('\nfunction createIssueBulkMoveToolbar(', reconcileStart);
+  const reconcile = app.slice(reconcileStart, reconcileEnd);
+
+  assert.match(milestoneBoard, /openByDefault: issueScope\.value !== 'history'/);
+  assert.match(reconcile, /if \(details === undefined\) \{\s*details = document\.createElement\('details'\);\s*details\.open = group\.openByDefault \?\? true;/);
 });
 
 test('No milestone bulk move uses the shared selection and action-group design', () => {

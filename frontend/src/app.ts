@@ -237,6 +237,7 @@ interface IssueBoardGroup {
   reorderByIssueId?: Map<number, { canMoveEarlier?: boolean; canMoveLater?: boolean; showMilestoneTag?: boolean }>;
   isOngoing?: boolean;
   allowBulkMove?: boolean;
+  openByDefault?: boolean;
 }
 
 interface Milestone {
@@ -6043,6 +6044,7 @@ function renderMilestoneIssueBoard(visibleIssues: Issue[]): void {
     issues: group.issues,
     isOngoing: group.isOngoing,
     allowBulkMove: group.milestoneId === null && group.isOngoing !== true && hasActiveMilestones,
+    openByDefault: issueScope.value !== 'history',
   })));
 }
 
@@ -6089,7 +6091,7 @@ function reconcileIssueBoardGroups(groups: IssueBoardGroup[]): void {
     let details = existingGroups.get(group.key);
     if (details === undefined) {
       details = document.createElement('details');
-      details.open = true;
+      details.open = group.openByDefault ?? true;
       details.dataset.groupKey = group.key;
     }
     if (details.className !== group.className) details.className = group.className;
