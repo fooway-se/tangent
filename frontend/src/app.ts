@@ -33,6 +33,7 @@ import { initIssueBoardUi } from './issue-board-ui.js';
 import { initIssueAiPromptUi } from './issue-ai-prompt-ui.js';
 import { initIssueDiscussionUi } from './issue-discussion-ui.js';
 import { initIssueRelatedUi } from './issue-related-ui.js';
+import { initIssueStatusPickerUi } from './issue-status-picker-ui.js';
 import { parseQuickIssueInput } from './quick-issue.js';
 import { milestoneStatus, type RoadmapMilestone } from './roadmap.js';
 import {
@@ -117,7 +118,6 @@ const {
     issueDescriptionDetails, issueProgress, issueProgressLabel, issueFilter,
     issueGrouping, issueOrder, issueScope, issueCountSummary, issueBulkAssignToggle,
     issueBulkAssignToolbar, issueList, deletedIssuesDetails, deletedIssueCount, deletedIssueList,
-    issueStatusPicker, issueStatusPickerClose, issueStatusPickerDescription, issueStatusPickerOptions,
     issueDeleteConfirmation, issueDeleteDescription, issueDeleteError, issueDeleteCancel,
     issueDeleteConfirm,
   },
@@ -510,7 +510,7 @@ const workspacePickerUi = initWorkspacePickerUi({
   onSwitch: (workspaceId) => { void switchWorkspace(workspaceId, true); },
   isCommandPaletteOpen: () => commandPaletteUi.isPaletteOpen(),
   isShortcutHelpOpen: () => commandPaletteUi.isShortcutHelpOpen(),
-  isIssueStatusPickerOpen: () => issueStatusPicker.open,
+  isIssueStatusPickerOpen: () => issueStatusPickerUi.isOpen(),
   isGuestShellVisible: () => document.body.classList.contains('is-guest') && workspacePanel.hidden,
   isWorkspacePanelVisible: () => !workspacePanel.hidden,
 });
@@ -632,6 +632,19 @@ const issueRelatedUi = initIssueRelatedUi({
   onUnauthorized: () => showSignedOut(),
   report,
 });
+const issueStatusPickerUi = initIssueStatusPickerUi({
+  getProjectId: () => activeProject?.id ?? null,
+  isReadOnly: () => activeProject !== null && projectStatusIsReadOnly(activeProject.status),
+  isIssueDetailVisible: () => !issueDetailView.hidden,
+  getOptions: issueStatusOptions,
+  statusLabel: issueStatusLabel,
+  onSelect: updateIssueStatus,
+  focusIssueTitle: focusIssueTitleButton,
+  focusIssuesTab: () => issuesTabButton.focus(),
+  focusIssueDetailStatus: () => issueDetailStatus.focus(),
+  shouldRestoreFocus: () => !commandPaletteUi.isPaletteOpen()
+    && !commandPaletteUi.isShortcutHelpOpen() && !workspacePickerUi.isOpen(),
+});
 let selectedChatMessageId: number | null = null;
 let issueQuickAddEscapePending = false;
 let issueQuickAddReturnFocus: HTMLElement | null = null;
@@ -640,9 +653,6 @@ let issueQuickAddSourceProjectId: number | null = null;
 let goPrefixPending = false;
 let goPrefixTimer: number | null = null;
 let statusMessageTimer: number | null = null;
-let issueStatusPickerIssue: Issue | null = null;
-let issueStatusPickerReturnFocus: HTMLElement | null = null;
-let issueStatusPickerOptionIndex = 0;
 let issueDeleteTarget: Issue | null = null;
 let memberRemovalTarget: { member: Member; button: HTMLButtonElement } | null = null;
 
@@ -1160,7 +1170,7 @@ function issuePollingIsActive(projectId: number): boolean {
 }
 
 function issueUpdatesAreDeferred(): boolean {
-  const dialogOpen = issueStatusPicker.open || issueDeleteConfirmation.open
+  const dialogOpen = issueStatusPickerUi.isOpen() || issueDeleteConfirmation.open
     || memberRemovalConfirmation.open || workspaceAdminUi.hasOpenDialog()
     || milestoneUi.deleteConfirmation.open || milestoneUi.managerDialog.open;
   return shouldDeferIssueUpdates({
@@ -1520,7 +1530,7 @@ function shortcutContext(target: EventTarget | null) {
     issueGroupFocused: target instanceof HTMLElement && target.closest('.issue-group > summary') !== null,
     statusHistoryFocused: issueRelatedUi.isStatusHistoryFocused(document.activeElement),
     textInputFocused: shouldBlurOnEscape(target),
-    modalOpen: commandPaletteUi.isPaletteOpen() || clientSummaryUi.dialog.open || commandPaletteUi.isShortcutHelpOpen() || issueAiPromptUi.isOpen() || issueStatusPicker.open || issueDeleteConfirmation.open || themeUi.aboutDialog.open || projectEditDialog.open
+    modalOpen: commandPaletteUi.isPaletteOpen() || clientSummaryUi.dialog.open || commandPaletteUi.isShortcutHelpOpen() || issueAiPromptUi.isOpen() || issueStatusPickerUi.isOpen() || issueDeleteConfirmation.open || themeUi.aboutDialog.open || projectEditDialog.open
       || memberRemovalConfirmation.open || workspaceAdminUi.hasOpenDialog() || milestoneUi.deleteConfirmation.open || milestoneUi.managerDialog.open
       || workspacePickerUi.isOpen(),
     canDismiss: commandPaletteUi.isPaletteOpen() || commandPaletteUi.isShortcutHelpOpen() || (!workspacePanel.hidden && (
@@ -1728,7 +1738,7 @@ function editSelectedIssue(): void {
 
 function focusSelectedIssueStatus(): void {
   if (selectedIssue !== null) {
-    openIssueStatusPicker(selectedIssue, issueDetailStatus);
+    issueStatusPickerUi.open(selectedIssue, issueDetailStatus);
     return;
   }
   const titleButton = selectedIssueButton();
@@ -1736,7 +1746,7 @@ function focusSelectedIssueStatus(): void {
   const issueId = Number(row?.dataset.issueId);
   const issue = projectIssues.find((candidate) => candidate.id === issueId);
   if (issue !== undefined && titleButton !== null && titleButton !== undefined) {
-    openIssueStatusPicker(issue, titleButton);
+    issueStatusPickerUi.open(issue, titleButton);
   }
 }
 
@@ -1974,7 +1984,7 @@ function openCommandPalette(): void {
   if (issueAiPromptUi.isOpen()) issueAiPromptUi.close();
   if (milestoneUi.deleteConfirmation.open) milestoneUi.closeDeleteConfirmation();
   if (milestoneUi.managerDialog.open) milestoneUi.close();
-  if (issueStatusPicker.open) closeIssueStatusPicker();
+  if (issueStatusPickerUi.isOpen()) issueStatusPickerUi.close();
   if (issueDeleteConfirmation.open) closeIssueDeleteConfirmation();
   if (memberRemovalConfirmation.open) closeMemberRemovalConfirmation();
   workspaceAdminUi.closeOpenDialogs();
@@ -1988,7 +1998,7 @@ function showShortcutHelp(): void {
   if (issueAiPromptUi.isOpen()) issueAiPromptUi.close();
   if (milestoneUi.deleteConfirmation.open) milestoneUi.closeDeleteConfirmation();
   if (milestoneUi.managerDialog.open) milestoneUi.close();
-  if (issueStatusPicker.open) closeIssueStatusPicker();
+  if (issueStatusPickerUi.isOpen()) issueStatusPickerUi.close();
   if (issueDeleteConfirmation.open) closeIssueDeleteConfirmation();
   if (memberRemovalConfirmation.open) closeMemberRemovalConfirmation();
   workspaceAdminUi.closeOpenDialogs();
@@ -2017,8 +2027,8 @@ function dismissCurrentView(): void {
     closeMemberRemovalConfirmation();
   } else if (workspaceAdminUi.hasOpenDialog()) {
     workspaceAdminUi.closeCurrentDialog();
-  } else if (issueStatusPicker.open) {
-    closeIssueStatusPicker();
+  } else if (issueStatusPickerUi.isOpen()) {
+    issueStatusPickerUi.close();
   } else if (commandPaletteUi.isPaletteOpen()) {
     commandPaletteUi.closePalette();
   } else if (commandPaletteUi.isShortcutHelpOpen()) {
@@ -2425,7 +2435,7 @@ function handleKeyboardShortcut(event: KeyboardEvent): void {
     if (event.key === 'Escape') guestUi.closePreview();
     return;
   }
-  if ((commandPaletteUi.isPaletteOpen() || clientSummaryUi.dialog.open || commandPaletteUi.isShortcutHelpOpen() || issueAiPromptUi.isOpen() || issueStatusPicker.open || issueDeleteConfirmation.open || memberRemovalConfirmation.open || workspaceAdminUi.hasOpenDialog() || milestoneUi.deleteConfirmation.open || milestoneUi.managerDialog.open || workspacePickerUi.isOpen() || themeUi.aboutDialog.open || projectEditDialog.open)
+  if ((commandPaletteUi.isPaletteOpen() || clientSummaryUi.dialog.open || commandPaletteUi.isShortcutHelpOpen() || issueAiPromptUi.isOpen() || issueStatusPickerUi.isOpen() || issueDeleteConfirmation.open || memberRemovalConfirmation.open || workspaceAdminUi.hasOpenDialog() || milestoneUi.deleteConfirmation.open || milestoneUi.managerDialog.open || workspacePickerUi.isOpen() || themeUi.aboutDialog.open || projectEditDialog.open)
     && event.key !== 'Escape'
     && !((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k')) return;
   const context = shortcutContext(event.target);
@@ -2439,28 +2449,6 @@ function handleKeyboardShortcut(event: KeyboardEvent): void {
   executeShortcut(action);
 }
 
-issueStatusPickerClose.addEventListener('click', closeIssueStatusPicker);
-issueStatusPicker.addEventListener('close', () => {
-  const returnFocus = issueStatusPickerReturnFocus;
-  issueStatusPickerIssue = null;
-  issueStatusPickerReturnFocus = null;
-  if (returnFocus !== null && returnFocus.isConnected && returnFocus.closest('[hidden]') === null
-    && !commandPaletteUi.isPaletteOpen() && !commandPaletteUi.isShortcutHelpOpen() && !workspacePickerUi.isOpen()) {
-    returnFocus.focus();
-  }
-});
-issueStatusPicker.addEventListener('keydown', (event) => {
-  if (!(event.target instanceof HTMLElement) || !event.target.matches('.issue-status-option')) return;
-  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-    event.preventDefault();
-    event.stopPropagation();
-    focusIssueStatusPickerOption(issueStatusPickerOptionIndex + (event.key === 'ArrowDown' ? 1 : -1));
-  } else if (event.key === 'Enter') {
-    event.preventDefault();
-    event.stopPropagation();
-    void applyIssueStatusPickerSelection();
-  }
-});
 document.addEventListener('keydown', handleKeyboardShortcut);
 
 document.addEventListener('visibilitychange', () => {
@@ -3741,54 +3729,6 @@ function openIssue(issue: Issue): void {
   issueBackButton.focus();
 }
 
-function openIssueStatusPicker(issue: Issue, returnFocus: HTMLElement): void {
-  if (issueStatusPicker.open) issueStatusPicker.close();
-  issueStatusPickerIssue = issue;
-  issueStatusPickerReturnFocus = returnFocus;
-  issueStatusPickerDescription.textContent = `Choose a status for “${issue.title}”. Current status: ${issueStatusLabel(issue.status)}.`;
-  issueStatusPickerOptions.replaceChildren();
-  const statusOptions = issueStatusOptions(issue);
-  issueStatusPickerOptionIndex = statusOptions.findIndex((option) => option.value === issue.status);
-  statusOptions.forEach((option, index) => {
-    const button = document.createElement('button');
-    button.className = 'button issue-status-option';
-    button.type = 'button';
-    button.setAttribute('role', 'option');
-    button.dataset.status = option.value;
-    button.textContent = option.label;
-    if (option.value === issue.status) {
-      const current = document.createElement('span');
-      current.className = 'issue-status-current';
-      current.textContent = 'Current';
-      button.append(current);
-    }
-    button.addEventListener('click', () => {
-      focusIssueStatusPickerOption(index);
-      void applyIssueStatusPickerSelection();
-    });
-    issueStatusPickerOptions.append(button);
-  });
-  issueStatusPicker.showModal();
-  focusIssueStatusPickerOption(Math.max(0, issueStatusPickerOptionIndex));
-}
-
-function focusIssueStatusPickerOption(index: number): void {
-  const options = Array.from(issueStatusPickerOptions.querySelectorAll<HTMLButtonElement>('.issue-status-option'));
-  if (options.length === 0) return;
-  issueStatusPickerOptionIndex = Math.max(0, Math.min(options.length - 1, index));
-  options.forEach((option, optionIndex) => {
-    const active = optionIndex === issueStatusPickerOptionIndex;
-    option.classList.toggle('is-active', active);
-    option.setAttribute('aria-selected', String(active));
-    option.tabIndex = active ? 0 : -1;
-  });
-  options[issueStatusPickerOptionIndex]?.focus();
-}
-
-function closeIssueStatusPicker(): void {
-  if (issueStatusPicker.open) issueStatusPicker.close();
-}
-
 function openIssueDeleteConfirmation(issue: Issue | null = selectedIssue): void {
   if (issue === null) return;
   issueDeleteTarget = issue;
@@ -3883,38 +3823,6 @@ function showDeletedIssues(restoreIssueId?: number): void {
     }
     deletedIssuesDetails.querySelector<HTMLElement>('summary')?.focus();
   });
-}
-
-async function applyIssueStatusPickerSelection(): Promise<void> {
-  const issue = issueStatusPickerIssue;
-  const status = issue === null ? undefined : issueStatusOptions(issue)[issueStatusPickerOptionIndex]?.value;
-  if (issue === null || status === undefined) return;
-  closeIssueStatusPicker();
-  if (status !== issue.status) await updateIssueStatus(issue, status);
-  if (activeProject?.id !== issue.project_id) return;
-  if (issueDetailView.hidden) {
-    if (!focusIssueTitleButton(issue.id)) issuesTabButton.focus();
-  } else {
-    issueDetailStatus.focus();
-  }
-}
-
-function createIssueStatusButton(issue: Issue): HTMLButtonElement {
-  const button = document.createElement('button');
-  button.className = 'button issue-status-button';
-  button.type = 'button';
-  button.disabled = activeProject !== null && projectStatusIsReadOnly(activeProject.status);
-  button.setAttribute('aria-haspopup', 'dialog');
-  button.setAttribute('aria-label', `Change status for ${issue.title}. Current status: ${issueStatusLabel(issue.status)}.`);
-  const label = document.createElement('span');
-  label.textContent = issueStatusLabel(issue.status);
-  const caret = document.createElement('span');
-  caret.className = 'issue-status-caret';
-  caret.setAttribute('aria-hidden', 'true');
-  caret.textContent = '▾';
-  button.append(label, caret);
-  button.addEventListener('click', () => openIssueStatusPicker(issue, button));
-  return button;
 }
 
 async function updateIssueStatus(issue: Issue, nextStatus: IssueStatus): Promise<void> {
@@ -4066,7 +3974,7 @@ function createIssueRow(
     if (allowBulkMoveSelection) actions.append(createIssueBulkSelectCheckbox(issue));
     if (allowBulkAssignSelection) actions.append(createIssueBulkAssignCheckbox(issue));
     if (discussionIndicator !== null) actions.append(discussionIndicator);
-    actions.append(createIssueStatusButton(issue));
+    actions.append(issueStatusPickerUi.createButton(issue));
     item.append(content, actions);
   } else {
     const actions = document.createElement('div');
@@ -4088,7 +3996,7 @@ function createIssueRow(
       button.addEventListener('click', () => void moveIssue(issue, direction, button));
       actions.append(button);
     }
-    actions.append(createIssueStatusButton(issue));
+    actions.append(issueStatusPickerUi.createButton(issue));
     item.append(content, actions);
   }
   return item;
@@ -4284,7 +4192,7 @@ issueDetailSharedInput.addEventListener('change', () => {
 });
 
 issueDetailStatus.addEventListener('click', () => {
-  if (selectedIssue !== null) openIssueStatusPicker(selectedIssue, issueDetailStatus);
+  if (selectedIssue !== null) issueStatusPickerUi.open(selectedIssue, issueDetailStatus);
 });
 
 issueSourceLink.addEventListener('click', async (event) => {
