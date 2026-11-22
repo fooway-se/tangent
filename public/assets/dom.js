@@ -158,10 +158,8 @@ export const dom = {
     },
     lounge: {
         loungeNavButton: document.querySelector('#lounge-nav'),
-        loungeNavPresenceBadge: document.querySelector('#lounge-nav-presence'),
         loungeView: document.querySelector('#lounge-view'),
         loungeHeading: document.querySelector('#lounge-heading'),
-        loungePresence: document.querySelector('#lounge-presence'),
         loungeMessageList: document.querySelector('#lounge-message-list'),
         loungeEmptyState: document.querySelector('#lounge-empty-state'),
         loungeForm: document.querySelector('#lounge-form'),

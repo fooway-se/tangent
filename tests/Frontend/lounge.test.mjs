@@ -7,6 +7,7 @@ const html = await readFile(new URL('../../public/app.html', import.meta.url), '
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
 const css = await readFile(new URL('../../public/assets/app.css', import.meta.url), 'utf8');
 const shortcuts = await readFile(new URL('../../frontend/src/shortcuts.ts', import.meta.url), 'utf8');
+const presence = await readFile(new URL('../../frontend/src/lounge-presence.ts', import.meta.url), 'utf8');
 
 test('Lounge is a fixed workspace destination between Inbox and workspace admin', () => {
   const projectsNav = html.indexOf('id="projects-nav"');
@@ -69,11 +70,11 @@ test('Lounge composer uses the project chat mention autocomplete for workspace m
 
 test('Lounge shows the names of teammates who are currently present', () => {
   assert.match(html, /id="lounge-presence"[^>]*role="status"/);
-  assert.match(app, /function renderLoungePresence\(/);
-  assert.match(app, /className = 'lounge-presence-person'/);
-  assert.match(app, /api<\{ members: LoungePresenceMember\[\] \}>\('\/lounge\/presence'/);
-  assert.match(app, /const LOUNGE_PRESENCE_INTERVAL_MS = 15_000/);
-  assert.match(app, /void pollLoungePresence\(\)/);
+  assert.match(presence, /function renderLoungePresence\(/);
+  assert.match(presence, /className = 'lounge-presence-person'/);
+  assert.match(presence, /request<\{ members: LoungePresenceMember\[\] \}>\('\/lounge\/presence'/);
+  assert.match(presence, /const POLL_INTERVAL_MS = 15_000/);
+  assert.match(app, /loungePresenceUi\.pollLoungePresence\(\)/);
 });
 
 test('Lounge messages use relative calendar days in their timestamps', () => {
@@ -96,10 +97,11 @@ test('Lounge messages can be replied to and the selected parent is sent with the
 });
 
 test('Lounge presence stays visible in navigation without adding the viewer to presence', () => {
-  assert.match(app, /function pollWorkspaceLoungePresence\(/);
-  assert.match(app, /api<\{ members: LoungePresenceMember\[\] \}>\('\/lounge\/presence'\)/);
-  assert.match(app, /function renderLoungeNavigationPresence\(/);
-  assert.match(app, /loungeNavPresenceBadge/);
+  assert.match(presence, /async function pollWorkspacePresence\(/);
+  assert.match(presence, /request<\{ members: LoungePresenceMember\[\] \}>\('\/lounge\/presence'\)/);
+  assert.match(presence, /function renderNavigationPresence\(/);
+  assert.match(presence, /loungeNavPresenceBadge/);
+  assert.match(presence, /member\.id !== options\.getUser\(\)\?\.id/);
 });
 
 test('Lounge presence indicator matches the Lounge button label color', () => {

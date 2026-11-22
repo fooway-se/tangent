@@ -17,6 +17,7 @@ import { nextTheme, themeLabel } from './theme.js';
 import { initThemeUi } from './theme-ui.js';
 import { initProjectNotesUi } from './project-notes-ui.js';
 import { initMilestoneUi } from './milestone-ui.js';
+import { initLoungePresence } from './lounge-presence.js';
 import { parseQuickIssueInput } from './quick-issue.js';
 import { milestoneStatus } from './roadmap.js';
 import { formatIssueMarkdown, formatIssuePrompt } from './issue-export.js';
@@ -24,7 +25,7 @@ import { groupMyWorkTasks } from './my-work.js';
 import { filterIssues, filterIssuesByMilestoneArchive, groupIssues, groupIssuesByMilestone, discussionIndicatorLabel, projectProgress, sortIssues, } from './issue-board.js';
 import { diffConditionalIssueCollections, loadIssueCollections, nextIssuePollDelay, refreshDeletedIssuesOnOpen, shouldDeferIssueUpdates, } from './issue-polling.js';
 import { dom } from './dom.js';
-const { project: { projectHeading, projectEditDialog, projectEditForm, projectEditClose, projectEditCancel, projectEditName, projectEditDescription, projectEditStatus, projectEditStatusHelp, projectReadOnlyNotice, projectEditMessage, projectEditSave, editProjectButton, projectGithubRepository, projectEditGithubRepository, githubProjectSelectionStatus, githubProjectEditStatus, connectGithubCreateButton, connectGithubEditButton, projectsNavButton, projectsView, projectView, projectForm, projectList, emptyProjects, projectFormPanel, projectDescription, projectState, projectChatColumn, projectSidebarList, projectSidebarEmpty, projectMain, projectTabs, projectKeyboardHints, }, auth: { loginPanel, loginShell, accountBar, currentUserLabel, loginAdminHelp, loginKeyboardHints, credentialFlow, credentialFlowHeading, credentialFlowDescription, credentialFlowError, credentialForm, credentialPasswordFields, credentialPasswordLabel, credentialVerificationField, credentialVerificationInput, credentialConfirmationField, credentialSubmit, credentialCancel, loginForm, loginStatusMessage, logoutButton, }, workspace: { workspacePanel, workspaceNav, workspaceSwitcher, workspaceSwitcherLabel, workspacePicker, workspacePickerCancel, workspacePickerConfirm, workspacePickerDescription, workspacePickerOptions, adminNavButton, adminView, adminHeading, workspaceAdminTabs, workspaceAdminMembersTab, workspaceAdminInvitesTab, workspaceAdminWorkspacesTab, workspaceAdminMembersPanel, workspaceAdminInvitesPanel, workspaceAdminWorkspacesPanel, workspaceMembersList, workspaceMembersEmpty, inviteForm, inviteRoleInput, inviteProjectSelection, inviteProjectOptions, workspaceInvitesList, workspaceInvitesEmpty, workspaceMemberDeactivationDialog, workspaceMemberDeactivationDescription, workspaceMemberDeactivationCancel, workspaceMemberDeactivationConfirm, workspaceMemberRoleDialog, workspaceMemberRoleHeading, workspaceMemberRoleDescription, workspaceMemberRoleCancel, workspaceMemberRoleConfirm, workspaceGuestProjectsDialog, workspaceGuestProjectsDescription, workspaceGuestProjectOptions, workspaceGuestProjectsEmpty, workspaceGuestProjectsStatus, workspaceGuestProjectsCancel, workspaceGuestProjectsSave, membersView, adminGoPrefixOption, workspaceSwitchHint, membersTabButton, memberList, memberForm, memberAddControls, memberAddStatus, memberSelect, memberRemovalConfirmation, memberRemovalDescription, memberRemovalCancel, memberRemovalConfirm, }, shell: { createWorkspaceForm, breadcrumbProjectsButton, breadcrumbDivider, breadcrumbCurrent, cancelProjectFormButton, linkPullRequestButton, notesTabButton, emptyIssues, addMemberButton, statusMessage, }, roadmap: { roadmapNavButton, roadmapView, roadmapHeading, roadmapSummary, roadmapMilestoneList, roadmapEmptyState, roadmapGoPrefixOption, }, inbox: { inboxNavButton, inboxView, inboxHeading, myWorkTabsElement, myWorkInboxTab, myWorkTasksTab, myWorkInboxPanel, myWorkTasksPanel, myWorkTasksSummary, myWorkTaskGroups, myWorkTasksEmptyState, inboxSummary, inboxIssueList, inboxEmptyState, inboxTabsElement, inboxMarkAllReadButton, inboxLoadMoreButton, }, lounge: { loungeNavButton, loungeNavPresenceBadge, loungeView, loungeHeading, loungePresence, loungeMessageList, loungeEmptyState, loungeForm, loungeInput, loungeMentionList, loungeReplyHint, loungeCancelReply, }, shortcuts: { toggleProjectFormButton, keyboardHints, goPrefixHint, goPrefixWorkspaceOption, goPrefixProjectOptions, commandPalette, commandPaletteClose, commandSearch, commandResults, shortcutHelp, shortcutHelpClose, }, chat: { chatView, }, issues: { issuesView, issueDetailView, issueDetailDisplay, issueDetailTitle, issueDetailPriority, issueDetailDueDate, issueDetailDescription, issueDetailBrief, issueDetailContextSection, issueDetailContext, issueDetailExpectedOutcomeSection, issueDetailExpectedOutcome, issueDetailAcceptanceCriteriaSection, issueDetailAcceptanceCriteria, issueDetailStatus, issueDetailStatusLabel, issueSourceLink, issuePullRequests, issuePullRequestsList, issuePullRequestsEmpty, issuePullRequestDialog, issuePullRequestForm, issuePullRequestClose, issuePullRequestCancel, issuePullRequestUrl, issuePullRequestMessage, issuePullRequestSubmit, issueDetailEditForm, issueDetailTitleInput, issueDetailDescriptionInput, issueDetailPriorityInput, issueDetailDueDateInput, issueDetailEditButton, issueAiPromptButton, issueAiPromptDialog, issueAiPromptCloseButton, issueAiPromptStepCount, issueAiPromptContext, issueAiPromptOutcome, issueAiPromptCriteria, issueAiPromptPreview, issueAiPromptStatus, issueAiPromptBackButton, issueAiPromptSkipButton, issueAiPromptNextButton, issueAiPromptActions, issueAiPromptSaveButton, issueAiPromptCopyButton, issueAiPromptCopyMarkdownButton, issueAiPromptDownloadButton, issueDetailDeleteButton, issueDetailSaveButton, issuesTabButton, issueBackButton, issueDetailCancelButton, issueForm, issueQuickAddTitle, issueQuickAddPriority, issueQuickAddDueDate, issueQuickAddAssignee, issueQuickAddMilestone, issueQuickAddOngoing, issueQuickAddShared, issueQuickAddApproval, issueQuickAddCancelButton, issueDetailType, issueDetailAssignee, issueDetailMilestone, issueDetailOngoingRow, issueDetailSharing, issueDetailApproval, issueDetailTypeInput, issueDetailAssigneeInput, issueDetailMilestoneInput, issueDetailOngoingInput, issueDetailSharedInput, issueDetailApprovalInput, issueStatusHistory, issueStatusHistoryCount, issueStatusHistoryEmpty, issueStatusHistoryList, issueDiscussionHeading, issueDiscussionCount, issueDiscussionStatus, issueDiscussionEmpty, issueDiscussionList, issueDiscussionForm, issueDiscussionInput, issueDiscussionSubmit, issueDiscussionReplyContext, issueDiscussionReplyLabel, issueDiscussionReplyCancel, issueDescriptionDetails, issueProgress, issueProgressLabel, issueFilter, issueGrouping, issueOrder, issueScope, issueCountSummary, issueBulkAssignToggle, issueBulkAssignToolbar, issueList, deletedIssuesDetails, deletedIssueCount, deletedIssueList, issueStatusPicker, issueStatusPickerClose, issueStatusPickerDescription, issueStatusPickerOptions, issueDeleteConfirmation, issueDeleteDescription, issueDeleteError, issueDeleteCancel, issueDeleteConfirm, }, guest: { guestWorkspaceSwitcher, guestWorkspaceSwitcherLabel, guestLogoutButton, }, } = dom;
+const { project: { projectHeading, projectEditDialog, projectEditForm, projectEditClose, projectEditCancel, projectEditName, projectEditDescription, projectEditStatus, projectEditStatusHelp, projectReadOnlyNotice, projectEditMessage, projectEditSave, editProjectButton, projectGithubRepository, projectEditGithubRepository, githubProjectSelectionStatus, githubProjectEditStatus, connectGithubCreateButton, connectGithubEditButton, projectsNavButton, projectsView, projectView, projectForm, projectList, emptyProjects, projectFormPanel, projectDescription, projectState, projectChatColumn, projectSidebarList, projectSidebarEmpty, projectMain, projectTabs, projectKeyboardHints, }, auth: { loginPanel, loginShell, accountBar, currentUserLabel, loginAdminHelp, loginKeyboardHints, credentialFlow, credentialFlowHeading, credentialFlowDescription, credentialFlowError, credentialForm, credentialPasswordFields, credentialPasswordLabel, credentialVerificationField, credentialVerificationInput, credentialConfirmationField, credentialSubmit, credentialCancel, loginForm, loginStatusMessage, logoutButton, }, workspace: { workspacePanel, workspaceNav, workspaceSwitcher, workspaceSwitcherLabel, workspacePicker, workspacePickerCancel, workspacePickerConfirm, workspacePickerDescription, workspacePickerOptions, adminNavButton, adminView, adminHeading, workspaceAdminTabs, workspaceAdminMembersTab, workspaceAdminInvitesTab, workspaceAdminWorkspacesTab, workspaceAdminMembersPanel, workspaceAdminInvitesPanel, workspaceAdminWorkspacesPanel, workspaceMembersList, workspaceMembersEmpty, inviteForm, inviteRoleInput, inviteProjectSelection, inviteProjectOptions, workspaceInvitesList, workspaceInvitesEmpty, workspaceMemberDeactivationDialog, workspaceMemberDeactivationDescription, workspaceMemberDeactivationCancel, workspaceMemberDeactivationConfirm, workspaceMemberRoleDialog, workspaceMemberRoleHeading, workspaceMemberRoleDescription, workspaceMemberRoleCancel, workspaceMemberRoleConfirm, workspaceGuestProjectsDialog, workspaceGuestProjectsDescription, workspaceGuestProjectOptions, workspaceGuestProjectsEmpty, workspaceGuestProjectsStatus, workspaceGuestProjectsCancel, workspaceGuestProjectsSave, membersView, adminGoPrefixOption, workspaceSwitchHint, membersTabButton, memberList, memberForm, memberAddControls, memberAddStatus, memberSelect, memberRemovalConfirmation, memberRemovalDescription, memberRemovalCancel, memberRemovalConfirm, }, shell: { createWorkspaceForm, breadcrumbProjectsButton, breadcrumbDivider, breadcrumbCurrent, cancelProjectFormButton, linkPullRequestButton, notesTabButton, emptyIssues, addMemberButton, statusMessage, }, roadmap: { roadmapNavButton, roadmapView, roadmapHeading, roadmapSummary, roadmapMilestoneList, roadmapEmptyState, roadmapGoPrefixOption, }, inbox: { inboxNavButton, inboxView, inboxHeading, myWorkTabsElement, myWorkInboxTab, myWorkTasksTab, myWorkInboxPanel, myWorkTasksPanel, myWorkTasksSummary, myWorkTaskGroups, myWorkTasksEmptyState, inboxSummary, inboxIssueList, inboxEmptyState, inboxTabsElement, inboxMarkAllReadButton, inboxLoadMoreButton, }, lounge: { loungeNavButton, loungeView, loungeHeading, loungeMessageList, loungeEmptyState, loungeForm, loungeInput, loungeMentionList, loungeReplyHint, loungeCancelReply, }, shortcuts: { toggleProjectFormButton, keyboardHints, goPrefixHint, goPrefixWorkspaceOption, goPrefixProjectOptions, commandPalette, commandPaletteClose, commandSearch, commandResults, shortcutHelp, shortcutHelpClose, }, chat: { chatView, }, issues: { issuesView, issueDetailView, issueDetailDisplay, issueDetailTitle, issueDetailPriority, issueDetailDueDate, issueDetailDescription, issueDetailBrief, issueDetailContextSection, issueDetailContext, issueDetailExpectedOutcomeSection, issueDetailExpectedOutcome, issueDetailAcceptanceCriteriaSection, issueDetailAcceptanceCriteria, issueDetailStatus, issueDetailStatusLabel, issueSourceLink, issuePullRequests, issuePullRequestsList, issuePullRequestsEmpty, issuePullRequestDialog, issuePullRequestForm, issuePullRequestClose, issuePullRequestCancel, issuePullRequestUrl, issuePullRequestMessage, issuePullRequestSubmit, issueDetailEditForm, issueDetailTitleInput, issueDetailDescriptionInput, issueDetailPriorityInput, issueDetailDueDateInput, issueDetailEditButton, issueAiPromptButton, issueAiPromptDialog, issueAiPromptCloseButton, issueAiPromptStepCount, issueAiPromptContext, issueAiPromptOutcome, issueAiPromptCriteria, issueAiPromptPreview, issueAiPromptStatus, issueAiPromptBackButton, issueAiPromptSkipButton, issueAiPromptNextButton, issueAiPromptActions, issueAiPromptSaveButton, issueAiPromptCopyButton, issueAiPromptCopyMarkdownButton, issueAiPromptDownloadButton, issueDetailDeleteButton, issueDetailSaveButton, issuesTabButton, issueBackButton, issueDetailCancelButton, issueForm, issueQuickAddTitle, issueQuickAddPriority, issueQuickAddDueDate, issueQuickAddAssignee, issueQuickAddMilestone, issueQuickAddOngoing, issueQuickAddShared, issueQuickAddApproval, issueQuickAddCancelButton, issueDetailType, issueDetailAssignee, issueDetailMilestone, issueDetailOngoingRow, issueDetailSharing, issueDetailApproval, issueDetailTypeInput, issueDetailAssigneeInput, issueDetailMilestoneInput, issueDetailOngoingInput, issueDetailSharedInput, issueDetailApprovalInput, issueStatusHistory, issueStatusHistoryCount, issueStatusHistoryEmpty, issueStatusHistoryList, issueDiscussionHeading, issueDiscussionCount, issueDiscussionStatus, issueDiscussionEmpty, issueDiscussionList, issueDiscussionForm, issueDiscussionInput, issueDiscussionSubmit, issueDiscussionReplyContext, issueDiscussionReplyLabel, issueDiscussionReplyCancel, issueDescriptionDetails, issueProgress, issueProgressLabel, issueFilter, issueGrouping, issueOrder, issueScope, issueCountSummary, issueBulkAssignToggle, issueBulkAssignToolbar, issueList, deletedIssuesDetails, deletedIssueCount, deletedIssueList, issueStatusPicker, issueStatusPickerClose, issueStatusPickerDescription, issueStatusPickerOptions, issueDeleteConfirmation, issueDeleteDescription, issueDeleteError, issueDeleteCancel, issueDeleteConfirm, }, guest: { guestWorkspaceSwitcher, guestWorkspaceSwitcherLabel, guestLogoutButton, }, } = dom;
 const KEYBOARD_HINTS_STORAGE_KEY = 'tangent.keyboard-hints-visible';
 function loadKeyboardHintsPreference() {
     try {
@@ -231,15 +232,9 @@ const chatEventFeed = new ChatEventFeed();
 let chatEtag = null;
 let chatPollDelay = 1000;
 const PROJECT_PRESENCE_INTERVAL_MS = 15_000;
-const LOUNGE_PRESENCE_INTERVAL_MS = 15_000;
 let projectPresenceTimer = null;
 let projectPresenceRequestVersion = 0;
 let chatPresenceIndicator = null;
-let loungePresenceTimer = null;
-let loungePresenceRequestVersion = 0;
-let loungePresenceRenderKey = null;
-let workspaceLoungePresenceTimer = null;
-let workspaceLoungePresenceRequestVersion = 0;
 let chatFollowLatest = true;
 let chatMessageList = null;
 let chatEmptyState = null;
@@ -269,6 +264,15 @@ let memberRemovalTarget = null;
 let paletteCommands = [];
 let visiblePaletteCommands = [];
 let activePaletteCommandIndex = 0;
+const loungePresenceUi = initLoungePresence({
+    navigationButton: loungeNavButton,
+    getUser: () => activeUser,
+    isLoungeActive: () => loungeActive,
+    isLoungeVisible: () => !loungeView.hidden,
+    isWorkspaceVisible: () => !workspacePanel.hidden,
+    isDocumentHidden: () => document.hidden,
+    onUnauthorized: () => showSignedOut(),
+});
 const guestUi = initGuestUi({
     getUser: () => activeUser,
     getProject: () => activeProject,
@@ -417,8 +421,7 @@ function showSignedOut() {
     resetPendingWorkspaceSwitch();
     stopChatPolling();
     stopLoungePolling();
-    stopWorkspaceLoungePresenceMonitor();
-    renderLoungeNavigationPresence([]);
+    loungePresenceUi.reset();
     if (clientSummaryUi.dialog.open)
         clientSummaryUi.close();
     activeUser = null;
@@ -479,8 +482,7 @@ function showSignedIn(user) {
     projectReturnFocusId = null;
     activeProject = null;
     stopLoungePolling();
-    stopWorkspaceLoungePresenceMonitor();
-    renderLoungeNavigationPresence([]);
+    loungePresenceUi.reset();
     activeUser = user;
     guestWorkspaceSwitcher.hidden = user.role !== 'guest';
     editProjectButton.hidden = user.role !== 'admin';
@@ -500,7 +502,7 @@ function showSignedIn(user) {
     adminNavButton.hidden = user.role !== 'admin';
     toggleProjectFormButton.hidden = user.role !== 'admin';
     showWorkspaceView('projects');
-    void pollWorkspaceLoungePresence();
+    void loungePresenceUi.pollWorkspacePresence();
     if (user.role === 'admin')
         void loadGithubRepositories();
     report('');
@@ -699,7 +701,7 @@ function showWorkspaceView(view) {
             projectsNavButton.focus();
     }
     if (wasLoungeActive)
-        void pollWorkspaceLoungePresence();
+        void loungePresenceUi.pollWorkspacePresence();
 }
 function openWorkspaceAdmin() {
     const currentLocation = currentWorkspaceLocation();
@@ -1222,7 +1224,7 @@ function stopLoungePolling() {
     if (loungePollTimer !== null)
         window.clearTimeout(loungePollTimer);
     loungePollTimer = null;
-    stopLoungePresencePolling();
+    loungePresenceUi.stopLoungePolling();
     loungeMembers = [];
     loungeMentionDismissed = false;
     clearLoungeReplyParent();
@@ -1230,144 +1232,6 @@ function stopLoungePolling() {
     hideLoungeMentionSuggestions();
     loungeMessageList.replaceChildren(loungeEmptyState);
     loungeEmptyState.hidden = false;
-}
-function stopLoungePresencePolling() {
-    if (loungePresenceTimer !== null)
-        window.clearTimeout(loungePresenceTimer);
-    loungePresenceTimer = null;
-    loungePresenceRequestVersion += 1;
-}
-function setLoungePresenceStatus(message, renderKey) {
-    if (loungePresenceRenderKey === renderKey)
-        return;
-    loungePresenceRenderKey = renderKey;
-    loungePresence.textContent = message;
-}
-function renderLoungePresence(members) {
-    const renderKey = JSON.stringify(members.map(({ id, name }) => [id, name]));
-    if (loungePresenceRenderKey === renderKey)
-        return;
-    loungePresenceRenderKey = renderKey;
-    loungePresence.replaceChildren();
-    const label = document.createElement('span');
-    label.className = 'lounge-presence-label';
-    label.textContent = members.length === 1 ? 'Here now' : `Here now (${members.length})`;
-    loungePresence.append(label);
-    for (const member of members) {
-        const person = document.createElement('span');
-        person.className = 'lounge-presence-person';
-        person.textContent = member.name;
-        loungePresence.append(person);
-    }
-    renderLoungeNavigationPresence(members);
-}
-function renderLoungeNavigationPresence(members) {
-    if (members.length === 0) {
-        loungeNavPresenceBadge.hidden = true;
-        loungeNavPresenceBadge.textContent = '';
-        loungeNavButton.removeAttribute('title');
-        loungeNavButton.removeAttribute('aria-label');
-        return;
-    }
-    const names = members.map((member) => member.name);
-    const countLabel = `${members.length} here`;
-    const countDescription = `${members.length} ${members.length === 1 ? 'person' : 'people'} in the Lounge`;
-    loungeNavPresenceBadge.textContent = countLabel;
-    loungeNavPresenceBadge.hidden = false;
-    loungeNavButton.title = `${countDescription}: ${names.join(', ')}`;
-    loungeNavButton.setAttribute('aria-label', `Lounge. ${countDescription}: ${names.join(', ')}`);
-}
-function scheduleLoungePresencePoll(delay = LOUNGE_PRESENCE_INTERVAL_MS) {
-    if (!loungeActive)
-        return;
-    if (loungePresenceTimer !== null)
-        window.clearTimeout(loungePresenceTimer);
-    loungePresenceTimer = window.setTimeout(() => {
-        loungePresenceTimer = null;
-        void pollLoungePresence();
-    }, delay);
-}
-async function pollLoungePresence() {
-    if (!loungeActive || loungeView.hidden)
-        return;
-    if (loungePresenceTimer !== null)
-        window.clearTimeout(loungePresenceTimer);
-    loungePresenceTimer = null;
-    if (document.hidden) {
-        scheduleLoungePresencePoll();
-        return;
-    }
-    const requestVersion = ++loungePresenceRequestVersion;
-    try {
-        const result = await api('/lounge/presence', {
-            method: 'POST',
-            body: JSON.stringify({}),
-        });
-        if (requestVersion !== loungePresenceRequestVersion || !loungeActive || loungeView.hidden)
-            return;
-        renderLoungePresence(result.members);
-    }
-    catch (error) {
-        if (requestVersion !== loungePresenceRequestVersion || !loungeActive)
-            return;
-        if (error instanceof ApiFailure && error.status === 401) {
-            showSignedOut();
-            return;
-        }
-        setLoungePresenceStatus('Could not check who’s in the Lounge.', 'error');
-    }
-    finally {
-        if (requestVersion === loungePresenceRequestVersion && loungeActive) {
-            scheduleLoungePresencePoll();
-        }
-    }
-}
-function stopWorkspaceLoungePresenceMonitor() {
-    if (workspaceLoungePresenceTimer !== null)
-        window.clearTimeout(workspaceLoungePresenceTimer);
-    workspaceLoungePresenceTimer = null;
-    workspaceLoungePresenceRequestVersion += 1;
-}
-function scheduleWorkspaceLoungePresencePoll(delay = LOUNGE_PRESENCE_INTERVAL_MS) {
-    if (activeUser === null || activeUser.role === 'guest' || workspacePanel.hidden)
-        return;
-    if (workspaceLoungePresenceTimer !== null)
-        window.clearTimeout(workspaceLoungePresenceTimer);
-    workspaceLoungePresenceTimer = window.setTimeout(() => {
-        workspaceLoungePresenceTimer = null;
-        void pollWorkspaceLoungePresence();
-    }, delay);
-}
-async function pollWorkspaceLoungePresence() {
-    if (activeUser === null || activeUser.role === 'guest' || workspacePanel.hidden)
-        return;
-    if (workspaceLoungePresenceTimer !== null)
-        window.clearTimeout(workspaceLoungePresenceTimer);
-    workspaceLoungePresenceTimer = null;
-    if (document.hidden || (loungeActive && !loungeView.hidden)) {
-        scheduleWorkspaceLoungePresencePoll();
-        return;
-    }
-    const requestVersion = ++workspaceLoungePresenceRequestVersion;
-    try {
-        const result = await api('/lounge/presence');
-        if (requestVersion !== workspaceLoungePresenceRequestVersion || activeUser === null || loungeActive)
-            return;
-        renderLoungeNavigationPresence(result.members.filter((member) => member.id !== activeUser?.id));
-    }
-    catch (error) {
-        if (requestVersion !== workspaceLoungePresenceRequestVersion)
-            return;
-        if (error instanceof ApiFailure && error.status === 401) {
-            showSignedOut();
-            return;
-        }
-    }
-    finally {
-        if (requestVersion === workspaceLoungePresenceRequestVersion) {
-            scheduleWorkspaceLoungePresencePoll();
-        }
-    }
 }
 function updateLoungeMentionSuggestions() {
     if (loungeMentionDismissed)
@@ -1613,9 +1477,9 @@ async function focusLoungeMessageById(messageId) {
 async function loadLoungeChat() {
     stopLoungePolling();
     loungeActive = true;
-    loungePresenceRenderKey = null;
-    setLoungePresenceStatus('Checking who’s here…', 'checking');
-    void pollLoungePresence();
+    loungePresenceUi.resetLoungeStatus();
+    loungePresenceUi.setLoungePresenceStatus('Checking who’s here…', 'checking');
+    void loungePresenceUi.pollLoungePresence();
     loungeCursor = 0;
     loungeEtag = null;
     loungePollDelay = 1000;
@@ -3978,10 +3842,10 @@ document.addEventListener('visibilitychange', () => {
     if (!document.hidden && loungeActive) {
         loungePollDelay = 1000;
         scheduleLoungePoll(0);
-        void pollLoungePresence();
+        void loungePresenceUi.pollLoungePresence();
     }
     if (!document.hidden && !loungeActive)
-        void pollWorkspaceLoungePresence();
+        void loungePresenceUi.pollWorkspacePresence();
     if (!document.hidden && activeProject !== null && issuePollingIsActive(activeProject.id)) {
         issuePollDelay = 1000;
         scheduleIssuePoll(0);

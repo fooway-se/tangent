@@ -8,7 +8,7 @@ import {
   type CredentialFragment, type GitHubRepository, type GitHubRepositoryOptionSelection,
   type InboxIssue, type InviteDelivery, type InvitePreview, type Issue, type IssueBoardGroup,
   type IssueDiscussionMessage, type IssueGrouping, type IssuePriority, type IssueStatusTransition, type IssueType,
-  type LinkedPullRequest, type LoginResponse, type LoungeMentionMember, type LoungePresenceMember, type Member,
+  type LinkedPullRequest, type LoginResponse, type LoungeMentionMember, type Member,
   type Milestone, type MyWorkTab, type Project, type Role, type User, type Workspace, type WorkspaceInvite,
   type WorkspaceLocation, type WorkspaceMember,
 } from './types.js';
@@ -41,6 +41,7 @@ import { nextTheme, themeLabel } from './theme.js';
 import { initThemeUi } from './theme-ui.js';
 import { initProjectNotesUi } from './project-notes-ui.js';
 import { initMilestoneUi } from './milestone-ui.js';
+import { initLoungePresence } from './lounge-presence.js';
 import { parseQuickIssueInput } from './quick-issue.js';
 import { milestoneStatus, type RoadmapMilestone } from './roadmap.js';
 import { formatIssueMarkdown, formatIssuePrompt } from './issue-export.js';
@@ -118,7 +119,7 @@ const {
     inboxLoadMoreButton,
   },
   lounge: {
-    loungeNavButton, loungeNavPresenceBadge, loungeView, loungeHeading, loungePresence, loungeMessageList,
+    loungeNavButton, loungeView, loungeHeading, loungeMessageList,
     loungeEmptyState, loungeForm, loungeInput, loungeMentionList, loungeReplyHint, loungeCancelReply,
   },
   shortcuts: {
@@ -678,15 +679,9 @@ const chatEventFeed = new ChatEventFeed();
 let chatEtag: string | null = null;
 let chatPollDelay = 1000;
 const PROJECT_PRESENCE_INTERVAL_MS = 15_000;
-const LOUNGE_PRESENCE_INTERVAL_MS = 15_000;
 let projectPresenceTimer: number | null = null;
 let projectPresenceRequestVersion = 0;
 let chatPresenceIndicator: HTMLSpanElement | null = null;
-let loungePresenceTimer: number | null = null;
-let loungePresenceRequestVersion = 0;
-let loungePresenceRenderKey: string | null = null;
-let workspaceLoungePresenceTimer: number | null = null;
-let workspaceLoungePresenceRequestVersion = 0;
 let chatFollowLatest = true;
 let chatMessageList: HTMLElement | null = null;
 let chatEmptyState: HTMLElement | null = null;
@@ -716,6 +711,16 @@ let memberRemovalTarget: { member: Member; button: HTMLButtonElement } | null = 
 let paletteCommands: PaletteCommand[] = [];
 let visiblePaletteCommands: PaletteCommand[] = [];
 let activePaletteCommandIndex = 0;
+
+const loungePresenceUi = initLoungePresence({
+  navigationButton: loungeNavButton,
+  getUser: () => activeUser,
+  isLoungeActive: () => loungeActive,
+  isLoungeVisible: () => !loungeView.hidden,
+  isWorkspaceVisible: () => !workspacePanel.hidden,
+  isDocumentHidden: () => document.hidden,
+  onUnauthorized: () => showSignedOut(),
+});
 
 const guestUi = initGuestUi({
   getUser: () => activeUser,
@@ -861,8 +866,7 @@ function showSignedOut(): void {
   resetPendingWorkspaceSwitch();
   stopChatPolling();
   stopLoungePolling();
-  stopWorkspaceLoungePresenceMonitor();
-  renderLoungeNavigationPresence([]);
+  loungePresenceUi.reset();
   if (clientSummaryUi.dialog.open) clientSummaryUi.close();
   activeUser = null;
   githubRepositories = [];
@@ -922,8 +926,7 @@ function showSignedIn(user: User): void {
   projectReturnFocusId = null;
   activeProject = null;
   stopLoungePolling();
-  stopWorkspaceLoungePresenceMonitor();
-  renderLoungeNavigationPresence([]);
+  loungePresenceUi.reset();
   activeUser = user;
   guestWorkspaceSwitcher.hidden = user.role !== 'guest';
   editProjectButton.hidden = user.role !== 'admin';
@@ -943,7 +946,7 @@ function showSignedIn(user: User): void {
   adminNavButton.hidden = user.role !== 'admin';
   toggleProjectFormButton.hidden = user.role !== 'admin';
   showWorkspaceView('projects');
-  void pollWorkspaceLoungePresence();
+  void loungePresenceUi.pollWorkspacePresence();
   if (user.role === 'admin') void loadGithubRepositories();
   report('');
 }
@@ -1140,7 +1143,7 @@ function showWorkspaceView(view: 'projects' | 'roadmap' | 'inbox' | 'lounge' | '
     projectReturnFocusId = null;
     if (!focusProjectOpenButton(projectId)) projectsNavButton.focus();
   }
-  if (wasLoungeActive) void pollWorkspaceLoungePresence();
+  if (wasLoungeActive) void loungePresenceUi.pollWorkspacePresence();
 }
 
 function openWorkspaceAdmin(): void {
@@ -1651,7 +1654,7 @@ function stopLoungePolling(): void {
   selectedChatMessageId = null;
   if (loungePollTimer !== null) window.clearTimeout(loungePollTimer);
   loungePollTimer = null;
-  stopLoungePresencePolling();
+  loungePresenceUi.stopLoungePolling();
   loungeMembers = [];
   loungeMentionDismissed = false;
   clearLoungeReplyParent();
@@ -1659,138 +1662,6 @@ function stopLoungePolling(): void {
   hideLoungeMentionSuggestions();
   loungeMessageList.replaceChildren(loungeEmptyState);
   loungeEmptyState.hidden = false;
-}
-
-function stopLoungePresencePolling(): void {
-  if (loungePresenceTimer !== null) window.clearTimeout(loungePresenceTimer);
-  loungePresenceTimer = null;
-  loungePresenceRequestVersion += 1;
-}
-
-function setLoungePresenceStatus(message: string, renderKey: string): void {
-  if (loungePresenceRenderKey === renderKey) return;
-  loungePresenceRenderKey = renderKey;
-  loungePresence.textContent = message;
-}
-
-function renderLoungePresence(members: readonly LoungePresenceMember[]): void {
-  const renderKey = JSON.stringify(members.map(({ id, name }) => [id, name]));
-  if (loungePresenceRenderKey === renderKey) return;
-  loungePresenceRenderKey = renderKey;
-  loungePresence.replaceChildren();
-
-  const label = document.createElement('span');
-  label.className = 'lounge-presence-label';
-  label.textContent = members.length === 1 ? 'Here now' : `Here now (${members.length})`;
-  loungePresence.append(label);
-
-  for (const member of members) {
-    const person = document.createElement('span');
-    person.className = 'lounge-presence-person';
-    person.textContent = member.name;
-    loungePresence.append(person);
-  }
-  renderLoungeNavigationPresence(members);
-}
-
-function renderLoungeNavigationPresence(members: readonly LoungePresenceMember[]): void {
-  if (members.length === 0) {
-    loungeNavPresenceBadge.hidden = true;
-    loungeNavPresenceBadge.textContent = '';
-    loungeNavButton.removeAttribute('title');
-    loungeNavButton.removeAttribute('aria-label');
-    return;
-  }
-
-  const names = members.map((member) => member.name);
-  const countLabel = `${members.length} here`;
-  const countDescription = `${members.length} ${members.length === 1 ? 'person' : 'people'} in the Lounge`;
-  loungeNavPresenceBadge.textContent = countLabel;
-  loungeNavPresenceBadge.hidden = false;
-  loungeNavButton.title = `${countDescription}: ${names.join(', ')}`;
-  loungeNavButton.setAttribute('aria-label', `Lounge. ${countDescription}: ${names.join(', ')}`);
-}
-
-function scheduleLoungePresencePoll(delay = LOUNGE_PRESENCE_INTERVAL_MS): void {
-  if (!loungeActive) return;
-  if (loungePresenceTimer !== null) window.clearTimeout(loungePresenceTimer);
-  loungePresenceTimer = window.setTimeout(() => {
-    loungePresenceTimer = null;
-    void pollLoungePresence();
-  }, delay);
-}
-
-async function pollLoungePresence(): Promise<void> {
-  if (!loungeActive || loungeView.hidden) return;
-  if (loungePresenceTimer !== null) window.clearTimeout(loungePresenceTimer);
-  loungePresenceTimer = null;
-  if (document.hidden) {
-    scheduleLoungePresencePoll();
-    return;
-  }
-
-  const requestVersion = ++loungePresenceRequestVersion;
-  try {
-    const result = await api<{ members: LoungePresenceMember[] }>('/lounge/presence', {
-      method: 'POST',
-      body: JSON.stringify({}),
-    });
-    if (requestVersion !== loungePresenceRequestVersion || !loungeActive || loungeView.hidden) return;
-    renderLoungePresence(result.members);
-  } catch (error) {
-    if (requestVersion !== loungePresenceRequestVersion || !loungeActive) return;
-    if (error instanceof ApiFailure && error.status === 401) {
-      showSignedOut();
-      return;
-    }
-    setLoungePresenceStatus('Could not check who’s in the Lounge.', 'error');
-  } finally {
-    if (requestVersion === loungePresenceRequestVersion && loungeActive) {
-      scheduleLoungePresencePoll();
-    }
-  }
-}
-
-function stopWorkspaceLoungePresenceMonitor(): void {
-  if (workspaceLoungePresenceTimer !== null) window.clearTimeout(workspaceLoungePresenceTimer);
-  workspaceLoungePresenceTimer = null;
-  workspaceLoungePresenceRequestVersion += 1;
-}
-
-function scheduleWorkspaceLoungePresencePoll(delay = LOUNGE_PRESENCE_INTERVAL_MS): void {
-  if (activeUser === null || activeUser.role === 'guest' || workspacePanel.hidden) return;
-  if (workspaceLoungePresenceTimer !== null) window.clearTimeout(workspaceLoungePresenceTimer);
-  workspaceLoungePresenceTimer = window.setTimeout(() => {
-    workspaceLoungePresenceTimer = null;
-    void pollWorkspaceLoungePresence();
-  }, delay);
-}
-
-async function pollWorkspaceLoungePresence(): Promise<void> {
-  if (activeUser === null || activeUser.role === 'guest' || workspacePanel.hidden) return;
-  if (workspaceLoungePresenceTimer !== null) window.clearTimeout(workspaceLoungePresenceTimer);
-  workspaceLoungePresenceTimer = null;
-  if (document.hidden || (loungeActive && !loungeView.hidden)) {
-    scheduleWorkspaceLoungePresencePoll();
-    return;
-  }
-
-  const requestVersion = ++workspaceLoungePresenceRequestVersion;
-  try {
-    const result = await api<{ members: LoungePresenceMember[] }>('/lounge/presence');
-    if (requestVersion !== workspaceLoungePresenceRequestVersion || activeUser === null || loungeActive) return;
-    renderLoungeNavigationPresence(result.members.filter((member) => member.id !== activeUser?.id));
-  } catch (error) {
-    if (requestVersion !== workspaceLoungePresenceRequestVersion) return;
-    if (error instanceof ApiFailure && error.status === 401) {
-      showSignedOut();
-      return;
-    }
-  } finally {
-    if (requestVersion === workspaceLoungePresenceRequestVersion) {
-      scheduleWorkspaceLoungePresencePoll();
-    }
-  }
 }
 
 function updateLoungeMentionSuggestions(): void {
@@ -2050,9 +1921,9 @@ async function focusLoungeMessageById(messageId: number): Promise<void> {
 async function loadLoungeChat(): Promise<void> {
   stopLoungePolling();
   loungeActive = true;
-  loungePresenceRenderKey = null;
-  setLoungePresenceStatus('Checking who’s here…', 'checking');
-  void pollLoungePresence();
+  loungePresenceUi.resetLoungeStatus();
+  loungePresenceUi.setLoungePresenceStatus('Checking who’s here…', 'checking');
+  void loungePresenceUi.pollLoungePresence();
   loungeCursor = 0;
   loungeEtag = null;
   loungePollDelay = 1000;
@@ -4306,9 +4177,9 @@ document.addEventListener('visibilitychange', () => {
   if (!document.hidden && loungeActive) {
     loungePollDelay = 1000;
     scheduleLoungePoll(0);
-    void pollLoungePresence();
+    void loungePresenceUi.pollLoungePresence();
   }
-  if (!document.hidden && !loungeActive) void pollWorkspaceLoungePresence();
+  if (!document.hidden && !loungeActive) void loungePresenceUi.pollWorkspacePresence();
   if (!document.hidden && activeProject !== null && issuePollingIsActive(activeProject.id)) {
     issuePollDelay = 1000;
     scheduleIssuePoll(0);
