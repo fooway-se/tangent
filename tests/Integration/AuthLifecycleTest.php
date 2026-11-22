@@ -146,6 +146,71 @@ final class AuthLifecycleTest extends ApiTestCase
         self::assertSame(403, $this->cookieRequest('GET', '/api/v1/users', $this->cookieFrom($accepted))->status);
     }
 
+    public function testGuestInviteAcceptanceOmitsProjectsThatAreNoLongerEligible(): void
+    {
+        $admin = $this->login($this->adminEmail);
+        $archivedProjectId = $this->insertProject('Guest invite archived project', 'guest-invite-archived', $this->adminId);
+        $eligibleProjectId = $this->insertProject('Guest invite eligible project', 'guest-invite-eligible', $this->adminId);
+        $created = $this->cookieRequest('POST', '/api/v1/users/invites', $admin['cookie'], [
+            'name' => 'Partial guest invite',
+            'email' => 'partial-guest@example.test',
+            'role' => 'guest',
+            'project_ids' => [$archivedProjectId, $eligibleProjectId],
+        ], $admin['csrf']);
+        self::assertSame(201, $created->status, json_encode($created->body));
+        $plainToken = $this->tokenFromCredentialUrl($created->body['invite']['invite_url'], 'invite');
+        self::assertSame(1, preg_match('/Verification code: ([a-f0-9]{64})/', $this->mailer->messages[0]['body'], $matches));
+
+        $lifecycle = $this->pdo->prepare('UPDATE projects SET status = :status WHERE workspace_id = :workspace_id AND id = :id');
+        $lifecycle->execute(['status' => 'archived', 'workspace_id' => $this->workspaceId, 'id' => $archivedProjectId]);
+        $lifecycle->execute(['status' => 'paused', 'workspace_id' => $this->workspaceId, 'id' => $eligibleProjectId]);
+        $accepted = $this->request('POST', '/api/v1/auth/invites/accept', [
+            'token' => $plainToken,
+            'password' => 'a thoughtful guest password phrase',
+            'verification_code' => $matches[1],
+        ]);
+
+        self::assertSame(200, $accepted->status, json_encode($accepted->body));
+        $guestId = (int) $accepted->body['user']['id'];
+        self::assertFalse($this->projectHasMember($archivedProjectId, $guestId));
+        self::assertTrue($this->projectHasMember($eligibleProjectId, $guestId));
+        self::assertNotEmpty((array) ($accepted->headers['set-cookie'] ?? []));
+    }
+
+    public function testGuestInviteWithNoEligibleProjectsDoesNotCreateAccountMembershipOrSession(): void
+    {
+        $admin = $this->login($this->adminEmail);
+        $projectId = $this->insertProject('Guest invite becomes read only', 'guest-invite-read-only', $this->adminId);
+        $created = $this->cookieRequest('POST', '/api/v1/users/invites', $admin['cookie'], [
+            'name' => 'Unavailable guest invite',
+            'email' => 'unavailable-guest@example.test',
+            'role' => 'guest',
+            'project_ids' => [$projectId],
+        ], $admin['csrf']);
+        self::assertSame(201, $created->status, json_encode($created->body));
+        $plainToken = $this->tokenFromCredentialUrl($created->body['invite']['invite_url'], 'invite');
+        self::assertSame(1, preg_match('/Verification code: ([a-f0-9]{64})/', $this->mailer->messages[0]['body'], $matches));
+        $this->pdo->prepare('UPDATE projects SET status = :status WHERE workspace_id = :workspace_id AND id = :id')
+            ->execute(['status' => 'completed', 'workspace_id' => $this->workspaceId, 'id' => $projectId]);
+
+        $failed = $this->request('POST', '/api/v1/auth/invites/accept', [
+            'token' => $plainToken,
+            'password' => 'a thoughtful guest password phrase',
+            'verification_code' => $matches[1],
+        ]);
+
+        self::assertSame(409, $failed->status, json_encode($failed->body));
+        self::assertSame('invite_projects_unavailable', $failed->body['error']['code']);
+        self::assertSame([], (array) ($failed->headers['set-cookie'] ?? []));
+        self::assertSame(0, $this->workspaceMembershipCount('unavailable-guest@example.test'));
+        $account = $this->pdo->prepare('SELECT COUNT(*) FROM user_accounts WHERE email = :email');
+        $account->execute(['email' => 'unavailable-guest@example.test']);
+        self::assertSame(0, (int) $account->fetchColumn());
+        $invite = $this->pdo->prepare('SELECT used_at FROM credential_tokens WHERE id = :id');
+        $invite->execute(['id' => $created->body['invite']['id']]);
+        self::assertNull($invite->fetchColumn());
+    }
+
     public function testExistingAccountInviteRequiresPasswordBeforeLinkingMembership(): void
     {
         $email = 'existing-account@example.test';

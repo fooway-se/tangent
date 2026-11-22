@@ -93,6 +93,28 @@ final class ProjectRepository
         return array_map('intval', $statement->fetchAll(PDO::FETCH_COLUMN));
     }
 
+    public function eligibleProjectIdsForUpdate(int $workspaceId, array $projectIds): array
+    {
+        $projectIds = array_values(array_unique(array_map('intval', $projectIds)));
+        if ($projectIds === []) return [];
+
+        $placeholders = [];
+        $parameters = ['workspace_id' => $workspaceId];
+        foreach ($projectIds as $index => $projectId) {
+            $placeholder = 'project_id_' . $index;
+            $placeholders[] = ':' . $placeholder;
+            $parameters[$placeholder] = $projectId;
+        }
+        $statement = $this->pdo->prepare(
+            "SELECT id FROM projects
+             WHERE workspace_id = :workspace_id AND status IN ('active', 'paused')
+               AND id IN (" . implode(', ', $placeholders) . ")
+             ORDER BY id FOR UPDATE"
+        );
+        $statement->execute($parameters);
+        return array_map('intval', $statement->fetchAll(PDO::FETCH_COLUMN));
+    }
+
     public function guestProjectMemberships(int $workspaceId, int $userId): array
     {
         $statement = $this->pdo->prepare(

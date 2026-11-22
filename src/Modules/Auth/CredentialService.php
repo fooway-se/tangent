@@ -226,25 +226,30 @@ final class CredentialService
                     'workspace' => $this->workspaces->nameById($workspaceId),
                 ]);
                 if ($reason !== null) throw new ApiException(422, 'password_rejected', $reason);
-                $member = $this->users->createWorkspaceUser($workspaceId, $name, $email, $password, $role);
             } else {
                 $password = is_string($request->body['password'] ?? null) ? $request->body['password'] : '';
                 if (!password_verify($password, (string) $account['password_hash'])) {
                     throw new ApiException(401, 'invalid_credentials', 'The invite token or password is not valid.');
                 }
-                $member = $this->users->createMembershipForAccount(
+            }
+
+            $projectIds = $this->credentialTokens->projectIds($workspaceId, (int) $invite['id']);
+            if ($role === 'guest') {
+                $projectIds = $this->projects->eligibleProjectIdsForUpdate($workspaceId, $projectIds);
+                if ($projectIds === []) {
+                    throw new ApiException(409, 'invite_projects_unavailable', 'The guest projects in this invite are no longer available. Ask the workspace admin to send a new invite.');
+                }
+            }
+
+            $member = $account === null
+                ? $this->users->createWorkspaceUser($workspaceId, $name, $email, $password, $role)
+                : $this->users->createMembershipForAccount(
                     $workspaceId,
                     (int) $account['account_id'],
                     $name,
                     $email,
                     $role,
                 );
-            }
-
-            $projectIds = $this->credentialTokens->projectIds($workspaceId, (int) $invite['id']);
-            if ($role === 'guest' && $projectIds === []) {
-                throw new ApiException(409, 'invite_projects_unavailable', 'The guest projects in this invite are no longer available. Ask the workspace admin to send a new invite.');
-            }
             foreach ($projectIds as $projectId) {
                 $this->projects->addMember($workspaceId, $projectId, (int) $member['id']);
             }
