@@ -346,6 +346,11 @@ final class GuestViewTest extends ApiTestCase
             $guest['csrf'],
         );
         self::assertSame(200, $approved->status, json_encode($approved->body));
+        $approvalEvents = $this->pdo->prepare(
+            "SELECT COUNT(*) FROM inbox_events WHERE workspace_id = :workspace_id AND issue_id = :issue_id AND event_type = 'status'",
+        );
+        $approvalEvents->execute(['workspace_id' => $this->workspaceId, 'issue_id' => $requested]);
+        self::assertSame(1, (int) $approvalEvents->fetchColumn());
         $again = $this->cookieRequest(
             'POST',
             "/api/v1/approvals/{$requested}/approve",
@@ -354,6 +359,24 @@ final class GuestViewTest extends ApiTestCase
             $guest['csrf'],
         );
         self::assertSame(409, $again->status);
+        $approvalEvents->execute(['workspace_id' => $this->workspaceId, 'issue_id' => $requested]);
+        self::assertSame(1, (int) $approvalEvents->fetchColumn());
+
+        $ongoing = $this->createIssue($admin, $projectId, 'Already ongoing');
+        $this->updateIssue($admin, $ongoing, ['is_shared' => true, 'approval_requested' => true]);
+        $this->pdo->prepare(
+            'UPDATE issues SET is_ongoing = 1 WHERE workspace_id = :workspace_id AND id = :issue_id',
+        )->execute(['workspace_id' => $this->workspaceId, 'issue_id' => $ongoing]);
+        $ongoingApproval = $this->cookieRequest(
+            'POST',
+            "/api/v1/approvals/{$ongoing}/approve",
+            $guest['cookie'],
+            [],
+            $guest['csrf'],
+        );
+        self::assertSame(404, $ongoingApproval->status);
+        $approvalEvents->execute(['workspace_id' => $this->workspaceId, 'issue_id' => $ongoing]);
+        self::assertSame(0, (int) $approvalEvents->fetchColumn());
 
         $internalApproval = $this->cookieRequest(
             'POST',

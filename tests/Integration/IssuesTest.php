@@ -7,10 +7,38 @@ namespace Tangent\Tests\Integration;
 use Tangent\Core\Request;
 use Tangent\Core\Response;
 use Tangent\Core\Database;
+use Tangent\Modules\Issues\IssueRepository;
 use Tangent\Tests\Support\ApiTestCase;
 
 final class IssuesTest extends ApiTestCase
 {
+    public function testApprovalRepositoryRejectsOngoingIssuesAtomically(): void
+    {
+        $admin = $this->login($this->adminEmail);
+        $projectId = $this->createProject($admin, 'Approval eligibility');
+        $ongoingIssueId = $this->createIssue($admin, $projectId, 'Already ongoing');
+        $eligibleIssueId = $this->createIssue($admin, $projectId, 'Eligible for approval');
+        $prepare = $this->pdo->prepare(
+            'UPDATE issues
+             SET is_shared = 1, approval_requested_at = UTC_TIMESTAMP(), is_ongoing = :is_ongoing
+             WHERE workspace_id = :workspace_id AND id = :id',
+        );
+        $prepare->execute(['is_ongoing' => 1, 'workspace_id' => $this->workspaceId, 'id' => $ongoingIssueId]);
+        $prepare->execute(['is_ongoing' => 0, 'workspace_id' => $this->workspaceId, 'id' => $eligibleIssueId]);
+
+        $issues = new IssueRepository($this->pdo);
+        self::assertFalse($issues->approve($this->workspaceId, $ongoingIssueId, $this->developerId));
+        self::assertTrue($issues->approve($this->workspaceId, $eligibleIssueId, $this->developerId));
+
+        $approvals = $this->pdo->prepare(
+            'SELECT approved_at FROM issues WHERE workspace_id = :workspace_id AND id = :id',
+        );
+        $approvals->execute(['workspace_id' => $this->workspaceId, 'id' => $ongoingIssueId]);
+        self::assertNull($approvals->fetchColumn());
+        $approvals->execute(['workspace_id' => $this->workspaceId, 'id' => $eligibleIssueId]);
+        self::assertNotFalse($approvals->fetchColumn());
+    }
+
     public function testConcurrentIssueChangesPreserveApprovalAndRecordEffectiveStatusHistory(): void
     {
         $admin = $this->login($this->adminEmail);
@@ -931,6 +959,20 @@ final class IssuesTest extends ApiTestCase
         );
         self::assertSame(201, $response->status, json_encode($response->body));
         return (int) $response->body['project']['id'];
+    }
+
+    private function createIssue(array $admin, int $projectId, string $title): int
+    {
+        $response = $this->apiCookieRequest(
+            'POST',
+            "/api/v1/projects/{$projectId}/issues",
+            $admin['cookie'],
+            ['title' => $title],
+            $admin['csrf'],
+        );
+        self::assertSame(201, $response->status, json_encode($response->body));
+
+        return (int) $response->body['issue']['id'];
     }
 
     private function apiCookieRequest(

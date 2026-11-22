@@ -656,7 +656,8 @@ final class IssueRepository
         $statement = $this->pdo->prepare(
             "UPDATE issues SET approved_by = :approver_id, approved_at = CURRENT_TIMESTAMP
              WHERE workspace_id = :workspace_id AND id = :id AND is_shared = 1 AND deleted_at IS NULL
-               AND approval_requested_at IS NOT NULL AND approved_at IS NULL AND status <> 'cancelled'"
+               AND is_ongoing = 0 AND approval_requested_at IS NOT NULL
+               AND approved_at IS NULL AND status <> 'cancelled'"
         );
         $statement->execute(['workspace_id' => $workspaceId, 'id' => $issueId, 'approver_id' => $approverId]);
         $changed = $statement->rowCount() === 1;
