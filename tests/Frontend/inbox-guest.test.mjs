@@ -182,7 +182,7 @@ test('new views never use innerHTML', async () => {
 
 test('guest startup loads workspace choices without requesting internal project data', () => {
   const startup = app.slice(app.indexOf('async function start()'), app.indexOf('void start();'));
-  assert.match(startup, /showSignedIn\(result\.user\);\s*await loadWorkspaces\(\);\s*if \(result\.user\.role === 'guest'\) return;\s*await loadProjects\(\);/);
+  assert.match(startup, /showSignedIn\(result\.user\);\s*await loadWorkspaces\(\);\s*if \(result\.user\.role === 'guest'\) return;\s*await projectListUi\.load\(\);/);
 });
 
 test('guest sign-in loads workspace choices and skips internal project loading', () => {

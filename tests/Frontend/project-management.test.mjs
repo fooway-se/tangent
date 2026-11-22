@@ -8,6 +8,7 @@ const guestView = await readFile(new URL('../../frontend/src/guest-view.ts', imp
 const types = await readFile(new URL('../../frontend/src/types.ts', import.meta.url), 'utf8');
 const projectNotesUi = await readFile(new URL('../../frontend/src/project-notes-ui.ts', import.meta.url), 'utf8');
 const projectEditUi = await readFile(new URL('../../frontend/src/project-edit-ui.ts', import.meta.url), 'utf8');
+const projectListUi = await readFile(new URL('../../frontend/src/project-list-ui.ts', import.meta.url), 'utf8');
 
 test('project details provide admins an edit dialog for name, description, and status', () => {
   const projectView = html.slice(html.indexOf('id="project-view"'), html.indexOf('id="admin-view"'));
@@ -55,9 +56,9 @@ test('saving project details uses the existing PATCH endpoint and refreshes visi
 test('project status labels reflect the selected lifecycle state', () => {
   assert.match(app, /function projectStatusLabel\(status: Project\['status'\]\): string[\s\S]*PROJECT_STATUS_LABELS\[status\]/);
   assert.match(app, /projectState\.textContent = projectStatusLabel\(project\.status\)/);
-  assert.match(app, /state\.textContent = projectStatusLabel\(project\.status\)/);
+  assert.match(projectListUi, /state\.textContent = projectStatusLabel\(project\.status\)/);
   assert.match(types, /archived: 3/);
-  assert.match(app, /const projects = \[\.\.\.result\.projects\]\.sort/);
+  assert.match(projectListUi, /const projects = \[\.\.\.result\.projects\]\.sort/);
 });
 
 test('empty project lists explain missing membership in the sidebar and main view', () => {
@@ -65,9 +66,9 @@ test('empty project lists explain missing membership in the sidebar and main vie
   const projectSidebar = html.slice(html.indexOf('class="sidebar-projects"'), html.indexOf('id="account-bar"'));
   assert.ok(projectSidebar.indexOf('id="sidebar-projects-heading"') < projectSidebar.indexOf('id="project-sidebar-empty"'));
   assert.ok(projectSidebar.indexOf('id="project-sidebar-empty"') < projectSidebar.indexOf('id="project-sidebar-list"'));
-  assert.match(app, /function updateProjectEmptyStates\(projects: readonly Project\[\]\)/);
-  assert.match(app, /You're not a member of any projects yet\. Ask a workspace admin to add you\./);
-  assert.match(app, /projectSidebarEmpty\.textContent = isAdmin \? 'No projects yet\.' : 'No project access yet\.'/);
+  assert.match(projectListUi, /function updateEmptyStates\(projects: readonly Project\[\]\)/);
+  assert.match(projectListUi, /You're not a member of any projects yet\. Ask a workspace admin to add you\./);
+  assert.match(projectListUi, /projectSidebarEmpty\.textContent = isAdmin \? 'No projects yet\.' : 'No project access yet\.'/);
 });
 
 test('completed and archived project controls switch to read-only in the project view', () => {

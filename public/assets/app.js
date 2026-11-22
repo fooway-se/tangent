@@ -1,5 +1,5 @@
 import { api, apiBaseUrl, ApiFailure } from './api.js';
-import { ISSUE_STATUS_OPTIONS, ISSUE_TYPE_OPTIONS, PROJECT_STATUS_LABELS, PROJECT_STATUS_ORDER, } from './types.js';
+import { ISSUE_STATUS_OPTIONS, ISSUE_TYPE_OPTIONS, PROJECT_STATUS_LABELS, } from './types.js';
 import { initGuestUi } from './guest-ui.js';
 import { initInboxUi } from './inbox-ui.js';
 import { createLogoutController } from './logout.js';
@@ -27,12 +27,13 @@ import { initIssueStatusPickerUi } from './issue-status-picker-ui.js';
 import { initIssueDeleteUi } from './issue-delete-ui.js';
 import { initProjectMembersUi } from './project-members-ui.js';
 import { initProjectEditUi } from './project-edit-ui.js';
+import { initProjectListUi } from './project-list-ui.js';
 import { parseQuickIssueInput } from './quick-issue.js';
 import { milestoneStatus } from './roadmap.js';
 import { filterIssues, filterIssuesByMilestoneArchive, groupIssues, groupIssuesByMilestone, discussionIndicatorLabel, projectProgress, sortIssues, } from './issue-board.js';
 import { diffConditionalIssueCollections, loadIssueCollections, nextIssuePollDelay, refreshDeletedIssuesOnOpen, shouldDeferIssueUpdates, } from './issue-polling.js';
 import { dom } from './dom.js';
-const { project: { projectHeading, projectEditDialog, projectReadOnlyNotice, editProjectButton, projectGithubRepository, projectEditGithubRepository, githubProjectSelectionStatus, githubProjectEditStatus, connectGithubCreateButton, connectGithubEditButton, projectsNavButton, projectsView, projectView, projectForm, projectList, emptyProjects, projectFormPanel, projectDescription, projectState, projectChatColumn, projectSidebarList, projectSidebarEmpty, projectMain, projectTabs, projectKeyboardHints, }, auth: { loginPanel, loginShell, accountBar, currentUserLabel, loginStatusMessage, logoutButton, }, workspace: { workspacePanel, workspaceNav, adminNavButton, adminView, adminHeading, membersView, adminGoPrefixOption, membersTabButton, }, shell: { createWorkspaceForm, breadcrumbProjectsButton, breadcrumbDivider, breadcrumbCurrent, cancelProjectFormButton, notesTabButton, emptyIssues, statusMessage, }, roadmap: { roadmapNavButton, roadmapView, roadmapHeading, roadmapSummary, roadmapMilestoneList, roadmapEmptyState, roadmapGoPrefixOption, }, inbox: { inboxNavButton, inboxView, inboxHeading, }, lounge: { loungeNavButton, loungeView, loungeHeading, loungeMessageList, }, shortcuts: { toggleProjectFormButton, keyboardHints, goPrefixHint, goPrefixWorkspaceOption, goPrefixProjectOptions, }, chat: { chatView, }, issues: { issuesView, issueDetailView, issueDetailDisplay, issueDetailTitle, issueDetailPriority, issueDetailDueDate, issueDetailDescription, issueDetailBrief, issueDetailContextSection, issueDetailContext, issueDetailExpectedOutcomeSection, issueDetailExpectedOutcome, issueDetailAcceptanceCriteriaSection, issueDetailAcceptanceCriteria, issueDetailStatus, issueDetailStatusLabel, issueSourceLink, issueDetailEditForm, issueDetailTitleInput, issueDetailDescriptionInput, issueDetailPriorityInput, issueDetailDueDateInput, issueDetailEditButton, issueDetailDeleteButton, issueDetailSaveButton, issuesTabButton, issueBackButton, issueDetailCancelButton, issueForm, issueQuickAddTitle, issueQuickAddPriority, issueQuickAddDueDate, issueQuickAddAssignee, issueQuickAddMilestone, issueQuickAddOngoing, issueQuickAddShared, issueQuickAddApproval, issueQuickAddCancelButton, issueDetailType, issueDetailAssignee, issueDetailMilestone, issueDetailOngoingRow, issueDetailSharing, issueDetailApproval, issueDetailTypeInput, issueDetailAssigneeInput, issueDetailMilestoneInput, issueDetailOngoingInput, issueDetailSharedInput, issueDetailApprovalInput, issueDescriptionDetails, issueProgress, issueProgressLabel, issueFilter, issueGrouping, issueOrder, issueScope, issueCountSummary, issueBulkAssignToggle, issueBulkAssignToolbar, issueList, deletedIssuesDetails, deletedIssueCount, deletedIssueList, }, guest: { guestLogoutButton, }, } = dom;
+const { project: { projectHeading, projectEditDialog, projectReadOnlyNotice, editProjectButton, projectGithubRepository, projectEditGithubRepository, githubProjectSelectionStatus, githubProjectEditStatus, connectGithubCreateButton, connectGithubEditButton, projectsNavButton, projectsView, projectView, projectForm, projectList, projectFormPanel, projectDescription, projectState, projectChatColumn, projectSidebarList, projectMain, projectTabs, projectKeyboardHints, }, auth: { loginPanel, loginShell, accountBar, currentUserLabel, loginStatusMessage, logoutButton, }, workspace: { workspacePanel, workspaceNav, adminNavButton, adminView, adminHeading, membersView, adminGoPrefixOption, membersTabButton, }, shell: { createWorkspaceForm, breadcrumbProjectsButton, breadcrumbDivider, breadcrumbCurrent, notesTabButton, emptyIssues, statusMessage, }, roadmap: { roadmapNavButton, roadmapView, roadmapHeading, roadmapSummary, roadmapMilestoneList, roadmapEmptyState, roadmapGoPrefixOption, }, inbox: { inboxNavButton, inboxView, inboxHeading, }, lounge: { loungeNavButton, loungeView, loungeHeading, loungeMessageList, }, shortcuts: { toggleProjectFormButton, keyboardHints, goPrefixHint, goPrefixWorkspaceOption, goPrefixProjectOptions, }, chat: { chatView, }, issues: { issuesView, issueDetailView, issueDetailDisplay, issueDetailTitle, issueDetailPriority, issueDetailDueDate, issueDetailDescription, issueDetailBrief, issueDetailContextSection, issueDetailContext, issueDetailExpectedOutcomeSection, issueDetailExpectedOutcome, issueDetailAcceptanceCriteriaSection, issueDetailAcceptanceCriteria, issueDetailStatus, issueDetailStatusLabel, issueSourceLink, issueDetailEditForm, issueDetailTitleInput, issueDetailDescriptionInput, issueDetailPriorityInput, issueDetailDueDateInput, issueDetailEditButton, issueDetailDeleteButton, issueDetailSaveButton, issuesTabButton, issueBackButton, issueDetailCancelButton, issueForm, issueQuickAddTitle, issueQuickAddPriority, issueQuickAddDueDate, issueQuickAddAssignee, issueQuickAddMilestone, issueQuickAddOngoing, issueQuickAddShared, issueQuickAddApproval, issueQuickAddCancelButton, issueDetailType, issueDetailAssignee, issueDetailMilestone, issueDetailOngoingRow, issueDetailSharing, issueDetailApproval, issueDetailTypeInput, issueDetailAssigneeInput, issueDetailMilestoneInput, issueDetailOngoingInput, issueDetailSharedInput, issueDetailApprovalInput, issueDescriptionDetails, issueProgress, issueProgressLabel, issueFilter, issueGrouping, issueOrder, issueScope, issueCountSummary, issueBulkAssignToggle, issueBulkAssignToolbar, issueList, deletedIssuesDetails, deletedIssueCount, deletedIssueList, }, guest: { guestLogoutButton, }, } = dom;
 const KEYBOARD_HINTS_STORAGE_KEY = 'tangent.keyboard-hints-visible';
 function loadKeyboardHintsPreference() {
     try {
@@ -144,6 +145,14 @@ const projectNotesUi = initProjectNotesUi({
     onUnauthorized: () => showSignedOut(),
 });
 let activeProjectMembers = [];
+const projectListUi = initProjectListUi({
+    getRole: () => activeUser?.role,
+    getActiveProjectId: () => activeProject?.id ?? null,
+    openProject: (projectId) => { void loadProjectDetail(projectId); },
+    onRendered: updateProjectSidebarMoreCue,
+    api,
+    report,
+});
 const projectMembersUi = initProjectMembersUi({
     getProjectId: () => activeProject?.id ?? null,
     getMembers: () => activeProjectMembers,
@@ -161,7 +170,7 @@ const projectEditUi = initProjectEditUi({
     populateRepositorySelect: populateGithubRepositorySelect,
     api,
     onUpdated: applyEditedProject,
-    refreshProjects: loadProjects,
+    refreshProjects: () => projectListUi.load(),
     report,
 });
 let projectMilestones = [];
@@ -379,7 +388,7 @@ const workspaceAdminUi = initWorkspaceAdminUi({
 const authUi = initAuthUi({
     onSignedIn: showSignedIn,
     loadWorkspaces,
-    loadProjects,
+    loadProjects: () => projectListUi.load(),
     report,
 });
 const guestUi = initGuestUi({
@@ -611,7 +620,7 @@ async function switchWorkspace(workspaceId, restoreSwitcherFocus = false) {
         const result = await switchWorkspaceMembership(activeUser, workspaceId, (targetWorkspaceId) => api(`/workspaces/${targetWorkspaceId}/switch`, {
             method: 'POST',
             body: JSON.stringify({}),
-        }), showSignedIn, loadWorkspaces, loadProjects);
+        }), showSignedIn, loadWorkspaces, () => projectListUi.load());
         if (result === null)
             return;
         report(`Switched to ${result.workspace.name}.`);
@@ -1716,7 +1725,7 @@ function dismissCurrentView() {
         issueBackButton.click();
     }
     else if (!workspacePanel.hidden && !projectsView.hidden && !projectFormPanel.hidden) {
-        cancelProjectFormButton.click();
+        projectListUi.closeForm();
     }
     else if (!workspacePanel.hidden && !projectView.hidden
         && (issueQuickAddEscapePending || issueForm.classList.contains('is-active'))) {
@@ -1783,11 +1792,6 @@ function issueQuickAddHasDraft() {
         || issueQuickAddOngoing.checked
         || issueQuickAddShared.checked
         || issueQuickAddApproval.checked;
-}
-function closeProjectForm() {
-    projectForm.reset();
-    projectFormPanel.hidden = true;
-    toggleProjectFormButton.focus();
 }
 function populateGithubRepositorySelect(select, selected = null, unavailableRepository = null) {
     const selectedRepositoryId = selected === null
@@ -2290,17 +2294,8 @@ issueBulkAssignCancel.addEventListener('click', () => {
     renderProjectIssueBoard();
     issueBulkAssignToggle.focus();
 });
-toggleProjectFormButton.addEventListener('click', () => {
-    if (!projectFormPanel.hidden) {
-        closeProjectForm();
-        return;
-    }
-    projectFormPanel.hidden = false;
-    projectForm.querySelector('input[name="name"]')?.focus();
-});
 connectGithubCreateButton.addEventListener('click', () => void connectGithub());
 connectGithubEditButton.addEventListener('click', () => void connectGithub());
-cancelProjectFormButton.addEventListener('click', closeProjectForm);
 issueForm.addEventListener('submit', async (event) => {
     event.preventDefault();
     if (activeProject === null)
@@ -2368,18 +2363,6 @@ issueForm.addEventListener('submit', async (event) => {
 function projectStatusLabel(status) {
     return PROJECT_STATUS_LABELS[status];
 }
-function updateProjectEmptyStates(projects) {
-    const isEmpty = projects.length === 0;
-    const isAdmin = activeUser?.role === 'admin';
-    emptyProjects.hidden = !isEmpty;
-    projectSidebarEmpty.hidden = !isEmpty;
-    if (!isEmpty)
-        return;
-    emptyProjects.textContent = isAdmin
-        ? 'No projects yet.'
-        : "You're not a member of any projects yet. Ask a workspace admin to add you.";
-    projectSidebarEmpty.textContent = isAdmin ? 'No projects yet.' : 'No project access yet.';
-}
 function createScrollMoreIndicator() {
     const indicator = document.createElement('span');
     indicator.className = 'sidebar-scroll-more';
@@ -2401,55 +2384,6 @@ function updateProjectSidebarMoreCue() {
     projectSidebarSection.classList.toggle('has-project-overflow', hasProjectOverflow);
     projectSidebarSection.classList.toggle('has-more-projects', hasMoreProjects);
     accountBar.classList.toggle('has-project-overflow', hasProjectOverflow);
-}
-async function loadProjects() {
-    const result = await api('/projects');
-    const projects = [...result.projects].sort((left, right) => (PROJECT_STATUS_ORDER[left.status] - PROJECT_STATUS_ORDER[right.status]
-        || left.name.localeCompare(right.name)));
-    projectList.replaceChildren();
-    updateProjectEmptyStates(projects);
-    projectSidebarList.replaceChildren();
-    for (const project of projects) {
-        const item = document.createElement('li');
-        item.className = 'project-card';
-        item.dataset.projectId = String(project.id);
-        const details = document.createElement('div');
-        details.className = 'project-card-details';
-        const name = document.createElement('p');
-        name.className = 'project-name';
-        name.textContent = project.name;
-        const description = document.createElement('p');
-        description.className = 'project-description';
-        description.textContent = project.description || project.slug;
-        details.append(name, description);
-        const actions = document.createElement('div');
-        actions.className = 'project-card-actions';
-        const state = document.createElement('span');
-        state.className = 'project-status';
-        state.textContent = projectStatusLabel(project.status);
-        state.classList.toggle('is-paused', project.status === 'paused');
-        state.classList.toggle('is-read-only', project.status === 'completed' || project.status === 'archived');
-        const open = document.createElement('button');
-        open.className = 'button button-quiet';
-        open.type = 'button';
-        open.textContent = 'Open';
-        open.addEventListener('click', () => void loadProjectDetail(project.id));
-        actions.append(state, open);
-        item.append(details, actions);
-        projectList.append(item);
-        const sidebarItem = document.createElement('li');
-        const sidebarButton = document.createElement('button');
-        sidebarButton.type = 'button';
-        sidebarButton.className = 'project-sidebar-link';
-        sidebarButton.dataset.projectId = String(project.id);
-        sidebarButton.classList.toggle('is-active', activeProject?.id === project.id);
-        sidebarButton.textContent = project.name;
-        sidebarButton.setAttribute('aria-label', `${project.name}, ${projectStatusLabel(project.status)}`);
-        sidebarButton.addEventListener('click', () => void loadProjectDetail(project.id));
-        sidebarItem.append(sidebarButton);
-        projectSidebarList.append(sidebarItem);
-    }
-    window.requestAnimationFrame(updateProjectSidebarMoreCue);
 }
 async function loadRoadmap() {
     try {
@@ -3823,32 +3757,6 @@ createWorkspaceForm.addEventListener('submit', async (event) => {
         report(error instanceof Error ? error.message : 'Could not create the workspace.', true);
     }
 });
-projectForm.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    const values = new FormData(projectForm);
-    try {
-        const githubRepositorySelection = parseGitHubRepositorySelection(projectGithubRepository.value);
-        await api('/projects', {
-            method: 'POST',
-            body: JSON.stringify({
-                name: values.get('name'),
-                description: values.get('description'),
-                github_installation_id: githubRepositorySelection?.installation_id ?? null,
-                github_repository_id: githubRepositorySelection?.repository_id ?? null,
-                github_repository_owner: githubRepositorySelection?.owner ?? null,
-                github_repository_name: githubRepositorySelection?.name ?? null,
-            }),
-        });
-        closeProjectForm();
-        report('Project created.');
-        await loadProjects();
-    }
-    catch (error) {
-        if (!projectFormPanel.hidden)
-            projectForm.querySelector('input[name="name"]')?.focus();
-        report(error instanceof Error ? error.message : 'Could not create project.', true);
-    }
-});
 guestLogoutButton.addEventListener('click', () => { void signOut(); });
 window.addEventListener('storage', (event) => {
     if (event.key === 'tangent-github-connected' && activeUser?.role === 'admin')
@@ -3895,7 +3803,7 @@ async function start() {
         await loadWorkspaces();
         if (result.user.role === 'guest')
             return;
-        await loadProjects();
+        await projectListUi.load();
         if (githubConnected)
             report('GitHub connected. Choose a repository in project settings.');
     }

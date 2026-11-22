@@ -4,6 +4,7 @@ import test from 'node:test';
 
 const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
+const projectListUi = await readFile(new URL('../../frontend/src/project-list-ui.ts', import.meta.url), 'utf8');
 const issueRelatedUi = await readFile(new URL('../../frontend/src/issue-related-ui.ts', import.meta.url), 'utf8');
 const openapi = await readFile(new URL('../../docs/openapi.yaml', import.meta.url), 'utf8');
 const development = await readFile(new URL('../../docs/DEVELOPMENT.md', import.meta.url), 'utf8');
@@ -17,10 +18,10 @@ test('project creation and editing can connect an available GitHub repository', 
   assert.match(html, /id="connect-github-edit-button"[^>]*>Connect GitHub/);
   assert.match(app, /async function loadGithubRepositories\(\)/);
   assert.match(app, /api<\{ repositories: GitHubRepository\[\]; connected: boolean; configured: boolean; can_connect: boolean \}>\('\/github\/repositories'\)/);
-  assert.match(app, /github_installation_id: githubRepositorySelection\?\.installation_id \?\? null/);
-  assert.match(app, /github_repository_id: githubRepositorySelection\?\.repository_id \?\? null/);
-  assert.match(app, /github_repository_owner: githubRepositorySelection\?\.owner \?\? null/);
-  assert.match(app, /github_repository_name: githubRepositorySelection\?\.name \?\? null/);
+  assert.match(projectListUi, /github_installation_id: githubRepositorySelection\?\.installation_id \?\? null/);
+  assert.match(projectListUi, /github_repository_id: githubRepositorySelection\?\.repository_id \?\? null/);
+  assert.match(projectListUi, /github_repository_owner: githubRepositorySelection\?\.owner \?\? null/);
+  assert.match(projectListUi, /github_repository_name: githubRepositorySelection\?\.name \?\? null/);
   assert.match(app, /githubRepositorySelectionValue\(repository\)/);
 });
 
