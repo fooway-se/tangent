@@ -95,6 +95,29 @@ final class GitHubAppClient implements GitHubApiClient
         return $repositories;
     }
 
+    public function repositoryById(int $installationId, int $repositoryId): array
+    {
+        $repository = $this->request(
+            'GET',
+            '/repositories/' . $repositoryId,
+            $this->installationToken($installationId, $repositoryId),
+        );
+        $owner = $repository['owner']['login'] ?? null;
+        if (!isset($repository['id'], $repository['name']) || !is_string($owner) || $owner === '') {
+            throw new ApiException(502, 'github_invalid_response', 'GitHub returned an invalid repository response.');
+        }
+
+        return [
+            'id' => (int) $repository['id'],
+            'installation_id' => $installationId,
+            'owner' => $owner,
+            'name' => (string) $repository['name'],
+            'full_name' => (string) ($repository['full_name'] ?? $owner . '/' . $repository['name']),
+            'html_url' => (string) ($repository['html_url'] ?? ''),
+            'private' => (bool) ($repository['private'] ?? true),
+        ];
+    }
+
     public function pullRequest(
         int $installationId,
         int $repositoryId,

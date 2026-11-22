@@ -127,6 +127,17 @@ final class GitHubInstallationRepository
         ], $statement->fetchAll(PDO::FETCH_ASSOC));
     }
 
+    public function isConnectedForWorkspace(int $workspaceId, int $installationId): bool
+    {
+        $statement = $this->pdo->prepare(
+            'SELECT 1 FROM github_installations
+             WHERE workspace_id = :workspace_id AND installation_id = :installation_id
+             LIMIT 1'
+        );
+        $statement->execute(['workspace_id' => $workspaceId, 'installation_id' => $installationId]);
+        return $statement->fetchColumn() !== false;
+    }
+
     public function isConnectedForWorkspaceForUpdate(int $workspaceId, int $installationId): bool
     {
         $statement = $this->pdo->prepare(

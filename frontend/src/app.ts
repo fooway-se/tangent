@@ -10,6 +10,7 @@ import { renderClientEmptyState, renderClientView, type ClientView } from './gue
 import { createLogoutController } from './logout.js';
 import { ProjectNavigationOwner, runOwnedRequest } from './project-navigation.js';
 import { ChatEventFeed, pollProjectChatEvents, type ChatFeedEvent } from './chat-event-feed.js';
+import { githubRepositorySelectionValue, parseGitHubRepositorySelection } from './github-repository-selection.js';
 import { switchWorkspaceMembership } from './workspace-switch.js';
 import { credentialNeedsConfirmation, inviteCredentialPresentation } from './credential-flow.js';
 import { generateClientSummary, type ClientSummaryActivity } from './client-summary.js';
@@ -112,6 +113,10 @@ interface GitHubRepository {
   full_name: string;
   html_url: string;
 }
+
+type GitHubRepositoryOptionSelection = { installation_id: number } & (
+  { id: number } | { repository_id: number }
+);
 
 interface LinkedPullRequest {
   id: number;
@@ -3353,17 +3358,30 @@ function closeProjectForm(): void {
   toggleProjectFormButton.focus();
 }
 
-function populateGithubRepositorySelect(select: HTMLSelectElement, selectedId: number | null = null): void {
+function populateGithubRepositorySelect(
+  select: HTMLSelectElement,
+  selected: GitHubRepositoryOptionSelection | null = null,
+  unavailableRepository: GitHubRepository | null = null,
+): void {
+  const selectedRepositoryId = selected === null
+    ? null
+    : 'id' in selected ? selected.id : selected.repository_id;
   const options = [new Option('No repository connected', '')];
   for (const repository of githubRepositories) {
-    options.push(new Option(repository.full_name, String(repository.id)));
+    options.push(new Option(repository.full_name, githubRepositorySelectionValue(repository)));
   }
-  if (selectedId !== null && !githubRepositories.some((repository) => repository.id === selectedId)) {
-    const current = activeProject?.github_repository;
-    if (current?.id === selectedId) options.push(new Option(`${current.full_name} (access unavailable)`, String(current.id)));
+  if (selected !== null && !githubRepositories.some((repository) =>
+    repository.id === selectedRepositoryId && repository.installation_id === selected.installation_id)) {
+    if (unavailableRepository?.id === selectedRepositoryId
+      && unavailableRepository.installation_id === selected.installation_id) {
+      options.push(new Option(
+        `${unavailableRepository.full_name} (access unavailable)`,
+        githubRepositorySelectionValue(unavailableRepository),
+      ));
+    }
   }
   select.replaceChildren(...options);
-  select.value = selectedId === null ? '' : String(selectedId);
+  select.value = selected === null ? '' : `${selected.installation_id}:${selectedRepositoryId}`;
 }
 
 async function loadGithubRepositories(): Promise<void> {
@@ -3371,11 +3389,11 @@ async function loadGithubRepositories(): Promise<void> {
   try {
     const result = await api<{ repositories: GitHubRepository[]; connected: boolean; configured: boolean; can_connect: boolean }>('/github/repositories');
     githubRepositories = result.repositories;
-    const createSelectedId = projectGithubRepository.value === '' ? null : Number(projectGithubRepository.value);
-    const editSelectedId = activeProject?.github_repository?.id
-      ?? (projectEditGithubRepository.value === '' ? null : Number(projectEditGithubRepository.value));
-    populateGithubRepositorySelect(projectGithubRepository, createSelectedId);
-    populateGithubRepositorySelect(projectEditGithubRepository, editSelectedId);
+    const createSelected = parseGitHubRepositorySelection(projectGithubRepository.value);
+    const editSelected = activeProject?.github_repository
+      ?? parseGitHubRepositorySelection(projectEditGithubRepository.value);
+    populateGithubRepositorySelect(projectGithubRepository, createSelected);
+    populateGithubRepositorySelect(projectEditGithubRepository, editSelected, activeProject?.github_repository ?? null);
     const status = !result.configured
       ? 'GitHub App settings are not configured for this Tangent installation.'
       : !result.can_connect && !result.connected
@@ -3419,7 +3437,7 @@ function openProjectEditDialog(): void {
   projectEditName.value = activeProject.name;
   projectEditDescription.value = activeProject.description;
   projectEditStatus.value = activeProject.status;
-  populateGithubRepositorySelect(projectEditGithubRepository, activeProject.github_repository?.id ?? null);
+  populateGithubRepositorySelect(projectEditGithubRepository, activeProject.github_repository, activeProject.github_repository);
   updateProjectStatusHint();
   projectEditMessage.textContent = '';
   projectEditMessage.classList.remove('is-error');
@@ -3495,13 +3513,15 @@ async function saveProjectEdit(event: SubmitEvent): Promise<void> {
   projectEditMessage.textContent = '';
   projectEditMessage.classList.remove('is-error');
   try {
+    const githubRepositorySelection = parseGitHubRepositorySelection(projectEditGithubRepository.value);
     const result = await api<{ project: Project }>(`/projects/${projectId}`, {
       method: 'PATCH',
       body: JSON.stringify({
         name: projectEditName.value,
         description: projectEditDescription.value,
         status: projectEditStatus.value,
-        github_repository_id: projectEditGithubRepository.value === '' ? null : Number(projectEditGithubRepository.value),
+        github_installation_id: githubRepositorySelection?.installation_id ?? null,
+        github_repository_id: githubRepositorySelection?.repository_id ?? null,
       }),
     });
     if (activeProject?.id !== projectId) return;
@@ -8533,12 +8553,14 @@ projectForm.addEventListener('submit', async (event) => {
   event.preventDefault();
   const values = new FormData(projectForm);
   try {
+    const githubRepositorySelection = parseGitHubRepositorySelection(projectGithubRepository.value);
     await api('/projects', {
       method: 'POST',
       body: JSON.stringify({
         name: values.get('name'),
         description: values.get('description'),
-        github_repository_id: projectGithubRepository.value === '' ? null : Number(projectGithubRepository.value),
+        github_installation_id: githubRepositorySelection?.installation_id ?? null,
+        github_repository_id: githubRepositorySelection?.repository_id ?? null,
       }),
     });
     closeProjectForm();

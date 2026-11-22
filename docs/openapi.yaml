@@ -786,6 +786,7 @@ paths:
               properties:
                 name: { type: string, minLength: 2, maxLength: 120 }
                 description: { type: string, maxLength: 5000 }
+                github_installation_id: { type: [integer, 'null'], minimum: 1, description: Installation from this workspace that exposes the selected repository. Omitted installation IDs retain support for older clients. }
                 github_repository_id: { type: [integer, 'null'], minimum: 1, description: Optional repository connected to this project. }
       responses:
         '201':
@@ -1778,6 +1779,7 @@ paths:
                 name: { type: string, minLength: 2, maxLength: 120 }
                 description: { type: string, maxLength: 5000 }
                 status: { type: string, enum: [active, paused, completed, archived] }
+                github_installation_id: { type: [integer, 'null'], minimum: 1, description: Installation from this workspace that exposes the selected repository. Omitted installation IDs retain support for older clients. }
                 github_repository_id: { type: [integer, 'null'], minimum: 1, description: Select or disconnect the project repository. }
       responses:
         '200': { description: Updated project. }

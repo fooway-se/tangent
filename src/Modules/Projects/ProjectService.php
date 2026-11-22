@@ -100,11 +100,8 @@ final class ProjectService
         }
 
         $githubRepository = null;
-        if (array_key_exists('github_repository_id', $body) && $body['github_repository_id'] !== null) {
-            if (!is_int($body['github_repository_id']) || $body['github_repository_id'] < 1) {
-                throw new ApiException(422, 'validation_failed', 'GitHub repository ID must be a positive integer or null.');
-            }
-            $githubRepository = $this->github->repositoryForWorkspace($user->workspaceId, $body['github_repository_id']);
+        if (array_key_exists('github_repository_id', $body) || array_key_exists('github_installation_id', $body)) {
+            $githubRepository = $this->githubRepositoryFromInput($user, $body);
         }
 
         $slug = self::slug($name);
@@ -114,6 +111,9 @@ final class ProjectService
         }
 
         try {
+            if ($githubRepository !== null) {
+                $this->github->revalidateRepositoryConnection($user->workspaceId, $githubRepository);
+            }
             $project = $this->projects->create($user->workspaceId, $name, $slug, $description, $user->id, $githubRepository);
             $this->chat->createProjectChannel($user->workspaceId, (int) $project['id']);
             if ($ownsTransaction) {
@@ -139,16 +139,7 @@ final class ProjectService
 
         $requestedGitHubRepository = null;
         if (array_key_exists('github_repository_id', $body)) {
-            if ($body['github_repository_id'] !== null
-                && (!is_int($body['github_repository_id']) || $body['github_repository_id'] < 1)) {
-                throw new ApiException(422, 'validation_failed', 'GitHub repository ID must be a positive integer or null.');
-            }
-            if ($body['github_repository_id'] !== null) {
-                $requestedGitHubRepository = $this->github->repositoryForWorkspace(
-                    $user->workspaceId,
-                    $body['github_repository_id'],
-                );
-            }
+            $requestedGitHubRepository = $this->githubRepositoryFromInput($user, $body);
         }
 
         $ownsTransaction = !$this->pdo->inTransaction();
@@ -399,6 +390,29 @@ final class ProjectService
             throw new ApiException(404, 'not_found', 'The project was not found.');
         }
         return $project;
+    }
+
+    private function githubRepositoryFromInput(AuthenticatedUser $user, array $body): ?array
+    {
+        $repositoryId = $body['github_repository_id'] ?? null;
+        $installationId = $body['github_installation_id'] ?? null;
+        if ($repositoryId === null) {
+            if ($installationId !== null) {
+                throw new ApiException(422, 'validation_failed', 'A GitHub installation requires a repository selection.');
+            }
+            return null;
+        }
+        if (!is_int($repositoryId) || $repositoryId < 1) {
+            throw new ApiException(422, 'validation_failed', 'GitHub repository ID must be a positive integer or null.');
+        }
+
+        if (!array_key_exists('github_installation_id', $body)) {
+            return $this->github->repositoryForWorkspace($user->workspaceId, $repositoryId);
+        }
+        if (!is_int($installationId) || $installationId < 1) {
+            throw new ApiException(422, 'validation_failed', 'GitHub installation ID must be a positive integer.');
+        }
+        return $this->github->repositoryForInstallation($user->workspaceId, $installationId, $repositoryId);
     }
 
     private static function slug(string $name): string

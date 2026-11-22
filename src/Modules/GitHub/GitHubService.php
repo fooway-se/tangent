@@ -143,6 +143,33 @@ final class GitHubService
         throw new ApiException(422, 'validation_failed', 'Choose a GitHub repository connected to this workspace.');
     }
 
+    public function repositoryForInstallation(int $workspaceId, int $installationId, int $repositoryId): array
+    {
+        if ($installationId < 1 || $repositoryId < 1
+            || !$this->installations->isConnectedForWorkspace($workspaceId, $installationId)) {
+            throw new ApiException(422, 'validation_failed', 'Choose a GitHub repository connected to this workspace.');
+        }
+
+        try {
+            $repository = $this->client->repositoryById($installationId, $repositoryId);
+        } catch (ApiException $exception) {
+            if (!in_array($exception->status, [403, 404], true)) throw $exception;
+            throw new ApiException(422, 'validation_failed', 'Choose a GitHub repository connected to this workspace.');
+        }
+
+        if ((int) ($repository['id'] ?? 0) !== $repositoryId) {
+            throw new ApiException(422, 'validation_failed', 'Choose a GitHub repository connected to this workspace.');
+        }
+        foreach (['owner', 'name', 'full_name', 'html_url'] as $field) {
+            if (!is_string($repository[$field] ?? null) || $repository[$field] === '') {
+                throw new ApiException(422, 'validation_failed', 'Choose a GitHub repository connected to this workspace.');
+            }
+        }
+
+        $repository['installation_id'] = $installationId;
+        return $repository;
+    }
+
     public function revalidateRepositoryConnection(int $workspaceId, array $repository): void
     {
         $installationId = (int) ($repository['installation_id'] ?? 0);

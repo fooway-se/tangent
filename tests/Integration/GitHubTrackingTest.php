@@ -16,6 +16,70 @@ use Tangent\Tests\Support\ApiTestCase;
 
 final class GitHubTrackingTest extends ApiTestCase
 {
+    public function testProjectSaveUsesSelectedInstallationWithoutListingRepositoryPages(): void
+    {
+        $admin = $this->login($this->adminEmail);
+        $repository = [
+            'id' => 7654321,
+            'owner' => 'test-org',
+            'name' => 'test-repo',
+            'full_name' => 'test-org/test-repo',
+            'html_url' => 'https://github.com/test-org/test-repo',
+        ];
+        $client = new FakeGitHubApiClient($repository, []);
+        $installation = $this->pdo->prepare(
+            'INSERT INTO github_installations (workspace_id, installation_id, account_login, connected_by)
+             VALUES (:workspace_id, :installation_id, :account_login, :connected_by)'
+        );
+        $installation->execute([
+            'workspace_id' => $this->workspaceId,
+            'installation_id' => 445566,
+            'account_login' => 'test-org',
+            'connected_by' => $this->adminId,
+        ]);
+        $this->application = Application::create(
+            $this->pdo,
+            new AppConfig($this->workspaceId, false, 43200, 'http://localhost:8080', false, '123', 'test-app'),
+            $client,
+        );
+
+        $created = $this->cookieRequest('POST', '/api/v1/projects', $admin['cookie'], [
+            'name' => 'Targeted GitHub project',
+            'github_installation_id' => 445566,
+            'github_repository_id' => 7654321,
+        ], $admin['csrf']);
+        self::assertSame(201, $created->status, json_encode($created->body));
+        self::assertSame(0, $client->repositoryCatalogueCalls);
+        self::assertSame(1, $client->targetedRepositoryCalls);
+
+        $projectId = (int) $created->body['project']['id'];
+        $updated = $this->cookieRequest('PATCH', "/api/v1/projects/{$projectId}", $admin['cookie'], [
+            'github_installation_id' => 445566,
+            'github_repository_id' => 7654321,
+        ], $admin['csrf']);
+        self::assertSame(200, $updated->status, json_encode($updated->body));
+        self::assertSame(2, $client->targetedRepositoryCalls);
+        self::assertSame(0, $client->repositoryCatalogueCalls);
+
+        $unavailableInstallation = $this->cookieRequest('POST', '/api/v1/projects', $admin['cookie'], [
+            'name' => 'Unauthorized GitHub project',
+            'github_installation_id' => 445567,
+            'github_repository_id' => 7654321,
+        ], $admin['csrf']);
+        self::assertSame(422, $unavailableInstallation->status, json_encode($unavailableInstallation->body));
+        self::assertSame(2, $client->targetedRepositoryCalls, 'An unconnected installation is rejected before GitHub is contacted.');
+
+        $client->repositoryAvailable = false;
+        $unavailableRepository = $this->cookieRequest('POST', '/api/v1/projects', $admin['cookie'], [
+            'name' => 'Unavailable GitHub repository',
+            'github_installation_id' => 445566,
+            'github_repository_id' => 7654322,
+        ], $admin['csrf']);
+        self::assertSame(422, $unavailableRepository->status, json_encode($unavailableRepository->body));
+        self::assertSame(3, $client->targetedRepositoryCalls);
+        self::assertSame(0, $client->repositoryCatalogueCalls);
+    }
+
     public function testRejectedStaleWebhookUpdateDoesNotCreateAnInboxEvent(): void
     {
         $pdo = Database::connect(
@@ -787,6 +851,9 @@ final class FakeGitHubApiClient implements GitHubApiClient
 {
     public bool $userCanAccessInstallation = false;
     public int $authorizationChecks = 0;
+    public int $repositoryCatalogueCalls = 0;
+    public int $targetedRepositoryCalls = 0;
+    public bool $repositoryAvailable = true;
 
     public function __construct(private readonly array $repository, private readonly array $pullRequest)
     {
@@ -824,7 +891,17 @@ final class FakeGitHubApiClient implements GitHubApiClient
 
     public function repositories(int $installationId): array
     {
+        $this->repositoryCatalogueCalls++;
         return [array_merge($this->repository, ['installation_id' => $installationId])];
+    }
+
+    public function repositoryById(int $installationId, int $repositoryId): array
+    {
+        $this->targetedRepositoryCalls++;
+        if (!$this->repositoryAvailable || (int) ($this->repository['id'] ?? 0) !== $repositoryId) {
+            throw new ApiException(404, 'github_resource_not_found', 'The repository was not found.');
+        }
+        return array_merge($this->repository, ['installation_id' => $installationId]);
     }
 
     public function pullRequest(int $installationId, int $repositoryId, string $owner, string $repository, int $number): array

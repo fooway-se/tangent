@@ -16,8 +16,9 @@ test('project creation and editing can connect an available GitHub repository', 
   assert.match(html, /id="connect-github-edit-button"[^>]*>Connect GitHub/);
   assert.match(app, /async function loadGithubRepositories\(\)/);
   assert.match(app, /api<\{ repositories: GitHubRepository\[\]; connected: boolean; configured: boolean; can_connect: boolean \}>\('\/github\/repositories'\)/);
-  assert.match(app, /github_repository_id: projectGithubRepository\.value === '' \? null : Number\(projectGithubRepository\.value\)/);
-  assert.match(app, /github_repository_id: projectEditGithubRepository\.value === '' \? null : Number\(projectEditGithubRepository\.value\)/);
+  assert.match(app, /github_installation_id: githubRepositorySelection\?\.installation_id \?\? null/);
+  assert.match(app, /github_repository_id: githubRepositorySelection\?\.repository_id \?\? null/);
+  assert.match(app, /githubRepositorySelectionValue\(repository\)/);
 });
 
 test('issue pull-request controls are available only for connected project repositories', () => {
