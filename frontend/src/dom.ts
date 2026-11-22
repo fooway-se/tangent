@@ -168,11 +168,6 @@ export const dom = {
     deletedIssuesDetails: document.querySelector<HTMLDetailsElement>('#deleted-issues-details')!,
     deletedIssueCount: document.querySelector<HTMLElement>('#deleted-issue-count')!,
     deletedIssueList: document.querySelector<HTMLUListElement>('#deleted-issue-list')!,
-    issueDeleteConfirmation: document.querySelector<HTMLDialogElement>('#issue-delete-confirmation')!,
-    issueDeleteDescription: document.querySelector<HTMLElement>('#issue-delete-description')!,
-    issueDeleteError: document.querySelector<HTMLElement>('#issue-delete-error')!,
-    issueDeleteCancel: document.querySelector<HTMLButtonElement>('#issue-delete-cancel')!,
-    issueDeleteConfirm: document.querySelector<HTMLButtonElement>('#issue-delete-confirm')!,
   },
   guest: {
     guestLogoutButton: document.querySelector<HTMLButtonElement>('#guest-logout-button')!,

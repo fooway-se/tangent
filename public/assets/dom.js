@@ -168,11 +168,6 @@ export const dom = {
         deletedIssuesDetails: document.querySelector('#deleted-issues-details'),
         deletedIssueCount: document.querySelector('#deleted-issue-count'),
         deletedIssueList: document.querySelector('#deleted-issue-list'),
-        issueDeleteConfirmation: document.querySelector('#issue-delete-confirmation'),
-        issueDeleteDescription: document.querySelector('#issue-delete-description'),
-        issueDeleteError: document.querySelector('#issue-delete-error'),
-        issueDeleteCancel: document.querySelector('#issue-delete-cancel'),
-        issueDeleteConfirm: document.querySelector('#issue-delete-confirm'),
     },
     guest: {
         guestLogoutButton: document.querySelector('#guest-logout-button'),

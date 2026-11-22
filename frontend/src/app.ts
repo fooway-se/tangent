@@ -34,6 +34,7 @@ import { initIssueAiPromptUi } from './issue-ai-prompt-ui.js';
 import { initIssueDiscussionUi } from './issue-discussion-ui.js';
 import { initIssueRelatedUi } from './issue-related-ui.js';
 import { initIssueStatusPickerUi } from './issue-status-picker-ui.js';
+import { initIssueDeleteUi } from './issue-delete-ui.js';
 import { parseQuickIssueInput } from './quick-issue.js';
 import { milestoneStatus, type RoadmapMilestone } from './roadmap.js';
 import {
@@ -118,8 +119,6 @@ const {
     issueDescriptionDetails, issueProgress, issueProgressLabel, issueFilter,
     issueGrouping, issueOrder, issueScope, issueCountSummary, issueBulkAssignToggle,
     issueBulkAssignToolbar, issueList, deletedIssuesDetails, deletedIssueCount, deletedIssueList,
-    issueDeleteConfirmation, issueDeleteDescription, issueDeleteError, issueDeleteCancel,
-    issueDeleteConfirm,
   },
   guest: {
     guestLogoutButton,
@@ -645,6 +644,32 @@ const issueStatusPickerUi = initIssueStatusPickerUi({
   shouldRestoreFocus: () => !commandPaletteUi.isPaletteOpen()
     && !commandPaletteUi.isShortcutHelpOpen() && !workspacePickerUi.isOpen(),
 });
+const issueDeleteUi = initIssueDeleteUi({
+  getProjectId: () => activeProject?.id ?? null,
+  statusLabel: issueStatusLabel,
+  onDeleted: async (issue, projectId) => {
+    if (activeProject?.id !== projectId) return false;
+    if (selectedIssue?.id === issue.id) {
+      selectedIssue = null;
+      resetIssueDetailEditForm();
+      issueDetailEditForm.hidden = true;
+      issueDetailDisplay.hidden = false;
+      switchProjectTab('issues', issue.id);
+      if (!deletedIssuesDetails.open) void loadDeletedProjectIssues(projectId);
+    } else {
+      await loadProjectIssues(projectId);
+      if (!deletedIssuesDetails.open) await loadDeletedProjectIssues(projectId);
+      if (!focusIssueTitleButton(issue.id)) issueFilter.focus();
+    }
+    return true;
+  },
+  onRestored: async (issue) => {
+    await loadProjectIssues(issue.project_id);
+    if (!focusIssueTitleButton(issue.id)) issuesTabButton.focus();
+  },
+  onUnauthorized: () => showSignedOut(),
+  report,
+});
 let selectedChatMessageId: number | null = null;
 let issueQuickAddEscapePending = false;
 let issueQuickAddReturnFocus: HTMLElement | null = null;
@@ -653,7 +678,6 @@ let issueQuickAddSourceProjectId: number | null = null;
 let goPrefixPending = false;
 let goPrefixTimer: number | null = null;
 let statusMessageTimer: number | null = null;
-let issueDeleteTarget: Issue | null = null;
 let memberRemovalTarget: { member: Member; button: HTMLButtonElement } | null = null;
 
 const loungePresenceUi = initLoungePresence({
@@ -1170,7 +1194,7 @@ function issuePollingIsActive(projectId: number): boolean {
 }
 
 function issueUpdatesAreDeferred(): boolean {
-  const dialogOpen = issueStatusPickerUi.isOpen() || issueDeleteConfirmation.open
+  const dialogOpen = issueStatusPickerUi.isOpen() || issueDeleteUi.isOpen()
     || memberRemovalConfirmation.open || workspaceAdminUi.hasOpenDialog()
     || milestoneUi.deleteConfirmation.open || milestoneUi.managerDialog.open;
   return shouldDeferIssueUpdates({
@@ -1530,7 +1554,7 @@ function shortcutContext(target: EventTarget | null) {
     issueGroupFocused: target instanceof HTMLElement && target.closest('.issue-group > summary') !== null,
     statusHistoryFocused: issueRelatedUi.isStatusHistoryFocused(document.activeElement),
     textInputFocused: shouldBlurOnEscape(target),
-    modalOpen: commandPaletteUi.isPaletteOpen() || clientSummaryUi.dialog.open || commandPaletteUi.isShortcutHelpOpen() || issueAiPromptUi.isOpen() || issueStatusPickerUi.isOpen() || issueDeleteConfirmation.open || themeUi.aboutDialog.open || projectEditDialog.open
+    modalOpen: commandPaletteUi.isPaletteOpen() || clientSummaryUi.dialog.open || commandPaletteUi.isShortcutHelpOpen() || issueAiPromptUi.isOpen() || issueStatusPickerUi.isOpen() || issueDeleteUi.isOpen() || themeUi.aboutDialog.open || projectEditDialog.open
       || memberRemovalConfirmation.open || workspaceAdminUi.hasOpenDialog() || milestoneUi.deleteConfirmation.open || milestoneUi.managerDialog.open
       || workspacePickerUi.isOpen(),
     canDismiss: commandPaletteUi.isPaletteOpen() || commandPaletteUi.isShortcutHelpOpen() || (!workspacePanel.hidden && (
@@ -1932,7 +1956,7 @@ function getPaletteCommands(): PaletteCommand[] {
           ? 'Move the selected issue to Deleted issues; it can be restored later'
           : `Move “${issue.title}” (${issueStatusLabel(issue.status)}) to Deleted issues; it can be restored later`,
         shortcut: '',
-        run: () => openIssueDeleteConfirmation(issue),
+        run: () => issueDeleteUi.open(issue),
       });
     }
     if (latestChatIssueButton() !== null) {
@@ -1985,7 +2009,7 @@ function openCommandPalette(): void {
   if (milestoneUi.deleteConfirmation.open) milestoneUi.closeDeleteConfirmation();
   if (milestoneUi.managerDialog.open) milestoneUi.close();
   if (issueStatusPickerUi.isOpen()) issueStatusPickerUi.close();
-  if (issueDeleteConfirmation.open) closeIssueDeleteConfirmation();
+  if (issueDeleteUi.isOpen()) issueDeleteUi.close();
   if (memberRemovalConfirmation.open) closeMemberRemovalConfirmation();
   workspaceAdminUi.closeOpenDialogs();
   commandPaletteUi.togglePalette(getPaletteCommands);
@@ -1999,7 +2023,7 @@ function showShortcutHelp(): void {
   if (milestoneUi.deleteConfirmation.open) milestoneUi.closeDeleteConfirmation();
   if (milestoneUi.managerDialog.open) milestoneUi.close();
   if (issueStatusPickerUi.isOpen()) issueStatusPickerUi.close();
-  if (issueDeleteConfirmation.open) closeIssueDeleteConfirmation();
+  if (issueDeleteUi.isOpen()) issueDeleteUi.close();
   if (memberRemovalConfirmation.open) closeMemberRemovalConfirmation();
   workspaceAdminUi.closeOpenDialogs();
   commandPaletteUi.toggleShortcutHelp();
@@ -2021,8 +2045,8 @@ function dismissCurrentView(): void {
     milestoneUi.closeDeleteConfirmation();
   } else if (milestoneUi.managerDialog.open) {
     milestoneUi.close();
-  } else if (issueDeleteConfirmation.open) {
-    closeIssueDeleteConfirmation();
+  } else if (issueDeleteUi.isOpen()) {
+    issueDeleteUi.close();
   } else if (memberRemovalConfirmation.open) {
     closeMemberRemovalConfirmation();
   } else if (workspaceAdminUi.hasOpenDialog()) {
@@ -2435,7 +2459,7 @@ function handleKeyboardShortcut(event: KeyboardEvent): void {
     if (event.key === 'Escape') guestUi.closePreview();
     return;
   }
-  if ((commandPaletteUi.isPaletteOpen() || clientSummaryUi.dialog.open || commandPaletteUi.isShortcutHelpOpen() || issueAiPromptUi.isOpen() || issueStatusPickerUi.isOpen() || issueDeleteConfirmation.open || memberRemovalConfirmation.open || workspaceAdminUi.hasOpenDialog() || milestoneUi.deleteConfirmation.open || milestoneUi.managerDialog.open || workspacePickerUi.isOpen() || themeUi.aboutDialog.open || projectEditDialog.open)
+  if ((commandPaletteUi.isPaletteOpen() || clientSummaryUi.dialog.open || commandPaletteUi.isShortcutHelpOpen() || issueAiPromptUi.isOpen() || issueStatusPickerUi.isOpen() || issueDeleteUi.isOpen() || memberRemovalConfirmation.open || workspaceAdminUi.hasOpenDialog() || milestoneUi.deleteConfirmation.open || milestoneUi.managerDialog.open || workspacePickerUi.isOpen() || themeUi.aboutDialog.open || projectEditDialog.open)
     && event.key !== 'Escape'
     && !((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k')) return;
   const context = shortcutContext(event.target);
@@ -3630,7 +3654,7 @@ function createDeletedIssueRow(issue: Issue): HTMLLIElement {
   restoreButton.disabled = activeProject !== null && projectStatusIsReadOnly(activeProject.status);
   restoreButton.dataset.issueId = String(issue.id);
   restoreButton.setAttribute('aria-label', `Restore ${issue.title}`);
-  restoreButton.addEventListener('click', () => void restoreIssue(issue, restoreButton));
+  restoreButton.addEventListener('click', () => void issueDeleteUi.restore(issue, restoreButton));
   item.append(content, restoreButton);
   return item;
 }
@@ -3727,77 +3751,6 @@ function openIssue(issue: Issue): void {
   void issueDiscussionUi.load(issue.id);
   switchProjectTab('issues');
   issueBackButton.focus();
-}
-
-function openIssueDeleteConfirmation(issue: Issue | null = selectedIssue): void {
-  if (issue === null) return;
-  issueDeleteTarget = issue;
-  issueDeleteDescription.textContent = `“${issue.title}” is currently ${issueStatusLabel(issue.status)}. It will be moved to Deleted issues, where you can restore it later.`;
-  issueDeleteError.textContent = '';
-  issueDeleteError.hidden = true;
-  issueDeleteConfirmation.showModal();
-  issueDeleteCancel.focus();
-}
-
-function closeIssueDeleteConfirmation(): void {
-  if (issueDeleteConfirmation.open) issueDeleteConfirmation.close();
-  issueDeleteTarget = null;
-  issueDeleteError.textContent = '';
-  issueDeleteError.hidden = true;
-  issueDeleteConfirm.disabled = false;
-}
-
-async function deleteSelectedIssue(): Promise<void> {
-  const issue = issueDeleteTarget;
-  const projectId = activeProject?.id;
-  if (issue === null || projectId !== issue.project_id) return;
-
-  issueDeleteConfirm.disabled = true;
-  issueDeleteError.textContent = '';
-  issueDeleteError.hidden = true;
-  try {
-    await api<void>(`/issues/${issue.id}`, { method: 'DELETE' });
-    closeIssueDeleteConfirmation();
-    if (activeProject?.id !== projectId) return;
-    if (selectedIssue?.id === issue.id) {
-      selectedIssue = null;
-      resetIssueDetailEditForm();
-      issueDetailEditForm.hidden = true;
-      issueDetailDisplay.hidden = false;
-      switchProjectTab('issues', issue.id);
-      if (!deletedIssuesDetails.open) void loadDeletedProjectIssues(projectId);
-    } else {
-      await loadProjectIssues(projectId);
-      if (!deletedIssuesDetails.open) await loadDeletedProjectIssues(projectId);
-      if (!focusIssueTitleButton(issue.id)) issueFilter.focus();
-    }
-    report('Issue moved to Deleted issues. You can restore it from the issue list.');
-  } catch (error) {
-    if (error instanceof ApiFailure && error.status === 401) {
-      closeIssueDeleteConfirmation();
-      showSignedOut();
-      return;
-    }
-    issueDeleteError.textContent = error instanceof Error ? error.message : 'Could not delete the issue.';
-    issueDeleteError.hidden = false;
-    issueDeleteConfirm.focus();
-  } finally {
-    issueDeleteConfirm.disabled = false;
-  }
-}
-
-async function restoreIssue(issue: Issue, restoreButton: HTMLButtonElement): Promise<void> {
-  restoreButton.disabled = true;
-  try {
-    await api<{ issue: Issue }>(`/issues/${issue.id}/restore`, { method: 'POST' });
-    await loadProjectIssues(issue.project_id);
-    if (!focusIssueTitleButton(issue.id)) issuesTabButton.focus();
-    report('Issue restored.');
-  } catch (error) {
-    report(error instanceof Error ? error.message : 'Could not restore the issue.', true);
-  } finally {
-    restoreButton.disabled = false;
-  }
 }
 
 function showDeletedIssues(restoreIssueId?: number): void {
@@ -4129,9 +4082,7 @@ issueDetailEditButton.addEventListener('click', () => {
   issueDetailTitleInput.focus();
 });
 
-issueDetailDeleteButton.addEventListener('click', () => openIssueDeleteConfirmation());
-issueDeleteCancel.addEventListener('click', closeIssueDeleteConfirmation);
-issueDeleteConfirm.addEventListener('click', () => void deleteSelectedIssue());
+issueDetailDeleteButton.addEventListener('click', () => issueDeleteUi.open(selectedIssue));
 
 issueDetailCancelButton.addEventListener('click', () => {
   closeIssueDetailEditForm();

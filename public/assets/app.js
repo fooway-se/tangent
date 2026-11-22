@@ -24,12 +24,13 @@ import { initIssueAiPromptUi } from './issue-ai-prompt-ui.js';
 import { initIssueDiscussionUi } from './issue-discussion-ui.js';
 import { initIssueRelatedUi } from './issue-related-ui.js';
 import { initIssueStatusPickerUi } from './issue-status-picker-ui.js';
+import { initIssueDeleteUi } from './issue-delete-ui.js';
 import { parseQuickIssueInput } from './quick-issue.js';
 import { milestoneStatus } from './roadmap.js';
 import { filterIssues, filterIssuesByMilestoneArchive, groupIssues, groupIssuesByMilestone, discussionIndicatorLabel, projectProgress, sortIssues, } from './issue-board.js';
 import { diffConditionalIssueCollections, loadIssueCollections, nextIssuePollDelay, refreshDeletedIssuesOnOpen, shouldDeferIssueUpdates, } from './issue-polling.js';
 import { dom } from './dom.js';
-const { project: { projectHeading, projectEditDialog, projectEditForm, projectEditClose, projectEditCancel, projectEditName, projectEditDescription, projectEditStatus, projectEditStatusHelp, projectReadOnlyNotice, projectEditMessage, projectEditSave, editProjectButton, projectGithubRepository, projectEditGithubRepository, githubProjectSelectionStatus, githubProjectEditStatus, connectGithubCreateButton, connectGithubEditButton, projectsNavButton, projectsView, projectView, projectForm, projectList, emptyProjects, projectFormPanel, projectDescription, projectState, projectChatColumn, projectSidebarList, projectSidebarEmpty, projectMain, projectTabs, projectKeyboardHints, }, auth: { loginPanel, loginShell, accountBar, currentUserLabel, loginStatusMessage, logoutButton, }, workspace: { workspacePanel, workspaceNav, adminNavButton, adminView, adminHeading, membersView, adminGoPrefixOption, membersTabButton, memberList, memberForm, memberAddControls, memberAddStatus, memberSelect, memberRemovalConfirmation, memberRemovalDescription, memberRemovalCancel, memberRemovalConfirm, }, shell: { createWorkspaceForm, breadcrumbProjectsButton, breadcrumbDivider, breadcrumbCurrent, cancelProjectFormButton, notesTabButton, emptyIssues, addMemberButton, statusMessage, }, roadmap: { roadmapNavButton, roadmapView, roadmapHeading, roadmapSummary, roadmapMilestoneList, roadmapEmptyState, roadmapGoPrefixOption, }, inbox: { inboxNavButton, inboxView, inboxHeading, }, lounge: { loungeNavButton, loungeView, loungeHeading, loungeMessageList, }, shortcuts: { toggleProjectFormButton, keyboardHints, goPrefixHint, goPrefixWorkspaceOption, goPrefixProjectOptions, }, chat: { chatView, }, issues: { issuesView, issueDetailView, issueDetailDisplay, issueDetailTitle, issueDetailPriority, issueDetailDueDate, issueDetailDescription, issueDetailBrief, issueDetailContextSection, issueDetailContext, issueDetailExpectedOutcomeSection, issueDetailExpectedOutcome, issueDetailAcceptanceCriteriaSection, issueDetailAcceptanceCriteria, issueDetailStatus, issueDetailStatusLabel, issueSourceLink, issueDetailEditForm, issueDetailTitleInput, issueDetailDescriptionInput, issueDetailPriorityInput, issueDetailDueDateInput, issueDetailEditButton, issueDetailDeleteButton, issueDetailSaveButton, issuesTabButton, issueBackButton, issueDetailCancelButton, issueForm, issueQuickAddTitle, issueQuickAddPriority, issueQuickAddDueDate, issueQuickAddAssignee, issueQuickAddMilestone, issueQuickAddOngoing, issueQuickAddShared, issueQuickAddApproval, issueQuickAddCancelButton, issueDetailType, issueDetailAssignee, issueDetailMilestone, issueDetailOngoingRow, issueDetailSharing, issueDetailApproval, issueDetailTypeInput, issueDetailAssigneeInput, issueDetailMilestoneInput, issueDetailOngoingInput, issueDetailSharedInput, issueDetailApprovalInput, issueDescriptionDetails, issueProgress, issueProgressLabel, issueFilter, issueGrouping, issueOrder, issueScope, issueCountSummary, issueBulkAssignToggle, issueBulkAssignToolbar, issueList, deletedIssuesDetails, deletedIssueCount, deletedIssueList, issueDeleteConfirmation, issueDeleteDescription, issueDeleteError, issueDeleteCancel, issueDeleteConfirm, }, guest: { guestLogoutButton, }, } = dom;
+const { project: { projectHeading, projectEditDialog, projectEditForm, projectEditClose, projectEditCancel, projectEditName, projectEditDescription, projectEditStatus, projectEditStatusHelp, projectReadOnlyNotice, projectEditMessage, projectEditSave, editProjectButton, projectGithubRepository, projectEditGithubRepository, githubProjectSelectionStatus, githubProjectEditStatus, connectGithubCreateButton, connectGithubEditButton, projectsNavButton, projectsView, projectView, projectForm, projectList, emptyProjects, projectFormPanel, projectDescription, projectState, projectChatColumn, projectSidebarList, projectSidebarEmpty, projectMain, projectTabs, projectKeyboardHints, }, auth: { loginPanel, loginShell, accountBar, currentUserLabel, loginStatusMessage, logoutButton, }, workspace: { workspacePanel, workspaceNav, adminNavButton, adminView, adminHeading, membersView, adminGoPrefixOption, membersTabButton, memberList, memberForm, memberAddControls, memberAddStatus, memberSelect, memberRemovalConfirmation, memberRemovalDescription, memberRemovalCancel, memberRemovalConfirm, }, shell: { createWorkspaceForm, breadcrumbProjectsButton, breadcrumbDivider, breadcrumbCurrent, cancelProjectFormButton, notesTabButton, emptyIssues, addMemberButton, statusMessage, }, roadmap: { roadmapNavButton, roadmapView, roadmapHeading, roadmapSummary, roadmapMilestoneList, roadmapEmptyState, roadmapGoPrefixOption, }, inbox: { inboxNavButton, inboxView, inboxHeading, }, lounge: { loungeNavButton, loungeView, loungeHeading, loungeMessageList, }, shortcuts: { toggleProjectFormButton, keyboardHints, goPrefixHint, goPrefixWorkspaceOption, goPrefixProjectOptions, }, chat: { chatView, }, issues: { issuesView, issueDetailView, issueDetailDisplay, issueDetailTitle, issueDetailPriority, issueDetailDueDate, issueDetailDescription, issueDetailBrief, issueDetailContextSection, issueDetailContext, issueDetailExpectedOutcomeSection, issueDetailExpectedOutcome, issueDetailAcceptanceCriteriaSection, issueDetailAcceptanceCriteria, issueDetailStatus, issueDetailStatusLabel, issueSourceLink, issueDetailEditForm, issueDetailTitleInput, issueDetailDescriptionInput, issueDetailPriorityInput, issueDetailDueDateInput, issueDetailEditButton, issueDetailDeleteButton, issueDetailSaveButton, issuesTabButton, issueBackButton, issueDetailCancelButton, issueForm, issueQuickAddTitle, issueQuickAddPriority, issueQuickAddDueDate, issueQuickAddAssignee, issueQuickAddMilestone, issueQuickAddOngoing, issueQuickAddShared, issueQuickAddApproval, issueQuickAddCancelButton, issueDetailType, issueDetailAssignee, issueDetailMilestone, issueDetailOngoingRow, issueDetailSharing, issueDetailApproval, issueDetailTypeInput, issueDetailAssigneeInput, issueDetailMilestoneInput, issueDetailOngoingInput, issueDetailSharedInput, issueDetailApprovalInput, issueDescriptionDetails, issueProgress, issueProgressLabel, issueFilter, issueGrouping, issueOrder, issueScope, issueCountSummary, issueBulkAssignToggle, issueBulkAssignToolbar, issueList, deletedIssuesDetails, deletedIssueCount, deletedIssueList, }, guest: { guestLogoutButton, }, } = dom;
 const KEYBOARD_HINTS_STORAGE_KEY = 'tangent.keyboard-hints-visible';
 function loadKeyboardHintsPreference() {
     try {
@@ -257,6 +258,38 @@ const issueStatusPickerUi = initIssueStatusPickerUi({
     shouldRestoreFocus: () => !commandPaletteUi.isPaletteOpen()
         && !commandPaletteUi.isShortcutHelpOpen() && !workspacePickerUi.isOpen(),
 });
+const issueDeleteUi = initIssueDeleteUi({
+    getProjectId: () => activeProject?.id ?? null,
+    statusLabel: issueStatusLabel,
+    onDeleted: async (issue, projectId) => {
+        if (activeProject?.id !== projectId)
+            return false;
+        if (selectedIssue?.id === issue.id) {
+            selectedIssue = null;
+            resetIssueDetailEditForm();
+            issueDetailEditForm.hidden = true;
+            issueDetailDisplay.hidden = false;
+            switchProjectTab('issues', issue.id);
+            if (!deletedIssuesDetails.open)
+                void loadDeletedProjectIssues(projectId);
+        }
+        else {
+            await loadProjectIssues(projectId);
+            if (!deletedIssuesDetails.open)
+                await loadDeletedProjectIssues(projectId);
+            if (!focusIssueTitleButton(issue.id))
+                issueFilter.focus();
+        }
+        return true;
+    },
+    onRestored: async (issue) => {
+        await loadProjectIssues(issue.project_id);
+        if (!focusIssueTitleButton(issue.id))
+            issuesTabButton.focus();
+    },
+    onUnauthorized: () => showSignedOut(),
+    report,
+});
 let selectedChatMessageId = null;
 let issueQuickAddEscapePending = false;
 let issueQuickAddReturnFocus = null;
@@ -265,7 +298,6 @@ let issueQuickAddSourceProjectId = null;
 let goPrefixPending = false;
 let goPrefixTimer = null;
 let statusMessageTimer = null;
-let issueDeleteTarget = null;
 let memberRemovalTarget = null;
 const loungePresenceUi = initLoungePresence({
     navigationButton: loungeNavButton,
@@ -785,7 +817,7 @@ function issuePollingIsActive(projectId) {
         && (!issuesView.hidden || !issueDetailView.hidden);
 }
 function issueUpdatesAreDeferred() {
-    const dialogOpen = issueStatusPickerUi.isOpen() || issueDeleteConfirmation.open
+    const dialogOpen = issueStatusPickerUi.isOpen() || issueDeleteUi.isOpen()
         || memberRemovalConfirmation.open || workspaceAdminUi.hasOpenDialog()
         || milestoneUi.deleteConfirmation.open || milestoneUi.managerDialog.open;
     return shouldDeferIssueUpdates({
@@ -1142,7 +1174,7 @@ function shortcutContext(target) {
         issueGroupFocused: target instanceof HTMLElement && target.closest('.issue-group > summary') !== null,
         statusHistoryFocused: issueRelatedUi.isStatusHistoryFocused(document.activeElement),
         textInputFocused: shouldBlurOnEscape(target),
-        modalOpen: commandPaletteUi.isPaletteOpen() || clientSummaryUi.dialog.open || commandPaletteUi.isShortcutHelpOpen() || issueAiPromptUi.isOpen() || issueStatusPickerUi.isOpen() || issueDeleteConfirmation.open || themeUi.aboutDialog.open || projectEditDialog.open
+        modalOpen: commandPaletteUi.isPaletteOpen() || clientSummaryUi.dialog.open || commandPaletteUi.isShortcutHelpOpen() || issueAiPromptUi.isOpen() || issueStatusPickerUi.isOpen() || issueDeleteUi.isOpen() || themeUi.aboutDialog.open || projectEditDialog.open
             || memberRemovalConfirmation.open || workspaceAdminUi.hasOpenDialog() || milestoneUi.deleteConfirmation.open || milestoneUi.managerDialog.open
             || workspacePickerUi.isOpen(),
         canDismiss: commandPaletteUi.isPaletteOpen() || commandPaletteUi.isShortcutHelpOpen() || (!workspacePanel.hidden && (workspacePickerUi.hasPendingSwitch()
@@ -1524,7 +1556,7 @@ function getPaletteCommands() {
                     ? 'Move the selected issue to Deleted issues; it can be restored later'
                     : `Move “${issue.title}” (${issueStatusLabel(issue.status)}) to Deleted issues; it can be restored later`,
                 shortcut: '',
-                run: () => openIssueDeleteConfirmation(issue),
+                run: () => issueDeleteUi.open(issue),
             });
         }
         if (latestChatIssueButton() !== null) {
@@ -1585,8 +1617,8 @@ function openCommandPalette() {
         milestoneUi.close();
     if (issueStatusPickerUi.isOpen())
         issueStatusPickerUi.close();
-    if (issueDeleteConfirmation.open)
-        closeIssueDeleteConfirmation();
+    if (issueDeleteUi.isOpen())
+        issueDeleteUi.close();
     if (memberRemovalConfirmation.open)
         closeMemberRemovalConfirmation();
     workspaceAdminUi.closeOpenDialogs();
@@ -1607,8 +1639,8 @@ function showShortcutHelp() {
         milestoneUi.close();
     if (issueStatusPickerUi.isOpen())
         issueStatusPickerUi.close();
-    if (issueDeleteConfirmation.open)
-        closeIssueDeleteConfirmation();
+    if (issueDeleteUi.isOpen())
+        issueDeleteUi.close();
     if (memberRemovalConfirmation.open)
         closeMemberRemovalConfirmation();
     workspaceAdminUi.closeOpenDialogs();
@@ -1638,8 +1670,8 @@ function dismissCurrentView() {
     else if (milestoneUi.managerDialog.open) {
         milestoneUi.close();
     }
-    else if (issueDeleteConfirmation.open) {
-        closeIssueDeleteConfirmation();
+    else if (issueDeleteUi.isOpen()) {
+        issueDeleteUi.close();
     }
     else if (memberRemovalConfirmation.open) {
         closeMemberRemovalConfirmation();
@@ -2156,7 +2188,7 @@ function handleKeyboardShortcut(event) {
             guestUi.closePreview();
         return;
     }
-    if ((commandPaletteUi.isPaletteOpen() || clientSummaryUi.dialog.open || commandPaletteUi.isShortcutHelpOpen() || issueAiPromptUi.isOpen() || issueStatusPickerUi.isOpen() || issueDeleteConfirmation.open || memberRemovalConfirmation.open || workspaceAdminUi.hasOpenDialog() || milestoneUi.deleteConfirmation.open || milestoneUi.managerDialog.open || workspacePickerUi.isOpen() || themeUi.aboutDialog.open || projectEditDialog.open)
+    if ((commandPaletteUi.isPaletteOpen() || clientSummaryUi.dialog.open || commandPaletteUi.isShortcutHelpOpen() || issueAiPromptUi.isOpen() || issueStatusPickerUi.isOpen() || issueDeleteUi.isOpen() || memberRemovalConfirmation.open || workspaceAdminUi.hasOpenDialog() || milestoneUi.deleteConfirmation.open || milestoneUi.managerDialog.open || workspacePickerUi.isOpen() || themeUi.aboutDialog.open || projectEditDialog.open)
         && event.key !== 'Escape'
         && !((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k'))
         return;
@@ -3338,7 +3370,7 @@ function createDeletedIssueRow(issue) {
     restoreButton.disabled = activeProject !== null && projectStatusIsReadOnly(activeProject.status);
     restoreButton.dataset.issueId = String(issue.id);
     restoreButton.setAttribute('aria-label', `Restore ${issue.title}`);
-    restoreButton.addEventListener('click', () => void restoreIssue(issue, restoreButton));
+    restoreButton.addEventListener('click', () => void issueDeleteUi.restore(issue, restoreButton));
     item.append(content, restoreButton);
     return item;
 }
@@ -3431,85 +3463,6 @@ function openIssue(issue) {
     void issueDiscussionUi.load(issue.id);
     switchProjectTab('issues');
     issueBackButton.focus();
-}
-function openIssueDeleteConfirmation(issue = selectedIssue) {
-    if (issue === null)
-        return;
-    issueDeleteTarget = issue;
-    issueDeleteDescription.textContent = `“${issue.title}” is currently ${issueStatusLabel(issue.status)}. It will be moved to Deleted issues, where you can restore it later.`;
-    issueDeleteError.textContent = '';
-    issueDeleteError.hidden = true;
-    issueDeleteConfirmation.showModal();
-    issueDeleteCancel.focus();
-}
-function closeIssueDeleteConfirmation() {
-    if (issueDeleteConfirmation.open)
-        issueDeleteConfirmation.close();
-    issueDeleteTarget = null;
-    issueDeleteError.textContent = '';
-    issueDeleteError.hidden = true;
-    issueDeleteConfirm.disabled = false;
-}
-async function deleteSelectedIssue() {
-    const issue = issueDeleteTarget;
-    const projectId = activeProject?.id;
-    if (issue === null || projectId !== issue.project_id)
-        return;
-    issueDeleteConfirm.disabled = true;
-    issueDeleteError.textContent = '';
-    issueDeleteError.hidden = true;
-    try {
-        await api(`/issues/${issue.id}`, { method: 'DELETE' });
-        closeIssueDeleteConfirmation();
-        if (activeProject?.id !== projectId)
-            return;
-        if (selectedIssue?.id === issue.id) {
-            selectedIssue = null;
-            resetIssueDetailEditForm();
-            issueDetailEditForm.hidden = true;
-            issueDetailDisplay.hidden = false;
-            switchProjectTab('issues', issue.id);
-            if (!deletedIssuesDetails.open)
-                void loadDeletedProjectIssues(projectId);
-        }
-        else {
-            await loadProjectIssues(projectId);
-            if (!deletedIssuesDetails.open)
-                await loadDeletedProjectIssues(projectId);
-            if (!focusIssueTitleButton(issue.id))
-                issueFilter.focus();
-        }
-        report('Issue moved to Deleted issues. You can restore it from the issue list.');
-    }
-    catch (error) {
-        if (error instanceof ApiFailure && error.status === 401) {
-            closeIssueDeleteConfirmation();
-            showSignedOut();
-            return;
-        }
-        issueDeleteError.textContent = error instanceof Error ? error.message : 'Could not delete the issue.';
-        issueDeleteError.hidden = false;
-        issueDeleteConfirm.focus();
-    }
-    finally {
-        issueDeleteConfirm.disabled = false;
-    }
-}
-async function restoreIssue(issue, restoreButton) {
-    restoreButton.disabled = true;
-    try {
-        await api(`/issues/${issue.id}/restore`, { method: 'POST' });
-        await loadProjectIssues(issue.project_id);
-        if (!focusIssueTitleButton(issue.id))
-            issuesTabButton.focus();
-        report('Issue restored.');
-    }
-    catch (error) {
-        report(error instanceof Error ? error.message : 'Could not restore the issue.', true);
-    }
-    finally {
-        restoreButton.disabled = false;
-    }
 }
 function showDeletedIssues(restoreIssueId) {
     const projectId = activeProject?.id;
@@ -3842,9 +3795,7 @@ issueDetailEditButton.addEventListener('click', () => {
     issueDetailEditForm.hidden = false;
     issueDetailTitleInput.focus();
 });
-issueDetailDeleteButton.addEventListener('click', () => openIssueDeleteConfirmation());
-issueDeleteCancel.addEventListener('click', closeIssueDeleteConfirmation);
-issueDeleteConfirm.addEventListener('click', () => void deleteSelectedIssue());
+issueDetailDeleteButton.addEventListener('click', () => issueDeleteUi.open(selectedIssue));
 issueDetailCancelButton.addEventListener('click', () => {
     closeIssueDetailEditForm();
 });
