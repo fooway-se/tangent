@@ -7,6 +7,7 @@ const html = await readFile(new URL('../../public/app.html', import.meta.url), '
 const css = await readFile(new URL('../../public/assets/app.css', import.meta.url), 'utf8');
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
 const guestUi = await readFile(new URL('../../frontend/src/guest-ui.ts', import.meta.url), 'utf8');
+const workspacePickerUi = await readFile(new URL('../../frontend/src/workspace-picker-ui.ts', import.meta.url), 'utf8');
 const tokens = await readFile(new URL('../../public/assets/tokens.css', import.meta.url), 'utf8');
 const workspaceStart = html.indexOf('id="workspace-panel"');
 const sidebarStart = html.indexOf('class="workspace-sidebar"', workspaceStart);
@@ -40,11 +41,11 @@ test('the sidebar can switch workspaces and workspace admins can create one', ()
 test('guest view can switch workspaces through the shared picker and return to an internal role', () => {
   const guestShell = html.slice(html.indexOf('id="guest-shell"'), html.indexOf('id="workspace-panel"'));
   assert.match(guestShell, /id="guest-workspace-switcher"/);
-  assert.match(app, /guestWorkspaceSwitcher\.addEventListener\('click', \(\) => openWorkspacePicker\(\)\)/);
+  assert.match(workspacePickerUi, /guestWorkspaceSwitcher\.addEventListener\('click', \(\) => open\(\)/);
   assert.match(app, /switchWorkspaceMembership\(/);
   assert.match(app, /if \(user\.role === 'guest'\) \{\s*void guestUi\.showGuestShell\(user\)/);
   assert.match(guestUi, /await loadGuestProjects\(guestModeVersion\)/);
-  assert.match(app, /workspacePicker\.addEventListener\('close',[\s\S]*guestWorkspaceSwitcher\.focus\(\)/);
+  assert.match(workspacePickerUi, /workspacePicker\.addEventListener\('close',[\s\S]*guestWorkspaceSwitcher\.focus\(\)/);
 });
 
 test('workspace selector round trip loads role-scoped views from each switch response', async () => {

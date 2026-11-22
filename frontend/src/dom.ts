@@ -46,19 +46,11 @@ export const dom = {
   workspace: {
     workspacePanel: document.querySelector<HTMLElement>('#workspace-panel')!,
     workspaceNav: document.querySelector<HTMLElement>('#workspace-nav')!,
-    workspaceSwitcher: document.querySelector<HTMLButtonElement>('#workspace-switcher')!,
-    workspaceSwitcherLabel: document.querySelector<HTMLElement>('#workspace-switcher-label')!,
-    workspacePicker: document.querySelector<HTMLDialogElement>('#workspace-picker')!,
-    workspacePickerCancel: document.querySelector<HTMLButtonElement>('#workspace-picker-cancel')!,
-    workspacePickerConfirm: document.querySelector<HTMLButtonElement>('#workspace-picker-confirm')!,
-    workspacePickerDescription: document.querySelector<HTMLElement>('#workspace-picker-description')!,
-    workspacePickerOptions: document.querySelector<HTMLElement>('#workspace-picker-options')!,
     adminNavButton: document.querySelector<HTMLButtonElement>('#admin-nav')!,
     adminView: document.querySelector<HTMLElement>('#admin-view')!,
     adminHeading: document.querySelector<HTMLHeadingElement>('#admin-heading')!,
     membersView: document.querySelector<HTMLElement>('#members-view')!,
     adminGoPrefixOption: document.querySelector<HTMLElement>('#admin-go-prefix-option')!,
-    workspaceSwitchHint: document.querySelector<HTMLElement>('#workspace-switch-hint')!,
     membersTabButton: document.querySelector<HTMLButtonElement>('#members-tab')!,
     memberList: document.querySelector<HTMLUListElement>('#member-list')!,
     memberForm: document.querySelector<HTMLFormElement>('#member-form')!,
@@ -230,8 +222,6 @@ export const dom = {
     issueDeleteConfirm: document.querySelector<HTMLButtonElement>('#issue-delete-confirm')!,
   },
   guest: {
-    guestWorkspaceSwitcher: document.querySelector<HTMLButtonElement>('#guest-workspace-switcher')!,
-    guestWorkspaceSwitcherLabel: document.querySelector<HTMLElement>('#guest-workspace-switcher-label')!,
     guestLogoutButton: document.querySelector<HTMLButtonElement>('#guest-logout-button')!,
   },
 };

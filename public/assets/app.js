@@ -18,13 +18,14 @@ import { initLoungeChatUi } from './lounge-chat-ui.js';
 import { initWorkspaceAdminUi } from './workspace-admin-ui.js';
 import { initProjectChatUi } from './project-chat-ui.js';
 import { initCommandPaletteUi } from './command-palette-ui.js';
+import { initWorkspacePickerUi } from './workspace-picker-ui.js';
 import { parseQuickIssueInput } from './quick-issue.js';
 import { milestoneStatus } from './roadmap.js';
 import { formatIssueMarkdown, formatIssuePrompt } from './issue-export.js';
 import { filterIssues, filterIssuesByMilestoneArchive, groupIssues, groupIssuesByMilestone, discussionIndicatorLabel, projectProgress, sortIssues, } from './issue-board.js';
 import { diffConditionalIssueCollections, loadIssueCollections, nextIssuePollDelay, refreshDeletedIssuesOnOpen, shouldDeferIssueUpdates, } from './issue-polling.js';
 import { dom } from './dom.js';
-const { project: { projectHeading, projectEditDialog, projectEditForm, projectEditClose, projectEditCancel, projectEditName, projectEditDescription, projectEditStatus, projectEditStatusHelp, projectReadOnlyNotice, projectEditMessage, projectEditSave, editProjectButton, projectGithubRepository, projectEditGithubRepository, githubProjectSelectionStatus, githubProjectEditStatus, connectGithubCreateButton, connectGithubEditButton, projectsNavButton, projectsView, projectView, projectForm, projectList, emptyProjects, projectFormPanel, projectDescription, projectState, projectChatColumn, projectSidebarList, projectSidebarEmpty, projectMain, projectTabs, projectKeyboardHints, }, auth: { loginPanel, loginShell, accountBar, currentUserLabel, loginStatusMessage, logoutButton, }, workspace: { workspacePanel, workspaceNav, workspaceSwitcher, workspaceSwitcherLabel, workspacePicker, workspacePickerCancel, workspacePickerConfirm, workspacePickerDescription, workspacePickerOptions, adminNavButton, adminView, adminHeading, membersView, adminGoPrefixOption, workspaceSwitchHint, membersTabButton, memberList, memberForm, memberAddControls, memberAddStatus, memberSelect, memberRemovalConfirmation, memberRemovalDescription, memberRemovalCancel, memberRemovalConfirm, }, shell: { createWorkspaceForm, breadcrumbProjectsButton, breadcrumbDivider, breadcrumbCurrent, cancelProjectFormButton, linkPullRequestButton, notesTabButton, emptyIssues, addMemberButton, statusMessage, }, roadmap: { roadmapNavButton, roadmapView, roadmapHeading, roadmapSummary, roadmapMilestoneList, roadmapEmptyState, roadmapGoPrefixOption, }, inbox: { inboxNavButton, inboxView, inboxHeading, }, lounge: { loungeNavButton, loungeView, loungeHeading, loungeMessageList, }, shortcuts: { toggleProjectFormButton, keyboardHints, goPrefixHint, goPrefixWorkspaceOption, goPrefixProjectOptions, }, chat: { chatView, }, issues: { issuesView, issueDetailView, issueDetailDisplay, issueDetailTitle, issueDetailPriority, issueDetailDueDate, issueDetailDescription, issueDetailBrief, issueDetailContextSection, issueDetailContext, issueDetailExpectedOutcomeSection, issueDetailExpectedOutcome, issueDetailAcceptanceCriteriaSection, issueDetailAcceptanceCriteria, issueDetailStatus, issueDetailStatusLabel, issueSourceLink, issuePullRequests, issuePullRequestsList, issuePullRequestsEmpty, issuePullRequestDialog, issuePullRequestForm, issuePullRequestClose, issuePullRequestCancel, issuePullRequestUrl, issuePullRequestMessage, issuePullRequestSubmit, issueDetailEditForm, issueDetailTitleInput, issueDetailDescriptionInput, issueDetailPriorityInput, issueDetailDueDateInput, issueDetailEditButton, issueAiPromptButton, issueAiPromptDialog, issueAiPromptCloseButton, issueAiPromptStepCount, issueAiPromptContext, issueAiPromptOutcome, issueAiPromptCriteria, issueAiPromptPreview, issueAiPromptStatus, issueAiPromptBackButton, issueAiPromptSkipButton, issueAiPromptNextButton, issueAiPromptActions, issueAiPromptSaveButton, issueAiPromptCopyButton, issueAiPromptCopyMarkdownButton, issueAiPromptDownloadButton, issueDetailDeleteButton, issueDetailSaveButton, issuesTabButton, issueBackButton, issueDetailCancelButton, issueForm, issueQuickAddTitle, issueQuickAddPriority, issueQuickAddDueDate, issueQuickAddAssignee, issueQuickAddMilestone, issueQuickAddOngoing, issueQuickAddShared, issueQuickAddApproval, issueQuickAddCancelButton, issueDetailType, issueDetailAssignee, issueDetailMilestone, issueDetailOngoingRow, issueDetailSharing, issueDetailApproval, issueDetailTypeInput, issueDetailAssigneeInput, issueDetailMilestoneInput, issueDetailOngoingInput, issueDetailSharedInput, issueDetailApprovalInput, issueStatusHistory, issueStatusHistoryCount, issueStatusHistoryEmpty, issueStatusHistoryList, issueDiscussionHeading, issueDiscussionCount, issueDiscussionStatus, issueDiscussionEmpty, issueDiscussionList, issueDiscussionForm, issueDiscussionInput, issueDiscussionSubmit, issueDiscussionReplyContext, issueDiscussionReplyLabel, issueDiscussionReplyCancel, issueDescriptionDetails, issueProgress, issueProgressLabel, issueFilter, issueGrouping, issueOrder, issueScope, issueCountSummary, issueBulkAssignToggle, issueBulkAssignToolbar, issueList, deletedIssuesDetails, deletedIssueCount, deletedIssueList, issueStatusPicker, issueStatusPickerClose, issueStatusPickerDescription, issueStatusPickerOptions, issueDeleteConfirmation, issueDeleteDescription, issueDeleteError, issueDeleteCancel, issueDeleteConfirm, }, guest: { guestWorkspaceSwitcher, guestWorkspaceSwitcherLabel, guestLogoutButton, }, } = dom;
+const { project: { projectHeading, projectEditDialog, projectEditForm, projectEditClose, projectEditCancel, projectEditName, projectEditDescription, projectEditStatus, projectEditStatusHelp, projectReadOnlyNotice, projectEditMessage, projectEditSave, editProjectButton, projectGithubRepository, projectEditGithubRepository, githubProjectSelectionStatus, githubProjectEditStatus, connectGithubCreateButton, connectGithubEditButton, projectsNavButton, projectsView, projectView, projectForm, projectList, emptyProjects, projectFormPanel, projectDescription, projectState, projectChatColumn, projectSidebarList, projectSidebarEmpty, projectMain, projectTabs, projectKeyboardHints, }, auth: { loginPanel, loginShell, accountBar, currentUserLabel, loginStatusMessage, logoutButton, }, workspace: { workspacePanel, workspaceNav, adminNavButton, adminView, adminHeading, membersView, adminGoPrefixOption, membersTabButton, memberList, memberForm, memberAddControls, memberAddStatus, memberSelect, memberRemovalConfirmation, memberRemovalDescription, memberRemovalCancel, memberRemovalConfirm, }, shell: { createWorkspaceForm, breadcrumbProjectsButton, breadcrumbDivider, breadcrumbCurrent, cancelProjectFormButton, linkPullRequestButton, notesTabButton, emptyIssues, addMemberButton, statusMessage, }, roadmap: { roadmapNavButton, roadmapView, roadmapHeading, roadmapSummary, roadmapMilestoneList, roadmapEmptyState, roadmapGoPrefixOption, }, inbox: { inboxNavButton, inboxView, inboxHeading, }, lounge: { loungeNavButton, loungeView, loungeHeading, loungeMessageList, }, shortcuts: { toggleProjectFormButton, keyboardHints, goPrefixHint, goPrefixWorkspaceOption, goPrefixProjectOptions, }, chat: { chatView, }, issues: { issuesView, issueDetailView, issueDetailDisplay, issueDetailTitle, issueDetailPriority, issueDetailDueDate, issueDetailDescription, issueDetailBrief, issueDetailContextSection, issueDetailContext, issueDetailExpectedOutcomeSection, issueDetailExpectedOutcome, issueDetailAcceptanceCriteriaSection, issueDetailAcceptanceCriteria, issueDetailStatus, issueDetailStatusLabel, issueSourceLink, issuePullRequests, issuePullRequestsList, issuePullRequestsEmpty, issuePullRequestDialog, issuePullRequestForm, issuePullRequestClose, issuePullRequestCancel, issuePullRequestUrl, issuePullRequestMessage, issuePullRequestSubmit, issueDetailEditForm, issueDetailTitleInput, issueDetailDescriptionInput, issueDetailPriorityInput, issueDetailDueDateInput, issueDetailEditButton, issueAiPromptButton, issueAiPromptDialog, issueAiPromptCloseButton, issueAiPromptStepCount, issueAiPromptContext, issueAiPromptOutcome, issueAiPromptCriteria, issueAiPromptPreview, issueAiPromptStatus, issueAiPromptBackButton, issueAiPromptSkipButton, issueAiPromptNextButton, issueAiPromptActions, issueAiPromptSaveButton, issueAiPromptCopyButton, issueAiPromptCopyMarkdownButton, issueAiPromptDownloadButton, issueDetailDeleteButton, issueDetailSaveButton, issuesTabButton, issueBackButton, issueDetailCancelButton, issueForm, issueQuickAddTitle, issueQuickAddPriority, issueQuickAddDueDate, issueQuickAddAssignee, issueQuickAddMilestone, issueQuickAddOngoing, issueQuickAddShared, issueQuickAddApproval, issueQuickAddCancelButton, issueDetailType, issueDetailAssignee, issueDetailMilestone, issueDetailOngoingRow, issueDetailSharing, issueDetailApproval, issueDetailTypeInput, issueDetailAssigneeInput, issueDetailMilestoneInput, issueDetailOngoingInput, issueDetailSharedInput, issueDetailApprovalInput, issueStatusHistory, issueStatusHistoryCount, issueStatusHistoryEmpty, issueStatusHistoryList, issueDiscussionHeading, issueDiscussionCount, issueDiscussionStatus, issueDiscussionEmpty, issueDiscussionList, issueDiscussionForm, issueDiscussionInput, issueDiscussionSubmit, issueDiscussionReplyContext, issueDiscussionReplyLabel, issueDiscussionReplyCancel, issueDescriptionDetails, issueProgress, issueProgressLabel, issueFilter, issueGrouping, issueOrder, issueScope, issueCountSummary, issueBulkAssignToggle, issueBulkAssignToolbar, issueList, deletedIssuesDetails, deletedIssueCount, deletedIssueList, issueStatusPicker, issueStatusPickerClose, issueStatusPickerDescription, issueStatusPickerOptions, issueDeleteConfirmation, issueDeleteDescription, issueDeleteError, issueDeleteCancel, issueDeleteConfirm, }, guest: { guestLogoutButton, }, } = dom;
 const KEYBOARD_HINTS_STORAGE_KEY = 'tangent.keyboard-hints-visible';
 function loadKeyboardHintsPreference() {
     try {
@@ -119,10 +120,18 @@ let keyboardHintsVisible = loadKeyboardHintsPreference();
 let activeWorkspaces = [];
 let activeProject = null;
 let projectReturnFocusId = null;
-let pendingWorkspaceId = null;
-let workspacePickerOptionIndex = 0;
 const workspaceViewHistory = [];
 const projectNavigation = new ProjectNavigationOwner();
+const workspacePickerUi = initWorkspacePickerUi({
+    getWorkspaces: () => activeWorkspaces,
+    getUser: () => activeUser,
+    onSwitch: (workspaceId) => { void switchWorkspace(workspaceId, true); },
+    isCommandPaletteOpen: () => commandPaletteUi.isPaletteOpen(),
+    isShortcutHelpOpen: () => commandPaletteUi.isShortcutHelpOpen(),
+    isIssueStatusPickerOpen: () => issueStatusPicker.open,
+    isGuestShellVisible: () => document.body.classList.contains('is-guest') && workspacePanel.hidden,
+    isWorkspacePanelVisible: () => !workspacePanel.hidden,
+});
 const clientSummaryUi = initClientSummaryUi({
     getProject: () => activeProject,
     canOpen: () => activeUser?.role === 'admin' && !projectView.hidden,
@@ -163,7 +172,7 @@ const milestoneUi = initMilestoneUi({
     report,
     onUnauthorized: () => showSignedOut(),
     shouldRestoreFocus: () => !projectView.hidden && activeProject !== null
-        && !commandPaletteUi.isPaletteOpen() && !commandPaletteUi.isShortcutHelpOpen() && !workspacePicker.open,
+        && !commandPaletteUi.isPaletteOpen() && !commandPaletteUi.isShortcutHelpOpen() && !workspacePickerUi.isOpen(),
 });
 let linkedPullRequests = [];
 let issuePullRequestsRequestVersion = 0;
@@ -275,7 +284,7 @@ const guestUi = initGuestUi({
         loginPanel.hidden = true;
         workspacePanel.hidden = true;
         accountBar.hidden = true;
-        guestWorkspaceSwitcher.hidden = false;
+        workspacePickerUi.setGuestVisible(true);
         guestLogoutButton.hidden = false;
         guestLogoutButton.textContent = 'Sign out';
         updateKeyboardHintsVisibility();
@@ -284,7 +293,7 @@ const guestUi = initGuestUi({
     onPreviewOpened: () => {
         workspacePanel.hidden = true;
         accountBar.hidden = true;
-        guestWorkspaceSwitcher.hidden = true;
+        workspacePickerUi.setGuestVisible(false);
         guestLogoutButton.hidden = true;
         updateKeyboardHintsVisibility();
         projectKeyboardHints.hidden = true;
@@ -295,7 +304,7 @@ const guestUi = initGuestUi({
         document.body.classList.remove('is-guest');
         workspacePanel.hidden = false;
         accountBar.hidden = false;
-        guestWorkspaceSwitcher.hidden = true;
+        workspacePickerUi.setGuestVisible(false);
         guestLogoutButton.hidden = false;
         updateKeyboardHintsVisibility();
         showWorkspaceView('project');
@@ -410,7 +419,7 @@ function showSignedOut() {
     stopIssuePolling();
     clearIssueDiscussion();
     inboxUi.reset();
-    resetPendingWorkspaceSwitch();
+    workspacePickerUi.resetPendingSwitch();
     projectChatUi.stop();
     loungeChatUi.stop();
     loungePresenceUi.reset();
@@ -431,13 +440,7 @@ function showSignedOut() {
     activeProjectMembers = [];
     selectedIssue = null;
     activeWorkspaces = [];
-    workspaceSwitcherLabel.textContent = 'Choose workspace';
-    workspaceSwitcher.setAttribute('aria-label', 'Choose workspace');
-    workspaceSwitcher.disabled = true;
-    guestWorkspaceSwitcherLabel.textContent = 'Choose workspace';
-    guestWorkspaceSwitcher.setAttribute('aria-label', 'Choose workspace');
-    guestWorkspaceSwitcher.disabled = true;
-    guestWorkspaceSwitcher.hidden = true;
+    workspacePickerUi.resetSwitcher();
     loginShell.hidden = false;
     loginPanel.hidden = false;
     workspacePanel.hidden = true;
@@ -462,10 +465,10 @@ function showSignedIn(user) {
     loungeChatUi.stop();
     loungePresenceUi.reset();
     activeUser = user;
-    guestWorkspaceSwitcher.hidden = user.role !== 'guest';
+    workspacePickerUi.setGuestVisible(user.role === 'guest');
     editProjectButton.hidden = user.role !== 'admin';
     roadmapNavButton.hidden = user.role === 'guest';
-    resetPendingWorkspaceSwitch();
+    workspacePickerUi.resetPendingSwitch();
     if (user.role === 'guest') {
         void guestUi.showGuestShell(user);
         return;
@@ -486,17 +489,16 @@ function showSignedIn(user) {
     report('');
 }
 async function loadWorkspaces() {
-    resetPendingWorkspaceSwitch();
+    workspacePickerUi.resetPendingSwitch();
     const result = await api('/workspaces');
     activeWorkspaces = result.workspaces;
-    renderWorkspaceSwitcher();
+    workspacePickerUi.renderSwitcher();
 }
 async function switchWorkspace(workspaceId, restoreSwitcherFocus = false) {
-    resetPendingWorkspaceSwitch();
+    workspacePickerUi.resetPendingSwitch();
     if (activeUser === null || workspaceId === activeUser.workspace_id)
         return;
-    workspaceSwitcher.disabled = true;
-    guestWorkspaceSwitcher.disabled = true;
+    workspacePickerUi.setSwitching(true);
     try {
         const result = await switchWorkspaceMembership(activeUser, workspaceId, (targetWorkspaceId) => api(`/workspaces/${targetWorkspaceId}/switch`, {
             method: 'POST',
@@ -507,101 +509,11 @@ async function switchWorkspace(workspaceId, restoreSwitcherFocus = false) {
         report(`Switched to ${result.workspace.name}.`);
     }
     catch (error) {
-        renderWorkspaceSwitcher();
         report(error instanceof Error ? error.message : 'Could not switch workspace.', true);
     }
     finally {
-        renderWorkspaceSwitcher();
-        const switcher = activeUser?.role === 'guest' ? guestWorkspaceSwitcher : workspaceSwitcher;
-        if (restoreSwitcherFocus && !switcher.disabled)
-            switcher.focus();
+        workspacePickerUi.setSwitching(false, restoreSwitcherFocus);
     }
-}
-function renderWorkspaceSwitcher() {
-    const currentName = activeWorkspaces.find((workspace) => workspace.id === activeUser?.workspace_id)?.name
-        ?? 'Choose workspace';
-    workspaceSwitcherLabel.textContent = currentName;
-    workspaceSwitcher.setAttribute('aria-label', `Choose workspace. Current workspace: ${currentName}.`);
-    workspaceSwitcher.disabled = activeWorkspaces.length < 2;
-    guestWorkspaceSwitcherLabel.textContent = currentName;
-    guestWorkspaceSwitcher.setAttribute('aria-label', `Choose workspace. Current workspace: ${currentName}.`);
-    guestWorkspaceSwitcher.disabled = activeWorkspaces.length < 2;
-    workspaceSwitchHint.hidden = activeWorkspaces.length < 2;
-}
-function resetPendingWorkspaceSwitch() {
-    pendingWorkspaceId = null;
-    if (workspacePicker.open)
-        workspacePicker.close();
-}
-function updateWorkspacePickerSelection(index) {
-    const workspace = activeWorkspaces[index];
-    if (workspace === undefined)
-        return;
-    workspacePickerOptionIndex = index;
-    pendingWorkspaceId = workspace.id;
-    const currentName = activeWorkspaces.find((candidate) => candidate.id === activeUser?.workspace_id)?.name ?? 'Current workspace';
-    workspacePickerDescription.textContent = `Current: ${currentName}. Proposed: ${workspace.name}.`;
-    workspacePickerConfirm.disabled = workspace.id === activeUser?.workspace_id;
-    workspacePickerConfirm.textContent = workspacePickerConfirm.disabled ? 'Already in this workspace' : `Switch to ${workspace.name}`;
-    const options = Array.from(workspacePickerOptions.querySelectorAll('.workspace-picker-option'));
-    options.forEach((option, optionIndex) => {
-        const active = optionIndex === index;
-        option.classList.toggle('is-active', active);
-        option.setAttribute('aria-selected', String(active));
-        option.tabIndex = active ? 0 : -1;
-    });
-    options[index]?.focus();
-}
-function stageWorkspaceSwitch(workspaceId) {
-    const index = activeWorkspaces.findIndex((workspace) => workspace.id === workspaceId);
-    if (index >= 0)
-        updateWorkspacePickerSelection(index);
-}
-function openWorkspacePicker(proposedWorkspaceId) {
-    if (activeUser === null || activeWorkspaces.length < 2)
-        return;
-    if (workspacePicker.open) {
-        resetPendingWorkspaceSwitch();
-        return;
-    }
-    const currentWorkspaceId = activeUser.workspace_id;
-    pendingWorkspaceId = currentWorkspaceId;
-    workspacePickerOptionIndex = 0;
-    workspacePickerOptions.replaceChildren();
-    activeWorkspaces.forEach((workspace, index) => {
-        const option = document.createElement('button');
-        option.className = 'button workspace-picker-option';
-        option.type = 'button';
-        option.setAttribute('role', 'option');
-        option.dataset.workspaceId = String(workspace.id);
-        const name = document.createElement('span');
-        name.textContent = workspace.name;
-        option.append(name);
-        if (workspace.id === currentWorkspaceId) {
-            const current = document.createElement('span');
-            current.className = 'workspace-picker-current';
-            current.textContent = 'Current';
-            option.append(current);
-        }
-        option.addEventListener('click', () => stageWorkspaceSwitch(workspace.id));
-        workspacePickerOptions.append(option);
-        if (workspace.id === currentWorkspaceId)
-            workspacePickerOptionIndex = index;
-    });
-    const proposedIndex = activeWorkspaces.findIndex((workspace) => workspace.id === proposedWorkspaceId);
-    if (proposedIndex >= 0)
-        workspacePickerOptionIndex = proposedIndex;
-    workspacePicker.showModal();
-    updateWorkspacePickerSelection(workspacePickerOptionIndex);
-}
-function commitPendingWorkspaceSwitch() {
-    const workspaceId = pendingWorkspaceId;
-    pendingWorkspaceId = null;
-    if (workspacePicker.open)
-        workspacePicker.close();
-    if (workspaceId === null || activeUser === null || workspaceId === activeUser.workspace_id)
-        return;
-    void switchWorkspace(workspaceId, true);
 }
 function moveWorkspaceStatusToCurrentHeading() {
     const currentView = Array.from(workspacePanel.querySelectorAll('.workspace-view'))
@@ -1179,8 +1091,8 @@ function shortcutContext(target) {
         textInputFocused: shouldBlurOnEscape(target),
         modalOpen: commandPaletteUi.isPaletteOpen() || clientSummaryUi.dialog.open || commandPaletteUi.isShortcutHelpOpen() || issueAiPromptDialog.open || issueStatusPicker.open || issueDeleteConfirmation.open || themeUi.aboutDialog.open || projectEditDialog.open
             || memberRemovalConfirmation.open || workspaceAdminUi.hasOpenDialog() || milestoneUi.deleteConfirmation.open || milestoneUi.managerDialog.open
-            || workspacePicker.open,
-        canDismiss: commandPaletteUi.isPaletteOpen() || commandPaletteUi.isShortcutHelpOpen() || (!workspacePanel.hidden && (pendingWorkspaceId !== null
+            || workspacePickerUi.isOpen(),
+        canDismiss: commandPaletteUi.isPaletteOpen() || commandPaletteUi.isShortcutHelpOpen() || (!workspacePanel.hidden && (workspacePickerUi.hasPendingSwitch()
             || (!projectView.hidden && (!issueDetailView.hidden || !issueDetailEditForm.hidden
                 || issueQuickAddEscapePending || projectChatUi.hasReplyParent()))
             || (!loungeView.hidden && loungeChatUi.hasReplyParent())
@@ -1457,7 +1369,7 @@ function getPaletteCommands() {
             label: 'Switch workspace',
             detail: 'Choose a workspace; Enter switches, Escape cancels',
             shortcut: 'g w',
-            run: openWorkspacePicker,
+            run: () => workspacePickerUi.open(),
         });
         for (const workspace of activeWorkspaces) {
             if (workspace.id === activeUser.workspace_id)
@@ -1466,7 +1378,7 @@ function getPaletteCommands() {
                 label: `Switch to ${workspace.name}`,
                 detail: `Review and confirm switching to ${workspace.name}`,
                 shortcut: '',
-                run: () => openWorkspacePicker(workspace.id),
+                run: () => workspacePickerUi.open(workspace.id),
             });
         }
     }
@@ -1609,8 +1521,8 @@ function openCommandPalette() {
         themeUi.aboutDialog.close();
     if (projectEditDialog.open)
         projectEditDialog.close();
-    if (workspacePicker.open)
-        resetPendingWorkspaceSwitch();
+    if (workspacePickerUi.isOpen())
+        workspacePickerUi.resetPendingSwitch();
     if (clientSummaryUi.dialog.open)
         clientSummaryUi.close();
     if (issueAiPromptDialog.open)
@@ -1631,8 +1543,8 @@ function openCommandPalette() {
 function showShortcutHelp() {
     if (activeUser === null || milestoneUi.deleteConfirmButton.disabled)
         return;
-    if (workspacePicker.open)
-        resetPendingWorkspaceSwitch();
+    if (workspacePickerUi.isOpen())
+        workspacePickerUi.resetPendingSwitch();
     if (clientSummaryUi.dialog.open)
         clientSummaryUi.close();
     if (issueAiPromptDialog.open)
@@ -1659,8 +1571,8 @@ function dismissCurrentView() {
     else if (projectEditDialog.open) {
         projectEditDialog.close();
     }
-    else if (workspacePicker.open) {
-        resetPendingWorkspaceSwitch();
+    else if (workspacePickerUi.isOpen()) {
+        workspacePickerUi.resetPendingSwitch();
     }
     else if (clientSummaryUi.dialog.open) {
         clientSummaryUi.close();
@@ -2078,7 +1990,7 @@ function executeShortcut(action) {
             goToLounge();
             break;
         case 'workspace-switcher':
-            openWorkspacePicker();
+            workspacePickerUi.open();
             break;
         case 'issues':
             goToProjectIssues();
@@ -2202,7 +2114,7 @@ function handleKeyboardShortcut(event) {
             guestUi.closePreview();
         return;
     }
-    if ((commandPaletteUi.isPaletteOpen() || clientSummaryUi.dialog.open || commandPaletteUi.isShortcutHelpOpen() || issueAiPromptDialog.open || issueStatusPicker.open || issueDeleteConfirmation.open || memberRemovalConfirmation.open || workspaceAdminUi.hasOpenDialog() || milestoneUi.deleteConfirmation.open || milestoneUi.managerDialog.open || workspacePicker.open || themeUi.aboutDialog.open || projectEditDialog.open)
+    if ((commandPaletteUi.isPaletteOpen() || clientSummaryUi.dialog.open || commandPaletteUi.isShortcutHelpOpen() || issueAiPromptDialog.open || issueStatusPicker.open || issueDeleteConfirmation.open || memberRemovalConfirmation.open || workspaceAdminUi.hasOpenDialog() || milestoneUi.deleteConfirmation.open || milestoneUi.managerDialog.open || workspacePickerUi.isOpen() || themeUi.aboutDialog.open || projectEditDialog.open)
         && event.key !== 'Escape'
         && !((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k'))
         return;
@@ -2224,7 +2136,7 @@ issueStatusPicker.addEventListener('close', () => {
     issueStatusPickerIssue = null;
     issueStatusPickerReturnFocus = null;
     if (returnFocus !== null && returnFocus.isConnected && returnFocus.closest('[hidden]') === null
-        && !commandPaletteUi.isPaletteOpen() && !commandPaletteUi.isShortcutHelpOpen() && !workspacePicker.open) {
+        && !commandPaletteUi.isPaletteOpen() && !commandPaletteUi.isShortcutHelpOpen() && !workspacePickerUi.isOpen()) {
         returnFocus.focus();
     }
 });
@@ -5110,37 +5022,6 @@ function updateMembersPanelTabIndex() {
     const hasFocusableContent = Array.from(membersView.querySelectorAll('a[href], button, input, select, textarea, [tabindex]')).some((element) => element.tabIndex >= 0 && !element.matches(':disabled') && element.closest('[hidden]') === null);
     membersView.tabIndex = hasFocusableContent ? -1 : 0;
 }
-workspaceSwitcher.addEventListener('click', () => openWorkspacePicker());
-guestWorkspaceSwitcher.addEventListener('click', () => openWorkspacePicker());
-workspacePickerCancel.addEventListener('click', () => resetPendingWorkspaceSwitch());
-workspacePickerConfirm.addEventListener('click', commitPendingWorkspaceSwitch);
-workspacePicker.addEventListener('close', () => {
-    pendingWorkspaceId = null;
-    if (commandPaletteUi.isPaletteOpen() || commandPaletteUi.isShortcutHelpOpen() || issueStatusPicker.open)
-        return;
-    if (guestUi.isShellVisible() && !guestWorkspaceSwitcher.hidden && !guestWorkspaceSwitcher.disabled) {
-        guestWorkspaceSwitcher.focus();
-    }
-    else if (!workspacePanel.hidden && !workspaceSwitcher.disabled) {
-        workspaceSwitcher.focus();
-    }
-});
-workspacePicker.addEventListener('keydown', (event) => {
-    if (!(event.target instanceof HTMLElement) || !event.target.matches('.workspace-picker-option'))
-        return;
-    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-        event.preventDefault();
-        event.stopPropagation();
-        const offset = event.key === 'ArrowDown' ? 1 : -1;
-        const index = Math.max(0, Math.min(activeWorkspaces.length - 1, workspacePickerOptionIndex + offset));
-        updateWorkspacePickerSelection(index);
-    }
-    else if (event.key === 'Enter') {
-        event.preventDefault();
-        event.stopPropagation();
-        commitPendingWorkspaceSwitch();
-    }
-});
 createWorkspaceForm.addEventListener('submit', async (event) => {
     event.preventDefault();
     const values = new FormData(createWorkspaceForm);

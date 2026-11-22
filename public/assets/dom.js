@@ -46,19 +46,11 @@ export const dom = {
     workspace: {
         workspacePanel: document.querySelector('#workspace-panel'),
         workspaceNav: document.querySelector('#workspace-nav'),
-        workspaceSwitcher: document.querySelector('#workspace-switcher'),
-        workspaceSwitcherLabel: document.querySelector('#workspace-switcher-label'),
-        workspacePicker: document.querySelector('#workspace-picker'),
-        workspacePickerCancel: document.querySelector('#workspace-picker-cancel'),
-        workspacePickerConfirm: document.querySelector('#workspace-picker-confirm'),
-        workspacePickerDescription: document.querySelector('#workspace-picker-description'),
-        workspacePickerOptions: document.querySelector('#workspace-picker-options'),
         adminNavButton: document.querySelector('#admin-nav'),
         adminView: document.querySelector('#admin-view'),
         adminHeading: document.querySelector('#admin-heading'),
         membersView: document.querySelector('#members-view'),
         adminGoPrefixOption: document.querySelector('#admin-go-prefix-option'),
-        workspaceSwitchHint: document.querySelector('#workspace-switch-hint'),
         membersTabButton: document.querySelector('#members-tab'),
         memberList: document.querySelector('#member-list'),
         memberForm: document.querySelector('#member-form'),
@@ -230,8 +222,6 @@ export const dom = {
         issueDeleteConfirm: document.querySelector('#issue-delete-confirm'),
     },
     guest: {
-        guestWorkspaceSwitcher: document.querySelector('#guest-workspace-switcher'),
-        guestWorkspaceSwitcherLabel: document.querySelector('#guest-workspace-switcher-label'),
         guestLogoutButton: document.querySelector('#guest-logout-button'),
     },
 };

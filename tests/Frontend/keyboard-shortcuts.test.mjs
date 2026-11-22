@@ -12,6 +12,7 @@ const inboxUi = await readFile(new URL('../../frontend/src/inbox-ui.ts', import.
 const themeUi = await readFile(new URL('../../frontend/src/theme-ui.ts', import.meta.url), 'utf8');
 const milestoneUi = await readFile(new URL('../../frontend/src/milestone-ui.ts', import.meta.url), 'utf8');
 const summaryUi = await readFile(new URL('../../frontend/src/client-summary-ui.ts', import.meta.url), 'utf8');
+const workspacePickerUi = await readFile(new URL('../../frontend/src/workspace-picker-ui.ts', import.meta.url), 'utf8');
 const baseContext = {
   targetIsEditable: false,
   goPrefixPending: false,
@@ -295,8 +296,8 @@ test('command palette, shortcut help, and contextual hints are present in the wo
   assert.match(app, /goPrefixWorkspaceOption\.hidden = activeWorkspaces\.length < 2/);
   assert.match(app, /goPrefixProjectOptions\.hidden = activeProject === null \|\| projectView\.hidden/);
   assert.match(app, /adminGoPrefixOption\.hidden = activeUser\?\.role !== 'admin'/);
-  assert.match(app, /workspaceSwitcher\.disabled = activeWorkspaces\.length < 2/);
-  assert.match(app, /function openWorkspacePicker[\s\S]{0,120}activeWorkspaces\.length < 2/);
+  assert.match(workspacePickerUi, /workspaceSwitcher\.disabled = workspaces\.length < 2/);
+  assert.match(workspacePickerUi, /function open\(proposedWorkspaceId\?: number\)[\s\S]{0,120}workspaces\.length < 2/);
   const commands = app.slice(app.indexOf('function getPaletteCommands'), app.indexOf('function openCommandPalette'));
   assert.ok(commands.indexOf("label: 'Workspace admin'") < commands.indexOf('if (activeProject !== null)'), 'workspace admin command is available outside projects');
   assert.match(commands, /if \(activeWorkspaces\.length > 1\)/);
