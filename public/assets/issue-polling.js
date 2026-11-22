@@ -1,3 +1,9 @@
+export function diffConditionalIssueCollections(previousActive, nextActive, previousDeleted, nextDeleted) {
+    return {
+        active: nextActive === null ? null : diffIssueCollections(previousActive, nextActive),
+        deleted: nextDeleted === null ? null : diffIssueCollections(previousDeleted, nextDeleted),
+    };
+}
 export function diffIssueCollections(previous, next) {
     const previousById = new Map(previous.map((issue) => [issue.id, issue]));
     const nextById = new Map(next.map((issue) => [issue.id, issue]));

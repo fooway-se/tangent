@@ -14,7 +14,7 @@ import { milestoneStatus } from './roadmap.js';
 import { formatIssueMarkdown, formatIssuePrompt } from './issue-export.js';
 import { groupMyWorkTasks } from './my-work.js';
 import { filterIssues, filterIssuesByMilestoneArchive, groupIssues, groupIssuesByMilestone, discussionIndicatorLabel, milestoneProgress, projectProgress, sortIssues, } from './issue-board.js';
-import { diffIssueCollections, nextIssuePollDelay, shouldDeferIssueUpdates, } from './issue-polling.js';
+import { diffConditionalIssueCollections, nextIssuePollDelay, shouldDeferIssueUpdates, } from './issue-polling.js';
 const apiBaseUrl = new URL('../api/v1', import.meta.url).pathname.replace(/\/$/, '');
 const KEYBOARD_HINTS_STORAGE_KEY = 'tangent.keyboard-hints-visible';
 function loadKeyboardHintsPreference() {
@@ -2105,12 +2105,15 @@ async function pollProjectIssues(projectId) {
         if (requestVersion !== issuePollRequestVersion || !issuePollingIsActive(projectId))
             return;
         const deferUpdates = deferUpdatesAtStart || issueUpdatesAreDeferred();
-        const incomingIssues = activeResult.issues ?? projectIssues;
-        const incomingDeletedIssues = deletedResult.issues ?? deletedProjectIssues;
-        const activeDiff = diffIssueCollections(projectIssues, incomingIssues);
-        const deletedDiff = diffIssueCollections(deletedProjectIssues, incomingDeletedIssues);
-        const changedIssueIds = [...activeDiff.added, ...activeDiff.changed, ...activeDiff.removed];
-        const changedDeletedIssueIds = [...deletedDiff.added, ...deletedDiff.changed, ...deletedDiff.removed];
+        const diffs = diffConditionalIssueCollections(projectIssues, activeResult.issues, deletedProjectIssues, deletedResult.issues);
+        const activeDiff = diffs.active;
+        const changedIssueIds = activeDiff === null
+            ? []
+            : [...activeDiff.added, ...activeDiff.changed, ...activeDiff.removed];
+        const deletedDiff = diffs.deleted;
+        const changedDeletedIssueIds = deletedDiff === null
+            ? []
+            : [...deletedDiff.added, ...deletedDiff.changed, ...deletedDiff.removed];
         changed = changedIssueIds.length > 0 || changedDeletedIssueIds.length > 0;
         activeIssuesEtag = activeResult.etag;
         deletedIssuesEtag = deletedResult.etag;
@@ -2118,8 +2121,10 @@ async function pollProjectIssues(projectId) {
             issuePollHasDeferredChanges = true;
         }
         else if (!deferUpdates) {
-            projectIssues = incomingIssues;
-            deletedProjectIssues = incomingDeletedIssues;
+            if (activeResult.issues !== null)
+                projectIssues = activeResult.issues;
+            if (deletedResult.issues !== null)
+                deletedProjectIssues = deletedResult.issues;
             issuePollHasDeferredChanges = false;
             if (changed) {
                 if (selectedIssue !== null) {
@@ -2128,7 +2133,7 @@ async function pollProjectIssues(projectId) {
                     const refreshedSelectedIssue = projectIssues.find((issue) => issue.id === selectedIssueId);
                     if (refreshedSelectedIssue !== undefined) {
                         selectedIssue = refreshedSelectedIssue;
-                        if (activeDiff.added.includes(selectedIssueId) || activeDiff.changed.includes(selectedIssueId)) {
+                        if (activeDiff?.added.includes(selectedIssueId) || activeDiff?.changed.includes(selectedIssueId)) {
                             renderIssueDetail();
                             if (previousSelectedStatus !== refreshedSelectedIssue.status) {
                                 void loadIssueStatusHistory(selectedIssueId);

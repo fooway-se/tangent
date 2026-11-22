@@ -4,6 +4,23 @@ export interface IssueCollectionDiff {
   removed: number[];
 }
 
+export interface ConditionalIssueDiffs {
+  active: IssueCollectionDiff | null;
+  deleted: IssueCollectionDiff | null;
+}
+
+export function diffConditionalIssueCollections<T extends { id: number }>(
+  previousActive: readonly T[],
+  nextActive: readonly T[] | null,
+  previousDeleted: readonly T[],
+  nextDeleted: readonly T[] | null,
+): ConditionalIssueDiffs {
+  return {
+    active: nextActive === null ? null : diffIssueCollections(previousActive, nextActive),
+    deleted: nextDeleted === null ? null : diffIssueCollections(previousDeleted, nextDeleted),
+  };
+}
+
 export interface IssueUpdateDeferralState {
   issueEditorOpen?: boolean;
   quickAddActive?: boolean;

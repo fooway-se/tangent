@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import {
+  diffConditionalIssueCollections,
   diffIssueCollections,
   nextIssuePollDelay,
   shouldDeferIssueUpdates,
@@ -25,6 +26,24 @@ test('issue collection diff identifies only added, changed, and removed issues',
     added: [4],
     changed: [2],
     removed: [3],
+  });
+});
+
+test('two unchanged issue responses skip collection diffs', () => {
+  const issues = [{ id: 1, title: 'Current' }];
+  assert.deepEqual(diffConditionalIssueCollections(issues, null, issues, null), {
+    active: null,
+    deleted: null,
+  });
+});
+
+test('mixed issue responses only diff the collection with a response body', () => {
+  const beforeActive = [{ id: 1, title: 'Old' }];
+  const afterActive = [{ id: 1, title: 'New' }, { id: 2, title: 'Added' }];
+  const deleted = [{ id: 3, title: 'Unchanged trash' }];
+  assert.deepEqual(diffConditionalIssueCollections(beforeActive, afterActive, deleted, null), {
+    active: { added: [2], changed: [1], removed: [] },
+    deleted: null,
   });
 });
 
