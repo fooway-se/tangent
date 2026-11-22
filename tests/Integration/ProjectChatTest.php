@@ -6,6 +6,7 @@ namespace Tangent\Tests\Integration;
 
 use Tangent\Core\Request;
 use Tangent\Core\Response;
+use Tangent\Modules\Chat\ChatRepository;
 use Tangent\Tests\Support\ApiTestCase;
 
 final class ProjectChatTest extends ApiTestCase
@@ -312,6 +313,49 @@ final class ProjectChatTest extends ApiTestCase
         self::assertSame('Visible', $events->body['events'][0]['body']);
     }
 
+    public function testProjectEventFeedIsScopedAndIgnoresUnrelatedTraffic(): void
+    {
+        $admin = $this->login($this->adminEmail);
+        $busyProjectId = $this->createProject($admin, 'Busy feed project');
+        $quietProjectId = $this->createProject($admin, 'Quiet feed project');
+        $privateProjectId = $this->createProject($admin, 'Private feed project');
+
+        $initial = $this->getProjectEvents($quietProjectId, $admin['cookie'], ['cursor' => '0']);
+        self::assertSame(200, $initial->status, json_encode($initial->body));
+        self::assertSame([], $initial->body['events']);
+        $quietEtag = $initial->headers['etag'] ?? null;
+        self::assertIsString($quietEtag);
+
+        $this->insertProjectFeedMessages($busyProjectId, 105);
+        $unchanged = $this->getProjectEvents(
+            $quietProjectId,
+            $admin['cookie'],
+            ['cursor' => '0'],
+            ['If-None-Match' => $quietEtag],
+        );
+        self::assertSame(304, $unchanged->status);
+        self::assertSame($quietEtag, $unchanged->headers['etag'] ?? null);
+
+        self::assertSame(201, $this->postMessage($quietProjectId, $admin, ['body' => 'Quiet project update'])->status);
+        $active = $this->getProjectEvents(
+            $quietProjectId,
+            $admin['cookie'],
+            ['cursor' => '0'],
+            ['If-None-Match' => $quietEtag],
+        );
+        self::assertSame(200, $active->status, json_encode($active->body));
+        self::assertCount(1, $active->body['events']);
+        self::assertSame($quietProjectId, $active->body['events'][0]['project_id']);
+        self::assertSame('Quiet project update', $active->body['events'][0]['body']);
+
+        $developer = $this->login($this->developerEmail);
+        self::assertSame(404, $this->getProjectEvents(
+            $privateProjectId,
+            $developer['cookie'],
+            ['cursor' => '0'],
+        )->status);
+    }
+
     public function testThreadReplyMustBelongToTheSameProjectChannel(): void
     {
         $admin = $this->login($this->adminEmail);
@@ -384,6 +428,46 @@ final class ProjectChatTest extends ApiTestCase
             ['tangent_session' => $cookie],
             ['since' => '0'],
         );
+    }
+
+    private function getProjectEvents(
+        int $projectId,
+        string $cookie,
+        array $query = [],
+        array $headers = [],
+    ): Response {
+        return $this->apiRequest(
+            'GET',
+            "/api/v1/projects/{$projectId}/events",
+            [],
+            $headers,
+            ['tangent_session' => $cookie],
+            $query,
+        );
+    }
+
+    private function insertProjectFeedMessages(int $projectId, int $count): void
+    {
+        $channel = $this->pdo->prepare(
+            "SELECT id FROM channels WHERE workspace_id = :workspace_id AND project_id = :project_id AND channel_type = 'project'"
+        );
+        $channel->execute(['workspace_id' => $this->workspaceId, 'project_id' => $projectId]);
+        $channelId = (int) $channel->fetchColumn();
+        $repository = new ChatRepository($this->pdo);
+        $insert = $this->pdo->prepare(
+            'INSERT INTO messages (workspace_id, channel_id, author_id, body, is_client_visible, feed_cursor)
+             VALUES (:workspace_id, :channel_id, :author_id, :body, 0, :feed_cursor)'
+        );
+
+        for ($index = 0; $index < $count; $index++) {
+            $insert->execute([
+                'workspace_id' => $this->workspaceId,
+                'channel_id' => $channelId,
+                'author_id' => $this->adminId,
+                'body' => "Unrelated message {$index}",
+                'feed_cursor' => $repository->nextEventCursor($this->workspaceId),
+            ]);
+        }
     }
 
     private function apiRequest(

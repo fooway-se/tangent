@@ -112,6 +112,31 @@ final class ChatRoutes
             ]);
         });
 
+        $router->add('GET', '/api/v1/projects/{id}/events', function (
+            Request $request,
+            array $params,
+            AuthenticatedUser $user,
+        ): Response {
+            $result = $this->service->projectEvents(
+                $user,
+                PositiveId::parse($params['id']),
+                self::eventCursor($request),
+                self::sinceId($request),
+                $request->header('If-None-Match'),
+            );
+            if ($result['not_modified']) {
+                return Response::notModified([
+                    'ETag' => $result['etag'],
+                    'Cache-Control' => 'no-cache',
+                ]);
+            }
+
+            return Response::json(200, ['events' => $result['events']], [
+                'ETag' => $result['etag'],
+                'Cache-Control' => 'no-cache',
+            ]);
+        });
+
         $router->add('GET', '/api/v1/projects/{id}/messages', function (
             Request $request,
             array $params,

@@ -165,13 +165,42 @@ final class ChatService
             }
         }
 
+        return $this->eventFeed($user, $projectIds, $cursor, $legacySinceId, $ifNoneMatch, 'events');
+    }
+
+    public function projectEvents(
+        AuthenticatedUser $user,
+        int $projectId,
+        ?int $cursor,
+        ?int $legacySinceId,
+        ?string $ifNoneMatch,
+    ): array {
+        $this->visibleProjectChannel($user, $projectId);
+        return $this->eventFeed(
+            $user,
+            [$projectId],
+            $cursor,
+            $legacySinceId,
+            $ifNoneMatch,
+            'project-events-' . $projectId,
+        );
+    }
+
+    private function eventFeed(
+        AuthenticatedUser $user,
+        array $projectIds,
+        ?int $cursor,
+        ?int $legacySinceId,
+        ?string $ifNoneMatch,
+        string $etagScope,
+    ): array {
         $cursor ??= $this->chat->eventCursorAtMessageId(
             $user->workspaceId,
             $projectIds,
             $legacySinceId ?? 0,
         );
         $latestCursor = $this->chat->latestEventCursor($user->workspaceId, $projectIds);
-        $etag = '"events-' . $user->workspaceId . '-' . $latestCursor . '"';
+        $etag = '"' . $etagScope . '-' . $user->workspaceId . '-' . $latestCursor . '"';
         $notModified = $ifNoneMatch !== null
             && hash_equals($etag, trim($ifNoneMatch))
             && $cursor >= $latestCursor;

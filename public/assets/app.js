@@ -3,7 +3,7 @@ import { diffInboxCollections, nextInboxPollDelay, shouldDeferInboxUpdates, } fr
 import { renderClientEmptyState, renderClientView } from './guest-view.js';
 import { createLogoutController } from './logout.js';
 import { ProjectNavigationOwner, runOwnedRequest } from './project-navigation.js';
-import { ChatEventFeed } from './chat-event-feed.js';
+import { ChatEventFeed, pollProjectChatEvents } from './chat-event-feed.js';
 import { switchWorkspaceMembership } from './workspace-switch.js';
 import { credentialNeedsConfirmation, inviteCredentialPresentation } from './credential-flow.js';
 import { generateClientSummary } from './client-summary.js';
@@ -3668,35 +3668,19 @@ async function pollProjectChat(projectId) {
         scheduleChatPoll();
         return;
     }
-    const headers = new Headers();
-    if (chatEtag !== null)
-        headers.set('If-None-Match', chatEtag);
     const cursor = chatEventFeed.requestQuery();
     try {
-        const response = await fetch(`${apiBaseUrl}/events${cursor}`, {
-            headers,
-            credentials: 'same-origin',
-        });
+        const result = await pollProjectChatEvents(fetch, apiBaseUrl, projectId, cursor, chatEtag, chatPollDelay);
         if (activeChatProjectId !== projectId)
             return;
-        if (response.status === 304) {
-            chatPollDelay = Math.min(10_000, chatPollDelay * 1.5);
+        if (!result.notModified && (result.status < 200 || result.status >= 300)) {
+            throw new ApiFailure(result.errorMessage ?? 'Could not load project chat.', result.status);
         }
-        else {
-            const payload = await response.json();
-            if (activeChatProjectId !== projectId)
-                return;
-            if (!response.ok)
-                throw new ApiFailure(payload.error?.message ?? 'Could not load project chat.', response.status);
-            chatEtag = response.headers.get('ETag');
-            const received = payload.events ?? [];
+        chatPollDelay = result.nextDelay;
+        if (!result.notModified) {
+            chatEtag = result.etag;
+            const received = result.events;
             chatEventFeed.consume(received, projectId, (messageId) => chatMessagesById.has(messageId), (event) => appendChatMessage(event, chatFollowLatest));
-            if (received.length > 0) {
-                chatPollDelay = 1000;
-            }
-            else {
-                chatPollDelay = Math.min(10_000, chatPollDelay * 1.5);
-            }
         }
     }
     catch (error) {

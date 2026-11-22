@@ -1021,6 +1021,47 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
         '422': { $ref: '#/components/responses/ValidationFailed' }
+  /projects/{id}/events:
+    get:
+      summary: Poll chat messages for one project
+      description: Returns up to 100 committed chat events from the requested project only. Project chat access is required. Events use the workspace's transaction-serialized feed cursor; matching If-None-Match returns 304. The deprecated since parameter accepts a legacy message ID and maps it to the project feed cursor.
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - name: cursor
+          in: query
+          required: false
+          description: Commit-ordered cursor returned as feed_cursor on each event.
+          schema: { type: integer, minimum: 0, default: 0 }
+        - name: since
+          in: query
+          required: false
+          deprecated: true
+          description: Legacy message ID cursor. Accepted for existing clients and translated to the project feed cursor.
+          schema: { type: integer, minimum: 0, default: 0 }
+        - name: If-None-Match
+          in: header
+          required: false
+          schema: { type: string }
+      responses:
+        '200':
+          description: Project events and the current project-scoped ETag.
+          headers:
+            ETag: { schema: { type: string } }
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  events:
+                    type: array
+                    items: { $ref: '#/components/schemas/Event' }
+        '304':
+          description: No events changed in this project since the supplied ETag.
+          headers:
+            ETag: { schema: { type: string } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
   /projects/{id}/messages/{messageId}:
     get:
       summary: Read a specific project chat message
