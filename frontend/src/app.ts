@@ -4952,6 +4952,7 @@ async function loadProjects(): Promise<void> {
     item.dataset.projectId = String(project.id);
 
     const details = document.createElement('div');
+    details.className = 'project-card-details';
     const name = document.createElement('p');
     name.className = 'project-name';
     name.textContent = project.name;
@@ -4961,6 +4962,7 @@ async function loadProjects(): Promise<void> {
     details.append(name, description);
 
     const actions = document.createElement('div');
+    actions.className = 'project-card-actions';
     const state = document.createElement('span');
     state.className = 'project-status';
     state.textContent = projectStatusLabel(project.status);

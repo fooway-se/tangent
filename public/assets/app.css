@@ -304,6 +304,9 @@ select { padding-right: 28px; background: var(--screen-inset) url("data:image/sv
 .project-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .project-card { display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid var(--screen-border); border-radius: var(--radius-panel); padding: 10px 12px; background: var(--screen-panel); box-shadow: inset 0 1px 0 var(--screen-highlight), inset 0 -3px 8px var(--inset-wash-strong); }
 .project-card.is-keyboard-selected { background: var(--screen-hover); }
+.project-card-details { min-width: 0; flex: 1 1 auto; }
+.project-card-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 8px; white-space: nowrap; }
+.project-card-actions .project-status { margin-right: 0; }
 .roadmap-description { margin: 5px 0 0; color: var(--screen-muted); font-size: 12px; }
 .roadmap-heuristic-note { margin: -5px 0 14px; color: var(--screen-muted); font-size: 11px; line-height: 1.5; }
 .roadmap-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 0 0 16px; padding: 0; list-style: none; }
