@@ -568,6 +568,63 @@ final class IssuesService
         }
     }
 
+    public function bulkSetShared(AuthenticatedUser $user, int $projectId, array $input): int
+    {
+        $this->requireProjectAccess($user, $projectId, 'issues.share');
+        $issueIds = $input['issue_ids'] ?? null;
+        if (!is_array($issueIds) || $issueIds === [] || count($issueIds) > 500) {
+            throw new ApiException(422, 'validation_failed', 'Select between 1 and 500 issues to update sharing on.');
+        }
+        $seen = [];
+        foreach ($issueIds as $issueId) {
+            if (!is_int($issueId) || $issueId < 1) {
+                throw new ApiException(422, 'validation_failed', 'issue_ids must contain positive integers.');
+            }
+            if (isset($seen[$issueId])) {
+                throw new ApiException(422, 'validation_failed', 'issue_ids cannot contain duplicates.');
+            }
+            $seen[$issueId] = true;
+        }
+        $isShared = $input['is_shared'] ?? null;
+        if (!is_bool($isShared)) {
+            throw new ApiException(422, 'validation_failed', 'is_shared must be a boolean.');
+        }
+
+        $issues = [];
+        foreach ($issueIds as $issueId) {
+            $issue = $this->issues->find($user->workspaceId, $issueId);
+            if ($issue === null || $issue['project_id'] !== $projectId) {
+                throw new ApiException(404, 'not_found', 'One or more issues were not found in this project.');
+            }
+            $issues[] = $issue;
+        }
+
+        $ownsTransaction = !$this->pdo->inTransaction();
+        if ($ownsTransaction) $this->pdo->beginTransaction();
+        try {
+            $updatedCount = 0;
+            foreach ($issues as $issue) {
+                if ($issue['is_shared'] === $isShared) continue;
+                if (!$this->issues->setShared($user->workspaceId, $projectId, $issue['id'], $isShared)) {
+                    $current = $this->issues->find($user->workspaceId, $issue['id']);
+                    if ($current === null || $current['project_id'] !== $projectId) {
+                        throw new ApiException(404, 'not_found', 'One or more issues were not found in this project.');
+                    }
+                    if ($current['is_shared'] !== $isShared) {
+                        throw new ApiException(409, 'issue_changed', 'One or more selected issues changed. Refresh and try again.');
+                    }
+                    continue;
+                }
+                $updatedCount++;
+            }
+            if ($ownsTransaction) $this->pdo->commit();
+            return $updatedCount;
+        } catch (Throwable $exception) {
+            if ($ownsTransaction && $this->pdo->inTransaction()) $this->pdo->rollBack();
+            throw $exception;
+        }
+    }
+
     public function approve(AuthenticatedUser $user, int $issueId): void
     {
         $issue = $this->issues->approvalIssue($user->workspaceId, $issueId);

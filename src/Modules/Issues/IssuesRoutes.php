@@ -87,6 +87,20 @@ final class IssuesRoutes
             ]);
         });
 
+        $router->add('POST', '/api/v1/projects/{id}/issues/share', function (
+            Request $request,
+            array $params,
+            AuthenticatedUser $user,
+        ): Response {
+            return Response::json(200, [
+                'updated_count' => $this->service->bulkSetShared(
+                    $user,
+                    self::positiveId($params['id']),
+                    $request->body,
+                ),
+            ]);
+        });
+
         $router->add('GET', '/api/v1/issues/{id}/history', function (
             Request $request,
             array $params,

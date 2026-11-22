@@ -207,6 +207,23 @@ final class IssueRepository
         ]);
     }
 
+    public function setShared(int $workspaceId, int $projectId, int $issueId, bool $isShared): bool
+    {
+        $statement = $this->pdo->prepare(
+            'UPDATE issues SET is_shared = :is_shared
+             WHERE workspace_id = :workspace_id AND project_id = :project_id AND id = :id
+               AND is_shared <> :current_is_shared AND deleted_at IS NULL'
+        );
+        $statement->execute([
+            'workspace_id' => $workspaceId,
+            'project_id' => $projectId,
+            'id' => $issueId,
+            'is_shared' => $isShared ? 1 : 0,
+            'current_is_shared' => $isShared ? 1 : 0,
+        ]);
+        return $statement->rowCount() === 1;
+    }
+
     public function moveUnassignedToMilestone(
         int $workspaceId,
         int $projectId,

@@ -732,6 +732,8 @@ const issueBulkAssignCount = issueBulkAssignToolbar.querySelector<HTMLElement>('
 const issueBulkAssignSelectVisible = issueBulkAssignToolbar.querySelector<HTMLButtonElement>('.issue-bulk-assign-select-visible')!;
 const issueBulkAssignTarget = issueBulkAssignToolbar.querySelector<HTMLSelectElement>('.issue-bulk-assign-target')!;
 const issueBulkAssignApply = issueBulkAssignToolbar.querySelector<HTMLButtonElement>('.issue-bulk-assign-apply')!;
+const issueBulkShareApply = issueBulkAssignToolbar.querySelector<HTMLButtonElement>('.issue-bulk-share-apply')!;
+const issueBulkUnshareApply = issueBulkAssignToolbar.querySelector<HTMLButtonElement>('.issue-bulk-unshare-apply')!;
 const issueBulkAssignCancel = issueBulkAssignToolbar.querySelector<HTMLButtonElement>('.issue-bulk-assign-cancel')!;
 const issueList = document.querySelector<HTMLUListElement>('#issue-list')!;
 const deletedIssuesDetails = document.querySelector<HTMLDetailsElement>('#deleted-issues-details')!;
@@ -795,7 +797,7 @@ let bulkMovePending = false;
 let selectedBulkMoveIssueIds = new Set<number>();
 let bulkMoveMilestoneId: number | null = null;
 let bulkAssignSelectionMode = false;
-let bulkAssignPending = false;
+let bulkSelectionActionPending = false;
 let selectedBulkAssignIssueIds = new Set<number>();
 let visibleBulkAssignIssueIds = new Set<number>();
 let bulkAssignTargetValue = '';
@@ -4462,7 +4464,7 @@ issueScope.addEventListener('change', () => {
   renderProjectIssueBoard();
 });
 issueBulkAssignToggle.addEventListener('click', () => {
-  if (bulkAssignPending || bulkMovePending) return;
+  if (bulkSelectionActionPending || bulkMovePending) return;
   if (bulkAssignSelectionMode) {
     clearBulkAssignSelection();
   } else {
@@ -4475,7 +4477,7 @@ issueBulkAssignToggle.addEventListener('click', () => {
   if (bulkAssignSelectionMode) issueList.querySelector<HTMLInputElement>('.issue-bulk-assign-checkbox')?.focus();
 });
 issueBulkAssignSelectVisible.addEventListener('click', () => {
-  if (bulkAssignPending || bulkMovePending) return;
+  if (bulkSelectionActionPending || bulkMovePending) return;
   if (visibleBulkAssignIssueIds.size > 500) {
     report('Assign up to 500 issues at a time.', true);
     return;
@@ -4488,8 +4490,10 @@ issueBulkAssignTarget.addEventListener('change', () => {
   syncIssueBulkAssignControls();
 });
 issueBulkAssignApply.addEventListener('click', () => void assignSelectedIssues());
+issueBulkShareApply.addEventListener('click', () => void updateSelectedIssuesSharing(true));
+issueBulkUnshareApply.addEventListener('click', () => void updateSelectedIssuesSharing(false));
 issueBulkAssignCancel.addEventListener('click', () => {
-  if (bulkAssignPending) return;
+  if (bulkSelectionActionPending) return;
   clearBulkAssignSelection();
   renderProjectIssueBoard();
   issueBulkAssignToggle.focus();
@@ -5881,19 +5885,21 @@ function syncIssueBulkAssignControls(): void {
   issueBulkAssignToolbar.hidden = !bulkAssignSelectionMode;
   issueBulkAssignToggle.textContent = bulkAssignSelectionMode ? 'Cancel selection' : 'Select issues';
   issueBulkAssignToggle.setAttribute('aria-pressed', String(bulkAssignSelectionMode));
-  issueBulkAssignToggle.disabled = bulkAssignPending || bulkMovePending || readOnly
+  issueBulkAssignToggle.disabled = bulkSelectionActionPending || bulkMovePending || readOnly
     || (!bulkAssignSelectionMode && visibleBulkAssignIssueIds.size === 0);
   setTextContentIfChanged(issueBulkAssignCount, `${selectedBulkAssignIssueIds.size} selected`);
-  issueBulkAssignSelectVisible.disabled = bulkAssignPending || readOnly || visibleBulkAssignIssueIds.size === 0
+  issueBulkAssignSelectVisible.disabled = bulkSelectionActionPending || readOnly || visibleBulkAssignIssueIds.size === 0
     || visibleBulkAssignIssueIds.size > 500 || bulkMovePending;
   issueBulkAssignSelectVisible.title = visibleBulkAssignIssueIds.size > 500 ? 'Select up to 500 issues at a time.' : '';
-  issueBulkAssignTarget.disabled = bulkAssignPending || bulkMovePending || readOnly;
-  issueBulkAssignApply.disabled = bulkAssignPending || bulkMovePending || readOnly || selectedBulkAssignIssueIds.size === 0
+  issueBulkAssignTarget.disabled = bulkSelectionActionPending || bulkMovePending || readOnly;
+  issueBulkAssignApply.disabled = bulkSelectionActionPending || bulkMovePending || readOnly || selectedBulkAssignIssueIds.size === 0
     || bulkAssignTargetValue === '';
-  issueBulkAssignCancel.disabled = bulkAssignPending || bulkMovePending;
+  issueBulkShareApply.disabled = bulkSelectionActionPending || bulkMovePending || readOnly || selectedBulkAssignIssueIds.size === 0;
+  issueBulkUnshareApply.disabled = bulkSelectionActionPending || bulkMovePending || readOnly || selectedBulkAssignIssueIds.size === 0;
+  issueBulkAssignCancel.disabled = bulkSelectionActionPending || bulkMovePending;
   for (const checkbox of issueList.querySelectorAll<HTMLInputElement>('.issue-bulk-assign-checkbox')) {
     checkbox.checked = selectedBulkAssignIssueIds.has(Number(checkbox.dataset.issueId));
-    checkbox.disabled = bulkAssignPending || readOnly
+    checkbox.disabled = bulkSelectionActionPending || readOnly
       || (!checkbox.checked && selectedBulkAssignIssueIds.size >= 500);
   }
 }
@@ -6186,7 +6192,7 @@ function syncIssueBulkMoveToolbar(toolbar: HTMLDivElement, issues: Issue[]): voi
   const selectAll = toolbar.querySelector<HTMLButtonElement>('.issue-bulk-select-all');
   const milestoneSelect = toolbar.querySelector<HTMLSelectElement>('.issue-bulk-move-milestone');
   const moveButton = toolbar.querySelector<HTMLButtonElement>('.issue-bulk-move-button');
-  const disabled = bulkMovePending || bulkAssignPending
+  const disabled = bulkMovePending || bulkSelectionActionPending
     || (activeProject !== null && projectStatusIsReadOnly(activeProject.status));
   if (count !== null) setTextContentIfChanged(count, `${selectedBulkMoveIssueIds.size} selected`);
   if (selectAll !== null) {
@@ -6239,9 +6245,9 @@ async function assignSelectedIssues(): Promise<void> {
   const assigneeId = bulkAssignTargetValue === 'unassigned' ? null : Number(bulkAssignTargetValue);
   if (projectId === undefined || issueIds.length === 0 || issueIds.length > 500
     || bulkAssignTargetValue === '' || (assigneeId !== null && (!Number.isInteger(assigneeId) || assigneeId < 1))
-    || bulkAssignPending || bulkMovePending) return;
+    || bulkSelectionActionPending || bulkMovePending) return;
 
-  bulkAssignPending = true;
+  bulkSelectionActionPending = true;
   syncIssueBulkAssignControls();
   try {
     const result = await api<{ assigned_count: number }>(`/projects/${projectId}/issues/assign`, {
@@ -6249,7 +6255,7 @@ async function assignSelectedIssues(): Promise<void> {
       body: JSON.stringify({ issue_ids: issueIds, assignee_id: assigneeId }),
     });
     if (activeProject?.id !== projectId) {
-      bulkAssignPending = false;
+      bulkSelectionActionPending = false;
       if (activeProject !== null && !issuesView.hidden) renderProjectIssueBoard();
       return;
     }
@@ -6261,7 +6267,7 @@ async function assignSelectedIssues(): Promise<void> {
       renderIssueDetail();
     }
     clearBulkAssignSelection();
-    bulkAssignPending = false;
+    bulkSelectionActionPending = false;
     renderProjectIssueBoard();
     issueBulkAssignToggle.focus();
     const description = assigneeId === null
@@ -6270,7 +6276,7 @@ async function assignSelectedIssues(): Promise<void> {
     report(description);
     void loadProjectIssues(projectId);
   } catch (error) {
-    bulkAssignPending = false;
+    bulkSelectionActionPending = false;
     if (activeProject?.id !== projectId) {
       if (activeProject !== null && !issuesView.hidden) renderProjectIssueBoard();
       return;
@@ -6281,6 +6287,58 @@ async function assignSelectedIssues(): Promise<void> {
       return;
     }
     report(error instanceof Error ? error.message : 'Could not assign the selected issues.', true);
+  }
+}
+
+async function updateSelectedIssuesSharing(isShared: boolean): Promise<void> {
+  const projectId = activeProject?.id;
+  const issueIds = Array.from(selectedBulkAssignIssueIds);
+  if (projectId === undefined || issueIds.length === 0 || issueIds.length > 500
+    || bulkSelectionActionPending || bulkMovePending) return;
+
+  bulkSelectionActionPending = true;
+  syncIssueBulkAssignControls();
+  try {
+    const result = await api<{ updated_count: number }>(`/projects/${projectId}/issues/share`, {
+      method: 'POST',
+      body: JSON.stringify({ issue_ids: issueIds, is_shared: isShared }),
+    });
+    if (activeProject?.id !== projectId) {
+      bulkSelectionActionPending = false;
+      if (activeProject !== null && !issuesView.hidden) renderProjectIssueBoard();
+      return;
+    }
+    projectIssues = projectIssues.map((issue) => issueIds.includes(issue.id)
+      ? { ...issue, is_shared: isShared }
+      : issue);
+    if (selectedIssue !== null && issueIds.includes(selectedIssue.id)) {
+      selectedIssue = { ...selectedIssue, is_shared: isShared };
+      renderIssueDetail();
+    }
+    clearBulkAssignSelection();
+    bulkSelectionActionPending = false;
+    renderProjectIssueBoard();
+    issueBulkAssignToggle.focus();
+    const count = result.updated_count;
+    const description = count === 0
+      ? `Selected issues were already ${isShared ? 'shared with guests' : 'internal'}.`
+      : isShared
+        ? `Shared ${count} selected ${count === 1 ? 'issue' : 'issues'} with project guests.`
+        : `Made ${count} selected ${count === 1 ? 'issue' : 'issues'} internal.`;
+    report(description);
+    void loadProjectIssues(projectId);
+  } catch (error) {
+    bulkSelectionActionPending = false;
+    if (activeProject?.id !== projectId) {
+      if (activeProject !== null && !issuesView.hidden) renderProjectIssueBoard();
+      return;
+    }
+    syncIssueBulkAssignControls();
+    if (error instanceof ApiFailure && error.status === 401) {
+      showSignedOut();
+      return;
+    }
+    report(error instanceof Error ? error.message : 'Could not update sharing for selected issues.', true);
   }
 }
 
@@ -7409,12 +7467,12 @@ function createIssueBulkSelectCheckbox(issue: Issue): HTMLInputElement {
   checkbox.className = 'issue-bulk-select-checkbox';
   checkbox.dataset.issueId = String(issue.id);
   checkbox.checked = selectedBulkMoveIssueIds.has(issue.id);
-  checkbox.disabled = bulkMovePending || bulkAssignPending
+  checkbox.disabled = bulkMovePending || bulkSelectionActionPending
     || (!checkbox.checked && selectedBulkMoveIssueIds.size >= 500)
     || (activeProject !== null && projectStatusIsReadOnly(activeProject.status));
   checkbox.setAttribute('aria-label', `Select ${issue.title}`);
   checkbox.addEventListener('change', () => {
-          if (bulkMovePending || bulkAssignPending) return;
+          if (bulkMovePending || bulkSelectionActionPending) return;
     if (checkbox.checked) {
       if (selectedBulkMoveIssueIds.size >= 500) {
         checkbox.checked = false;
@@ -7436,12 +7494,12 @@ function createIssueBulkAssignCheckbox(issue: Issue): HTMLInputElement {
   checkbox.className = 'issue-bulk-assign-checkbox';
   checkbox.dataset.issueId = String(issue.id);
   checkbox.checked = selectedBulkAssignIssueIds.has(issue.id);
-  checkbox.disabled = bulkAssignPending || bulkMovePending
+  checkbox.disabled = bulkSelectionActionPending || bulkMovePending
     || (!checkbox.checked && selectedBulkAssignIssueIds.size >= 500)
     || (activeProject !== null && projectStatusIsReadOnly(activeProject.status));
   checkbox.setAttribute('aria-label', `Select ${issue.title} for assignment`);
   checkbox.addEventListener('change', () => {
-    if (bulkAssignPending) return;
+    if (bulkSelectionActionPending) return;
     if (checkbox.checked) {
       if (selectedBulkAssignIssueIds.size >= 500) {
         checkbox.checked = false;

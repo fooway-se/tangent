@@ -62,6 +62,36 @@ test('issue board offers opt-in bulk assignment across milestone groups', () => 
   assert.match(css, /\.issue-bulk-assign-toolbar\s*\{/);
 });
 
+test('issue selection toolbar groups selection, assignment, and guest-access controls', () => {
+  const toolbarStart = html.indexOf('id="issue-bulk-assign-toolbar"');
+  const toolbarEnd = html.indexOf('\n                </div>\n                <ul id="issue-list"', toolbarStart);
+  const toolbar = html.slice(toolbarStart, toolbarEnd);
+  const selectionStart = toolbar.indexOf('class="issue-bulk-selection-actions"');
+  const selection = toolbar.slice(selectionStart, toolbar.indexOf('</div>', selectionStart));
+  const assignmentStart = toolbar.indexOf('class="issue-bulk-action-group issue-bulk-assignment-actions"');
+  const assignment = toolbar.slice(assignmentStart, toolbar.indexOf('</div>', assignmentStart));
+  const guestAccessStart = toolbar.indexOf('class="issue-bulk-action-group issue-bulk-sharing-actions"');
+  const guestAccess = toolbar.slice(guestAccessStart, toolbar.indexOf('</div>', guestAccessStart));
+
+  assert.match(selection, /Selection/);
+  assert.match(selection, /Select visible/);
+  assert.match(selection, /Cancel/);
+  assert.match(assignment, /aria-label="Assignment"/);
+  assert.doesNotMatch(assignment, />Assignment</);
+  assert.match(assignment, /aria-label="Assign selected issues to"/);
+  assert.match(assignment, /class="button button-primary issue-bulk-assign-apply" type="button"[^>]*>Assign<\/button>/);
+  assert.match(guestAccess, /Guest access/);
+  assert.match(guestAccess, /class="button button-primary issue-bulk-share-apply" type="button"[^>]*>Share<\/button>/);
+  assert.match(guestAccess, /class="button button-secondary issue-bulk-unshare-apply" type="button"[^>]*>Unshare<\/button>/);
+  assert.match(css, /\.issue-bulk-selection-actions\s*\{[^}]*flex:\s*0 0 360px/);
+  assert.match(css, /\.issue-bulk-selection-actions\s*\{[^}]*flex-wrap:\s*nowrap/);
+  assert.match(css, /\.issue-bulk-selection-actions \.issue-bulk-assign-select-visible\s*\{[^}]*margin-left:\s*auto/);
+  assert.doesNotMatch(toolbar, /Guests with access to this project can see shared issues/);
+  assert.match(app, /function updateSelectedIssuesSharing\(isShared: boolean\)/);
+  assert.match(app, /\/projects\/\$\{projectId\}\/issues\/share/);
+  assert.match(app, /JSON\.stringify\(\{\s*issue_ids: issueIds,\s*is_shared: isShared\s*\}\)/);
+});
+
 test('ongoing issues are marked separately, grouped apart from unplanned work, and excluded from project progress', () => {
   assert.match(html, /name="is_ongoing"/);
   assert.match(app, /if \(issueQuickAddOngoing\.checked\) \{\s*issueInput\.is_ongoing = true/);

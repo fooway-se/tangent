@@ -80,6 +80,102 @@ final class GuestViewTest extends ApiTestCase
         self::assertSame([['id' => $projectId, 'name' => 'Client project', 'slug' => 'client-project']], $projects->body['projects']);
     }
 
+    public function testBulkSharingSelectedIssuesControlsGuestVisibilityAndCanBeUndone(): void
+    {
+        $admin = $this->login($this->adminEmail);
+        $projectId = $this->createProject($admin, 'Bulk guest sharing');
+        $guestId = $this->createUser($admin, 'Customer', 'bulk-customer@example.test', 'guest');
+        $this->addMember($admin, $projectId, $guestId);
+        $guest = $this->login('bulk-customer@example.test');
+
+        $guest = $this->login('bulk-customer@example.test');
+
+        $first = $this->createIssue($admin, $projectId, 'Share first selected issue');
+        $second = $this->createIssue($admin, $projectId, 'Share second selected issue');
+        $internal = $this->createIssue($admin, $projectId, 'Leave this issue internal');
+        $guestAttempt = $this->cookieRequest(
+            'POST',
+            "/api/v1/projects/{$projectId}/issues/share",
+            $guest['cookie'],
+            ['issue_ids' => [$first], 'is_shared' => true],
+            $guest['csrf'],
+        );
+        self::assertSame(404, $guestAttempt->status);
+
+        $shared = $this->cookieRequest(
+            'POST',
+            "/api/v1/projects/{$projectId}/issues/share",
+            $admin['cookie'],
+            ['issue_ids' => [$first, $second], 'is_shared' => true],
+            $admin['csrf'],
+        );
+        self::assertSame(200, $shared->status, json_encode($shared->body));
+        self::assertSame(2, $shared->body['updated_count']);
+
+        $clientView = $this->cookieRequest('GET', "/api/v1/projects/{$projectId}/client-view", $guest['cookie']);
+        self::assertSame(200, $clientView->status, json_encode($clientView->body));
+        self::assertEqualsCanonicalizing([$first, $second], array_column($clientView->body['items'], 'id'));
+        self::assertNotContains($internal, array_column($clientView->body['items'], 'id'));
+
+        $internalized = $this->cookieRequest(
+            'POST',
+            "/api/v1/projects/{$projectId}/issues/share",
+            $admin['cookie'],
+            ['issue_ids' => [$first, $second], 'is_shared' => false],
+            $admin['csrf'],
+        );
+        self::assertSame(200, $internalized->status, json_encode($internalized->body));
+        self::assertSame(2, $internalized->body['updated_count']);
+
+        $clientView = $this->cookieRequest('GET', "/api/v1/projects/{$projectId}/client-view", $guest['cookie']);
+        self::assertSame(200, $clientView->status, json_encode($clientView->body));
+        self::assertSame([], $clientView->body['items']);
+    }
+
+    public function testBulkSharingRejectsMixedProjectsWithoutPartialChanges(): void
+    {
+        $admin = $this->login($this->adminEmail);
+        $projectId = $this->createProject($admin, 'Bulk sharing target');
+        $otherProjectId = $this->createProject($admin, 'Bulk sharing source');
+        $targetIssue = $this->createIssue($admin, $projectId, 'Keep this issue internal');
+        $otherIssue = $this->createIssue($admin, $otherProjectId, 'Wrong project');
+
+        $response = $this->cookieRequest(
+            'POST',
+            "/api/v1/projects/{$projectId}/issues/share",
+            $admin['cookie'],
+            ['issue_ids' => [$targetIssue, $otherIssue], 'is_shared' => true],
+            $admin['csrf'],
+        );
+        self::assertSame(404, $response->status);
+
+        $listed = $this->cookieRequest('GET', "/api/v1/projects/{$projectId}/issues", $admin['cookie']);
+        self::assertSame(200, $listed->status);
+        self::assertFalse($listed->body['issues'][0]['is_shared']);
+    }
+
+    public function testBulkSharingRequiresABooleanAndUniqueNonemptyIssueSelection(): void
+    {
+        $admin = $this->login($this->adminEmail);
+        $projectId = $this->createProject($admin, 'Bulk sharing validation');
+        $issueId = $this->createIssue($admin, $projectId, 'Validate bulk sharing');
+
+        foreach ([
+            ['issue_ids' => [$issueId], 'is_shared' => 'true'],
+            ['issue_ids' => [$issueId, $issueId], 'is_shared' => true],
+            ['issue_ids' => [], 'is_shared' => true],
+        ] as $input) {
+            $response = $this->cookieRequest(
+                'POST',
+                "/api/v1/projects/{$projectId}/issues/share",
+                $admin['cookie'],
+                $input,
+                $admin['csrf'],
+            );
+            self::assertSame(422, $response->status, json_encode($response->body));
+        }
+    }
+
     public function testGuestCanCommentButCannotReadInternalProjectContent(): void
     {
         $admin = $this->login($this->adminEmail);

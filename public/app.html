@@ -365,16 +365,24 @@
                   <button id="issue-bulk-assign-toggle" class="button button-secondary issue-bulk-assign-toggle" type="button" aria-pressed="false">Select issues</button>
                   <span id="issue-count-summary" class="issue-count-summary"></span>
                 </div>
-                <div id="issue-bulk-assign-toolbar" class="issue-bulk-assign-toolbar" role="group" aria-label="Assign selected issues" hidden>
-                  <span class="issue-bulk-assign-count" aria-live="polite">0 selected</span>
-                  <button class="button button-secondary issue-bulk-assign-select-visible" type="button">Select visible</button>
-                  <label class="issue-bulk-assign-target-label">Assign to
+                <div id="issue-bulk-assign-toolbar" class="issue-bulk-assign-toolbar" role="group" aria-label="Actions for selected issues" hidden>
+                  <div class="issue-bulk-selection-actions" role="group" aria-label="Selection">
+                    <span class="issue-bulk-action-label">Selection</span>
+                    <span class="issue-bulk-assign-count" aria-live="polite">0 selected</span>
+                    <button class="button button-secondary issue-bulk-assign-select-visible" type="button">Select visible</button>
+                    <button class="button button-quiet issue-bulk-assign-cancel" type="button">Cancel</button>
+                  </div>
+                  <div class="issue-bulk-action-group issue-bulk-assignment-actions" role="group" aria-label="Assignment">
                     <select class="issue-bulk-assign-target" aria-label="Assign selected issues to">
                       <option value="">Choose assignee</option>
                     </select>
-                  </label>
-                  <button class="button button-primary issue-bulk-assign-apply" type="button">Assign selected</button>
-                  <button class="button button-quiet issue-bulk-assign-cancel" type="button">Cancel</button>
+                    <button class="button button-primary issue-bulk-assign-apply" type="button" aria-label="Assign selected issues">Assign</button>
+                  </div>
+                  <div class="issue-bulk-action-group issue-bulk-sharing-actions" role="group" aria-label="Guest access">
+                    <span class="issue-bulk-action-label">Guest access</span>
+                    <button class="button button-primary issue-bulk-share-apply" type="button" aria-label="Share selected issues with project guests">Share</button>
+                    <button class="button button-secondary issue-bulk-unshare-apply" type="button" aria-label="Unshare selected issues">Unshare</button>
+                  </div>
                 </div>
                 <ul id="issue-list" class="issue-list" aria-live="polite"></ul>
                 <p id="empty-issues" class="empty-state" hidden>No issues yet. Create the first one.</p>

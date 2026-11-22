@@ -431,8 +431,12 @@ select { padding-right: 28px; background: var(--screen-inset) url("data:image/sv
 .issue-bulk-assign-toggle { padding: 5px 9px; font-size: 11px; white-space: nowrap; }
 .issue-bulk-assign-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; border: 1px solid var(--screen-line); border-radius: var(--radius-panel); padding: 8px 10px; background: var(--screen-inset); }
 .issue-bulk-assign-toolbar[hidden] { display: none; }
-.issue-bulk-assign-count { margin-right: auto; color: var(--screen-muted); font: 700 11px var(--font-mono); }
-.issue-bulk-assign-target-label { display: flex; align-items: center; gap: 7px; color: var(--screen-muted); font-size: 11px; }
+.issue-bulk-selection-actions, .issue-bulk-action-group { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.issue-bulk-selection-actions { flex: 0 0 360px; flex-wrap: nowrap; }
+.issue-bulk-selection-actions .issue-bulk-assign-select-visible { margin-left: auto; }
+.issue-bulk-action-group { border-left: 1px solid var(--screen-line); padding-left: 12px; }
+.issue-bulk-action-label { color: var(--screen-muted); font: 700 11px/1.2 var(--font-display); letter-spacing: 1px; text-transform: uppercase; white-space: nowrap; }
+.issue-bulk-assign-count { color: var(--screen-muted); font: 700 11px var(--font-mono); }
 .issue-bulk-assign-target { width: auto; min-width: 150px; max-width: 100%; }
 .issue-bulk-assign-checkbox { width: 16px; height: 16px; margin: 0 5px; accent-color: var(--accent); cursor: pointer; }
 .issue-bulk-assign-checkbox:disabled { cursor: not-allowed; }
@@ -893,6 +897,8 @@ dialog::backdrop { background: var(--backdrop); }
   .guest-planning-grid { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 640px) {
+  .issue-bulk-selection-actions { flex: 1 1 100%; flex-wrap: wrap; width: 100%; margin-right: 0; }
+  .issue-bulk-action-group { width: 100%; border-top: 1px solid var(--screen-line); border-left: 0; padding: 8px 0 0; }
   .guest-header { gap: 9px 12px; padding: 10px 16px; }
   .guest-header .brand { padding: 6px 9px; font-size: 16px; }
   .guest-title { flex: 1; font-size: 16px; }
