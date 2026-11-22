@@ -803,7 +803,7 @@ dialog::backdrop { background: var(--backdrop); }
 .guest-project-label select { width: auto; min-width: 120px; max-width: 240px; padding: 5px 28px 5px 8px; font-size: 11px; }
 .guest-cap { border: 1px solid var(--cap-edge); border-bottom-width: var(--key-depth); border-radius: var(--radius-cap); padding: 2px 8px; color: var(--plate-ink); background: linear-gradient(180deg, var(--cap-top), var(--cap-bottom)); font-size: 11px; }
 .guest-user { color: var(--case-muted); font-size: 12px; }
-.guest-status-line { margin: 18px 5vw 0; color: var(--case-muted); font-size: 12px; }
+.guest-status-line { width: min(1280px, calc(100% - 48px)); margin: 18px auto 0; color: var(--case-muted); font-size: 12px; }
 .guest-status-line:empty { display: none; }
 .guest-status-line.error { color: var(--case-error); }
 .guest-main { display: block; width: min(1280px, calc(100% - 48px)); margin: 24px auto 40px; overflow: hidden; border-radius: var(--radius-screen); color: var(--screen-ink); background: radial-gradient(ellipse at 15% 0%, var(--screen-glow), rgba(0, 0, 0, 0) 55%), var(--screen); box-shadow: 0 0 0 3px var(--screen-rim), 0 0 0 5px var(--vent-dark), 0 2px 0 5px var(--case-light), inset 0 0 70px var(--screen-vignette); }
@@ -901,6 +901,7 @@ dialog::backdrop { background: var(--backdrop); }
   .guest-cap { margin-left: auto; }
   .guest-user { display: none; }
   .guest-header .button-quiet { padding: 5px 7px; }
+  .guest-status-line { width: calc(100% - 24px); }
   .guest-main { width: calc(100% - 24px); margin: 18px auto 28px; }
   .guest-screen-heading { min-height: 54px; padding: 0 16px 8px; }
   .guest-project-breadcrumb { gap: 8px; font-size: 12px; }
