@@ -1188,12 +1188,12 @@
   --night-glow: #344c42;
   --night-muted: #d7e3d4;
 
-  --case-top: #ded7c8;
-  --case-mid: #d1c9b8;
-  --case-bottom: #c1b8a4;
-  --case-shade: #a69c86;
-  --case-edge: #8e8574;
-  --case-light: #f1ebdd;
+  --case-top: #e1dbce;
+  --case-mid: #d4cdbf;
+  --case-bottom: #c5bcaa;
+  --case-shade: #a39a88;
+  --case-edge: #898173;
+  --case-light: #f3eee2;
   --case-ink: #282824;
   --case-muted: #474940;
   --case-error: #96392d;
@@ -1202,16 +1202,16 @@
   --footer-top: #cfc7b5;
   --footer-bottom: #bfb6a3;
 
-  --key-top: #eeeadc;
-  --key-bottom: #cfc5af;
+  --key-top: #f0ecdf;
+  --key-bottom: #d2c8b5;
   --key-highlight: #fffaf0;
 
-  --cap-top: #353735;
-  --cap-bottom: #1c1e1c;
-  --cap-edge: #101210;
-  --plate: #292b29;
-  --plate-ink: #efe8d8;
-  --plate-muted: #c9c2b4;
+  --cap-top: #46413d;
+  --cap-bottom: #292725;
+  --cap-edge: #171513;
+  --plate: #393533;
+  --plate-ink: #f1ecdf;
+  --plate-muted: #cbc4b7;
 
   --screen: #0b211a;
   --screen-rim: #06120f;
@@ -1234,15 +1234,15 @@
   --screen-group-top: #34553a;
   --screen-group-bottom: #29442f;
 
-  --accent: #e3b654;
-  --accent-edge: #9c6b20;
-  --accent-ink: #261c0d;
+  --accent: #d9ac62;
+  --accent-edge: #8e6229;
+  --accent-ink: #241a0c;
   --accent-shine: rgba(255, 255, 255, 0.5);
   --success: #9fd783;
   --danger: #ff9987;
-  --power-light: #d96a47;
-  --focus-ring: rgba(227, 182, 84, 0.5);
-  --signal-stripe: linear-gradient(to bottom, #d96a47 0 25%, #e3b654 25% 50%, #91bd72 50% 75%, #4b9587 75% 100%);
+  --power-light: #c86043;
+  --focus-ring: rgba(217, 172, 98, 0.5);
+  --signal-stripe: linear-gradient(to bottom, #393533 0 25%, #766b5b 25% 50%, #b8ad98 50% 75%, #514a40 75% 100%);
 }
 
 /* Beehive & Beige: ivory shell, black keyboard surround, and Microbee orange. */
