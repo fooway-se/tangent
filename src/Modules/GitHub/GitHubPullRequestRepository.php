@@ -14,7 +14,7 @@ final class GitHubPullRequestRepository
     {
     }
 
-    public function create(int $workspaceId, int $projectId, int $issueId, int $userId, array $repository, array $pullRequest): array
+    public function create(int $workspaceId, int $projectId, int $issueId, ?int $userId, array $repository, array $pullRequest): array
     {
         $statement = $this->pdo->prepare(
             'INSERT INTO issue_pull_requests
@@ -52,6 +52,54 @@ final class GitHubPullRequestRepository
             throw $exception;
         }
         return $this->findById($workspaceId, (int) $this->pdo->lastInsertId()) ?? [];
+    }
+
+    public function findAutoLinkTarget(int $repositoryId, int $installationId, int $issueId): ?array
+    {
+        $statement = $this->pdo->prepare(
+            'SELECT p.workspace_id, p.id AS project_id, p.github_installation_id, p.github_repository_id,
+                    p.github_repository_owner AS owner, p.github_repository_name AS name,
+                    p.github_repository_full_name AS full_name
+             FROM github_installations gi
+             INNER JOIN projects p ON p.workspace_id = gi.workspace_id
+                                  AND p.github_installation_id = gi.installation_id
+             INNER JOIN issues i ON i.workspace_id = p.workspace_id AND i.project_id = p.id
+             WHERE gi.installation_id = :installation_id
+               AND p.github_repository_id = :repository_id
+               AND i.id = :issue_id AND i.deleted_at IS NULL
+             LIMIT 1'
+        );
+        $statement->execute([
+            'installation_id' => $installationId,
+            'repository_id' => $repositoryId,
+            'issue_id' => $issueId,
+        ]);
+        $target = $statement->fetch(PDO::FETCH_ASSOC);
+        if ($target === false) return null;
+        foreach (['workspace_id', 'project_id', 'github_installation_id', 'github_repository_id'] as $field) {
+            $target[$field] = (int) $target[$field];
+        }
+        return $target;
+    }
+
+    public function createAutomatically(int $workspaceId, int $projectId, int $issueId, array $repository, array $pullRequest): void
+    {
+        try {
+            $this->create($workspaceId, $projectId, $issueId, null, $repository, $pullRequest);
+        } catch (ApiException $exception) {
+            if ($exception->apiCode !== 'github_pull_request_already_linked') throw $exception;
+            $statement = $this->pdo->prepare(
+                'SELECT 1 FROM issue_pull_requests
+                 WHERE workspace_id = :workspace_id AND github_repository_id = :repository_id AND pull_number = :pull_number
+                 LIMIT 1'
+            );
+            $statement->execute([
+                'workspace_id' => $workspaceId,
+                'repository_id' => $repository['id'],
+                'pull_number' => $pullRequest['number'],
+            ]);
+            if ($statement->fetchColumn() === false) throw $exception;
+        }
     }
 
     public function listForIssue(int $workspaceId, int $issueId): array

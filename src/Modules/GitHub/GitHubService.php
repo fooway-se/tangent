@@ -331,12 +331,40 @@ final class GitHubService
             || !is_array($repository) || !is_array($remotePullRequest)) return;
 
         $linked = $this->pullRequests->findForWebhook($repositoryId, $number, $installationId);
+        $pullRequest = null;
+        if ($linked === null && $action === 'opened') {
+            $head = $remotePullRequest['head'] ?? null;
+            $issueId = IssueBranchName::issueIdFromBranch(is_array($head) ? ($head['ref'] ?? null) : null);
+            if ($issueId !== null) {
+                $target = $this->pullRequests->findAutoLinkTarget($repositoryId, $installationId, $issueId);
+                if ($target !== null
+                    && is_string($repository['full_name'] ?? null)
+                    && strcasecmp($repository['full_name'], (string) $target['full_name']) === 0) {
+                    $pullRequest = self::normalizePullRequest($remotePullRequest, $number, (string) $target['full_name']);
+                    $connectedRepository = [
+                        'installation_id' => $target['github_installation_id'],
+                        'id' => $target['github_repository_id'],
+                        'owner' => $target['owner'],
+                        'name' => $target['name'],
+                        'full_name' => $target['full_name'],
+                    ];
+                    $this->pullRequests->createAutomatically(
+                        $target['workspace_id'],
+                        $target['project_id'],
+                        $issueId,
+                        $connectedRepository,
+                        $pullRequest,
+                    );
+                    $linked = $this->pullRequests->findForWebhook($repositoryId, $number, $installationId);
+                }
+            }
+        }
         if ($linked === null || $linked['connected_repository_id'] !== $repositoryId
             || $linked['connected_installation_id'] !== $linked['github_installation_id']) return;
         if ($installationId !== $linked['github_installation_id']) return;
         if (strcasecmp((string) ($repository['full_name'] ?? ''), (string) $linked['repository_full_name']) !== 0) return;
 
-        $pullRequest = self::normalizePullRequest($remotePullRequest, $number, (string) $linked['repository_full_name']);
+        $pullRequest ??= self::normalizePullRequest($remotePullRequest, $number, (string) $linked['repository_full_name']);
         if (strtotime($pullRequest['updated_at']) < strtotime((string) $linked['github_updated_at'])) return;
         $oldState = $linked['state'];
         $oldDraft = $linked['is_draft'];

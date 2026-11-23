@@ -566,6 +566,120 @@ PHP;
         self::assertSame(1, (int) $eventCount->fetchColumn());
     }
 
+    public function testPullRequestOpenedFromIssueBranchIsLinkedAutomaticallyAndNotifiesInternalMembers(): void
+    {
+        $admin = $this->login($this->adminEmail);
+        $secret = 'automatic-pull-request-webhook-secret';
+        $repository = [
+            'id' => 9876543,
+            'installation_id' => 445566,
+            'owner' => 'test-org',
+            'name' => 'auto-link-repo',
+            'full_name' => 'test-org/auto-link-repo',
+            'html_url' => 'https://github.com/test-org/auto-link-repo',
+        ];
+        $installation = $this->pdo->prepare(
+            'INSERT INTO github_installations (workspace_id, installation_id, account_login, connected_by)
+             VALUES (:workspace_id, :installation_id, :account_login, :connected_by)',
+        );
+        $installation->execute([
+            'workspace_id' => $this->workspaceId,
+            'installation_id' => 445566,
+            'account_login' => 'test-org',
+            'connected_by' => $this->adminId,
+        ]);
+        $this->application = Application::create(
+            $this->pdo,
+            new AppConfig($this->workspaceId, false, 43200, 'http://localhost:8080', false, '123', 'test-app', 'unused', $secret),
+            new FakeGitHubApiClient($repository, []),
+        );
+
+        $createdProject = $this->cookieRequest('POST', '/api/v1/projects', $admin['cookie'], [
+            'name' => 'Automatic PR link project',
+            'github_repository_id' => 9876543,
+        ], $admin['csrf']);
+        self::assertSame(201, $createdProject->status, json_encode($createdProject->body));
+        $projectId = (int) $createdProject->body['project']['id'];
+        $guestId = $this->createUser($admin, 'Customer', 'auto-pr-customer@example.test', 'guest');
+        $this->addMember($admin, $projectId, $guestId);
+
+        $createdIssue = $this->cookieRequest(
+            'POST',
+            "/api/v1/projects/{$projectId}/issues",
+            $admin['cookie'],
+            ['title' => 'Automatically link its pull request'],
+            $admin['csrf'],
+        );
+        self::assertSame(201, $createdIssue->status, json_encode($createdIssue->body));
+        $issueId = (int) $createdIssue->body['issue']['id'];
+        $payload = [
+            'action' => 'opened',
+            'installation' => ['id' => 445566],
+            'repository' => ['id' => 9876543, 'full_name' => 'test-org/auto-link-repo'],
+            'pull_request' => [
+                'number' => 41,
+                'title' => 'Implement automatic linking',
+                'html_url' => 'https://github.com/test-org/auto-link-repo/pull/41',
+                'state' => 'open',
+                'merged_at' => null,
+                'draft' => false,
+                'user' => ['login' => 'developer-one'],
+                'updated_at' => '2026-11-23T10:00:00Z',
+                'head' => ['ref' => "tangent/issue-{$issueId}-automatic-linking"],
+            ],
+        ];
+        $rawBody = json_encode($payload, JSON_THROW_ON_ERROR);
+        $headers = [
+            'X-Hub-Signature-256' => 'sha256=' . hash_hmac('sha256', $rawBody, $secret),
+            'X-GitHub-Delivery' => 'automatic-pr-delivery-1',
+            'X-GitHub-Event' => 'pull_request',
+        ];
+
+        $webhook = $this->webhookRequest($rawBody, $payload, $headers);
+        self::assertSame(202, $webhook->status, json_encode($webhook->body));
+
+        $pullRequests = $this->cookieRequest('GET', "/api/v1/issues/{$issueId}/pull-requests", $admin['cookie']);
+        self::assertSame(200, $pullRequests->status, json_encode($pullRequests->body));
+        self::assertCount(1, $pullRequests->body['pull_requests']);
+        self::assertSame(41, $pullRequests->body['pull_requests'][0]['pull_number']);
+        self::assertSame('Implement automatic linking', $pullRequests->body['pull_requests'][0]['title']);
+        $linkActor = $this->pdo->prepare('SELECT linked_by FROM issue_pull_requests WHERE workspace_id = :workspace_id AND pull_number = 41');
+        $linkActor->execute(['workspace_id' => $this->workspaceId]);
+        self::assertNull($linkActor->fetchColumn(), 'Webhook-created links have no human linker.');
+
+        $eventCount = $this->pdo->prepare(
+            "SELECT COUNT(*) FROM inbox_events WHERE workspace_id = :workspace_id AND recipient_id = :recipient_id AND event_type = 'pr'",
+        );
+        $eventCount->execute(['workspace_id' => $this->workspaceId, 'recipient_id' => $this->adminId]);
+        self::assertSame(1, (int) $eventCount->fetchColumn());
+        $eventCount->execute(['workspace_id' => $this->workspaceId, 'recipient_id' => $guestId]);
+        self::assertSame(0, (int) $eventCount->fetchColumn());
+
+        $duplicate = $this->webhookRequest($rawBody, $payload, $headers);
+        self::assertTrue($duplicate->body['duplicate']);
+        $pullRequests = $this->cookieRequest('GET', "/api/v1/issues/{$issueId}/pull-requests", $admin['cookie']);
+        self::assertCount(1, $pullRequests->body['pull_requests']);
+        $eventCount->execute(['workspace_id' => $this->workspaceId, 'recipient_id' => $this->adminId]);
+        self::assertSame(1, (int) $eventCount->fetchColumn());
+
+        $unmatchedPayload = $payload;
+        $unmatchedPayload['pull_request']['number'] = 42;
+        $unmatchedPayload['pull_request']['title'] = 'Unrelated branch pull request';
+        $unmatchedPayload['pull_request']['html_url'] = 'https://github.com/test-org/auto-link-repo/pull/42';
+        $unmatchedPayload['pull_request']['head']['ref'] = 'feature/unrelated-work';
+        $unmatchedRawBody = json_encode($unmatchedPayload, JSON_THROW_ON_ERROR);
+        $unmatched = $this->webhookRequest($unmatchedRawBody, $unmatchedPayload, [
+            'X-Hub-Signature-256' => 'sha256=' . hash_hmac('sha256', $unmatchedRawBody, $secret),
+            'X-GitHub-Delivery' => 'automatic-pr-delivery-2',
+            'X-GitHub-Event' => 'pull_request',
+        ]);
+        self::assertSame(202, $unmatched->status, json_encode($unmatched->body));
+        $pullRequests = $this->cookieRequest('GET', "/api/v1/issues/{$issueId}/pull-requests", $admin['cookie']);
+        self::assertCount(1, $pullRequests->body['pull_requests']);
+        $eventCount->execute(['workspace_id' => $this->workspaceId, 'recipient_id' => $this->adminId]);
+        self::assertSame(1, (int) $eventCount->fetchColumn());
+    }
+
     public function testPushWebhookTracksIssueCommitsAndNotifiesOnlyInternalMembers(): void
     {
         $admin = $this->login($this->adminEmail);

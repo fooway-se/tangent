@@ -10,8 +10,7 @@ The project chat header has a privacy-preserving presence light: it shows whethe
 
 ## GitHub and other integrations
 
-- Add GitLab support through a provider-neutral integration interface.
-- Expand the GitHub App integration beyond manual pull-request links. Two-way issue and comment sync is deferred.
+- Keep GitHub as the current integration focus. Two-way issue and comment sync is deferred.
 
 ## AI and API
 
@@ -22,3 +21,7 @@ The project chat header has a privacy-preserving presence light: it shows whethe
 
 - Test the release archive and verify the installer and upgrade flow on additional common shared-host providers and layouts before publishing supported stable downloads. The `v0.1.0-beta.1` tag is a pre-release snapshot; installation and repeated upgrades have already succeeded on one shared server.
 - Decide whether to support Docker as a production option and whether to offer Tangent as a hosted service.
+
+## Later
+
+- Add GitLab support through a provider-neutral integration interface.

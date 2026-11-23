@@ -8,8 +8,14 @@ final class IssueBranchName
 {
     public static function issueIdFromRef(mixed $ref): ?int
     {
-        if (!is_string($ref)
-            || preg_match('~^refs/heads/tangent/issue-([1-9][0-9]*)(?:-[a-z0-9]+(?:-[a-z0-9]+)*)?$~', $ref, $matches) !== 1) {
+        if (!is_string($ref) || !str_starts_with($ref, 'refs/heads/')) return null;
+        return self::issueIdFromBranch(substr($ref, strlen('refs/heads/')));
+    }
+
+    public static function issueIdFromBranch(mixed $branch): ?int
+    {
+        if (!is_string($branch)
+            || preg_match('~^tangent/issue-([1-9][0-9]*)(?:-[a-z0-9]+(?:-[a-z0-9]+)*)?$~', $branch, $matches) !== 1) {
             return null;
         }
 
