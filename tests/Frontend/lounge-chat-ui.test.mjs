@@ -34,7 +34,7 @@ class FakeElement extends EventTarget {
 function setup(t) {
   const previous = { document: globalThis.document, window: globalThis.window };
   const ids = [
-    '#lounge-view', '#lounge-message-list', '#lounge-empty-state', '#lounge-form',
+    '#lounge-view', '#lounge-message-list', '#lounge-empty-state', '#lounge-latest-button', '#lounge-form',
     '#lounge-input', '#lounge-mention-suggestions', '#lounge-reply-hint', '#lounge-cancel-reply',
   ];
   const elements = new Map(ids.map((id) => [id, new FakeElement()]));
@@ -117,5 +117,27 @@ test('Lounge loading owns its polling state and clears it on navigation away', a
   assert.equal(state.clearedSelection(), 2);
   assert.equal(state.timers.size, 0);
   assert.equal(state.ui.messagesById().size, 0);
+  state.ui.dispose();
+});
+
+test('Lounge exposes a latest-message control when the transcript is scrolled up', async (t) => {
+  const state = setup(t);
+  const messageList = state.elements.get('#lounge-message-list');
+  const latestButton = state.elements.get('#lounge-latest-button');
+  latestButton.hidden = true;
+
+  state.ui.load();
+  await new Promise((resolve) => setImmediate(resolve));
+  await new Promise((resolve) => setImmediate(resolve));
+
+  messageList.scrollHeight = 900;
+  messageList.clientHeight = 240;
+  messageList.scrollTop = 0;
+  messageList.dispatchEvent(new Event('scroll'));
+  assert.equal(latestButton.hidden, false);
+
+  latestButton.dispatchEvent(new Event('click'));
+  assert.equal(messageList.scrollTop, 900);
+  assert.equal(latestButton.hidden, true);
   state.ui.dispose();
 });

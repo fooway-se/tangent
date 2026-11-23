@@ -17,6 +17,7 @@ export function initProjectChatUi(options) {
     let presenceTimer = null;
     let presenceRequestVersion = 0;
     let presenceIndicator = null;
+    let latestButton = null;
     let followLatest = true;
     let messageListElement = null;
     let emptyState = null;
@@ -48,6 +49,7 @@ export function initProjectChatUi(options) {
             window.clearTimeout(pollTimer);
         pollTimer = null;
         messageListElement = null;
+        latestButton = null;
         emptyState = null;
         input = null;
         mentionList = null;
@@ -302,6 +304,8 @@ export function initProjectChatUi(options) {
             emptyState.hidden = true;
         if (scrollToBottom)
             scrollLatest();
+        else
+            updateLatestButton();
     }
     function updateMessageReplyCount(message) {
         const item = messageListElement?.querySelector(`.chat-message[data-message-id="${message.id}"]`);
@@ -342,15 +346,21 @@ export function initProjectChatUi(options) {
             return true;
         return messageListElement.scrollHeight - messageListElement.scrollTop - messageListElement.clientHeight <= 24;
     }
+    function updateLatestButton() {
+        if (latestButton !== null)
+            latestButton.hidden = isNearBottom();
+    }
     function scrollToBottom() {
         followLatest = true;
         if (messageListElement !== null)
             messageListElement.scrollTop = messageListElement.scrollHeight;
+        updateLatestButton();
     }
     function scrollLatest() {
         if (messageListElement !== null)
             messageListElement.scrollTop = messageListElement.scrollHeight;
         followLatest = true;
+        updateLatestButton();
     }
     async function focusMessageById(messageId) {
         const projectId = activeId;
@@ -552,10 +562,19 @@ export function initProjectChatUi(options) {
         nextEmptyState.textContent = 'No messages yet.';
         emptyState = nextEmptyState;
         nextMessageList.append(nextEmptyState);
+        const nextLatestButton = doc.createElement('button');
+        nextLatestButton.className = 'chat-latest-button button button-quiet';
+        nextLatestButton.type = 'button';
+        nextLatestButton.textContent = '↓ Latest';
+        nextLatestButton.setAttribute('aria-label', 'Scroll to latest message');
+        nextLatestButton.hidden = true;
+        nextLatestButton.addEventListener('click', scrollToBottom);
+        latestButton = nextLatestButton;
         nextMessageList.addEventListener('scroll', () => {
             if (messageListElement !== nextMessageList)
                 return;
             followLatest = isNearBottom();
+            updateLatestButton();
         });
         const form = doc.createElement('form');
         form.className = 'chat-composer form-stack';
@@ -666,7 +685,7 @@ export function initProjectChatUi(options) {
                 send.disabled = false;
             }
         });
-        section.append(heading, nextMessageList, form);
+        section.append(heading, nextMessageList, nextLatestButton, form);
         activeId = projectId;
         presenceIndicator = nextPresenceIndicator;
         eventFeed.reset();

@@ -20,6 +20,14 @@ function rule(source, selector) {
   return block.join('\n');
 }
 
+function ruleContaining(source, selector, value) {
+  const match = source.split('\n').find((entry) =>
+    entry.trimStart().startsWith(`${selector} {`) && entry.includes(value),
+  );
+  assert.ok(match, `CSS rule for ${selector} contains ${value}`);
+  return match;
+}
+
 test('tokens.css is linked before app.css so every view shares one palette', () => {
   const tokenLink = html.indexOf('href="./assets/tokens.css"');
   const appLink = html.search(/href="\.\/assets\/app\.css(?:\?[^"]*)?"/);
@@ -59,7 +67,7 @@ test('the palette is a beige case holding dark screens with an amber accent', ()
   for (const selector of ['.workspace-screen, .project-chat-column']) {
     assert.match(rule(css, selector), /var\(--screen\)/, `${selector} is a dark screen`);
   }
-  assert.match(rule(css, '.keyboard-hints'), /var\(--footer-top\)/, 'the keyboard strip is on the case');
+  assert.match(ruleContaining(css, '.keyboard-hints', 'background: linear-gradient'), /var\(--footer-top\)/, 'the keyboard strip is on the case');
 });
 
 test('active project links use foreground text with sufficient contrast on the accent', () => {
@@ -95,7 +103,7 @@ test('every screen and dialog header carries the signal stripe', () => {
 });
 
 test('shortcut keys are black keycaps on the case and beige keys elsewhere', () => {
-  assert.match(rule(css, '.keyboard-hints kbd'), /var\(--cap-top\)/);
+  assert.match(ruleContaining(css, '.keyboard-hints kbd', 'background: linear-gradient'), /var\(--cap-top\)/);
   assert.match(rule(css, 'kbd'), /var\(--key-top\)/);
 });
 

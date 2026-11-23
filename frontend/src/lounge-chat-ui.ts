@@ -52,6 +52,7 @@ export function initLoungeChatUi(options: {
   const loungeView = required<HTMLElement>('#lounge-view');
   const loungeMessageList = required<HTMLElement>('#lounge-message-list');
   const loungeEmptyState = required<HTMLElement>('#lounge-empty-state');
+  const loungeLatestButton = required<HTMLButtonElement>('#lounge-latest-button');
   const loungeForm = required<HTMLFormElement>('#lounge-form');
   const loungeInput = required<HTMLTextAreaElement>('#lounge-input');
   const loungeMentionList = required<HTMLDivElement>('#lounge-mention-suggestions');
@@ -97,6 +98,22 @@ export function initLoungeChatUi(options: {
     hideMentionSuggestions();
     loungeMessageList.replaceChildren(loungeEmptyState);
     loungeEmptyState.hidden = false;
+    loungeLatestButton.hidden = true;
+  }
+
+  function isNearLatestMessage(): boolean {
+    return loungeMessageList.scrollHeight - loungeMessageList.scrollTop
+      - loungeMessageList.clientHeight <= 24;
+  }
+
+  function updateLatestButton(): void {
+    loungeLatestButton.hidden = isNearLatestMessage();
+  }
+
+  function scrollToLatest(): void {
+    loungeMessageList.scrollTop = loungeMessageList.scrollHeight;
+    followLatest = true;
+    updateLatestButton();
   }
 
   function schedulePoll(delay = pollDelay): void {
@@ -272,7 +289,8 @@ export function initLoungeChatUi(options: {
     loungeMessageList.append(item);
     updateMessageReplyCount(message);
     loungeEmptyState.hidden = true;
-    if (scrollToBottom) loungeMessageList.scrollTop = loungeMessageList.scrollHeight;
+    if (scrollToBottom) scrollToLatest();
+    else updateLatestButton();
   }
 
   function updateMessageReplyCount(message: ChatMessage): void {
@@ -361,6 +379,7 @@ export function initLoungeChatUi(options: {
     followLatest = true;
     loungeMessageList.replaceChildren(loungeEmptyState);
     loungeEmptyState.hidden = false;
+    loungeLatestButton.hidden = true;
     try {
       const [result, membersResult] = await Promise.all([
         request<{ messages: ChatMessage[] }>('/lounge/messages'),
@@ -372,7 +391,7 @@ export function initLoungeChatUi(options: {
         cursor = Math.max(cursor, message.id);
         appendMessage(message);
       }
-      loungeMessageList.scrollTop = loungeMessageList.scrollHeight;
+      scrollToLatest();
       void pollNow();
     } catch (error) {
       if (!active) return;
@@ -469,9 +488,10 @@ export function initLoungeChatUi(options: {
   }
 
   loungeMessageList.addEventListener('scroll', () => {
-    followLatest = loungeMessageList.scrollHeight - loungeMessageList.scrollTop
-      - loungeMessageList.clientHeight <= 24;
+    followLatest = isNearLatestMessage();
+    updateLatestButton();
   }, { signal: listeners.signal });
+  loungeLatestButton.addEventListener('click', scrollToLatest, { signal: listeners.signal });
   loungeForm.addEventListener('submit', (event) => void sendMessage(event), { signal: listeners.signal });
   loungeCancelReply.addEventListener('click', clearReplyParent, { signal: listeners.signal });
   loungeInput.addEventListener('input', () => {

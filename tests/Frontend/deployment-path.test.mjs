@@ -12,7 +12,7 @@ const appRoot = await readFile(new URL('../../public/app-root.php', import.meta.
 
 test('public assets and navigation links resolve relative to Tangent’s subdirectory', () => {
   assert.match(html, /href="\.\/assets\/tokens\.css"/);
-  assert.match(html, /href="\.\/assets\/app\.css"/);
+  assert.match(html, /href="\.\/assets\/app\.css(?:\?[^\"]*)?"/);
   assert.match(html, /src="\.\/assets\/app\.js"/);
   assert.match(html, /href="\.\/app\.html"/);
   assert.doesNotMatch(html, /(?:href|src)="\/(?:assets|app\.html)/);

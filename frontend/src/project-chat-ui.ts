@@ -62,6 +62,7 @@ export function initProjectChatUi(options: {
   let presenceTimer: number | null = null;
   let presenceRequestVersion = 0;
   let presenceIndicator: HTMLSpanElement | null = null;
+  let latestButton: HTMLButtonElement | null = null;
   let followLatest = true;
   let messageListElement: HTMLElement | null = null;
   let emptyState: HTMLElement | null = null;
@@ -96,6 +97,7 @@ export function initProjectChatUi(options: {
     if (pollTimer !== null) window.clearTimeout(pollTimer);
     pollTimer = null;
     messageListElement = null;
+    latestButton = null;
     emptyState = null;
     input = null;
     mentionList = null;
@@ -334,6 +336,7 @@ export function initProjectChatUi(options: {
     updateMessageReplyCount(message);
     if (emptyState !== null) emptyState.hidden = true;
     if (scrollToBottom) scrollLatest();
+    else updateLatestButton();
   }
 
   function updateMessageReplyCount(message: ChatMessage): void {
@@ -377,14 +380,20 @@ export function initProjectChatUi(options: {
     return messageListElement.scrollHeight - messageListElement.scrollTop - messageListElement.clientHeight <= 24;
   }
 
+  function updateLatestButton(): void {
+    if (latestButton !== null) latestButton.hidden = isNearBottom();
+  }
+
   function scrollToBottom(): void {
     followLatest = true;
     if (messageListElement !== null) messageListElement.scrollTop = messageListElement.scrollHeight;
+    updateLatestButton();
   }
 
   function scrollLatest(): void {
     if (messageListElement !== null) messageListElement.scrollTop = messageListElement.scrollHeight;
     followLatest = true;
+    updateLatestButton();
   }
 
   async function focusMessageById(messageId: number): Promise<void> {
@@ -595,9 +604,18 @@ export function initProjectChatUi(options: {
     nextEmptyState.textContent = 'No messages yet.';
     emptyState = nextEmptyState;
     nextMessageList.append(nextEmptyState);
+    const nextLatestButton = doc.createElement('button');
+    nextLatestButton.className = 'chat-latest-button button button-quiet';
+    nextLatestButton.type = 'button';
+    nextLatestButton.textContent = '↓ Latest';
+    nextLatestButton.setAttribute('aria-label', 'Scroll to latest message');
+    nextLatestButton.hidden = true;
+    nextLatestButton.addEventListener('click', scrollToBottom);
+    latestButton = nextLatestButton;
     nextMessageList.addEventListener('scroll', () => {
       if (messageListElement !== nextMessageList) return;
       followLatest = isNearBottom();
+      updateLatestButton();
     });
 
     const form = doc.createElement('form');
@@ -702,7 +720,7 @@ export function initProjectChatUi(options: {
         send.disabled = false;
       }
     });
-    section.append(heading, nextMessageList, form);
+    section.append(heading, nextMessageList, nextLatestButton, form);
     activeId = projectId;
     presenceIndicator = nextPresenceIndicator;
     eventFeed.reset();

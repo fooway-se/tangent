@@ -22,6 +22,7 @@ test('Lounge is a fixed workspace destination between Inbox and workspace admin'
   assert.match(html, /id="lounge-nav"[^>]*>[\s\S]*Lounge[\s\S]*<\/button>/);
   assert.match(html, /id="lounge-nav-presence"/);
   assert.match(html, /id="lounge-view"[^>]*hidden/);
+  assert.match(html, /id="lounge-latest-button"[^>]*class="chat-latest-button button button-quiet"[^>]*hidden/);
   assert.match(app, /function goToLounge\(/);
   assert.match(loungeChatUi, /\/lounge\/messages/);
 });

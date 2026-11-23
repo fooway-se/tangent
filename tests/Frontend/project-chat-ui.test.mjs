@@ -98,11 +98,32 @@ test('project chat owns its lifecycle, read-only controls, and polling cleanup',
     }
     return null;
   };
+  const findByClass = (element, className) => {
+    if (element.className.split(' ').includes(className)) return element;
+    for (const child of element.children) {
+      const found = findByClass(child, className);
+      if (found !== null) return found;
+    }
+    return null;
+  };
   const input = find(view, 'textarea');
-  const send = view.children[2].children.at(-1).children.at(-1);
+  const send = findByClass(view, 'button-primary');
+  const latestButton = findByClass(view, 'chat-latest-button');
   assert.ok(input);
+  assert.ok(latestButton);
+  assert.equal(latestButton.hidden, true);
   assert.equal(input.disabled, false);
   assert.equal(send.disabled, false);
+
+  const messageList = ui.messageList();
+  messageList.scrollHeight = 1000;
+  messageList.clientHeight = 200;
+  messageList.scrollTop = 0;
+  messageList.dispatchEvent(new Event('scroll'));
+  assert.equal(latestButton.hidden, false, 'the latest control appears when scrolled away from the newest message');
+  latestButton.dispatchEvent(new Event('click'));
+  assert.equal(messageList.scrollTop, 1000, 'the latest control returns the transcript to the end');
+  assert.equal(latestButton.hidden, true);
 
   ui.setReadOnly(true);
   assert.equal(input.disabled, true);

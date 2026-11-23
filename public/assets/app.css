@@ -647,6 +647,7 @@ select { padding-right: 28px; background: var(--screen-inset) url("data:image/sv
 .chat-channel-hash { margin-right: 4px; color: var(--accent); }
 .chat-members-count { color: var(--screen-muted); font: 400 11px var(--font-mono); }
 .chat-message-list { display: flex; flex: 1; flex-direction: column; min-height: 140px; overflow-y: auto; padding: 6px 18px; }
+.chat-latest-button { display: none; }
 .chat-empty-state { margin: 0; padding: 10px 0; color: var(--screen-muted); font-size: 12px; }
 .chat-message { display: grid; grid-template-columns: 30px minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 10px; border-bottom: 1px solid var(--screen-line); padding: 12px 0; }
 .chat-message.is-chat-source { outline: 2px solid var(--accent); outline-offset: -2px; background: var(--screen-hover); }
@@ -764,14 +765,19 @@ dialog::backdrop { background: var(--backdrop); }
   .workspace-stage { grid-column: 1; grid-row: 2; flex-direction: column; padding: 12px; }
   .workspace-screen { flex: none; }
   .workspace-content, .project-view { overflow: visible; }
-  .lounge-view { overflow: visible; padding: 12px 14px 18px; }
+  .lounge-view { flex: 0 0 auto; height: min(70vh, 640px); height: min(70dvh, 640px); min-height: 320px; overflow: hidden; padding: 12px 14px 18px; }
+  .lounge-chat-panel { min-height: 0; }
+  .lounge-message-list { overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; }
   .project-main { overflow: visible; padding: 12px 14px 18px; }
   .projects-view, .inbox-view, .admin-view { padding: 12px 14px 18px; }
   .roadmap-view { overflow: visible; padding: 12px 14px 18px; }
   .workspace-admin-member-tools { align-items: flex-start; flex-direction: column; }
   .workspace-admin-member-actions { width: 100%; flex: 0 0 auto; align-content: flex-start; justify-content: flex-start; }
   .workspace-admin-member-actions .button { min-height: 44px; white-space: nowrap; }
-  .project-chat-column { flex: none; min-width: 0; min-height: 420px; }
+  .project-chat-column { flex: none; min-width: 0; height: min(70vh, 640px); height: min(70dvh, 640px); min-height: 320px; }
+  .chat-message-list { min-height: 0; overflow-y: auto; overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; }
+  .chat-composer { flex: 0 0 auto; }
+  .chat-latest-button:not([hidden]) { display: flex; align-self: flex-end; min-height: 32px; margin: 4px 12px 0; padding: 4px 10px; }
   .keyboard-hints, .login-keyboard-hints { display: none !important; }
   .keyboard-hints { grid-row: 3; }
   .issue-board-toolbar { align-items: flex-start; flex-direction: column; }

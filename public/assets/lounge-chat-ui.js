@@ -9,6 +9,7 @@ export function initLoungeChatUi(options) {
     const loungeView = required('#lounge-view');
     const loungeMessageList = required('#lounge-message-list');
     const loungeEmptyState = required('#lounge-empty-state');
+    const loungeLatestButton = required('#lounge-latest-button');
     const loungeForm = required('#lounge-form');
     const loungeInput = required('#lounge-input');
     const loungeMentionList = required('#lounge-mention-suggestions');
@@ -52,6 +53,19 @@ export function initLoungeChatUi(options) {
         hideMentionSuggestions();
         loungeMessageList.replaceChildren(loungeEmptyState);
         loungeEmptyState.hidden = false;
+        loungeLatestButton.hidden = true;
+    }
+    function isNearLatestMessage() {
+        return loungeMessageList.scrollHeight - loungeMessageList.scrollTop
+            - loungeMessageList.clientHeight <= 24;
+    }
+    function updateLatestButton() {
+        loungeLatestButton.hidden = isNearLatestMessage();
+    }
+    function scrollToLatest() {
+        loungeMessageList.scrollTop = loungeMessageList.scrollHeight;
+        followLatest = true;
+        updateLatestButton();
     }
     function schedulePoll(delay = pollDelay) {
         if (!active)
@@ -218,7 +232,9 @@ export function initLoungeChatUi(options) {
         updateMessageReplyCount(message);
         loungeEmptyState.hidden = true;
         if (scrollToBottom)
-            loungeMessageList.scrollTop = loungeMessageList.scrollHeight;
+            scrollToLatest();
+        else
+            updateLatestButton();
     }
     function updateMessageReplyCount(message) {
         const item = loungeMessageList.querySelector(`.chat-message[data-message-id="${message.id}"]`);
@@ -307,6 +323,7 @@ export function initLoungeChatUi(options) {
         followLatest = true;
         loungeMessageList.replaceChildren(loungeEmptyState);
         loungeEmptyState.hidden = false;
+        loungeLatestButton.hidden = true;
         try {
             const [result, membersResult] = await Promise.all([
                 request('/lounge/messages'),
@@ -319,7 +336,7 @@ export function initLoungeChatUi(options) {
                 cursor = Math.max(cursor, message.id);
                 appendMessage(message);
             }
-            loungeMessageList.scrollTop = loungeMessageList.scrollHeight;
+            scrollToLatest();
             void pollNow();
         }
         catch (error) {
@@ -432,9 +449,10 @@ export function initLoungeChatUi(options) {
         schedulePoll(0);
     }
     loungeMessageList.addEventListener('scroll', () => {
-        followLatest = loungeMessageList.scrollHeight - loungeMessageList.scrollTop
-            - loungeMessageList.clientHeight <= 24;
+        followLatest = isNearLatestMessage();
+        updateLatestButton();
     }, { signal: listeners.signal });
+    loungeLatestButton.addEventListener('click', scrollToLatest, { signal: listeners.signal });
     loungeForm.addEventListener('submit', (event) => void sendMessage(event), { signal: listeners.signal });
     loungeCancelReply.addEventListener('click', clearReplyParent, { signal: listeners.signal });
     loungeInput.addEventListener('input', () => {
