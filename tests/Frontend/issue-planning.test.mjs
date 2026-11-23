@@ -8,6 +8,7 @@ const issueBoardUi = await readFile(new URL('../../frontend/src/issue-board-ui.t
 const issueBoardView = await readFile(new URL('../../frontend/src/issue-board-view.ts', import.meta.url), 'utf8');
 const issueBulkUi = await readFile(new URL('../../frontend/src/issue-bulk-ui.ts', import.meta.url), 'utf8');
 const issueBulkActions = await readFile(new URL('../../frontend/src/issue-bulk-actions.ts', import.meta.url), 'utf8');
+const issueActions = await readFile(new URL('../../frontend/src/issue-actions.ts', import.meta.url), 'utf8');
 const issueRowUi = await readFile(new URL('../../frontend/src/issue-row-ui.ts', import.meta.url), 'utf8');
 const dom = await readFile(new URL('../../frontend/src/dom.ts', import.meta.url), 'utf8');
 const css = await readFile(new URL('../../public/assets/app.css', import.meta.url), 'utf8');
@@ -23,17 +24,13 @@ test('issue ordering offers a dedicated Next Up view', () => {
 test('issue rows show their milestone and Next Up exposes accessible move controls', () => {
   assert.match(issueRowUi, /issue-milestone-tag/);
   assert.match(issueRowUi, /dataset\.moveDirection = direction/);
-  assert.match(app, /`\/issues\/\$\{issue\.id\}\/move`/);
+  assert.match(issueActions, /`\/issues\/\$\{issue\.id\}\/move`/);
   assert.match(issueBoardView, /className: 'issue-group milestone-issue-group'/);
 });
 
 test('Next Up keeps keyboard focus when a move disables the selected arrow', () => {
-  const moveStart = app.indexOf('async function moveIssue(');
-  const moveEnd = app.indexOf('\nfunction ', moveStart + 1);
-  const move = app.slice(moveStart, moveEnd === -1 ? undefined : moveEnd);
-
-  assert.match(move, /\[data-move-direction="\$\{direction\}"\]:not\(:disabled\)/);
-  assert.match(move, /\?\?\s*movedIssueRow\?\.querySelector<HTMLElement>\('\.issue-title-button'\)/);
+  assert.match(issueActions, /\[data-move-direction="\$\{direction\}"\]:not\(:disabled\)/);
+  assert.match(issueActions, /\?\?\s*movedIssueRow\?\.querySelector<HTMLElement>\('\.issue-title-button'\)/);
 });
 
 test('milestone groups are collapsible and their headings show issue counts', () => {

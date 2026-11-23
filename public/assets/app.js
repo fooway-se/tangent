@@ -30,6 +30,7 @@ import { initChatMessageNavigationUi } from './chat-message-navigation-ui.js';
 import { initStatusMessageUi } from './status-message-ui.js';
 import { initKeyboardHintsUi, KEYBOARD_HINTS_STORAGE_KEY } from './keyboard-hints-ui.js';
 import { initIssuePollingController } from './issue-polling-controller.js';
+import { initIssueActions } from './issue-actions.js';
 import { createIssueRowUi } from './issue-row-ui.js';
 import { initIssueAiPromptUi } from './issue-ai-prompt-ui.js';
 import { initIssueDiscussionUi } from './issue-discussion-ui.js';
@@ -489,6 +490,24 @@ const issuePollingController = initIssuePollingController({
     },
     setTimeout: (callback, delay) => window.setTimeout(callback, delay),
     clearTimeout: (timer) => window.clearTimeout(timer),
+});
+const issueActions = initIssueActions({
+    api,
+    getProjectId: () => activeProject?.id ?? null,
+    isIssueListVisible: () => !issuesView.hidden,
+    isIssueDetailVisible: () => !issueDetailView.hidden,
+    getSelectedIssue: () => selectedIssue,
+    setSelectedIssue: (issue) => { selectedIssue = issue; },
+    getIssues: () => projectIssues,
+    setIssues: (issues) => { projectIssues = issues; },
+    issueList,
+    renderDetail: renderIssueDetail,
+    renderBoard: renderProjectIssueBoard,
+    loadStatusHistory: (issueId) => issueRelatedUi.loadStatusHistory(issueId),
+    reloadIssues: loadProjectIssues,
+    isUnauthorized: (error) => error instanceof ApiFailure && error.status === 401,
+    onUnauthorized: () => showSignedOut(),
+    report,
 });
 let selectedChatMessageId = null;
 let issueQuickAddEscapePending = false;
@@ -2508,30 +2527,8 @@ function showDeletedIssues(restoreIssueId) {
         deletedIssuesDetails.querySelector('summary')?.focus();
     });
 }
-async function updateIssueStatus(issue, nextStatus) {
-    const previousStatus = selectedIssue?.id === issue.id ? selectedIssue.status : issue.status;
-    if (nextStatus === previousStatus)
-        return;
-    try {
-        const result = await api(`/issues/${issue.id}`, {
-            method: 'PATCH',
-            body: JSON.stringify({ status: nextStatus }),
-        });
-        if (selectedIssue?.id === issue.id) {
-            selectedIssue = result.issue;
-            projectIssues = projectIssues.map((candidate) => candidate.id === issue.id ? result.issue : candidate);
-            renderIssueDetail();
-            renderProjectIssueBoard();
-            if (previousStatus !== result.issue.status)
-                void issueRelatedUi.loadStatusHistory(issue.id);
-        }
-        report('Issue status updated.');
-        if (issueDetailView.hidden)
-            await loadProjectIssues(issue.project_id);
-    }
-    catch (error) {
-        report(error instanceof Error ? error.message : 'Could not update the issue status.', true);
-    }
+function updateIssueStatus(issue, nextStatus) {
+    return issueActions.updateStatus(issue, nextStatus);
 }
 function createIssueBulkSelectCheckbox(issue) {
     return issueBulkUi.createMoveCheckbox(issue);
@@ -2539,34 +2536,8 @@ function createIssueBulkSelectCheckbox(issue) {
 function createIssueBulkAssignCheckbox(issue) {
     return issueBulkUi.createAssignCheckbox(issue);
 }
-async function moveIssue(issue, direction, button) {
-    const projectId = activeProject?.id;
-    if (projectId === undefined || projectId !== issue.project_id)
-        return;
-    button.disabled = true;
-    try {
-        const result = await api(`/issues/${issue.id}/move`, {
-            method: 'POST',
-            body: JSON.stringify({ direction }),
-        });
-        if (activeProject?.id !== projectId || issuesView.hidden)
-            return;
-        projectIssues = projectIssues.map((candidate) => candidate.id === issue.id ? result.issue : candidate);
-        renderProjectIssueBoard();
-        const movedIssueRow = issueList.querySelector(`.issue-card[data-issue-id="${issue.id}"]`);
-        const focusTarget = movedIssueRow?.querySelector(`[data-move-direction="${direction}"]:not(:disabled)`) ?? movedIssueRow?.querySelector('.issue-title-button');
-        focusTarget?.focus();
-    }
-    catch (error) {
-        if (error instanceof ApiFailure && error.status === 401) {
-            showSignedOut();
-            return;
-        }
-        report(error instanceof Error ? error.message : 'Could not reorder the issue.', true);
-    }
-    finally {
-        button.disabled = false;
-    }
+function moveIssue(issue, direction, button) {
+    return issueActions.move(issue, direction, button);
 }
 issueDetailDeleteButton.addEventListener('click', () => issueDeleteUi.open(selectedIssue));
 issueBackButton.addEventListener('click', () => {
