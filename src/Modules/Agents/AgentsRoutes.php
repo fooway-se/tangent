@@ -64,6 +64,14 @@ final class AgentsRoutes
             return new Response(204);
         });
 
+        $router->add('GET', '/api/v1/agent/projects', function (
+            Request $request,
+            array $params,
+            AuthenticatedUser $user,
+        ): Response {
+            return Response::json(200, $this->service->listProjects($user));
+        });
+
         $router->add('GET', '/api/v1/agent/projects/{id}/issues', function (
             Request $request,
             array $params,

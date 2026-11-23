@@ -170,6 +170,57 @@ final class AgentsTest extends ApiTestCase
         )->status);
     }
 
+    public function testAgentCanListOnlyProjectsItCanReadIssuesFrom(): void
+    {
+        $admin = $this->login($this->adminEmail);
+        $allowedProject = $this->createProject($admin, 'Visible agent project');
+        $otherProject = $this->createProject($admin, 'Hidden agent project');
+
+        $created = $this->agentCookieRequest(
+            'POST',
+            '/api/v1/agents',
+            $admin['cookie'],
+            [
+                'name' => 'Project discovery agent',
+                'project_ids' => [$allowedProject],
+                'capabilities' => ['issues.read'],
+            ],
+            $admin['csrf'],
+        );
+        self::assertSame(201, $created->status, json_encode($created->body));
+
+        $listed = $this->bearerRequest('GET', '/api/v1/agent/projects', $created->body['token']);
+
+        self::assertSame(200, $listed->status, json_encode($listed->body));
+        self::assertSame([
+            ['id' => $allowedProject, 'name' => 'Visible agent project', 'status' => 'active'],
+        ], $listed->body['projects']);
+        self::assertNotContains($otherProject, array_column($listed->body['projects'], 'id'));
+
+        $humanCannotUseAgentProjectList = $this->agentCookieRequest(
+            'GET',
+            '/api/v1/agent/projects',
+            $admin['cookie'],
+        );
+        self::assertSame(403, $humanCannotUseAgentProjectList->status);
+
+        $commentOnly = $this->agentCookieRequest(
+            'POST',
+            '/api/v1/agents',
+            $admin['cookie'],
+            [
+                'name' => 'Comment-only agent',
+                'project_ids' => [$allowedProject],
+                'capabilities' => ['issues.comment'],
+            ],
+            $admin['csrf'],
+        );
+        self::assertSame(201, $commentOnly->status, json_encode($commentOnly->body));
+        self::assertSame(403, $this->bearerRequest(
+            'GET', '/api/v1/agent/projects', $commentOnly->body['token'],
+        )->status);
+    }
+
     public function testAgentManagementIsAdminOnlyAndRejectsInvalidGrants(): void
     {
         $admin = $this->login($this->adminEmail);

@@ -1988,6 +1988,24 @@ paths:
         '204': { description: Agent and its active tokens revoked. }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+  /agent/projects:
+    get:
+      summary: List projects this agent can read issues from
+      description: Requires an agent bearer token with issues.read. Returns only active or paused projects granted to the agent.
+      responses:
+        '200':
+          description: Project IDs and names available to the agent.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [projects]
+                properties:
+                  projects:
+                    type: array
+                    items: { $ref: '#/components/schemas/AgentProject' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /agent/projects/{id}/issues:
     get:
       summary: List active issues in an agent's granted project
@@ -2144,6 +2162,13 @@ components:
         updated_at: { type: string, format: date-time }
         token_expires_at: { type: string, format: date-time, nullable: true }
         token_last_used_at: { type: string, format: date-time, nullable: true }
+    AgentProject:
+      type: object
+      required: [id, name, status]
+      properties:
+        id: { type: integer, minimum: 1 }
+        name: { type: string }
+        status: { type: string, enum: [active, paused] }
     AgentIssue:
       type: object
       required: [id, workspace_id, project_id, title, description, context, expected_outcome, acceptance_criteria, type, status, priority]

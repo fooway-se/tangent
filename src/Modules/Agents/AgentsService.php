@@ -114,6 +114,35 @@ final class AgentsService
         }
     }
 
+    public function listProjects(AuthenticatedUser $agent): array
+    {
+        if (!$agent->isAgent()) throw new ApiException(403, 'forbidden', 'This endpoint requires an agent token.');
+        if (!in_array('issues.read', $agent->agentCapabilities, true)) {
+            throw new ApiException(403, 'forbidden', 'The agent does not have this capability.');
+        }
+
+        $projects = [];
+        foreach ($this->projects->listForWorkspace($agent->workspaceId, $agent->id) as $project) {
+            $projectId = (int) $project['id'];
+            if (!in_array($projectId, $agent->agentProjectIds, true)
+                || !in_array($project['status'], ['active', 'paused'], true)
+                || !Permissions::can($agent, 'agent.issues.read', [
+                    'project_id' => $projectId,
+                    'is_member' => $project['is_member'],
+                ])) {
+                continue;
+            }
+
+            $projects[] = [
+                'id' => $projectId,
+                'name' => $project['name'],
+                'status' => $project['status'],
+            ];
+        }
+
+        return ['projects' => $projects];
+    }
+
     public function listIssues(AuthenticatedUser $agent, int $projectId): array
     {
         $this->requireProjectAccess($agent, $projectId, 'issues.read');

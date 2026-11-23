@@ -37,9 +37,16 @@ curl --fail-with-body -sS "$TANGENT_URL/api/v1/agents" \
   -H "Authorization: Bearer $TANGENT_ADMIN_TOKEN"
 ```
 
-## Use the issue tools
+## Discover projects and use the issue tools
 
-Store the one-time token as `TANGENT_AGENT_TOKEN` in the agent runtime, then call only the capabilities granted to that identity:
+Store the one-time token as `TANGENT_AGENT_TOKEN` in the agent runtime. Agents with `issues.read` can list the projects they are allowed to read, then use the returned project ID to list issues:
+
+```sh
+curl --fail-with-body -sS "$TANGENT_URL/api/v1/agent/projects" \
+  -H "Authorization: Bearer $TANGENT_AGENT_TOKEN"
+```
+
+The response includes only active or paused projects granted to this agent, with each project's `id`, `name`, and `status`. Use that ID for the project-scoped issue list:
 
 ```sh
 curl --fail-with-body -sS "$TANGENT_URL/api/v1/agent/projects/12/issues" \
@@ -61,6 +68,12 @@ curl --fail-with-body -sS -X PATCH "$TANGENT_URL/api/v1/agent/issues/345/status"
 
 Replace the example IDs with IDs returned by Tangent. The issue detail response includes its prompt context, expected outcome, and acceptance criteria. A human should review work in `testing` and mark it `done` after verification.
 
+## Optional MCP server
+
+The separate stdio MCP adapter in [`tools/agent-mcp`](../tools/agent-mcp/README.md) exposes five agent operations as MCP tools: list accessible projects, list project issues, read an issue, post a progress comment, and set an issue to `doing` or `testing`. It requires Node.js 20 or later and does not add a dependency to Tangent's PHP web app. Install it where the MCP host runs; Tangent can remain on shared PHP hosting. No inbound MCP port is needed, but the MCP host must be able to reach Tangent's configured URL.
+
+The MCP host launches the adapter with `TANGENT_URL` and `TANGENT_AGENT_TOKEN` in its environment. Set `TANGENT_WORKSPACE_ID` when the agent belongs to a non-default workspace. Keep the token in the host's local secret configuration; the adapter sends it only as a bearer token to the configured Tangent URL and never logs it. Tangent still enforces the agent's project and capability grants on every request.
+
 ## Rotate or revoke access
 
 From **Workspace admin → Agents**, admins can rotate a token or revoke the identity. Rotation immediately invalidates the old token and shows the replacement secret once. Revocation requires confirmation and disables the identity and all its active tokens.
@@ -81,4 +94,4 @@ curl --fail-with-body -sS -X DELETE "$TANGENT_URL/api/v1/agents/7" \
   -H "Authorization: Bearer $TANGENT_ADMIN_TOKEN"
 ```
 
-The REST endpoints are described in [the OpenAPI file](openapi.yaml). Tangent does not run an AI model or MCP server; an agent runtime can call this REST API directly or use a separate MCP adapter.
+The REST endpoints are described in [the OpenAPI file](openapi.yaml). Tangent's web app remains a REST API; agent runtimes can call it directly or use the optional MCP adapter.

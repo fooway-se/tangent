@@ -6,7 +6,7 @@
 /config.php.lock
 /.env
 .tangent-app-root
-/node_modules/
+node_modules/
 /vendor/
 /.phpunit.cache/
 /dist/
