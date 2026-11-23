@@ -5,15 +5,15 @@ A keyboard-first, self-hosted workspace for small dev teams and freelancers: pro
 ![Project issues grouped by milestone with project chat](assets/screenshots/project-issues.webp)
 
 > [!NOTE]
-> **Tangent is an actively developed, usable workspace for small teams.** Core project, issue, collaboration, client portal, and installation workflows are implemented. Installation and upgrades have been verified on one shared server; additional hosting environments are still being checked. Back up the database and uploaded files before applying updates.
+> **Tangent is in beta and is an actively developed, usable workspace for small teams.** Core project, issue, collaboration, client portal, and installation workflows are implemented. Installation and upgrades have been verified on one shared server; additional hosting environments are still being checked. There is no supported stable release yet. Back up the database and uploaded files before applying updates.
 
 ## Why Tangent
 
-- **Keyboard first.** Move, open, change status, create and reply without the mouse. There is a command palette (`Ctrl/Cmd+K`) and a shortcut list (`?`). Hide or restore the bottom shortcut hints from the command palette; the choice is saved in this browser. Statuses are changed with a key or a menu, never by drag and drop.
+- **Keyboard first.** Move, open, change status, create and reply without the mouse. There is a command palette (`Ctrl/Cmd+K`) and a shortcut list (`?`). Press `h` or use the command palette to toggle hints. On short desktop windows (560 px high or less), hints start hidden to leave room for project links; `h` reveals a compact row. In taller desktop layouts, the hint preference is saved in this browser. Statuses are changed with a key or a menu, never by drag and drop.
 - **See when someone else is around.** A small power light in project chat shows whether another authorized viewer is active, without showing names or a count.
 - **Chat mentions.** Type `@` to find a project member by their saved name; selecting them inserts an exact mention and sends them an inbox notification.
 - **Project notes.** Each project has one internal Markdown page for durable context, with a safe rendered preview. Guest clients cannot access it.
-- **Twenty themes.** Choose Putty & Screen, Rubber & Rainbow, Breadbin, Broadcast & Beige, Cassette & Colour, Mono & Membrane, Stripe & Signal, Paper & Rainbow, Desk & Phosphor, Silver & Speech, Blue & Byte, Cartridge & Cobalt, Nordic & Phosphor, Icon & Mouse, Copper & Chroma, Switches & Steel, Studio & Sound, Arcade & Towers, Clean, a neutral light theme, or Clean (dark), the same theme on a dark palette, in the login, guest, or workspace view; the choice is saved in this browser.
+- **Twenty themes.** Choose from 18 machine-inspired themes, plus Clean (neutral light) and Clean (dark), in the login, guest, or workspace view; the choice is saved in this browser.
 - **Issues come out of the conversation.** Turn a chat message into an issue; the issue keeps a link back to its thread. Issues support priorities, due dates, ongoing work tracked separately from planned progress, and an optional guided AI prompt builder with copy and Markdown export.
 - **Track linked pull requests.** Connect a GitHub repository to a project, manually link PRs to issues, and receive inbox updates as their state changes. Guests cannot see GitHub details.
 - **My Work.** Review inbox updates or browse open issues assigned to you, grouped by project and milestone. Ongoing tasks and tasks without a milestone have separate groups. This internal workspace view is not part of the guest portal.

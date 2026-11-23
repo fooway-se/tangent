@@ -1,6 +1,6 @@
 # Contributing
 
-Tangent is in early development and **pull requests are not being accepted yet**. The architecture and scope are still moving, and unsolicited changes are hard to merge.
+Tangent is in beta and **pull requests are not being accepted yet**. The architecture and scope are still moving, and unsolicited changes are hard to merge.
 
 What is welcome right now:
 

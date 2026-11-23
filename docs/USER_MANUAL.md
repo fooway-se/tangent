@@ -199,7 +199,7 @@ Workspace admins use **Workspace admin** to manage members, invitations, and wor
 
 ## 10. Keyboard shortcuts
 
-Keyboard shortcuts vary by view and pause while you type. Press **?** for the full list. Use **Ctrl/Cmd+K** to open the command palette, or press **h** to show or hide the keyboard hints. Your choice is saved in this browser.
+Keyboard shortcuts vary by view and pause while you type. Press **?** for the full list. Use **Ctrl/Cmd+K** to open the command palette. On short desktop windows (560 px high or less), hints start hidden to leave room for project links; press **h** to show or hide the compact row for the current layout. In taller desktop layouts, press **h** or choose the hint command in the palette; that preference is saved in this browser. Hints remain hidden on narrow or touch layouts.
 
 | Shortcut | Action |
 | --- | --- |

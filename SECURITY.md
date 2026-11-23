@@ -1,6 +1,6 @@
 # Security policy
 
-Tangent is in limited alpha and has no supported releases yet. Security reports are still welcome, especially about authentication, invites, workspace separation and the client guest view.
+Tangent is in beta as of `v0.1.0-beta.1`. The core workspace and installation workflows are implemented, and installation and upgrades have been verified on one shared server; other hosting environments are still being checked. There is no supported stable release yet. Security reports are welcome, especially about authentication, invites, workspace separation and the client guest view.
 
 ## Reporting a vulnerability
 
@@ -17,4 +17,4 @@ Include what you found, how to reproduce it, and the version or commit you teste
 
 ## Scope
 
-Until there is a release, only the current main branch is considered. Do not run alpha builds with sensitive or important data.
+Only the current default branch receives security fixes; older tags are not maintained. The beta tag is a pre-release snapshot, not a supported stable release. Keep tested backups and do not rely on a beta installation as the only copy of important data.
