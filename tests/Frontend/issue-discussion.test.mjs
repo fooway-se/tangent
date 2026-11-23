@@ -5,6 +5,7 @@ import test from 'node:test';
 const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
 const discussionUi = await readFile(new URL('../../frontend/src/issue-discussion-ui.ts', import.meta.url), 'utf8');
+const issueRowUi = await readFile(new URL('../../frontend/src/issue-row-ui.ts', import.meta.url), 'utf8');
 const types = await readFile(new URL('../../frontend/src/types.ts', import.meta.url), 'utf8');
 const css = await readFile(new URL('../../public/assets/app.css', import.meta.url), 'utf8');
 
@@ -44,19 +45,19 @@ test('only the author of the final issue discussion message gets edit and delete
 });
 
 test('issue rows show an accessible discussion indicator when messages exist', () => {
-  assert.match(app, /createDiscussionIndicator\(issue\.discussion_count \?\? 0\)/);
-  assert.match(app, /discussionIndicatorLabel\(count\)/);
-  assert.match(app, /issue-discussion-indicator/);
-  assert.match(app, /setAttribute\('aria-label', label\)/);
+  assert.match(issueRowUi, /createDiscussionIndicator\(issue\.discussion_count \?\? 0\)/);
+  assert.match(issueRowUi, /discussionIndicatorLabel\(count\)/);
+  assert.match(issueRowUi, /issue-discussion-indicator/);
+  assert.match(issueRowUi, /setAttribute\('aria-label', label\)/);
   assert.match(css, /\.issue-discussion-indicator/);
 });
 
 test('discussion indicators are a plain pixel bubble next to the row status control', () => {
-  assert.match(app, /actions\.append\(discussionIndicator\)/);
-  assert.doesNotMatch(app, /mainline\.append\(discussionIndicator\)/);
+  assert.match(issueRowUi, /actions\.append\(discussionIndicator\)/);
+  assert.doesNotMatch(issueRowUi, /mainline\.append\(discussionIndicator\)/);
   const rule = css.split('\n').find((line) => line.startsWith('.issue-discussion-indicator {')) ?? '';
   assert.doesNotMatch(rule, /border:\s*1px|border-radius/, 'no chip border');
-  assert.match(app, /viewBox', '0 0 11 10'/, 'pixel-grid bubble icon');
+  assert.match(issueRowUi, /viewBox', '0 0 11 10'/, 'pixel-grid bubble icon');
 });
 
 test('issue discussion messages reuse the chat avatar and thread styling', () => {

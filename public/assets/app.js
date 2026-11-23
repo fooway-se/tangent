@@ -20,6 +20,7 @@ import { initProjectChatUi } from './project-chat-ui.js';
 import { initCommandPaletteUi } from './command-palette-ui.js';
 import { initWorkspacePickerUi } from './workspace-picker-ui.js';
 import { initIssueBoardUi } from './issue-board-ui.js';
+import { createIssueRowUi } from './issue-row-ui.js';
 import { initIssueAiPromptUi } from './issue-ai-prompt-ui.js';
 import { initIssueDiscussionUi } from './issue-discussion-ui.js';
 import { initIssueRelatedUi } from './issue-related-ui.js';
@@ -32,7 +33,7 @@ import { initProjectListUi } from './project-list-ui.js';
 import { initGithubProjectUi } from './github-project-ui.js';
 import { parseQuickIssueInput } from './quick-issue.js';
 import { milestoneStatus } from './roadmap.js';
-import { filterIssues, filterIssuesByMilestoneArchive, groupIssues, groupIssuesByMilestone, discussionIndicatorLabel, projectProgress, sortIssues, } from './issue-board.js';
+import { filterIssues, filterIssuesByMilestoneArchive, groupIssues, groupIssuesByMilestone, projectProgress, sortIssues, } from './issue-board.js';
 import { diffConditionalIssueCollections, loadIssueCollections, nextIssuePollDelay, refreshDeletedIssuesOnOpen, shouldDeferIssueUpdates, } from './issue-polling.js';
 import { dom } from './dom.js';
 const { project: { projectHeading, projectEditDialog, projectReadOnlyNotice, editProjectButton, projectsNavButton, projectsView, projectView, projectForm, projectList, projectFormPanel, projectDescription, projectState, projectChatColumn, projectSidebarList, projectMain, projectTabs, projectKeyboardHints, }, auth: { loginPanel, loginShell, accountBar, currentUserLabel, loginStatusMessage, logoutButton, }, workspace: { workspacePanel, workspaceNav, adminNavButton, adminView, adminHeading, membersView, adminGoPrefixOption, membersTabButton, }, shell: { createWorkspaceForm, breadcrumbProjectsButton, breadcrumbDivider, breadcrumbCurrent, notesTabButton, emptyIssues, statusMessage, }, roadmap: { roadmapNavButton, roadmapView, roadmapHeading, roadmapSummary, roadmapMilestoneList, roadmapEmptyState, roadmapGoPrefixOption, }, inbox: { inboxNavButton, inboxView, inboxHeading, }, lounge: { loungeNavButton, loungeView, loungeHeading, loungeMessageList, }, shortcuts: { toggleProjectFormButton, keyboardHints, goPrefixHint, goPrefixWorkspaceOption, goPrefixProjectOptions, }, chat: { chatView, }, issues: { issuesView, issueDetailView, issueDetailDisplay, issueDetailTitle, issueDetailPriority, issueDetailDueDate, issueDetailDescription, issueDetailBrief, issueDetailContextSection, issueDetailContext, issueDetailExpectedOutcomeSection, issueDetailExpectedOutcome, issueDetailAcceptanceCriteriaSection, issueDetailAcceptanceCriteria, issueDetailStatus, issueDetailStatusLabel, issueSourceLink, issueDetailEditForm, issueDetailEditButton, issueDetailDeleteButton, issuesTabButton, issueBackButton, issueForm, issueQuickAddTitle, issueQuickAddPriority, issueQuickAddDueDate, issueQuickAddAssignee, issueQuickAddMilestone, issueQuickAddOngoing, issueQuickAddShared, issueQuickAddApproval, issueQuickAddCancelButton, issueDetailType, issueDetailAssignee, issueDetailMilestone, issueDetailOngoingRow, issueDetailSharing, issueDetailApproval, issueDescriptionDetails, issueProgress, issueProgressLabel, issueFilter, issueGrouping, issueOrder, issueScope, issueCountSummary, issueBulkAssignToggle, issueBulkAssignToolbar, issueList, deletedIssuesDetails, deletedIssueCount, deletedIssueList, }, guest: { guestLogoutButton, }, } = dom;
@@ -223,34 +224,6 @@ let issuePollHasDeferredChanges = false;
 let issuePollInFlightProjectId = null;
 let issuePollRequestVersion = 0;
 const deletedIssueRowRenderSignatures = new WeakMap();
-const issueBoardUi = initIssueBoardUi({
-    issueList,
-    getState: () => ({
-        bulkMoveSelectionMode,
-        bulkMovePending,
-        bulkAssignSelectionMode,
-        selectedBulkMoveIssueIds,
-        selectedBulkAssignIssueIds,
-        selectedIssueId: selectedIssue?.id ?? null,
-        readOnly: activeProject !== null && projectStatusIsReadOnly(activeProject.status),
-    }),
-    onToggleBulkMoveSelection: () => {
-        if (bulkAssignSelectionMode)
-            clearBulkAssignSelection();
-        if (bulkMoveSelectionMode)
-            clearBulkMoveSelection();
-        else
-            bulkMoveSelectionMode = true;
-    },
-    renderBoard: renderProjectIssueBoard,
-    issueAssigneeLabel,
-    createIssueRow: (issue, reorder, allowBulkMoveSelection, allowBulkAssignSelection) => createIssueRow(issue, reorder, allowBulkMoveSelection, allowBulkAssignSelection),
-    createBulkMoveToolbar: createIssueBulkMoveToolbar,
-    syncBulkMoveToolbar: syncIssueBulkMoveToolbar,
-    setTextContentIfChanged,
-    placeNodeAtPosition,
-    replaceIssueRowPreservingFocus,
-});
 const issueAiPromptUi = initIssueAiPromptUi({
     getIssue: () => selectedIssue,
     isIssueCurrent: (issue) => selectedIssue?.id === issue.id && activeProject?.id === issue.project_id,
@@ -295,6 +268,48 @@ const issueStatusPickerUi = initIssueStatusPickerUi({
     focusIssueDetailStatus: () => issueDetailStatus.focus(),
     shouldRestoreFocus: () => !commandPaletteUi.isPaletteOpen()
         && !commandPaletteUi.isShortcutHelpOpen() && !workspacePickerUi.isOpen(),
+});
+const issueRowUi = createIssueRowUi({
+    doc: document,
+    issueTypeLabel,
+    issuePriorityLabel,
+    formatIssueDueDate,
+    isIssueOverdue,
+    issueAssigneeLabel,
+    isReadOnly: () => activeProject !== null && projectStatusIsReadOnly(activeProject.status),
+    createStatusButton: (issue) => issueStatusPickerUi.createButton(issue),
+    createBulkMoveCheckbox: createIssueBulkSelectCheckbox,
+    createBulkAssignCheckbox: createIssueBulkAssignCheckbox,
+    openIssue,
+    moveIssue,
+});
+const issueBoardUi = initIssueBoardUi({
+    issueList,
+    getState: () => ({
+        bulkMoveSelectionMode,
+        bulkMovePending,
+        bulkAssignSelectionMode,
+        selectedBulkMoveIssueIds,
+        selectedBulkAssignIssueIds,
+        selectedIssueId: selectedIssue?.id ?? null,
+        readOnly: activeProject !== null && projectStatusIsReadOnly(activeProject.status),
+    }),
+    onToggleBulkMoveSelection: () => {
+        if (bulkAssignSelectionMode)
+            clearBulkAssignSelection();
+        if (bulkMoveSelectionMode)
+            clearBulkMoveSelection();
+        else
+            bulkMoveSelectionMode = true;
+    },
+    renderBoard: renderProjectIssueBoard,
+    issueAssigneeLabel,
+    createIssueRow: (issue, reorder, allowBulkMoveSelection, allowBulkAssignSelection) => issueRowUi.create(issue, reorder, allowBulkMoveSelection, allowBulkAssignSelection),
+    createBulkMoveToolbar: createIssueBulkMoveToolbar,
+    syncBulkMoveToolbar: syncIssueBulkMoveToolbar,
+    setTextContentIfChanged,
+    placeNodeAtPosition,
+    replaceIssueRowPreservingFocus,
 });
 const issueDeleteUi = initIssueDeleteUi({
     getProjectId: () => activeProject?.id ?? null,
@@ -402,7 +417,7 @@ const inboxUi = initInboxUi({
     issuePriorityLabel,
     formatDueDate: formatIssueDueDate,
     isIssueOverdue,
-    createDiscussionIndicator,
+    createDiscussionIndicator: issueRowUi.createDiscussionIndicator,
 });
 const workspaceAdminUi = initWorkspaceAdminUi({
     getUser: () => activeUser,
@@ -3277,159 +3292,6 @@ async function updateIssueStatus(issue, nextStatus) {
         report(error instanceof Error ? error.message : 'Could not update the issue status.', true);
     }
 }
-function createIssueRow(issue, reorder, allowBulkMoveSelection = false, allowBulkAssignSelection = false) {
-    const item = document.createElement('li');
-    item.className = 'issue-card';
-    item.dataset.issueId = String(issue.id);
-    const content = document.createElement('div');
-    content.className = 'issue-content';
-    const mainline = document.createElement('div');
-    mainline.className = 'issue-mainline';
-    const indicator = document.createElement('span');
-    indicator.className = `issue-status-indicator is-${issue.status}`;
-    indicator.setAttribute('aria-hidden', 'true');
-    const key = document.createElement('span');
-    key.className = 'issue-key';
-    key.textContent = `#${issue.id}`;
-    let sharedIndicator = null;
-    if (issue.is_shared) {
-        const shared = document.createElement('span');
-        shared.className = 'issue-shared-tag';
-        shared.textContent = 'Shared';
-        shared.setAttribute('role', 'img');
-        shared.setAttribute('aria-label', 'Shared with guests');
-        shared.title = 'Shared with guests';
-        const shareIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        shareIcon.setAttribute('viewBox', '0 0 16 16');
-        shareIcon.setAttribute('aria-hidden', 'true');
-        shareIcon.setAttribute('focusable', 'false');
-        const shareLines = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        shareLines.setAttribute('d', 'M5.8 7 10.2 4.9M5.8 9 10.2 11.1');
-        const shareStart = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        shareStart.setAttribute('cx', '4');
-        shareStart.setAttribute('cy', '8');
-        shareStart.setAttribute('r', '2');
-        const shareTop = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        shareTop.setAttribute('cx', '12');
-        shareTop.setAttribute('cy', '4');
-        shareTop.setAttribute('r', '2');
-        const shareBottom = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        shareBottom.setAttribute('cx', '12');
-        shareBottom.setAttribute('cy', '12');
-        shareBottom.setAttribute('r', '2');
-        shareIcon.append(shareLines, shareStart, shareTop, shareBottom);
-        shared.append(shareIcon);
-        sharedIndicator = shared;
-    }
-    const statusColumn = document.createElement('span');
-    statusColumn.className = 'issue-status-column';
-    statusColumn.append(indicator);
-    if (sharedIndicator !== null)
-        statusColumn.append(sharedIndicator);
-    const title = document.createElement('button');
-    title.className = 'issue-title issue-title-button';
-    title.type = 'button';
-    title.textContent = issue.title;
-    title.addEventListener('click', () => openIssue(issue));
-    mainline.append(statusColumn, key, title);
-    const discussionIndicator = createDiscussionIndicator(issue.discussion_count ?? 0);
-    const metadata = document.createElement('div');
-    metadata.className = 'issue-metadata';
-    if (issue.type !== 'task') {
-        const type = document.createElement('span');
-        type.className = 'issue-type-tag';
-        type.textContent = issueTypeLabel(issue.type);
-        metadata.append(type);
-    }
-    if (issue.priority !== 'medium') {
-        const priority = document.createElement('span');
-        priority.className = `issue-priority-tag is-${issue.priority}`;
-        priority.textContent = `${issuePriorityLabel(issue.priority)} priority`;
-        metadata.append(priority);
-    }
-    if (issue.due_date !== null) {
-        const dueDate = document.createElement('span');
-        const overdue = isIssueOverdue(issue);
-        dueDate.className = `issue-due-date-tag${overdue ? ' is-overdue' : ''}`;
-        dueDate.textContent = `${overdue ? 'Overdue' : 'Due'} ${formatIssueDueDate(issue.due_date)}`;
-        dueDate.title = `${overdue ? 'Overdue' : 'Due'} ${issue.due_date}`;
-        metadata.append(dueDate);
-    }
-    if (issue.is_ongoing) {
-        const ongoing = document.createElement('span');
-        ongoing.className = 'issue-ongoing-tag';
-        ongoing.textContent = 'Ongoing';
-        ongoing.title = 'Continuous work outside milestone completion.';
-        metadata.append(ongoing);
-    }
-    if (issue.milestone_name !== null && issue.milestone_name !== undefined && reorder?.showMilestoneTag !== false) {
-        const milestone = document.createElement('span');
-        milestone.className = 'issue-milestone-tag';
-        milestone.textContent = issue.milestone_name;
-        milestone.title = `Milestone: ${issue.milestone_name}`;
-        metadata.append(milestone);
-    }
-    if (issue.assignee_id !== null) {
-        const assignee = document.createElement('span');
-        assignee.className = 'issue-assignee-label';
-        assignee.textContent = issueAssigneeLabel(issue.assignee_id);
-        assignee.title = 'Assignee';
-        metadata.append(assignee);
-    }
-    if (issue.source_message_id !== null) {
-        const source = document.createElement('span');
-        source.className = 'issue-source';
-        source.textContent = 'From chat thread';
-        metadata.append(source);
-    }
-    content.append(mainline, metadata);
-    if (issue.description !== '') {
-        const description = document.createElement('p');
-        description.className = 'issue-description';
-        description.textContent = issue.description;
-        content.append(description);
-    }
-    const hasReorderActions = reorder?.canMoveEarlier !== undefined || reorder?.canMoveLater !== undefined;
-    if (!hasReorderActions) {
-        const actions = document.createElement('div');
-        actions.className = 'issue-row-actions';
-        if (allowBulkMoveSelection)
-            actions.append(createIssueBulkSelectCheckbox(issue));
-        if (allowBulkAssignSelection)
-            actions.append(createIssueBulkAssignCheckbox(issue));
-        if (discussionIndicator !== null)
-            actions.append(discussionIndicator);
-        actions.append(issueStatusPickerUi.createButton(issue));
-        item.append(content, actions);
-    }
-    else {
-        const actions = document.createElement('div');
-        actions.className = 'issue-row-actions';
-        if (allowBulkMoveSelection)
-            actions.append(createIssueBulkSelectCheckbox(issue));
-        if (allowBulkAssignSelection)
-            actions.append(createIssueBulkAssignCheckbox(issue));
-        if (discussionIndicator !== null)
-            actions.append(discussionIndicator);
-        for (const direction of ['up', 'down']) {
-            const button = document.createElement('button');
-            button.type = 'button';
-            button.className = 'button button-quiet issue-order-button';
-            button.dataset.moveDirection = direction;
-            button.disabled = (direction === 'up'
-                ? reorder?.canMoveEarlier !== true
-                : reorder?.canMoveLater !== true)
-                || (activeProject !== null && projectStatusIsReadOnly(activeProject.status));
-            button.textContent = direction === 'up' ? '↑' : '↓';
-            button.setAttribute('aria-label', `Move ${issue.title} ${direction === 'up' ? 'earlier' : 'later'}`);
-            button.addEventListener('click', () => void moveIssue(issue, direction, button));
-            actions.append(button);
-        }
-        actions.append(issueStatusPickerUi.createButton(issue));
-        item.append(content, actions);
-    }
-    return item;
-}
 function createIssueBulkSelectCheckbox(issue) {
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
@@ -3485,28 +3347,6 @@ function createIssueBulkAssignCheckbox(issue) {
         renderProjectIssueBoard();
     });
     return checkbox;
-}
-function createDiscussionIndicator(count) {
-    const label = discussionIndicatorLabel(count);
-    if (label === null)
-        return null;
-    const indicator = document.createElement('span');
-    indicator.className = 'issue-discussion-indicator';
-    indicator.setAttribute('role', 'img');
-    indicator.setAttribute('aria-label', label);
-    indicator.title = label;
-    const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    icon.setAttribute('viewBox', '0 0 11 10');
-    icon.setAttribute('aria-hidden', 'true');
-    const bubble = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    // A pixel-grid speech bubble, drawn on 1px cells so it stays crisp.
-    bubble.setAttribute('d', 'M1 0h9v1H1zM0 1h1v6H0zM10 1h1v6h-1zM1 7h9v1H1zM3 8h2v1H3zM3 9h1v1H3z');
-    icon.append(bubble);
-    const value = document.createElement('span');
-    value.setAttribute('aria-hidden', 'true');
-    value.textContent = String(count);
-    indicator.append(icon, value);
-    return indicator;
 }
 async function moveIssue(issue, direction, button) {
     const projectId = activeProject?.id;
