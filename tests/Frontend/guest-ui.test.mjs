@@ -77,6 +77,7 @@ test('guest shell loads shared projects and shows an empty state when none are a
   const { elements } = withBrowserGlobals(t);
   const requests = [];
   const emptyStates = [];
+  let finishProjects;
   let enteredGuestMode = 0;
   const ui = initGuestUi({
     getUser: () => user,
@@ -85,7 +86,7 @@ test('guest shell loads shared projects and shows an empty state when none are a
     getProjectHeading: () => new FakeElement(),
     request: async (path) => {
       requests.push(path);
-      return { projects: [] };
+      return new Promise((resolve) => { finishProjects = resolve; });
     },
     renderEmptyState: (container, message) => emptyStates.push({ container, message }),
     onGuestMode: () => { enteredGuestMode += 1; },
@@ -98,12 +99,16 @@ test('guest shell loads shared projects and shows an empty state when none are a
     },
   });
 
-  await ui.showGuestShell(user);
+  const loading = ui.showGuestShell(user);
+  assert.equal(elements.get('#guest-status').textContent, 'Loading projects…');
+  finishProjects({ projects: [] });
+  await loading;
 
   assert.deepEqual(requests, ['/projects']);
   assert.equal(enteredGuestMode, 1);
   assert.equal(elements.get('#guest-shell').hidden, false);
   assert.deepEqual(emptyStates, [{ container: elements.get('#guest-main'), message: 'No projects have been shared with you yet.' }]);
+  assert.equal(elements.get('#guest-status').textContent, '');
   assert.equal(ui.isPreviewActive(), false);
   assert.equal(ui.isShellVisible(), true);
 });

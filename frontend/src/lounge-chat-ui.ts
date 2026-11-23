@@ -379,6 +379,7 @@ export function initLoungeChatUi(options: {
     followLatest = true;
     loungeMessageList.replaceChildren(loungeEmptyState);
     loungeEmptyState.hidden = false;
+    loungeEmptyState.textContent = 'Loading messages…';
     loungeLatestButton.hidden = true;
     try {
       const [result, membersResult] = await Promise.all([
@@ -391,6 +392,7 @@ export function initLoungeChatUi(options: {
         cursor = Math.max(cursor, message.id);
         appendMessage(message);
       }
+      if (messages.size === 0) loungeEmptyState.textContent = 'No messages yet.';
       scrollToLatest();
       void pollNow();
     } catch (error) {
@@ -399,6 +401,7 @@ export function initLoungeChatUi(options: {
         options.onUnauthorized();
         return;
       }
+      loungeEmptyState.textContent = 'Could not load messages.';
       options.report(error instanceof Error ? error.message : 'Could not load the Lounge.', true);
       schedulePoll(5000);
     }
@@ -435,6 +438,7 @@ export function initLoungeChatUi(options: {
         }
         pollDelay = received.length > 0 ? 1000 : Math.min(10_000, pollDelay * 1.5);
       }
+      if (messages.size === 0) loungeEmptyState.textContent = 'No messages yet.';
     } catch (error) {
       if (!active) return;
       if (error instanceof ApiFailure && error.status === 401) {

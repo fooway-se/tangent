@@ -37,6 +37,6 @@ test('My Work has Inbox and Tasks tabs and keeps task filters separate from inbo
   assert.match(inboxUi, /function selectMyWorkTab\(/);
   assert.match(inboxUi, /closest<HTMLDetailsElement>\('\.my-work-task-group'\)\?\.open !== false/);
   assert.deepEqual(inboxEvents.INBOX_TABS.map((tab) => tab.id), ['unread', 'all', 'mentions', 'done']);
-  assert.match(css, /\.my-work-tabs\s*\{/);
+  assert.match(css, /\.project-tabs\s*\{/);
   assert.match(css, /\.my-work-task-group\s*\{/);
 });

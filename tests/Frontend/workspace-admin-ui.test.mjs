@@ -165,6 +165,30 @@ test('workspace admin tabs expose one selected panel and support arrow navigatio
   ui.dispose();
 });
 
+test('workspace admin shows loading labels instead of empty lists during its first load', async (t) => {
+  const resolvers = new Map();
+  const state = setup(t, (path) => new Promise((resolve) => { resolvers.set(path, resolve); }));
+  const loading = state.ui.load();
+
+  for (const [id, label] of [
+    ['#workspace-members-empty', 'Loading members…'],
+    ['#workspace-invites-empty', 'Loading invitations…'],
+    ['#workspace-agents-empty', 'Loading agents…'],
+  ]) {
+    assert.equal(state.elements.get(id).hidden, false);
+    assert.equal(state.elements.get(id).textContent, label);
+  }
+  resolvers.get('/users')({ users: [] });
+  resolvers.get('/users/invites')({ invites: [] });
+  resolvers.get('/projects')({ projects: [] });
+  resolvers.get('/agents')({ agents: [] });
+  await loading;
+
+  assert.equal(state.elements.get('#workspace-members-empty').textContent, 'No members yet.');
+  assert.equal(state.elements.get('#workspace-invites-empty').textContent, 'No pending invites.');
+  assert.equal(state.elements.get('#workspace-agents-empty').textContent, 'No agents yet.');
+});
+
 test('workspace admin loads named agents and shows their grants without tokens', async (t) => {
   const agent = {
     id: 9,

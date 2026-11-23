@@ -136,6 +136,15 @@ export function initWorkspaceAdminUi(options: {
 
   async function load(): Promise<void> {
     if (options.getUser()?.role !== 'admin') return;
+    membersList.replaceChildren();
+    invitesList.replaceChildren();
+    agentsList.replaceChildren();
+    membersEmpty.textContent = 'Loading members…';
+    invitesEmpty.textContent = 'Loading invitations…';
+    agentsEmpty.textContent = 'Loading agents…';
+    membersEmpty.hidden = false;
+    invitesEmpty.hidden = false;
+    agentsEmpty.hidden = false;
     try {
       const [members, invites, projects, agents] = await Promise.all([
         request<{ users: WorkspaceMember[] }>('/users'),
@@ -152,6 +161,9 @@ export function initWorkspaceAdminUi(options: {
       renderAgents(agents.agents);
       updatePanelTabIndex();
     } catch (error) {
+      membersEmpty.textContent = 'Could not load workspace members.';
+      invitesEmpty.textContent = 'Could not load invitations.';
+      agentsEmpty.textContent = 'Could not load agents.';
       options.report(error instanceof Error ? error.message : 'Could not load workspace administration.', true);
     }
   }
@@ -164,6 +176,7 @@ export function initWorkspaceAdminUi(options: {
   function renderMembers(members: readonly WorkspaceMember[]): void {
     membersList.replaceChildren();
     membersEmpty.hidden = members.length > 0;
+    membersEmpty.textContent = 'No members yet.';
     const activeAdminCount = members.filter((member) => member.role === 'admin' && member.is_active).length;
     for (const member of members) {
       const item = doc.createElement('li');
@@ -402,6 +415,7 @@ export function initWorkspaceAdminUi(options: {
   function renderInvites(invites: readonly WorkspaceInvite[]): void {
     invitesList.replaceChildren();
     invitesEmpty.hidden = invites.length > 0;
+    invitesEmpty.textContent = 'No pending invites.';
     for (const invite of invites) {
       const item = doc.createElement('li');
       item.className = 'workspace-invite-row';
@@ -474,6 +488,7 @@ export function initWorkspaceAdminUi(options: {
   function renderAgents(agents: readonly AgentIdentity[]): void {
     agentsList.replaceChildren();
     agentsEmpty.hidden = agents.length > 0;
+    agentsEmpty.textContent = 'No agents yet.';
     for (const agent of agents) {
       const item = doc.createElement('li');
       item.className = 'workspace-agent-row';

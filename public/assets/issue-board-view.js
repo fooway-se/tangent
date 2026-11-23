@@ -99,18 +99,30 @@ export function initIssueBoardView(options) {
                 selectedBulkAssignIssueIds.delete(issueId);
         }
         options.syncBulkAssignControls();
-        options.emptyIssues.hidden = visible.length > 0;
-        options.setTextContentIfChanged(options.emptyIssues, nextUpMode && workQueue.length === 0
-            ? 'No open issues to work on next.'
-            : total === 0
-                ? scope === 'history'
-                    ? 'No archived milestone issues. Archive a milestone to move its issues into History.'
-                    : projectIssues.length > 0
-                        ? 'No issues in Current work. View History or create a new issue.'
-                        : deletedIssues.length > 0
-                            ? 'No active issues. Restore one from Deleted issues or create a new issue.'
-                            : 'No issues yet. Create the first one.'
-                : 'No issues match that filter.');
+        const loading = options.isLoading?.() === true;
+        options.emptyIssues.hidden = visible.length > 0 && !loading;
+        let emptyMessage;
+        if (loading)
+            emptyMessage = 'Loading issues…';
+        else if (options.hasLoadError?.() === true)
+            emptyMessage = 'Could not load issues.';
+        else if (nextUpMode && workQueue.length === 0)
+            emptyMessage = 'No open issues to work on next.';
+        else if (total !== 0)
+            emptyMessage = 'No issues match that filter.';
+        else if (scope === 'history') {
+            emptyMessage = 'No archived milestone issues. Archive a milestone to move its issues into History.';
+        }
+        else if (projectIssues.length > 0) {
+            emptyMessage = 'No issues in Current work. View History or create a new issue.';
+        }
+        else if (deletedIssues.length > 0) {
+            emptyMessage = 'No active issues. Restore one from Deleted issues or create a new issue.';
+        }
+        else {
+            emptyMessage = 'No issues yet. Create the first one.';
+        }
+        options.setTextContentIfChanged(options.emptyIssues, emptyMessage);
         options.setTextContentIfChanged(options.deletedIssueCount, String(deletedIssues.length));
         options.deletedIssuesDetails.hidden = false;
         options.reconcileDeletedIssueRows();

@@ -285,6 +285,10 @@ const projectEditUi = initProjectEditUi({
 });
 let projectMilestones: Milestone[] = [];
 let projectIssues: Issue[] = [];
+let issueLoadedProjectId: number | null = null;
+let issueLoadingProjectId: number | null = null;
+let issueLoadFailedProjectId: number | null = null;
+let issueLoadRequestVersion = 0;
 let bulkMoveSelectionMode = false;
 let bulkMovePending = false;
 let selectedBulkMoveIssueIds = new Set<number>();
@@ -477,6 +481,8 @@ const issueBoardView = initIssueBoardView({
   order: () => issueOrder.value as IssueSortOrder,
   grouping: () => issueGrouping.value as IssueGrouping,
   filter: () => issueFilter.value,
+  isLoading: () => issueLoadingProjectId === activeProject?.id && !issuesView.hidden,
+  hasLoadError: () => issueLoadFailedProjectId === activeProject?.id,
   issueAssigneeLabel,
   issueProgress,
   issueProgressLabel,
@@ -2067,10 +2073,12 @@ function updateProjectSidebarMoreCue(): void {
 }
 
 async function loadRoadmap(): Promise<void> {
+  roadmapUi.setLoading();
   try {
     const result = await api<{ milestones: RoadmapMilestone[] }>('/roadmap');
     roadmapUi.render(result.milestones);
   } catch (error) {
+    roadmapUi.setError('Could not load the roadmap.');
     report(error instanceof Error ? error.message : 'Could not load the roadmap.', true);
   }
 }
@@ -2171,6 +2179,9 @@ async function loadProjectDetail(
         projectState.classList.toggle('is-read-only', result.project.status === 'completed' || result.project.status === 'archived');
         updateProjectReadOnlyNotice(result.project.status);
         projectIssues = [];
+        issueLoadedProjectId = null;
+        issueLoadingProjectId = null;
+        issueLoadFailedProjectId = null;
         deletedProjectIssues = [];
         deletedIssuesDetails.open = false;
         issueFilter.value = '';
@@ -2234,6 +2245,10 @@ function switchProjectTab(tab: 'issues' | 'members' | 'notes', returnFocusIssueI
 
 async function loadProjectIssues(projectId: number): Promise<void> {
   pauseIssuePolling();
+  const requestVersion = ++issueLoadRequestVersion;
+  issueLoadingProjectId = issueLoadedProjectId === projectId ? null : projectId;
+  issueLoadFailedProjectId = null;
+  if (issueLoadingProjectId !== null && activeProject?.id === projectId && !issuesView.hidden) renderProjectIssueBoard();
   try {
     const collections = await loadIssueCollections(
       () => fetchConditionalIssueList(projectId, false, null),
@@ -2242,8 +2257,11 @@ async function loadProjectIssues(projectId: number): Promise<void> {
     );
     const result = collections.active;
     const deletedResult = collections.deleted;
-    if (activeProject?.id !== projectId || issuesView.hidden) return;
+    if (requestVersion !== issueLoadRequestVersion || activeProject?.id !== projectId || issuesView.hidden) return;
+    issueLoadingProjectId = null;
+    issueLoadFailedProjectId = null;
     projectIssues = result.issues ?? [];
+    issueLoadedProjectId = projectId;
     issuePollingController.seedActiveEtag(result.etag);
     if (deletedResult !== null) {
       deletedProjectIssues = deletedResult.issues ?? [];
@@ -2254,6 +2272,11 @@ async function loadProjectIssues(projectId: number): Promise<void> {
     renderProjectIssueBoard();
     scheduleIssuePoll();
   } catch (error) {
+    if (requestVersion === issueLoadRequestVersion && activeProject?.id === projectId && !issuesView.hidden) {
+      issueLoadingProjectId = null;
+      issueLoadFailedProjectId = projectId;
+      renderProjectIssueBoard();
+    }
     if (error instanceof ApiFailure && error.status === 401) {
       showSignedOut();
       return;

@@ -21,6 +21,7 @@ export function initProjectChatUi(options) {
     let followLatest = true;
     let messageListElement = null;
     let emptyState = null;
+    let initialHistorySettled = false;
     let input = null;
     let mentionList = null;
     let mentionQuery = null;
@@ -171,11 +172,19 @@ export function initProjectChatUi(options) {
                 const received = result.events;
                 eventFeed.consume(received, projectId, (messageId) => messages.has(messageId), (event) => appendMessage(event, followLatest));
             }
+            if (initialHistorySettled && messages.size === 0 && emptyState !== null) {
+                emptyState.hidden = false;
+                emptyState.textContent = 'No messages yet.';
+            }
         }
         catch (error) {
             if (error instanceof ApiFailure && error.status === 401) {
                 options.onUnauthorized();
                 return;
+            }
+            if (initialHistorySettled && activeId === projectId && messages.size === 0 && emptyState !== null) {
+                emptyState.hidden = false;
+                emptyState.textContent = 'Could not load messages.';
             }
             options.report(error instanceof Error ? error.message : 'Could not load project chat.', true);
             pollDelay = Math.min(10_000, pollDelay * 1.5);
@@ -188,8 +197,11 @@ export function initProjectChatUi(options) {
             const result = await request(`/projects/${projectId}/messages`);
             if (activeId !== projectId)
                 return;
+            initialHistorySettled = true;
             for (const message of result.messages)
                 appendMessage(message);
+            if (messages.size === 0 && emptyState !== null)
+                emptyState.textContent = 'No messages yet.';
             if (followLatest)
                 scrollToBottom();
             void pollChat(projectId);
@@ -198,6 +210,10 @@ export function initProjectChatUi(options) {
             if (error instanceof ApiFailure && error.status === 401) {
                 options.onUnauthorized();
                 return;
+            }
+            initialHistorySettled = true;
+            if (activeId === projectId && messages.size === 0 && emptyState !== null) {
+                emptyState.textContent = 'Could not load messages.';
             }
             options.report(error instanceof Error ? error.message : 'Could not load project chat.', true);
             schedulePoll();
@@ -554,12 +570,15 @@ export function initProjectChatUi(options) {
         activity.append(memberCount, nextPresenceIndicator);
         heading.append(channelName, activity);
         followLatest = true;
+        initialHistorySettled = false;
         const nextMessageList = doc.createElement('div');
         nextMessageList.className = 'chat-message-list';
         messageListElement = nextMessageList;
         const nextEmptyState = doc.createElement('p');
         nextEmptyState.className = 'chat-empty-state';
-        nextEmptyState.textContent = 'No messages yet.';
+        nextEmptyState.setAttribute('role', 'status');
+        nextEmptyState.setAttribute('aria-live', 'polite');
+        nextEmptyState.textContent = 'Loading messages…';
         emptyState = nextEmptyState;
         nextMessageList.append(nextEmptyState);
         const nextLatestButton = doc.createElement('button');

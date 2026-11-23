@@ -28,7 +28,7 @@ class FakeElement extends EventTarget {
   click() { this.dispatchEvent(new Event('click', { bubbles: true, cancelable: true })); }
 }
 
-function setup({ role = 'admin', projects = [] } = {}) {
+function setup({ role = 'admin', projects = [], apiOverride } = {}) {
   const ids = [
     'project-list', 'project-sidebar-list', 'empty-projects', 'project-sidebar-empty',
     'project-form', 'project-form-panel', 'toggle-project-form', 'cancel-project-form',
@@ -66,6 +66,7 @@ function setup({ role = 'admin', projects = [] } = {}) {
     onRendered: () => {},
     api: async (path, init) => {
       calls.push([path, init]);
+      if (apiOverride !== undefined && (init === undefined || init.method === undefined)) return apiOverride(path);
       return path === '/projects' && (init === undefined || init.method === undefined)
         ? { projects: projectData }
         : { project: {} };
@@ -140,4 +141,20 @@ test('empty project state explains that a non-admin needs project membership', a
   assert.equal(elements.get('#empty-projects').textContent,
     "You're not a member of any projects yet. Ask a workspace admin to add you.");
   assert.equal(elements.get('#project-sidebar-empty').textContent, 'No project access yet.');
+});
+
+test('project list shows loading feedback while projects are being fetched', async (t) => {
+  let finishLoad;
+  const { ui, elements, cleanup } = setup({
+    apiOverride: () => new Promise((resolve) => { finishLoad = resolve; }),
+  });
+  t.after(cleanup);
+
+  const loading = ui.load();
+  assert.equal(elements.get('#empty-projects').hidden, false);
+  assert.equal(elements.get('#empty-projects').textContent, 'Loading projects…');
+  assert.equal(elements.get('#project-sidebar-empty').textContent, 'Loading projects…');
+  finishLoad({ projects: [] });
+  await loading;
+  assert.equal(elements.get('#empty-projects').textContent, 'No projects yet.');
 });

@@ -94,7 +94,7 @@ class FakeElement extends EventTarget {
   get isConnected() { return true; }
 }
 
-function setup(t, payloads) {
+function setup(t, payloads, fetcherOverride) {
   const previous = {
     document: globalThis.document,
     window: globalThis.window,
@@ -155,6 +155,7 @@ function setup(t, payloads) {
     },
     fetcher: async (url, init) => {
       fetches.push({ url, init });
+      if (fetcherOverride !== undefined) return fetcherOverride(url, init);
       const isIssues = String(url).endsWith('/inbox');
       const payload = isIssues ? { issues: [] } : {
         events: payloads.events,
@@ -213,5 +214,29 @@ test('inbox refresh renders event counts and local read actions update the selec
   assert.equal(mutations[0].init.method, 'PATCH');
   assert.equal(elements.get('#inbox-summary').textContent, '1 unread event.');
   assert.equal(elements.get('#inbox-issue-list').children.length, 0);
+  ui.dispose();
+});
+
+test('My Work shows loading feedback until its first inbox collections arrive', async (t) => {
+  const resolvers = [];
+  const { elements, ui } = setup(t, { events: [], counts: { unread: 0, mentions: 0 } }, () => (
+    new Promise((resolve) => { resolvers.push(resolve); })
+  ));
+
+  ui.load();
+  assert.equal(elements.get('#inbox-empty-state').textContent, 'Loading inbox…');
+  const pending = ui.pollNow();
+  assert.equal(elements.get('#inbox-empty-state').textContent, 'Loading inbox…');
+  for (const resolve of resolvers) {
+    resolve({
+      ok: true,
+      status: 200,
+      headers: { get: () => null },
+      json: async () => ({ events: [], issues: [], counts: { unread: 0, mentions: 0 }, has_more: false, next_cursor: null }),
+    });
+  }
+  await pending;
+  assert.equal(elements.get('#inbox-empty-state').textContent, 'Nothing here.');
+  assert.equal(elements.get('#my-work-tasks-empty-state').textContent, 'You have no open issues assigned to you.');
   ui.dispose();
 });

@@ -137,3 +137,46 @@ test('project chat owns its lifecycle, read-only controls, and polling cleanup',
   assert.equal(clearedSelection, 1);
   ui.dispose();
 });
+
+test('project chat shows loading feedback until the first message request settles', async (t) => {
+  const previous = { document: globalThis.document, window: globalThis.window };
+  const document = {
+    activeElement: null,
+    hidden: false,
+    createElement: (tagName) => new FakeElement(tagName),
+    createElementNS: (_namespace, tagName) => new FakeElement(tagName),
+  };
+  globalThis.document = document;
+  globalThis.window = { setTimeout: () => 1, clearTimeout() {} };
+  t.after(() => {
+    for (const [key, value] of Object.entries(previous)) {
+      if (value === undefined) delete globalThis[key];
+      else globalThis[key] = value;
+    }
+  });
+
+  let finishHistory;
+  const ui = initProjectChatUi({
+    getProject: () => ({ id: 7, slug: 'tangent', status: 'active' }),
+    getMembers: () => [],
+    getUser: () => null,
+    isDocumentHidden: () => false,
+    selectMessage() {}, onClearSelection() {}, onCreateIssue() {}, onUnauthorized() {},
+    report(message) { assert.fail(message); },
+    avatarInitials: (name) => name.slice(0, 1), compactMessage: (body) => body,
+    submitFormOnEnter() {},
+    request: async (path) => path.endsWith('/presence')
+      ? { someone_else_viewing: false }
+      : await new Promise((resolve) => { finishHistory = resolve; }),
+    pollEvents: async () => ({ notModified: true, status: 304, etag: null, nextDelay: 1500, events: [] }),
+    doc: document,
+  });
+
+  ui.create(7);
+  const emptyState = ui.messageList().children.find((child) => child.className === 'chat-empty-state');
+  assert.equal(emptyState.textContent, 'Loading messages…');
+  finishHistory({ messages: [] });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(emptyState.textContent, 'No messages yet.');
+  ui.dispose();
+});

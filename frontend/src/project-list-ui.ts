@@ -73,14 +73,25 @@ export function initProjectListUi(options: {
   }
 
   async function load(): Promise<void> {
-    const result = await options.api<{ projects: Project[] }>('/projects');
+    projectList.replaceChildren();
+    projectSidebarList.replaceChildren();
+    emptyProjects.hidden = false;
+    projectSidebarEmpty.hidden = false;
+    emptyProjects.textContent = 'Loading projects…';
+    projectSidebarEmpty.textContent = 'Loading projects…';
+    let result: { projects: Project[] };
+    try {
+      result = await options.api<{ projects: Project[] }>('/projects');
+    } catch (error) {
+      emptyProjects.textContent = 'Could not load projects.';
+      projectSidebarEmpty.textContent = 'Could not load projects.';
+      throw error;
+    }
     const projects = [...result.projects].sort((left, right) => (
       PROJECT_STATUS_ORDER[left.status] - PROJECT_STATUS_ORDER[right.status]
         || left.name.localeCompare(right.name)
     ));
-    projectList.replaceChildren();
     updateEmptyStates(projects);
-    projectSidebarList.replaceChildren();
 
     for (const project of projects) {
       const item = doc.createElement('li');

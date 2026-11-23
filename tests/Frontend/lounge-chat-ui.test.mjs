@@ -31,7 +31,7 @@ class FakeElement extends EventTarget {
   setSelectionRange() {}
 }
 
-function setup(t) {
+function setup(t, requestOverride) {
   const previous = { document: globalThis.document, window: globalThis.window };
   const ids = [
     '#lounge-view', '#lounge-message-list', '#lounge-empty-state', '#lounge-latest-button', '#lounge-form',
@@ -85,6 +85,7 @@ function setup(t) {
     submitFormOnEnter() {},
     request: async (path) => {
       paths.push(path);
+      if (requestOverride !== undefined) return requestOverride(path);
       return path === '/lounge/members' ? { members: [] } : { messages: [] };
     },
     fetcher: async () => ({
@@ -117,6 +118,24 @@ test('Lounge loading owns its polling state and clears it on navigation away', a
   assert.equal(state.clearedSelection(), 2);
   assert.equal(state.timers.size, 0);
   assert.equal(state.ui.messagesById().size, 0);
+  state.ui.dispose();
+});
+
+test('Lounge shows loading feedback until its first message request settles', async (t) => {
+  let finishMessages;
+  let finishMembers;
+  const state = setup(t, (path) => path === '/lounge/messages'
+    ? new Promise((resolve) => { finishMessages = resolve; })
+    : new Promise((resolve) => { finishMembers = resolve; }));
+
+  state.elements.get('#lounge-empty-state').textContent = 'No messages yet.';
+  state.ui.load();
+  const emptyState = state.elements.get('#lounge-empty-state');
+  assert.equal(emptyState.textContent, 'Loading messages…');
+  finishMessages({ messages: [] });
+  finishMembers({ members: [] });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(emptyState.textContent, 'No messages yet.');
   state.ui.dispose();
 });
 

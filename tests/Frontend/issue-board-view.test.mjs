@@ -43,6 +43,7 @@ function createHarness({
   order = 'updated',
   grouping = 'status',
   filter = '',
+  loading = false,
 } = {}) {
   const selectedBulkAssignIssueIds = new Set();
   const selectedBulkMoveIssueIds = new Set();
@@ -67,6 +68,7 @@ function createHarness({
     order: () => order,
     grouping: () => grouping,
     filter: () => filter,
+    isLoading: () => loading,
     issueAssigneeLabel: (id) => id === null ? 'Unassigned' : `Member ${id}`,
     issueProgress,
     issueProgressLabel,
@@ -159,6 +161,15 @@ test('milestone grouping prunes ineligible move selections and next-up creates r
     canMoveLater: false,
     showMilestoneTag: false,
   });
+});
+
+test('issue board view shows a loading message instead of the empty message while loading', () => {
+  const loading = createHarness({ loading: true });
+
+  loading.ui.render();
+
+  assert.equal(loading.emptyIssues.hidden, false);
+  assert.equal(loading.emptyIssues.textContent, 'Loading issues…');
 });
 
 test('issue board view gives scope-specific empty messages and clears move mode without active milestones', () => {

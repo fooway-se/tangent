@@ -200,6 +200,10 @@ const projectEditUi = initProjectEditUi({
 });
 let projectMilestones = [];
 let projectIssues = [];
+let issueLoadedProjectId = null;
+let issueLoadingProjectId = null;
+let issueLoadFailedProjectId = null;
+let issueLoadRequestVersion = 0;
 let bulkMoveSelectionMode = false;
 let bulkMovePending = false;
 let selectedBulkMoveIssueIds = new Set();
@@ -393,6 +397,8 @@ const issueBoardView = initIssueBoardView({
     order: () => issueOrder.value,
     grouping: () => issueGrouping.value,
     filter: () => issueFilter.value,
+    isLoading: () => issueLoadingProjectId === activeProject?.id && !issuesView.hidden,
+    hasLoadError: () => issueLoadFailedProjectId === activeProject?.id,
     issueAssigneeLabel,
     issueProgress,
     issueProgressLabel,
@@ -2098,11 +2104,13 @@ function updateProjectSidebarMoreCue() {
     accountBar.classList.toggle('has-project-overflow', hasProjectOverflow);
 }
 async function loadRoadmap() {
+    roadmapUi.setLoading();
     try {
         const result = await api('/roadmap');
         roadmapUi.render(result.milestones);
     }
     catch (error) {
+        roadmapUi.setError('Could not load the roadmap.');
         report(error instanceof Error ? error.message : 'Could not load the roadmap.', true);
     }
 }
@@ -2199,6 +2207,9 @@ async function loadProjectDetail(projectId, tab = 'issues', recordHistory = true
         projectState.classList.toggle('is-read-only', result.project.status === 'completed' || result.project.status === 'archived');
         updateProjectReadOnlyNotice(result.project.status);
         projectIssues = [];
+        issueLoadedProjectId = null;
+        issueLoadingProjectId = null;
+        issueLoadFailedProjectId = null;
         deletedProjectIssues = [];
         deletedIssuesDetails.open = false;
         issueFilter.value = '';
@@ -2263,13 +2274,21 @@ function switchProjectTab(tab, returnFocusIssueId, loadIssues = true) {
 }
 async function loadProjectIssues(projectId) {
     pauseIssuePolling();
+    const requestVersion = ++issueLoadRequestVersion;
+    issueLoadingProjectId = issueLoadedProjectId === projectId ? null : projectId;
+    issueLoadFailedProjectId = null;
+    if (issueLoadingProjectId !== null && activeProject?.id === projectId && !issuesView.hidden)
+        renderProjectIssueBoard();
     try {
         const collections = await loadIssueCollections(() => fetchConditionalIssueList(projectId, false, null), () => fetchConditionalIssueList(projectId, true, null), deletedIssuesDetails.open);
         const result = collections.active;
         const deletedResult = collections.deleted;
-        if (activeProject?.id !== projectId || issuesView.hidden)
+        if (requestVersion !== issueLoadRequestVersion || activeProject?.id !== projectId || issuesView.hidden)
             return;
+        issueLoadingProjectId = null;
+        issueLoadFailedProjectId = null;
         projectIssues = result.issues ?? [];
+        issueLoadedProjectId = projectId;
         issuePollingController.seedActiveEtag(result.etag);
         if (deletedResult !== null) {
             deletedProjectIssues = deletedResult.issues ?? [];
@@ -2281,6 +2300,11 @@ async function loadProjectIssues(projectId) {
         scheduleIssuePoll();
     }
     catch (error) {
+        if (requestVersion === issueLoadRequestVersion && activeProject?.id === projectId && !issuesView.hidden) {
+            issueLoadingProjectId = null;
+            issueLoadFailedProjectId = projectId;
+            renderProjectIssueBoard();
+        }
         if (error instanceof ApiFailure && error.status === 401) {
             showSignedOut();
             return;

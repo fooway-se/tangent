@@ -179,7 +179,7 @@
             <section aria-labelledby="project-list-heading">
               <h2 id="project-list-heading" class="section-title">Your projects</h2>
               <ul id="project-list" class="project-list"></ul>
-              <p id="empty-projects" class="empty-state" hidden>No projects yet.</p>
+              <p id="empty-projects" class="empty-state" role="status" aria-live="polite" hidden>No projects yet.</p>
             </section>
           </section>
 
@@ -194,7 +194,7 @@
             <p id="roadmap-heuristic-note" class="roadmap-heuristic-note">“Needs attention” is a rough signal: the deadline is within 7 days and work has no team assignee or exceeds 2 open tasks per assigned team member.</p>
             <ul id="roadmap-summary" class="roadmap-summary" aria-label="Roadmap milestone summary"></ul>
             <ol id="roadmap-milestone-list" class="roadmap-milestone-list" aria-live="polite"></ol>
-            <p id="roadmap-empty-state" class="empty-state" hidden>No milestones yet. Add milestones to projects to build the team roadmap.</p>
+            <p id="roadmap-empty-state" class="empty-state" role="status" aria-live="polite" hidden>No milestones yet. Add milestones to projects to build the team roadmap.</p>
           </section>
 
           <section id="inbox-view" class="workspace-view inbox-view" hidden aria-labelledby="inbox-heading">
@@ -213,13 +213,13 @@
               <div id="inbox-tabs" class="inbox-tabs" role="tablist" aria-label="Inbox updates filter"></div>
               <p id="inbox-summary" class="inbox-summary">Updates and mentions from your projects.</p>
               <ul id="inbox-issue-list" class="issue-list inbox-issue-list" aria-live="polite"></ul>
-              <p id="inbox-empty-state" class="inbox-empty-state" hidden>Nothing here.</p>
+              <p id="inbox-empty-state" class="inbox-empty-state" role="status" aria-live="polite" hidden>Nothing here.</p>
               <button id="inbox-load-more" class="button button-quiet" type="button" hidden>Load older events</button>
             </section>
             <section id="my-work-tasks-panel" class="my-work-panel tab-panel-offset" role="tabpanel" aria-labelledby="my-work-tab-tasks" hidden>
               <p id="my-work-tasks-summary" class="inbox-summary">Open issues assigned to you across your projects.</p>
               <div id="my-work-task-groups" class="my-work-task-groups" aria-live="polite"></div>
-              <p id="my-work-tasks-empty-state" class="inbox-empty-state" hidden>You have no open issues assigned to you.</p>
+              <p id="my-work-tasks-empty-state" class="inbox-empty-state" role="status" aria-live="polite" hidden>You have no open issues assigned to you.</p>
             </section>
           </section>
 
@@ -234,7 +234,7 @@
             </header>
             <section class="lounge-chat-panel" aria-label="Lounge chat">
               <div id="lounge-message-list" class="chat-message-list lounge-message-list" aria-live="polite">
-                <p id="lounge-empty-state" class="chat-empty-state">No messages yet.</p>
+                <p id="lounge-empty-state" class="chat-empty-state" role="status" aria-live="polite">Loading messages…</p>
               </div>
               <button id="lounge-latest-button" class="chat-latest-button button button-quiet" type="button" aria-label="Scroll to latest message" hidden>↓ Latest</button>
               <form id="lounge-form" class="chat-composer lounge-composer form-stack">
@@ -395,7 +395,7 @@
                   </div>
                 </div>
                 <ul id="issue-list" class="issue-list" aria-live="polite"></ul>
-                <p id="empty-issues" class="empty-state" hidden>No issues yet. Create the first one.</p>
+                <p id="empty-issues" class="empty-state" role="status" aria-live="polite" hidden>No issues yet. Create the first one.</p>
                 <details id="deleted-issues-details" class="deleted-issues-details">
                   <summary>Deleted issues <span id="deleted-issue-count">0</span></summary>
                   <ul id="deleted-issue-list" class="deleted-issue-list"></ul>
@@ -600,7 +600,7 @@
               <article class="panel admin-panel">
                 <h2>Workspace members</h2>
                 <p class="panel-description">Members can belong to one or more workspaces using the same account.</p>
-                <p id="workspace-members-empty" class="panel-description" hidden>No members yet.</p>
+                <p id="workspace-members-empty" class="panel-description" role="status" aria-live="polite" hidden>No members yet.</p>
                 <ul id="workspace-members-list" class="member-list"></ul>
               </article>
             </section>
@@ -630,7 +630,7 @@
               </article>
               <article class="panel admin-panel">
                 <h2>Pending invites</h2>
-                <p id="workspace-invites-empty" class="panel-description" hidden>No pending invites.</p>
+                <p id="workspace-invites-empty" class="panel-description" role="status" aria-live="polite" hidden>No pending invites.</p>
                 <ul id="workspace-invites-list" class="member-list workspace-invites-list"></ul>
               </article>
             </section>
@@ -663,7 +663,7 @@
               <article class="panel admin-panel">
                 <h2>Managed agents</h2>
                 <p class="panel-description">Tokens appear only when created or rotated. Copy them into the agent's secret store; Tangent cannot show them again.</p>
-                <p id="workspace-agents-empty" class="panel-description" hidden>No agents yet.</p>
+                <p id="workspace-agents-empty" class="panel-description" role="status" aria-live="polite" hidden>No agents yet.</p>
                 <ul id="workspace-agents-list" class="member-list workspace-agents-list"></ul>
               </article>
             </section>

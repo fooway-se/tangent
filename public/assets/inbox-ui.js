@@ -37,6 +37,8 @@ export function initInboxUi(options) {
     let inboxPollRequestVersion = 0;
     let inboxPollHasDeferredChanges = false;
     let inboxMutationPending = 0;
+    let inboxLoaded = false;
+    let inboxLoadError = null;
     const inboxEventRowRenderSignatures = new WeakMap();
     function isPollingActive() {
         return options.isVisible();
@@ -119,6 +121,9 @@ export function initInboxUi(options) {
             ]);
             if (requestVersion !== inboxPollRequestVersion || !isPollingActive())
                 return;
+            const firstLoad = !inboxLoaded;
+            inboxLoaded = true;
+            inboxLoadError = null;
             const incomingIssues = issuesResult.items ?? inboxIssues;
             const incomingEvents = eventsResult.items === null
                 ? inboxEvents
@@ -135,7 +140,7 @@ export function initInboxUi(options) {
             changed = issuesChanged || eventsChanged || countsChanged;
             inboxIssuesEtag = issuesResult.etag;
             inboxEventsEtag = eventsResult.etag;
-            const deferUpdates = deferUpdatesAtStart || inboxUpdatesAreDeferred();
+            const deferUpdates = !firstLoad && (deferUpdatesAtStart || inboxUpdatesAreDeferred());
             if (deferUpdates && changed) {
                 inboxPollHasDeferredChanges = true;
             }
@@ -158,12 +163,21 @@ export function initInboxUi(options) {
                         renderInboxEvents();
                 }
             }
+            if (firstLoad) {
+                renderInboxIssues();
+                renderInboxEvents();
+            }
             inboxPollDelay = nextInboxPollDelay(inboxPollDelay, changed && !deferUpdates, false);
         }
         catch (error) {
             if (error instanceof ApiFailure && error.status === 401) {
                 options.onUnauthorized();
                 return;
+            }
+            if (!inboxLoaded) {
+                inboxLoadError = 'Could not load your inbox.';
+                renderInboxIssues();
+                renderInboxEvents();
             }
             if (isPollingActive())
                 options.report(error instanceof Error ? error.message : 'Could not refresh your inbox.', true);
@@ -233,7 +247,7 @@ export function initInboxUi(options) {
             toggleRead: (target) => void updateEvent(target, { read: !target.read }),
             toggleDone: (target) => void updateEvent(target, { done: !target.done, read: true }),
         }));
-        inboxEmptyState.textContent = 'Nothing here.';
+        inboxEmptyState.textContent = inboxLoadError ?? (inboxLoaded ? 'Nothing here.' : 'Loading inbox…');
         inboxEmptyState.hidden = events.length > 0;
         inboxLoadMoreButton.hidden = !inboxEventsHasMore;
         inboxLoadMoreButton.disabled = inboxMorePageLoading;
@@ -437,7 +451,8 @@ export function initInboxUi(options) {
             fragment.append(projectSection);
         }
         myWorkTaskGroups.replaceChildren(fragment);
-        myWorkTasksEmptyState.textContent = 'You have no open issues assigned to you.';
+        myWorkTasksEmptyState.textContent = inboxLoadError
+            ?? (inboxLoaded ? 'You have no open issues assigned to you.' : 'Loading tasks…');
         myWorkTasksEmptyState.hidden = inboxIssues.length > 0;
     }
     function createInboxIssueRow(issue) {
@@ -552,6 +567,8 @@ export function initInboxUi(options) {
             renderInboxIssues();
     }
     function load() {
+        inboxLoaded = false;
+        inboxLoadError = null;
         renderMyWorkTabs();
         renderInboxTabs();
         if (!isPollingActive())
@@ -565,6 +582,8 @@ export function initInboxUi(options) {
     }
     function clearForNavigation() {
         stopPolling();
+        inboxLoaded = false;
+        inboxLoadError = null;
         inboxIssues = [];
         inboxEvents = [];
         inboxEventCounts = { unread: 0, mentions: 0 };

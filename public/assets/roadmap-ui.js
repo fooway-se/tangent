@@ -1,6 +1,13 @@
 import { milestoneStatus } from './roadmap.js';
+const EMPTY_ROADMAP_MESSAGE = 'No milestones yet. Add milestones to projects to build the team roadmap.';
 export function initRoadmapUi(options) {
     const { doc } = options;
+    function setStatus(message) {
+        options.summary.replaceChildren();
+        options.milestoneList.replaceChildren();
+        options.emptyState.textContent = message;
+        options.emptyState.hidden = false;
+    }
     function formatRoadmapDate(value) {
         return new Intl.DateTimeFormat(undefined, {
             year: 'numeric',
@@ -34,6 +41,7 @@ export function initRoadmapUi(options) {
         }));
         options.milestoneList.replaceChildren();
         options.emptyState.hidden = milestones.length > 0;
+        options.emptyState.textContent = EMPTY_ROADMAP_MESSAGE;
         milestones.forEach((milestone, index) => {
             const status = statuses[index];
             const item = doc.createElement('li');
@@ -79,5 +87,9 @@ export function initRoadmapUi(options) {
             options.milestoneList.append(item);
         });
     }
-    return { render };
+    return {
+        render,
+        setLoading: () => setStatus('Loading roadmap…'),
+        setError: (message) => setStatus(message),
+    };
 }

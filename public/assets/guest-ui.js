@@ -50,7 +50,7 @@ export function initGuestUi(options) {
         guestPreviewMemberLabel.hidden = true;
         guestPreviewReturnButton.hidden = true;
         guestCap.textContent = 'Read-only · guest';
-        guestStatus.textContent = '';
+        guestStatus.textContent = 'Loading projects…';
         guestStatus.classList.remove('error');
         guestUser.textContent = user.email;
         guestShell.hidden = false;
@@ -113,6 +113,7 @@ export function initGuestUi(options) {
             const result = await request('/projects');
             if (requestVersion !== guestModeVersion || previewActive)
                 return;
+            guestStatus.textContent = '';
             guestProjectSelect.replaceChildren(...result.projects.map((project) => {
                 const option = doc.createElement('option');
                 option.value = String(project.id);
@@ -133,15 +134,20 @@ export function initGuestUi(options) {
                 options.onUnauthorized();
                 return;
             }
+            guestStatus.textContent = 'Could not load projects.';
             options.report(error instanceof Error ? error.message : 'Could not load your projects.', true);
         }
     }
     async function loadClientView(projectId, previewMode = false, viewerUserId = options.getUser()?.id ?? 0) {
         const requestVersion = ++viewRequestVersion;
+        if (!previewMode)
+            guestStatus.textContent = 'Loading project…';
         try {
             const view = await request(`/projects/${projectId}/client-view`);
             if (requestVersion !== viewRequestVersion || (previewMode && !previewActive))
                 return;
+            if (!previewMode)
+                guestStatus.textContent = '';
             guestTitle.textContent = 'Client portal';
             renderView(guestMain, view, {
                 userId: viewerUserId,
@@ -166,6 +172,8 @@ export function initGuestUi(options) {
                 options.onUnauthorized();
                 return;
             }
+            if (!previewMode)
+                guestStatus.textContent = 'Could not load the project view.';
             options.report(error instanceof Error ? error.message : 'Could not load the client view.', true);
         }
     }

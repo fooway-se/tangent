@@ -99,6 +99,7 @@ test('roadmap shows the empty state and zero summary when there are no milestone
   const summary = new FakeElement('ul');
   const list = new FakeElement('ul');
   const emptyState = new FakeElement('p');
+  emptyState.textContent = 'No milestones yet. Add milestones to projects to build the team roadmap.';
   const ui = initRoadmapUi({
     doc: { createElement: (tag) => new FakeElement(tag) },
     summary,
@@ -112,4 +113,25 @@ test('roadmap shows the empty state and zero summary when there are no milestone
   assert.equal(emptyState.hidden, false);
   assert.equal(list.children.length, 0);
   assert.deepEqual(summary.children.map((item) => item.children[0].textContent), ['0', '0', '0', '0']);
+});
+
+test('roadmap exposes loading feedback separately from its empty state', () => {
+  const summary = new FakeElement('ul');
+  const list = new FakeElement('ul');
+  const emptyState = new FakeElement('p');
+  emptyState.textContent = 'No milestones yet. Add milestones to projects to build the team roadmap.';
+  const ui = initRoadmapUi({
+    doc: { createElement: (tag) => new FakeElement(tag) },
+    summary,
+    milestoneList: list,
+    emptyState,
+    openProject() {},
+  });
+
+  ui.setLoading();
+  assert.equal(emptyState.hidden, false);
+  assert.equal(emptyState.textContent, 'Loading roadmap…');
+  assert.equal(list.children.length, 0);
+  ui.render([]);
+  assert.equal(emptyState.textContent, 'No milestones yet. Add milestones to projects to build the team roadmap.');
 });
