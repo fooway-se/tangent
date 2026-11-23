@@ -5,6 +5,7 @@ import { resolveShortcut, shouldSendChatOnEnter } from '../../public/assets/shor
 
 const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
+const goPrefixUi = await readFile(new URL('../../frontend/src/go-prefix-ui.ts', import.meta.url), 'utf8');
 const paletteCommands = await readFile(new URL('../../frontend/src/command-palette-commands.ts', import.meta.url), 'utf8');
 const workspaceAdminUi = await readFile(new URL('../../frontend/src/workspace-admin-ui.ts', import.meta.url), 'utf8');
 const loungeChatUi = await readFile(new URL('../../frontend/src/lounge-chat-ui.ts', import.meta.url), 'utf8');
@@ -298,9 +299,9 @@ test('command palette, shortcut help, and contextual hints are present in the wo
   assert.equal((html.match(/<dt><kbd>Esc<\/kbd><\/dt>/g) ?? []).length, 1, 'Escape guidance has one authoritative entry');
   assert.doesNotMatch(html, /Move through selected chat messages/);
   assert.match(html, /admin-go-prefix-option/);
-  assert.match(app, /goPrefixWorkspaceOption\.hidden = activeWorkspaces\.length < 2/);
-  assert.match(app, /goPrefixProjectOptions\.hidden = activeProject === null \|\| projectView\.hidden/);
-  assert.match(app, /adminGoPrefixOption\.hidden = activeUser\?\.role !== 'admin'/);
+  assert.match(goPrefixUi, /workspaceOption\.hidden = context\.workspaceCount < 2/);
+  assert.match(goPrefixUi, /projectOptions\.hidden = !context\.hasProject \|\| !context\.projectVisible/);
+  assert.match(goPrefixUi, /adminOption\.hidden = !context\.isAdmin/);
   assert.match(workspacePickerUi, /workspaceSwitcher\.disabled = workspaces\.length < 2/);
   assert.match(workspacePickerUi, /function open\(proposedWorkspaceId\?: number\)[\s\S]{0,120}workspaces\.length < 2/);
   const commands = paletteCommands;

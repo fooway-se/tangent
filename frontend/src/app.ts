@@ -34,6 +34,7 @@ import { initIssueBoardView } from './issue-board-view.js';
 import { initIssueBulkUi } from './issue-bulk-ui.js';
 import { initIssueBulkActions } from './issue-bulk-actions.js';
 import { moveFocusByPage, moveFocusToBoundary, moveFocusWithin, visibleRowsInViewport } from './list-keyboard-ui.js';
+import { initGoPrefixUi } from './go-prefix-ui.js';
 import { createIssueRowUi } from './issue-row-ui.js';
 import { initIssueAiPromptUi } from './issue-ai-prompt-ui.js';
 import { initIssueDiscussionUi } from './issue-discussion-ui.js';
@@ -831,9 +832,24 @@ let issueQuickAddEscapePending = false;
 let issueQuickAddReturnFocus: HTMLElement | null = null;
 let issueQuickAddSourceMessageId: number | null = null;
 let issueQuickAddSourceProjectId: number | null = null;
-let goPrefixPending = false;
-let goPrefixTimer: number | null = null;
 let statusMessageTimer: number | null = null;
+
+const goPrefixUi = initGoPrefixUi({
+  hint: goPrefixHint,
+  workspaceOption: goPrefixWorkspaceOption,
+  projectOptions: goPrefixProjectOptions,
+  adminOption: adminGoPrefixOption,
+  roadmapOption: roadmapGoPrefixOption,
+  getContext: () => ({
+    workspaceCount: activeWorkspaces.length,
+    hasProject: activeProject !== null,
+    projectVisible: !projectView.hidden,
+    isAdmin: activeUser?.role === 'admin',
+    canUseRoadmap: activeUser !== null && activeUser.role !== 'guest',
+  }),
+  setTimeout: (callback, delay) => window.setTimeout(callback, delay),
+  clearTimeout: (timer) => window.clearTimeout(timer),
+});
 
 const loungePresenceUi = initLoungePresence({
   navigationButton: loungeNavButton,
@@ -1665,7 +1681,7 @@ function shouldBlurOnEscape(target: EventTarget | null): boolean {
 function shortcutContext(target: EventTarget | null) {
   return {
     targetIsEditable: isEditableTarget(target),
-    goPrefixPending,
+    goPrefixPending: goPrefixUi.isPending(),
     hasWorkspace: activeUser !== null,
     canToggleKeyboardHints: activeUser !== null && activeUser.role !== 'guest' && !workspacePanel.hidden,
     canSwitchWorkspace: activeWorkspaces.length > 1,
@@ -1706,21 +1722,11 @@ function shortcutContext(target: EventTarget | null) {
 }
 
 function clearGoPrefix(): void {
-  goPrefixPending = false;
-  goPrefixHint.hidden = true;
-  if (goPrefixTimer !== null) window.clearTimeout(goPrefixTimer);
-  goPrefixTimer = null;
+  goPrefixUi.clear();
 }
 
 function startGoPrefix(): void {
-  clearGoPrefix();
-  goPrefixPending = true;
-  goPrefixWorkspaceOption.hidden = activeWorkspaces.length < 2;
-  goPrefixProjectOptions.hidden = activeProject === null || projectView.hidden;
-  adminGoPrefixOption.hidden = activeUser?.role !== 'admin';
-  roadmapGoPrefixOption.hidden = activeUser?.role === 'guest' || activeUser === null;
-  goPrefixHint.hidden = false;
-  goPrefixTimer = window.setTimeout(clearGoPrefix, 1200);
+  goPrefixUi.start();
 }
 
 function moveIssueSelection(direction: -1 | 1): void {
@@ -2249,7 +2255,7 @@ function handleKeyboardShortcut(event: KeyboardEvent): void {
   const context = shortcutContext(event.target);
   const action = resolveShortcut(event, context);
   if (action === null) {
-    if (goPrefixPending && !context.targetIsEditable) clearGoPrefix();
+    if (goPrefixUi.isPending() && !context.targetIsEditable) clearGoPrefix();
     return;
   }
   event.preventDefault();
