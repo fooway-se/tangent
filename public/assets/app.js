@@ -28,6 +28,7 @@ import { moveFocusByPage, moveFocusToBoundary, moveFocusWithin, visibleRowsInVie
 import { initGoPrefixUi } from './go-prefix-ui.js';
 import { initChatMessageNavigationUi } from './chat-message-navigation-ui.js';
 import { initStatusMessageUi } from './status-message-ui.js';
+import { initKeyboardHintsUi, KEYBOARD_HINTS_STORAGE_KEY } from './keyboard-hints-ui.js';
 import { createIssueRowUi } from './issue-row-ui.js';
 import { initIssueAiPromptUi } from './issue-ai-prompt-ui.js';
 import { initIssueDiscussionUi } from './issue-discussion-ui.js';
@@ -44,15 +45,6 @@ import { initRoadmapUi } from './roadmap-ui.js';
 import { diffConditionalIssueCollections, loadIssueCollections, nextIssuePollDelay, refreshDeletedIssuesOnOpen, shouldDeferIssueUpdates, } from './issue-polling.js';
 import { dom } from './dom.js';
 const { project: { projectHeading, projectEditDialog, projectReadOnlyNotice, editProjectButton, projectsNavButton, projectsView, projectView, projectForm, projectList, projectFormPanel, projectDescription, projectState, projectChatColumn, projectSidebarList, projectMain, projectTabs, projectKeyboardHints, }, auth: { loginPanel, loginShell, accountBar, currentUserLabel, loginStatusMessage, logoutButton, }, workspace: { workspacePanel, workspaceNav, adminNavButton, adminView, adminHeading, membersView, adminGoPrefixOption, membersTabButton, }, shell: { createWorkspaceForm, breadcrumbProjectsButton, breadcrumbDivider, breadcrumbCurrent, notesTabButton, emptyIssues, statusMessage, }, roadmap: { roadmapNavButton, roadmapView, roadmapHeading, roadmapSummary, roadmapMilestoneList, roadmapEmptyState, roadmapGoPrefixOption, }, inbox: { inboxNavButton, inboxView, inboxHeading, }, lounge: { loungeNavButton, loungeView, loungeHeading, loungeMessageList, }, shortcuts: { toggleProjectFormButton, keyboardHints, goPrefixHint, goPrefixWorkspaceOption, goPrefixProjectOptions, }, chat: { chatView, }, issues: { issuesView, issueDetailView, issueDetailDisplay, issueDetailTitle, issueDetailPriority, issueDetailDueDate, issueDetailDescription, issueDetailBrief, issueDetailContextSection, issueDetailContext, issueDetailExpectedOutcomeSection, issueDetailExpectedOutcome, issueDetailAcceptanceCriteriaSection, issueDetailAcceptanceCriteria, issueDetailStatus, issueDetailStatusLabel, issueSourceLink, issueDetailEditForm, issueDetailEditButton, issueDetailDeleteButton, issuesTabButton, issueBackButton, issueForm, issueQuickAddTitle, issueQuickAddPriority, issueQuickAddDueDate, issueQuickAddAssignee, issueQuickAddMilestone, issueQuickAddOngoing, issueQuickAddShared, issueQuickAddApproval, issueQuickAddCancelButton, issueDetailType, issueDetailAssignee, issueDetailMilestone, issueDetailOngoingRow, issueDetailSharing, issueDetailApproval, issueDescriptionDetails, issueProgress, issueProgressLabel, issueFilter, issueGrouping, issueOrder, issueScope, issueCountSummary, issueBulkAssignToggle, issueBulkAssignToolbar, issueList, deletedIssuesDetails, deletedIssueCount, deletedIssueList, }, guest: { guestLogoutButton, }, } = dom;
-const KEYBOARD_HINTS_STORAGE_KEY = 'tangent.keyboard-hints-visible';
-function loadKeyboardHintsPreference() {
-    try {
-        return window.localStorage.getItem(KEYBOARD_HINTS_STORAGE_KEY) !== 'false';
-    }
-    catch {
-        return true;
-    }
-}
 function issueStatusLabel(status) {
     return ISSUE_STATUS_OPTIONS.find((option) => option.value === status)?.label ?? status;
 }
@@ -135,7 +127,13 @@ const issueBulkShareApply = issueBulkAssignToolbar.querySelector('.issue-bulk-sh
 const issueBulkUnshareApply = issueBulkAssignToolbar.querySelector('.issue-bulk-unshare-apply');
 const issueBulkAssignCancel = issueBulkAssignToolbar.querySelector('.issue-bulk-assign-cancel');
 let activeUser = null;
-let keyboardHintsVisible = loadKeyboardHintsPreference();
+const keyboardHintsUi = initKeyboardHintsUi({
+    element: keyboardHints,
+    getUserRole: () => activeUser?.role ?? null,
+    isWorkspaceVisible: () => !workspacePanel.hidden,
+    getStoredPreference: () => window.localStorage.getItem(KEYBOARD_HINTS_STORAGE_KEY),
+    setStoredPreference: (value) => window.localStorage.setItem(KEYBOARD_HINTS_STORAGE_KEY, value),
+});
 let activeWorkspaces = [];
 let activeProject = null;
 let projectReturnFocusId = null;
@@ -612,22 +610,10 @@ function report(message, isError = false) {
     statusMessageUi.report(message, isError);
 }
 function updateKeyboardHintsVisibility() {
-    keyboardHints.hidden = !keyboardHintsVisible
-        || activeUser === null
-        || activeUser.role === 'guest'
-        || workspacePanel.hidden;
+    keyboardHintsUi.updateVisibility();
 }
 function toggleKeyboardHints() {
-    if (activeUser === null || activeUser.role === 'guest' || workspacePanel.hidden)
-        return;
-    keyboardHintsVisible = !keyboardHintsVisible;
-    try {
-        window.localStorage.setItem(KEYBOARD_HINTS_STORAGE_KEY, String(keyboardHintsVisible));
-    }
-    catch {
-        /* Storage can be blocked; the choice then lasts for this page only. */
-    }
-    updateKeyboardHintsVisibility();
+    keyboardHintsUi.toggle();
 }
 function invalidateProjectNavigation(sessionChanged = false) {
     if (sessionChanged)
@@ -1428,7 +1414,7 @@ function getPaletteCommands() {
     const hasSelectedIssue = hasSelectedIssueInVisibleView();
     return buildPaletteCommands({
         user: activeUser,
-        keyboardHintsVisible,
+        keyboardHintsVisible: keyboardHintsUi.isPreferenceEnabled(),
         workspaceVisible: !workspacePanel.hidden,
         activeWorkspaces,
         projectsViewVisible: !projectsView.hidden,

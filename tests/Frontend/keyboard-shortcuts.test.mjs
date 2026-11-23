@@ -6,6 +6,7 @@ import { resolveShortcut, shouldSendChatOnEnter } from '../../public/assets/shor
 const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
 const goPrefixUi = await readFile(new URL('../../frontend/src/go-prefix-ui.ts', import.meta.url), 'utf8');
+const keyboardHintsUi = await readFile(new URL('../../frontend/src/keyboard-hints-ui.ts', import.meta.url), 'utf8');
 const paletteCommands = await readFile(new URL('../../frontend/src/command-palette-commands.ts', import.meta.url), 'utf8');
 const workspaceAdminUi = await readFile(new URL('../../frontend/src/workspace-admin-ui.ts', import.meta.url), 'utf8');
 const loungeChatUi = await readFile(new URL('../../frontend/src/lounge-chat-ui.ts', import.meta.url), 'utf8');
@@ -70,8 +71,9 @@ test('t focuses the theme selector from any view and stays inactive while typing
 
 test('keyboard hint toggling does not announce redundant status text', () => {
   const toggle = app.slice(app.indexOf('function toggleKeyboardHints'), app.indexOf('function showSignedOut'));
-  assert.match(toggle, /keyboardHintsVisible = !keyboardHintsVisible/);
-  assert.match(toggle, /updateKeyboardHintsVisibility\(\)/);
+  assert.match(keyboardHintsUi, /preferenceEnabled = !preferenceEnabled/);
+  assert.match(keyboardHintsUi, /updateVisibility\(\)/);
+  assert.match(toggle, /keyboardHintsUi\.toggle\(\)/);
   assert.doesNotMatch(toggle, /report\(/);
 });
 

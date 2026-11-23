@@ -37,6 +37,7 @@ import { moveFocusByPage, moveFocusToBoundary, moveFocusWithin, visibleRowsInVie
 import { initGoPrefixUi } from './go-prefix-ui.js';
 import { initChatMessageNavigationUi } from './chat-message-navigation-ui.js';
 import { initStatusMessageUi } from './status-message-ui.js';
+import { initKeyboardHintsUi, KEYBOARD_HINTS_STORAGE_KEY } from './keyboard-hints-ui.js';
 import { createIssueRowUi } from './issue-row-ui.js';
 import { initIssueAiPromptUi } from './issue-ai-prompt-ui.js';
 import { initIssueDiscussionUi } from './issue-discussion-ui.js';
@@ -122,16 +123,6 @@ const {
     guestLogoutButton,
   },
 } = dom;
-
-const KEYBOARD_HINTS_STORAGE_KEY = 'tangent.keyboard-hints-visible';
-
-function loadKeyboardHintsPreference(): boolean {
-  try {
-    return window.localStorage.getItem(KEYBOARD_HINTS_STORAGE_KEY) !== 'false';
-  } catch {
-    return true;
-  }
-}
 
 function issueStatusLabel(status: IssueStatus): string {
   return ISSUE_STATUS_OPTIONS.find((option) => option.value === status)?.label ?? status;
@@ -502,7 +493,13 @@ const issueBulkAssignCancel = issueBulkAssignToolbar.querySelector<HTMLButtonEle
 
 
 let activeUser: User | null = null;
-let keyboardHintsVisible = loadKeyboardHintsPreference();
+const keyboardHintsUi = initKeyboardHintsUi({
+  element: keyboardHints,
+  getUserRole: () => activeUser?.role ?? null,
+  isWorkspaceVisible: () => !workspacePanel.hidden,
+  getStoredPreference: () => window.localStorage.getItem(KEYBOARD_HINTS_STORAGE_KEY),
+  setStoredPreference: (value) => window.localStorage.setItem(KEYBOARD_HINTS_STORAGE_KEY, value),
+});
 let activeWorkspaces: Workspace[] = [];
 let activeProject: Project | null = null;
 let projectReturnFocusId: number | null = null;
@@ -987,21 +984,11 @@ function report(message: string, isError = false): void {
 }
 
 function updateKeyboardHintsVisibility(): void {
-  keyboardHints.hidden = !keyboardHintsVisible
-    || activeUser === null
-    || activeUser.role === 'guest'
-    || workspacePanel.hidden;
+  keyboardHintsUi.updateVisibility();
 }
 
 function toggleKeyboardHints(): void {
-  if (activeUser === null || activeUser.role === 'guest' || workspacePanel.hidden) return;
-  keyboardHintsVisible = !keyboardHintsVisible;
-  try {
-    window.localStorage.setItem(KEYBOARD_HINTS_STORAGE_KEY, String(keyboardHintsVisible));
-  } catch {
-    /* Storage can be blocked; the choice then lasts for this page only. */
-  }
-  updateKeyboardHintsVisibility();
+  keyboardHintsUi.toggle();
 }
 
 function invalidateProjectNavigation(sessionChanged = false): void {
@@ -1834,7 +1821,7 @@ function getPaletteCommands() {
   const hasSelectedIssue = hasSelectedIssueInVisibleView();
   return buildPaletteCommands({
     user: activeUser,
-    keyboardHintsVisible,
+    keyboardHintsVisible: keyboardHintsUi.isPreferenceEnabled(),
     workspaceVisible: !workspacePanel.hidden,
     activeWorkspaces,
     projectsViewVisible: !projectsView.hidden,
