@@ -204,7 +204,8 @@ kbd {
   .workspace-picker-trigger { width: auto; min-width: 0; flex: 0 0 84px; margin: 0 0 0 auto; padding: 2px 3px; font-size: 11px; white-space: nowrap; }
   .workspace-nav { gap: 4px; }
   .workspace-nav::before { display: none; }
-  .workspace-nav-button { padding: 4px 8px; font-size: 12px; }
+  .workspace-nav-button, .project-sidebar-link { padding: 4px 8px; font-size: 12px; }
+  .project-sidebar-list { gap: 4px; }
   .sidebar-projects .section-title { margin: 6px 4px 4px; }
   .workspace-sidebar .sidebar-account { flex-wrap: nowrap; gap: 4px; margin-top: 6px; padding-top: 6px; }
   .workspace-sidebar .sidebar-account #current-user { display: none; }
