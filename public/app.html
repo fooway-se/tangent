@@ -205,18 +205,18 @@
               </div>
               <button id="inbox-mark-all-read" class="button button-quiet" type="button" aria-label="Mark all visible unread events as read" title="Marks every unread event in projects you can access, including older pages." hidden>Mark all visible unread as read</button>
             </header>
-            <div id="my-work-tabs" class="my-work-tabs" role="tablist" aria-label="My Work">
-              <button id="my-work-tab-inbox" class="my-work-tab is-active" type="button" role="tab" aria-selected="true" aria-controls="my-work-inbox-panel" tabindex="0">Inbox</button>
-              <button id="my-work-tab-tasks" class="my-work-tab" type="button" role="tab" aria-selected="false" aria-controls="my-work-tasks-panel" tabindex="-1">Tasks</button>
-            </div>
-            <section id="my-work-inbox-panel" class="my-work-panel" role="tabpanel" aria-labelledby="my-work-tab-inbox">
+            <nav id="my-work-tabs" class="project-tabs" role="tablist" aria-label="My Work">
+              <button id="my-work-tab-inbox" class="project-tab is-active" type="button" role="tab" aria-selected="true" aria-controls="my-work-inbox-panel" tabindex="0">Inbox</button>
+              <button id="my-work-tab-tasks" class="project-tab" type="button" role="tab" aria-selected="false" aria-controls="my-work-tasks-panel" tabindex="-1">Tasks</button>
+            </nav>
+            <section id="my-work-inbox-panel" class="my-work-panel tab-panel-offset" role="tabpanel" aria-labelledby="my-work-tab-inbox">
               <div id="inbox-tabs" class="inbox-tabs" role="tablist" aria-label="Inbox updates filter"></div>
               <p id="inbox-summary" class="inbox-summary">Updates and mentions from your projects.</p>
               <ul id="inbox-issue-list" class="issue-list inbox-issue-list" aria-live="polite"></ul>
               <p id="inbox-empty-state" class="inbox-empty-state" hidden>Nothing here.</p>
               <button id="inbox-load-more" class="button button-quiet" type="button" hidden>Load older events</button>
             </section>
-            <section id="my-work-tasks-panel" class="my-work-panel" role="tabpanel" aria-labelledby="my-work-tab-tasks" hidden>
+            <section id="my-work-tasks-panel" class="my-work-panel tab-panel-offset" role="tabpanel" aria-labelledby="my-work-tab-tasks" hidden>
               <p id="my-work-tasks-summary" class="inbox-summary">Open issues assigned to you across your projects.</p>
               <div id="my-work-task-groups" class="my-work-task-groups" aria-live="polite"></div>
               <p id="my-work-tasks-empty-state" class="inbox-empty-state" hidden>You have no open issues assigned to you.</p>
@@ -268,7 +268,7 @@
                 <button id="members-tab" class="project-tab" type="button" role="tab" aria-selected="false" aria-controls="members-view" tabindex="-1">Members</button>
                 <button id="notes-tab" class="project-tab" type="button" role="tab" aria-selected="false" aria-controls="project-notes-view" tabindex="-1">Notes</button>
               </nav>
-              <p id="project-description" class="project-intro"></p>
+              <p id="project-description" class="project-intro tab-panel-offset"></p>
               <section class="issue-progress-strip" aria-label="Project issue progress">
                 <div class="issue-progress-status">
                   <span class="eyebrow">Project status</span>
@@ -596,7 +596,7 @@
               <button id="workspace-admin-agents-tab" class="project-tab" type="button" role="tab" aria-selected="false" aria-controls="workspace-admin-agents-panel" tabindex="-1">Agents</button>
               <button id="workspace-admin-workspaces-tab" class="project-tab" type="button" role="tab" aria-selected="false" aria-controls="workspace-admin-workspaces-panel" tabindex="-1">Workspaces</button>
             </nav>
-            <section id="workspace-admin-members-panel" class="project-tab-view workspace-admin-tab-panel" role="tabpanel" tabindex="0" aria-labelledby="workspace-admin-members-tab">
+            <section id="workspace-admin-members-panel" class="project-tab-view workspace-admin-tab-panel tab-panel-offset" role="tabpanel" tabindex="0" aria-labelledby="workspace-admin-members-tab">
               <article class="panel admin-panel">
                 <h2>Workspace members</h2>
                 <p class="panel-description">Members can belong to one or more workspaces using the same account.</p>
@@ -604,7 +604,7 @@
                 <ul id="workspace-members-list" class="member-list"></ul>
               </article>
             </section>
-            <section id="workspace-admin-invites-panel" class="project-tab-view workspace-admin-tab-panel" role="tabpanel" tabindex="0" hidden aria-labelledby="workspace-admin-invites-tab">
+            <section id="workspace-admin-invites-panel" class="project-tab-view workspace-admin-tab-panel tab-panel-offset" role="tabpanel" tabindex="0" hidden aria-labelledby="workspace-admin-invites-tab">
               <article class="panel admin-panel">
                 <h2>Invite a member</h2>
                 <p class="panel-description">Tangent emails a single-use invitation link to the address. New members choose a password; existing members enter their current password.</p>
@@ -634,7 +634,7 @@
                 <ul id="workspace-invites-list" class="member-list workspace-invites-list"></ul>
               </article>
             </section>
-            <section id="workspace-admin-agents-panel" class="project-tab-view workspace-admin-tab-panel" role="tabpanel" tabindex="0" hidden aria-labelledby="workspace-admin-agents-tab">
+            <section id="workspace-admin-agents-panel" class="project-tab-view workspace-admin-tab-panel tab-panel-offset" role="tabpanel" tabindex="0" hidden aria-labelledby="workspace-admin-agents-tab">
               <article class="panel admin-panel">
                 <h2>Add a coding agent</h2>
                 <p class="panel-description">Give each agent access only to selected projects and actions. Start with read access; comments and status updates are optional. To change grants later, revoke this identity and create a replacement.</p>
@@ -667,7 +667,7 @@
                 <ul id="workspace-agents-list" class="member-list workspace-agents-list"></ul>
               </article>
             </section>
-            <section id="workspace-admin-workspaces-panel" class="project-tab-view workspace-admin-tab-panel" role="tabpanel" tabindex="0" hidden aria-labelledby="workspace-admin-workspaces-tab">
+            <section id="workspace-admin-workspaces-panel" class="project-tab-view workspace-admin-tab-panel tab-panel-offset" role="tabpanel" tabindex="0" hidden aria-labelledby="workspace-admin-workspaces-tab">
               <article class="panel admin-panel workspace-create-panel">
                 <h2>Create a client workspace</h2>
                 <p class="panel-description">Create a separate workspace for another client. You will be its admin and can switch to it from the sidebar.</p>
