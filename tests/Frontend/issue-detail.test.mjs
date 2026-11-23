@@ -4,6 +4,7 @@ import test from 'node:test';
 
 const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
+const issueDetailView = await readFile(new URL('../../frontend/src/issue-detail-view.ts', import.meta.url), 'utf8');
 const issueRelatedUi = await readFile(new URL('../../frontend/src/issue-related-ui.ts', import.meta.url), 'utf8');
 const issueDetailEditUi = await readFile(new URL('../../frontend/src/issue-detail-edit-ui.ts', import.meta.url), 'utf8');
 const css = await readFile(new URL('../../public/assets/app.css', import.meta.url), 'utf8');
@@ -43,8 +44,8 @@ test('issue detail can save existing editable fields and jump to its source mess
   assert.match(app, /scrollIntoView/);
   assert.match(issueDetailEditUi, /priority:\s*priorityInput\.value/);
   assert.match(issueDetailEditUi, /due_date:\s*dueDateInput\.value === '' \? null : dueDateInput\.value/);
-  assert.match(app, /issueDetailPriority\.textContent = issuePriorityLabel\(selectedIssue\.priority\)/);
-  assert.match(app, /issueDetailDueDate\.textContent = selectedIssue\.due_date/);
+  assert.match(issueDetailView, /issueDetailPriority\.textContent = options\.issuePriorityLabel\(issue\.priority\)/);
+  assert.match(issueDetailView, /issueDetailDueDate\.textContent = issue\.due_date === null/);
 });
 
 test('issue quick add exposes priority and due date syntax', () => {

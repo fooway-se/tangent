@@ -40,6 +40,7 @@ import { initStatusMessageUi } from './status-message-ui.js';
 import { initKeyboardHintsUi, KEYBOARD_HINTS_STORAGE_KEY } from './keyboard-hints-ui.js';
 import { initIssuePollingController } from './issue-polling-controller.js';
 import { initIssueActions } from './issue-actions.js';
+import { initIssueDetailView } from './issue-detail-view.js';
 import { createIssueRowUi } from './issue-row-ui.js';
 import { initIssueAiPromptUi } from './issue-ai-prompt-ui.js';
 import { initIssueDiscussionUi } from './issue-discussion-ui.js';
@@ -600,7 +601,6 @@ const milestoneUi = initMilestoneUi({
 let loungeActive = false;
 let deletedIssuesLoadProjectId: number | null = null;
 let deletedIssuesLoadPromise: Promise<void> | null = null;
-const deletedIssueRowRenderSignatures = new WeakMap<HTMLLIElement, string>();
 const issueAiPromptUi = initIssueAiPromptUi({
   getIssue: () => selectedIssue,
   isIssueCurrent: (issue) => selectedIssue?.id === issue.id && activeProject?.id === issue.project_id,
@@ -818,6 +818,26 @@ const issueDetailEditUi = initIssueDetailEditUi({
   renderDetail: renderIssueDetail,
   renderBoard: renderProjectIssueBoard,
   report,
+});
+const issueDetailViewUi = initIssueDetailView({
+  doc: document,
+  elements: dom.issues,
+  deletedIssueList,
+  getSelectedIssue: () => selectedIssue,
+  getDeletedIssues: () => deletedProjectIssues,
+  getProject: () => activeProject,
+  getMilestones: () => projectMilestones,
+  issueStatusLabel,
+  issueTypeLabel,
+  issuePriorityLabel,
+  isIssueOverdue,
+  formatIssueDueDate,
+  issueAssigneeLabel,
+  isProjectReadOnly: projectStatusIsReadOnly,
+  restoreIssue: (issue, button) => issueDeleteUi.restore(issue, button),
+  renderPullRequests: () => issueRelatedUi.renderPullRequests(),
+  placeNodeAtPosition,
+  replaceRowPreservingFocus: replaceIssueRowPreservingFocus,
 });
 const issuePollingController = initIssuePollingController({
   getProjectId: () => activeProject?.id ?? null,
@@ -2644,93 +2664,11 @@ function replaceIssueRowPreservingFocus(previous: HTMLLIElement, next: HTMLLIEle
 }
 
 function reconcileDeletedIssueRows(): void {
-  const existingRows = new Map(
-    Array.from(deletedIssueList.querySelectorAll<HTMLLIElement>(':scope > .deleted-issue-item'))
-      .map((row) => [Number(row.dataset.issueId), row]),
-  );
-  const expectedIds = new Set<number>();
-  for (const [index, issue] of deletedProjectIssues.entries()) {
-    expectedIds.add(issue.id);
-    const signature = JSON.stringify([issue.title, issue.status]);
-    const existing = existingRows.get(issue.id);
-    const row = existing !== undefined && deletedIssueRowRenderSignatures.get(existing) === signature
-      ? existing
-      : createDeletedIssueRow(issue);
-    if (row !== existing) {
-      deletedIssueRowRenderSignatures.set(row, signature);
-      if (existing !== undefined) replaceIssueRowPreservingFocus(existing, row);
-    }
-    placeNodeAtPosition(deletedIssueList, row, index);
-  }
-  deletedIssueList.querySelectorAll<HTMLLIElement>(':scope > .deleted-issue-item').forEach((row) => {
-    if (!expectedIds.has(Number(row.dataset.issueId))) row.remove();
-  });
-}
-
-function createDeletedIssueRow(issue: Issue): HTMLLIElement {
-  const item = document.createElement('li');
-  item.className = 'deleted-issue-item';
-  item.dataset.issueId = String(issue.id);
-  const content = document.createElement('div');
-  content.className = 'deleted-issue-content';
-  const title = document.createElement('strong');
-  title.textContent = issue.title;
-  const status = document.createElement('span');
-  status.className = 'deleted-issue-status';
-  status.textContent = `Was ${issueStatusLabel(issue.status)}`;
-  content.append(title, status);
-
-  const restoreButton = document.createElement('button');
-  restoreButton.type = 'button';
-  restoreButton.className = 'button button-secondary';
-  restoreButton.textContent = 'Restore';
-  restoreButton.disabled = activeProject !== null && projectStatusIsReadOnly(activeProject.status);
-  restoreButton.dataset.issueId = String(issue.id);
-  restoreButton.setAttribute('aria-label', `Restore ${issue.title}`);
-  restoreButton.addEventListener('click', () => void issueDeleteUi.restore(issue, restoreButton));
-  item.append(content, restoreButton);
-  return item;
+  issueDetailViewUi.reconcileDeletedRows();
 }
 
 function renderIssueDetail(): void {
-  if (selectedIssue === null) return;
-  issueDetailTitle.textContent = selectedIssue.title;
-  issueDetailType.textContent = issueTypeLabel(selectedIssue.type);
-  issueDetailPriority.textContent = issuePriorityLabel(selectedIssue.priority);
-  const overdue = isIssueOverdue(selectedIssue);
-  issueDetailDueDate.textContent = selectedIssue.due_date === null
-    ? 'None'
-    : `${overdue ? 'Overdue · ' : ''}${formatIssueDueDate(selectedIssue.due_date)}`;
-  issueDetailDueDate.classList.toggle('is-overdue', overdue);
-  issueDetailAssignee.textContent = issueAssigneeLabel(selectedIssue.assignee_id);
-  issueDetailMilestone.textContent = projectMilestones.find((milestone) => milestone.id === selectedIssue?.milestone_id)?.name ?? 'None';
-  issueDetailOngoingRow.hidden = !selectedIssue.is_ongoing;
-  issueDetailSharing.textContent = selectedIssue.is_shared ? 'Shared' : 'Internal only';
-  issueDetailApproval.textContent = selectedIssue.approved_at !== null
-    ? 'Approved'
-    : selectedIssue.approval_requested_at !== null
-      ? 'Requested'
-      : 'Not requested';
-  issueDetailDescription.textContent = selectedIssue.description || 'No description yet.';
-  issueDetailDescription.classList.toggle('is-empty', selectedIssue.description === '');
-  issueDetailContext.textContent = selectedIssue.context;
-  issueDetailExpectedOutcome.textContent = selectedIssue.expected_outcome;
-  issueDetailAcceptanceCriteria.textContent = selectedIssue.acceptance_criteria;
-  issueDetailContextSection.hidden = selectedIssue.context === '';
-  issueDetailExpectedOutcomeSection.hidden = selectedIssue.expected_outcome === '';
-  issueDetailAcceptanceCriteriaSection.hidden = selectedIssue.acceptance_criteria === '';
-  issueDetailBrief.hidden = selectedIssue.context === ''
-    && selectedIssue.expected_outcome === ''
-    && selectedIssue.acceptance_criteria === '';
-  issueDetailStatusLabel.textContent = issueStatusLabel(selectedIssue.status);
-  issueDetailStatus.setAttribute('aria-label', `Change status for ${selectedIssue.title}. Current status: ${issueStatusLabel(selectedIssue.status)}.`);
-  issueSourceLink.hidden = selectedIssue.source_message_id === null;
-  if (selectedIssue.source_message_id !== null) {
-    issueSourceLink.dataset.messageId = String(selectedIssue.source_message_id);
-  } else {
-    delete issueSourceLink.dataset.messageId;
-  }
-  issueRelatedUi.renderPullRequests();
+  issueDetailViewUi.renderDetail();
 }
 
 function updateProjectIssueDiscussionCount(issueId: number, count: number): void {
