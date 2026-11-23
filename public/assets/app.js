@@ -29,6 +29,7 @@ import { initGoPrefixUi } from './go-prefix-ui.js';
 import { initChatMessageNavigationUi } from './chat-message-navigation-ui.js';
 import { initStatusMessageUi } from './status-message-ui.js';
 import { initKeyboardHintsUi, KEYBOARD_HINTS_STORAGE_KEY } from './keyboard-hints-ui.js';
+import { initIssuePollingController } from './issue-polling-controller.js';
 import { createIssueRowUi } from './issue-row-ui.js';
 import { initIssueAiPromptUi } from './issue-ai-prompt-ui.js';
 import { initIssueDiscussionUi } from './issue-discussion-ui.js';
@@ -42,7 +43,7 @@ import { initProjectListUi } from './project-list-ui.js';
 import { initGithubProjectUi } from './github-project-ui.js';
 import { parseQuickIssueInput } from './quick-issue.js';
 import { initRoadmapUi } from './roadmap-ui.js';
-import { diffConditionalIssueCollections, loadIssueCollections, nextIssuePollDelay, refreshDeletedIssuesOnOpen, shouldDeferIssueUpdates, } from './issue-polling.js';
+import { loadIssueCollections, refreshDeletedIssuesOnOpen, shouldDeferIssueUpdates, } from './issue-polling.js';
 import { dom } from './dom.js';
 const { project: { projectHeading, projectEditDialog, projectReadOnlyNotice, editProjectButton, projectsNavButton, projectsView, projectView, projectForm, projectList, projectFormPanel, projectDescription, projectState, projectChatColumn, projectSidebarList, projectMain, projectTabs, projectKeyboardHints, }, auth: { loginPanel, loginShell, accountBar, currentUserLabel, loginStatusMessage, logoutButton, }, workspace: { workspacePanel, workspaceNav, adminNavButton, adminView, adminHeading, membersView, adminGoPrefixOption, membersTabButton, }, shell: { createWorkspaceForm, breadcrumbProjectsButton, breadcrumbDivider, breadcrumbCurrent, notesTabButton, emptyIssues, statusMessage, }, roadmap: { roadmapNavButton, roadmapView, roadmapHeading, roadmapSummary, roadmapMilestoneList, roadmapEmptyState, roadmapGoPrefixOption, }, inbox: { inboxNavButton, inboxView, inboxHeading, }, lounge: { loungeNavButton, loungeView, loungeHeading, loungeMessageList, }, shortcuts: { toggleProjectFormButton, keyboardHints, goPrefixHint, goPrefixWorkspaceOption, goPrefixProjectOptions, }, chat: { chatView, }, issues: { issuesView, issueDetailView, issueDetailDisplay, issueDetailTitle, issueDetailPriority, issueDetailDueDate, issueDetailDescription, issueDetailBrief, issueDetailContextSection, issueDetailContext, issueDetailExpectedOutcomeSection, issueDetailExpectedOutcome, issueDetailAcceptanceCriteriaSection, issueDetailAcceptanceCriteria, issueDetailStatus, issueDetailStatusLabel, issueSourceLink, issueDetailEditForm, issueDetailEditButton, issueDetailDeleteButton, issuesTabButton, issueBackButton, issueForm, issueQuickAddTitle, issueQuickAddPriority, issueQuickAddDueDate, issueQuickAddAssignee, issueQuickAddMilestone, issueQuickAddOngoing, issueQuickAddShared, issueQuickAddApproval, issueQuickAddCancelButton, issueDetailType, issueDetailAssignee, issueDetailMilestone, issueDetailOngoingRow, issueDetailSharing, issueDetailApproval, issueDescriptionDetails, issueProgress, issueProgressLabel, issueFilter, issueGrouping, issueOrder, issueScope, issueCountSummary, issueBulkAssignToggle, issueBulkAssignToolbar, issueList, deletedIssuesDetails, deletedIssueCount, deletedIssueList, }, guest: { guestLogoutButton, }, } = dom;
 function issueStatusLabel(status) {
@@ -226,15 +227,8 @@ const milestoneUi = initMilestoneUi({
         && !commandPaletteUi.isPaletteOpen() && !commandPaletteUi.isShortcutHelpOpen() && !workspacePickerUi.isOpen(),
 });
 let loungeActive = false;
-let issuePollTimer = null;
-let issuePollDelay = 1000;
-let activeIssuesEtag = null;
-let deletedIssuesEtag = null;
 let deletedIssuesLoadProjectId = null;
 let deletedIssuesLoadPromise = null;
-let issuePollHasDeferredChanges = false;
-let issuePollInFlightProjectId = null;
-let issuePollRequestVersion = 0;
 const deletedIssueRowRenderSignatures = new WeakMap();
 const issueAiPromptUi = initIssueAiPromptUi({
     getIssue: () => selectedIssue,
@@ -461,6 +455,40 @@ const issueDetailEditUi = initIssueDetailEditUi({
     renderDetail: renderIssueDetail,
     renderBoard: renderProjectIssueBoard,
     report,
+});
+const issuePollingController = initIssuePollingController({
+    getProjectId: () => activeProject?.id ?? null,
+    isPollingActive: (projectId) => activeProject?.id === projectId && !projectView.hidden
+        && (!issuesView.hidden || !issueDetailView.hidden),
+    isDocumentHidden: () => document.hidden,
+    issueUpdatesAreDeferred,
+    isDeletedIssuesOpen: () => deletedIssuesDetails.open,
+    getIssues: () => projectIssues,
+    setIssues: (issues) => { projectIssues = issues; },
+    getDeletedIssues: () => deletedProjectIssues,
+    setDeletedIssues: (issues) => { deletedProjectIssues = issues; },
+    getSelectedIssue: () => selectedIssue,
+    setSelectedIssue: (issue) => { selectedIssue = issue; },
+    isIssueDetailVisible: () => !issueDetailView.hidden,
+    onIssueRemovedFromDetail: () => {
+        issueDetailView.hidden = true;
+        issuesView.hidden = false;
+        issueFilter.focus();
+    },
+    fetchConditionalIssueList,
+    renderIssueDetail,
+    loadStatusHistory: (issueId) => issueRelatedUi.loadStatusHistory(issueId),
+    renderBoard: renderProjectIssueBoard,
+    onError: (error) => {
+        if (error instanceof ApiFailure && error.status === 401) {
+            showSignedOut();
+            return true;
+        }
+        report(error instanceof Error ? error.message : 'Could not refresh project issues.', true);
+        return false;
+    },
+    setTimeout: (callback, delay) => window.setTimeout(callback, delay),
+    clearTimeout: (timer) => window.clearTimeout(timer),
 });
 let selectedChatMessageId = null;
 let issueQuickAddEscapePending = false;
@@ -892,32 +920,16 @@ function goBackWorkspaceView() {
     }
 }
 function pauseIssuePolling() {
-    if (issuePollTimer !== null)
-        window.clearTimeout(issuePollTimer);
-    issuePollTimer = null;
-    issuePollRequestVersion += 1;
-    issuePollInFlightProjectId = null;
+    issuePollingController.pause();
 }
 function stopIssuePolling(resetState = true) {
-    pauseIssuePolling();
-    if (!resetState)
-        return;
-    issuePollDelay = 1000;
-    activeIssuesEtag = null;
-    deletedIssuesEtag = null;
-    issuePollHasDeferredChanges = false;
+    issuePollingController.stop(resetState);
 }
 function resumeDeferredIssuePolling() {
-    const projectId = activeProject?.id;
-    if (issuePollHasDeferredChanges && projectId !== undefined && issuePollingIsActive(projectId)
-        && !issueUpdatesAreDeferred()) {
-        issuePollDelay = 1000;
-        scheduleIssuePoll(0);
-    }
+    issuePollingController.resumeDeferred();
 }
 function issuePollingIsActive(projectId) {
-    return activeProject?.id === projectId && !projectView.hidden
-        && (!issuesView.hidden || !issueDetailView.hidden);
+    return issuePollingController.isActive(projectId);
 }
 function issueUpdatesAreDeferred() {
     const dialogOpen = issueStatusPickerUi.isOpen() || issueDeleteUi.isOpen()
@@ -948,110 +960,8 @@ async function fetchConditionalIssueList(projectId, deleted, etag) {
     }
     return { issues: payload.issues ?? [], etag: responseEtag };
 }
-function scheduleIssuePoll(delay = issuePollDelay) {
-    const projectId = activeProject?.id;
-    if (projectId === undefined || !issuePollingIsActive(projectId)) {
-        pauseIssuePolling();
-        return;
-    }
-    if (issuePollTimer !== null)
-        window.clearTimeout(issuePollTimer);
-    issuePollTimer = window.setTimeout(() => {
-        issuePollTimer = null;
-        void pollProjectIssues(projectId);
-    }, delay);
-}
-async function pollProjectIssues(projectId) {
-    if (!issuePollingIsActive(projectId))
-        return;
-    if (issuePollInFlightProjectId === projectId)
-        return;
-    if (document.hidden) {
-        issuePollDelay = nextIssuePollDelay(issuePollDelay, false, true);
-        scheduleIssuePoll(issuePollDelay);
-        return;
-    }
-    const deferUpdatesAtStart = issueUpdatesAreDeferred();
-    const forceDeferredRefresh = issuePollHasDeferredChanges && !deferUpdatesAtStart;
-    const activeEtag = forceDeferredRefresh ? null : activeIssuesEtag;
-    const deletedEtag = forceDeferredRefresh ? null : deletedIssuesEtag;
-    const requestVersion = ++issuePollRequestVersion;
-    issuePollInFlightProjectId = projectId;
-    let changed = false;
-    try {
-        const collections = await loadIssueCollections(() => fetchConditionalIssueList(projectId, false, activeEtag), () => fetchConditionalIssueList(projectId, true, deletedEtag), deletedIssuesDetails.open);
-        const activeResult = collections.active;
-        const deletedResult = collections.deleted ?? { issues: null, etag: deletedIssuesEtag };
-        if (requestVersion !== issuePollRequestVersion || !issuePollingIsActive(projectId))
-            return;
-        const deferUpdates = deferUpdatesAtStart || issueUpdatesAreDeferred();
-        const diffs = diffConditionalIssueCollections(projectIssues, activeResult.issues, deletedProjectIssues, deletedResult.issues);
-        const activeDiff = diffs.active;
-        const changedIssueIds = activeDiff === null
-            ? []
-            : [...activeDiff.added, ...activeDiff.changed, ...activeDiff.removed];
-        const deletedDiff = diffs.deleted;
-        const changedDeletedIssueIds = deletedDiff === null
-            ? []
-            : [...deletedDiff.added, ...deletedDiff.changed, ...deletedDiff.removed];
-        changed = changedIssueIds.length > 0 || changedDeletedIssueIds.length > 0;
-        activeIssuesEtag = activeResult.etag;
-        if (collections.deleted !== null)
-            deletedIssuesEtag = deletedResult.etag;
-        if (deferUpdates && changed) {
-            issuePollHasDeferredChanges = true;
-        }
-        else if (!deferUpdates) {
-            if (activeResult.issues !== null)
-                projectIssues = activeResult.issues;
-            if (deletedResult.issues !== null)
-                deletedProjectIssues = deletedResult.issues;
-            issuePollHasDeferredChanges = false;
-            if (changed) {
-                if (selectedIssue !== null) {
-                    const selectedIssueId = selectedIssue.id;
-                    const previousSelectedStatus = selectedIssue.status;
-                    const refreshedSelectedIssue = projectIssues.find((issue) => issue.id === selectedIssueId);
-                    if (refreshedSelectedIssue !== undefined) {
-                        selectedIssue = refreshedSelectedIssue;
-                        if (activeDiff?.added.includes(selectedIssueId) || activeDiff?.changed.includes(selectedIssueId)) {
-                            renderIssueDetail();
-                            if (previousSelectedStatus !== refreshedSelectedIssue.status) {
-                                void issueRelatedUi.loadStatusHistory(selectedIssueId);
-                            }
-                        }
-                    }
-                    else if (!issueDetailView.hidden) {
-                        selectedIssue = null;
-                        issueDetailView.hidden = true;
-                        issuesView.hidden = false;
-                        issueFilter.focus();
-                    }
-                }
-                renderProjectIssueBoard();
-            }
-        }
-        issuePollDelay = nextIssuePollDelay(issuePollDelay, changed && !deferUpdates, false);
-    }
-    catch (error) {
-        if (error instanceof ApiFailure && error.status === 401) {
-            showSignedOut();
-            return;
-        }
-        report(error instanceof Error ? error.message : 'Could not refresh project issues.', true);
-        issuePollDelay = nextIssuePollDelay(issuePollDelay, false, false);
-    }
-    finally {
-        if (requestVersion === issuePollRequestVersion) {
-            if (issuePollInFlightProjectId === projectId)
-                issuePollInFlightProjectId = null;
-            const readyToApplyDeferredChanges = issuePollHasDeferredChanges && !issueUpdatesAreDeferred();
-            if (readyToApplyDeferredChanges)
-                issuePollDelay = 1000;
-            if (issuePollingIsActive(projectId))
-                scheduleIssuePoll(readyToApplyDeferredChanges ? 0 : issuePollDelay);
-        }
-    }
+function scheduleIssuePoll(delay) {
+    issuePollingController.schedule(delay);
 }
 function selectedProjectButton() {
     const focused = document.activeElement;
@@ -1918,7 +1828,7 @@ document.addEventListener('visibilitychange', () => {
     if (!document.hidden && !loungeActive)
         void loungePresenceUi.pollWorkspacePresence();
     if (!document.hidden && activeProject !== null && issuePollingIsActive(activeProject.id)) {
-        issuePollDelay = 1000;
+        issuePollingController.resetDelay();
         scheduleIssuePoll(0);
     }
     if (!document.hidden && inboxUi.isPollingActive())
@@ -2319,13 +2229,13 @@ async function loadProjectIssues(projectId) {
         if (activeProject?.id !== projectId || issuesView.hidden)
             return;
         projectIssues = result.issues ?? [];
-        activeIssuesEtag = result.etag;
+        issuePollingController.seedActiveEtag(result.etag);
         if (deletedResult !== null) {
             deletedProjectIssues = deletedResult.issues ?? [];
-            deletedIssuesEtag = deletedResult.etag;
+            issuePollingController.seedDeletedEtag(deletedResult.etag);
         }
-        issuePollHasDeferredChanges = false;
-        issuePollDelay = 1000;
+        issuePollingController.clearDeferredChanges();
+        issuePollingController.resetDelay();
         renderProjectIssueBoard();
         scheduleIssuePoll();
     }
@@ -2347,7 +2257,7 @@ function loadDeletedProjectIssues(projectId) {
             if (activeProject?.id !== projectId || projectView.hidden)
                 return;
             deletedProjectIssues = result.issues ?? [];
-            deletedIssuesEtag = result.etag;
+            issuePollingController.seedDeletedEtag(result.etag);
             renderProjectIssueBoard();
         }
         catch (error) {

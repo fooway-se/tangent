@@ -11,6 +11,7 @@ import {
 } from '../../public/assets/issue-polling.js';
 
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
+const pollingController = await readFile(new URL('../../frontend/src/issue-polling-controller.ts', import.meta.url), 'utf8');
 const issueBoardUi = await readFile(new URL('../../frontend/src/issue-board-ui.ts', import.meta.url), 'utf8');
 const issueBoardView = await readFile(new URL('../../frontend/src/issue-board-view.ts', import.meta.url), 'utf8');
 const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
@@ -103,11 +104,11 @@ test('issue updates wait while the user is editing issue controls', () => {
 
 test('issue polling is conditional and board rendering keeps unchanged issue rows', () => {
   assert.match(app, /headers\.set\('If-None-Match', etag\)/);
-  assert.match(app, /fetchConditionalIssueList\(projectId, false, activeEtag\)/);
-  assert.match(app, /fetchConditionalIssueList\(projectId, true, deletedEtag\)/);
-  assert.match(app, /issuePollHasDeferredChanges/);
+  assert.match(pollingController, /fetchConditionalIssueList\(projectId, false, currentActiveEtag\)/);
+  assert.match(pollingController, /fetchConditionalIssueList\(projectId, true, currentDeletedEtag\)/);
+  assert.match(pollingController, /hasDeferredChanges/);
   assert.match(issueBoardUi, /rowRenderSignatures/);
-  assert.match(app, /const deferUpdates = deferUpdatesAtStart \|\| issueUpdatesAreDeferred\(\)/);
+  assert.match(pollingController, /const deferUpdates = deferUpdatesAtStart \|\| options\.issueUpdatesAreDeferred\(\)/);
 
   const renderer = issueBoardView;
   assert.match(renderer, /issueBoardUi\.render/);
