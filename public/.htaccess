@@ -9,6 +9,9 @@ DirectoryIndex app.html
     Header always set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
     Header always set X-Content-Type-Options "nosniff"
     Header always set Referrer-Policy "no-referrer"
+    <FilesMatch "^app\.html$">
+        Header always set Cache-Control "no-cache, must-revalidate"
+    </FilesMatch>
 </IfModule>
 
 <IfModule mod_mime.c>

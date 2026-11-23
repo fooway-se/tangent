@@ -22,7 +22,7 @@ function rule(source, selector) {
 
 test('tokens.css is linked before app.css so every view shares one palette', () => {
   const tokenLink = html.indexOf('href="./assets/tokens.css"');
-  const appLink = html.indexOf('href="./assets/app.css"');
+  const appLink = html.search(/href="\.\/assets\/app\.css(?:\?[^"]*)?"/);
   assert.notEqual(tokenLink, -1, 'tokens.css is linked');
   assert.ok(tokenLink < appLink, 'tokens.css comes first');
 });

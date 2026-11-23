@@ -760,6 +760,7 @@ dialog::backdrop { background: var(--backdrop); }
   .project-sidebar-list { display: flex; overflow-x: auto; padding-bottom: 4px; }
   .project-sidebar-list li { flex: 0 0 auto; }
   .sidebar-account { grid-column: 3; grid-row: 1; margin: 0; padding: 0; }
+  .workspace-sidebar .sidebar-account.has-project-overflow { padding-top: 8px; }
   .workspace-stage { grid-column: 1; grid-row: 2; flex-direction: column; padding: 12px; }
   .workspace-screen { flex: none; }
   .workspace-content, .project-view { overflow: visible; }
