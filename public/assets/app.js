@@ -24,6 +24,7 @@ import { initIssueBoardUi } from './issue-board-ui.js';
 import { initIssueBoardView } from './issue-board-view.js';
 import { initIssueBulkUi } from './issue-bulk-ui.js';
 import { initIssueBulkActions } from './issue-bulk-actions.js';
+import { moveFocusByPage, moveFocusToBoundary, moveFocusWithin, visibleRowsInViewport } from './list-keyboard-ui.js';
 import { createIssueRowUi } from './issue-row-ui.js';
 import { initIssueAiPromptUi } from './issue-ai-prompt-ui.js';
 import { initIssueDiscussionUi } from './issue-discussion-ui.js';
@@ -1348,69 +1349,9 @@ function startGoPrefix() {
     goPrefixHint.hidden = false;
     goPrefixTimer = window.setTimeout(clearGoPrefix, 1200);
 }
-function moveFocusWithin(buttons, rowSelector, direction) {
-    if (buttons.length === 0)
-        return;
-    const focused = document.activeElement;
-    const currentIndex = buttons.findIndex((button) => {
-        const row = button.closest(rowSelector);
-        return row?.classList.contains('is-keyboard-selected') === true || (focused instanceof HTMLElement && row?.contains(focused) === true);
-    });
-    const nextIndex = currentIndex < 0
-        ? direction > 0 ? 0 : buttons.length - 1
-        : Math.max(0, Math.min(buttons.length - 1, currentIndex + direction));
-    for (const button of buttons)
-        button.closest(rowSelector)?.classList.remove('is-keyboard-selected');
-    const next = buttons[nextIndex];
-    next.closest(rowSelector)?.classList.add('is-keyboard-selected');
-    next.focus();
-}
-function visibleRowsInViewport(items, viewport, rowSelector) {
-    const viewportRect = viewport.getBoundingClientRect();
-    const viewportTop = viewportRect.top + viewport.clientTop;
-    const viewportBottom = viewportTop + viewport.clientHeight;
-    return items.filter((item) => {
-        const row = item.closest(rowSelector);
-        if (row === null)
-            return false;
-        const rowRect = row.getBoundingClientRect();
-        return rowRect.bottom > viewportTop && rowRect.top < viewportBottom;
-    }).length;
-}
-function moveFocusByPage(buttons, rowSelector, viewport, direction) {
-    if (buttons.length === 0)
-        return;
-    const focused = document.activeElement;
-    const currentIndex = buttons.findIndex((button) => {
-        const row = button.closest(rowSelector);
-        return row?.classList.contains('is-keyboard-selected') === true
-            || (focused instanceof HTMLElement && row?.contains(focused) === true);
-    });
-    const pageSize = Math.max(1, visibleRowsInViewport(buttons, viewport, rowSelector) - 1);
-    const baseIndex = currentIndex < 0
-        ? direction > 0 ? 0 : Math.min(pageSize, buttons.length - 1)
-        : currentIndex;
-    const targetIndex = Math.max(0, Math.min(buttons.length - 1, baseIndex + direction * pageSize));
-    for (const button of buttons)
-        button.closest(rowSelector)?.classList.remove('is-keyboard-selected');
-    const target = buttons[targetIndex];
-    if (target === undefined)
-        return;
-    target.closest(rowSelector)?.classList.add('is-keyboard-selected');
-    target.focus();
-}
-function moveFocusToBoundary(buttons, rowSelector, edge) {
-    if (buttons.length === 0)
-        return;
-    for (const button of buttons)
-        button.closest(rowSelector)?.classList.remove('is-keyboard-selected');
-    const target = buttons[edge === 'first' ? 0 : buttons.length - 1];
-    target.closest(rowSelector)?.classList.add('is-keyboard-selected');
-    target.focus();
-}
 function moveIssueSelection(direction) {
     if (!inboxView.hidden) {
-        moveFocusWithin(inboxUi.visibleIssueTitleButtons(), '.inbox-issue-card', direction);
+        moveFocusWithin(document, inboxUi.visibleIssueTitleButtons(), '.inbox-issue-card', direction);
         return;
     }
     if (document.activeElement instanceof HTMLElement
@@ -1429,7 +1370,7 @@ function moveIssueSelection(direction) {
             next.click();
         return;
     }
-    moveFocusWithin(buttons, '.issue-card', direction);
+    moveFocusWithin(document, buttons, '.issue-card', direction);
 }
 function moveIssueSelectionFromGroup(direction) {
     const summary = document.activeElement;
@@ -1462,7 +1403,7 @@ function moveIssueSelectionToBoundary(edge) {
     moveFocusToBoundary(buttons, '.issue-card', edge);
 }
 function moveProjectSelection(direction) {
-    moveFocusWithin(Array.from(projectList.querySelectorAll('.project-card button')), '.project-card', direction);
+    moveFocusWithin(document, Array.from(projectList.querySelectorAll('.project-card button')), '.project-card', direction);
 }
 function moveProjectSelectionToBoundary(edge) {
     moveFocusToBoundary(Array.from(projectList.querySelectorAll('.project-card button')), '.project-card', edge);
@@ -1475,13 +1416,13 @@ function moveSelectionByPage(direction) {
         issueDiscussionUi.moveSelectionByPage(direction);
     }
     else if (!projectsView.hidden) {
-        moveFocusByPage(Array.from(projectList.querySelectorAll('.project-card button')), '.project-card', projectsView, direction);
+        moveFocusByPage(document, Array.from(projectList.querySelectorAll('.project-card button')), '.project-card', projectsView, direction);
     }
     else if (!inboxView.hidden) {
-        moveFocusByPage(inboxUi.visibleIssueTitleButtons(), '.inbox-issue-card', inboxView, direction);
+        moveFocusByPage(document, inboxUi.visibleIssueTitleButtons(), '.inbox-issue-card', inboxView, direction);
     }
     else if (!issuesView.hidden) {
-        moveFocusByPage(visibleIssueTitleButtons(), '.issue-card', projectMain, direction);
+        moveFocusByPage(document, visibleIssueTitleButtons(), '.issue-card', projectMain, direction);
     }
 }
 function moveSelection(direction) {
