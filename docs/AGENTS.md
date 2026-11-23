@@ -70,7 +70,7 @@ Replace the example IDs with IDs returned by Tangent. The issue detail response 
 
 ## Optional MCP server
 
-The separate stdio MCP adapter in [`tools/agent-mcp`](../tools/agent-mcp/README.md) exposes five agent operations as MCP tools: list accessible projects, list project issues, read an issue, post a progress comment, and set an issue to `doing` or `testing`. It requires Node.js 20 or later and does not add a dependency to Tangent's PHP web app. Install it where the MCP host runs; Tangent can remain on shared PHP hosting. No inbound MCP port is needed, but the MCP host must be able to reach Tangent's configured URL.
+The separate stdio MCP adapter in [`tools/agent-mcp`](../tools/agent-mcp/README.md) exposes six agent operations as MCP tools: list accessible projects, list project issues, read an issue, get the browser's copy-ready issue prompt, post a progress comment, and set an issue to `doing` or `testing`. The prompt tool uses the issue's saved fields and context, so save prompt-builder changes in Tangent before asking an agent to retrieve it. It requires Node.js 20 or later and does not add a dependency to Tangent's PHP web app. Install it where the MCP host runs; Tangent can remain on shared PHP hosting. No inbound MCP port is needed, but the MCP host must be able to reach Tangent's configured URL.
 
 The MCP host launches the adapter with `TANGENT_URL` and `TANGENT_AGENT_TOKEN` in its environment. Set `TANGENT_WORKSPACE_ID` when the agent belongs to a non-default workspace. Keep the token in the host's local secret configuration; the adapter sends it only as a bearer token to the configured Tangent URL and never logs it. Tangent still enforces the agent's project and capability grants on every request.
 

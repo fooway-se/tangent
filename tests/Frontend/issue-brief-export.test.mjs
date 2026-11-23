@@ -2,11 +2,17 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import { formatIssueMarkdown, formatIssuePrompt } from '../../public/assets/issue-export.js';
+import { formatIssueMarkdown as formatSharedIssueMarkdown, formatIssuePrompt as formatSharedIssuePrompt } from '../../public/assets/issue-prompt.mjs';
 
 const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
 const promptUi = await readFile(new URL('../../frontend/src/issue-ai-prompt-ui.ts', import.meta.url), 'utf8');
 const openapi = await readFile(new URL('../../docs/openapi.yaml', import.meta.url), 'utf8');
+
+test('browser issue export uses the canonical formatter shared with agent tools', () => {
+  assert.equal(formatIssueMarkdown, formatSharedIssueMarkdown);
+  assert.equal(formatIssuePrompt, formatSharedIssuePrompt);
+});
 
 test('guided AI prompt builder keeps the issue forms compact', () => {
   const quickAdd = html.slice(html.indexOf('<form id="issue-form"'), html.indexOf('<div class="issue-board-toolbar"'));

@@ -46,6 +46,8 @@ From the preview you can:
 
 The builder assembles text in the browser. Tangent does not send the issue to an AI service.
 
+An agent connected through Tangent's optional MCP adapter can call `get_issue_prompt` to receive the same copy-ready prompt. It uses the issue details and prompt context saved in Tangent; unsaved edits in a browser prompt builder are not available to the agent. The prompt formatter is shared between the browser and MCP adapter so both return the same text.
+
 The prompt context does not affect issue creation or tracking. To update it later, reopen **Prepare AI prompt**; it is separate from the ordinary issue edit form.
 
 For the API fields and limits, see the [OpenAPI description](openapi.yaml).

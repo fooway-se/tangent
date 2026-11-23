@@ -1,6 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/server';
 import * as z from 'zod/v4';
 import { createTangentClient } from './client.js';
+import { formatIssuePrompt } from '../../../public/assets/issue-prompt.mjs';
 
 export function createTangentMcpServer(config) {
   const tangent = createTangentClient(config);
@@ -41,6 +42,22 @@ export function createTangentMcpServer(config) {
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
     async ({ issue_id: issueId }) => textResult(await tangent.getIssue(issueId)),
+  );
+
+  server.registerTool(
+    'get_issue_prompt',
+    {
+      title: 'Get a ready-to-use coding prompt for a Tangent issue',
+      description: 'Format an issue and its saved context as the same copy-ready implementation prompt shown by Tangent. Requires issues.read and a project grant.',
+      inputSchema: z.object({
+        issue_id: z.number().int().positive().describe('Numeric ID of the issue to prepare a prompt for.'),
+      }).strict(),
+      annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    },
+    async ({ issue_id: issueId }) => {
+      const { issue } = await tangent.getIssue(issueId);
+      return { content: [{ type: 'text', text: formatIssuePrompt(issue) }] };
+    },
   );
 
   server.registerTool(

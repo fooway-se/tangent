@@ -46,7 +46,7 @@ The adapter reads these environment variables:
 | `TANGENT_AGENT_TOKEN` | Yes | The one-time token created for the named agent. Keep it in the MCP host's local secret configuration. |
 | `TANGENT_WORKSPACE_ID` | No | Positive workspace ID when the token belongs to a non-default workspace. |
 
-The adapter speaks MCP over stdio. Its stdout is reserved for protocol messages; diagnostics go to stderr. Tool calls use the configured Tangent URL and expose only the scoped agent operations, with no workspace administration tools. After restarting the MCP host, confirm it lists all five tools below.
+The adapter speaks MCP over stdio. Its stdout is reserved for protocol messages; diagnostics go to stderr. Tool calls use the configured Tangent URL and expose only the scoped agent operations, with no workspace administration tools. After restarting the MCP host, confirm it lists all six tools below.
 
 ## Tools
 
@@ -55,8 +55,11 @@ The adapter speaks MCP over stdio. Its stdout is reserved for protocol messages;
 | `list_projects` | `issues.read` | List accessible project IDs, names, and statuses. |
 | `list_project_issues` | `issues.read` | List open issues in a granted project. |
 | `get_issue` | `issues.read` | Read issue details and saved agent context. |
+| `get_issue_prompt` | `issues.read` | Return the copy-ready implementation prompt using the issue's saved details and context. |
 | `post_issue_comment` | `issues.comment` | Add a progress note to issue discussion. |
 | `update_issue_status` | `issues.status.update` | Move an open issue to `doing` or `testing`. |
+
+`get_issue_prompt` uses the same formatter as the browser's **Copy prompt** action. It reads saved issue fields through Tangent's scoped issue API; unsaved text in an open browser prompt builder is not included. Tangent assembles the prompt locally and does not send it to an AI service.
 
 All access checks remain in Tangent's agent API. The adapter forwards the bearer token and optional workspace ID; a tool call cannot expand the token's project or capability grants.
 
