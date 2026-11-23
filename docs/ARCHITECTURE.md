@@ -27,7 +27,7 @@ src/Modules/Projects/
 src/Modules/Chat/
 src/Modules/Issues/
 src/Modules/Inbox/
-src/Modules/Integrations/   GitHub webhooks, later GitLab
+src/Modules/GitHub/         GitHub pull-request, push, and check-run webhooks
 migrations/                 numbered SQL files
 tests/                      mirrors src/
 tools/agent-mcp/            optional stdio MCP adapter for agent endpoints

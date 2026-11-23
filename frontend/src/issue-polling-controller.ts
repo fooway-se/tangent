@@ -24,6 +24,7 @@ export interface IssuePollingControllerOptions {
   fetchConditionalIssueList: (projectId: number, deleted: boolean, etag: string | null) => Promise<ConditionalIssueList>;
   renderIssueDetail: () => void;
   loadStatusHistory: (issueId: number) => void | Promise<void>;
+  loadPullRequests?: (issueId: number) => void | Promise<void>;
   renderBoard: () => void;
   onError: (error: unknown) => boolean;
   setTimeout: (callback: () => void, delay: number) => number;
@@ -163,6 +164,10 @@ export function initIssuePollingController(options: IssuePollingControllerOption
             }
           }
           options.renderBoard();
+        }
+        const selectedIssue = options.getSelectedIssue();
+        if (options.isIssueDetailVisible() && selectedIssue !== null) {
+          void options.loadPullRequests?.(selectedIssue.id);
         }
       }
       delay = nextIssuePollDelay(delay, changed && !deferUpdates, false);

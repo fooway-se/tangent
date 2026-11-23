@@ -24,7 +24,7 @@ function createHarness(overrides = {}) {
   };
   const calls = {
     fetch: [], renderBoard: 0, renderDetail: 0, statusHistory: [], removedDetail: 0,
-    errors: [], unauthorized: 0,
+    errors: [], unauthorized: 0, pullRequests: [],
   };
   const timers = new Map();
   let nextTimerId = 1;
@@ -51,6 +51,7 @@ function createHarness(overrides = {}) {
     },
     renderIssueDetail: () => { calls.renderDetail += 1; },
     loadStatusHistory: (issueId) => { calls.statusHistory.push(issueId); },
+    loadPullRequests: (issueId) => { calls.pullRequests.push(issueId); },
     renderBoard: () => { calls.renderBoard += 1; },
     onError: (error) => { calls.errors.push(error); return false; },
     setTimeout: (callback, delay) => {
@@ -105,6 +106,17 @@ test('conditional responses reuse the last ETag without rerendering unchanged co
   harness.queues.active.push(response(null, 'active-v3'));
   await harness.controller.poll(1);
   assert.equal(harness.calls.fetch[1].etag, 'active-v2');
+});
+
+test('polling refreshes linked pull-request data while issue detail is open', async () => {
+  const harness = createHarness();
+  harness.state.selectedIssue = issue(1, 'Before');
+  harness.state.detailVisible = true;
+  harness.queues.active.push(response(null, 'active-v1'));
+
+  await harness.controller.poll(1);
+
+  assert.deepEqual(harness.calls.pullRequests, [1]);
 });
 
 test('removing the selected issue returns from its detail to the issue list', async () => {

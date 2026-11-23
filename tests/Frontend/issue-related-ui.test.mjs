@@ -57,6 +57,11 @@ test('issue relations load, render and link a pull request', async (t) => {
     id: 41, html_url: 'https://github.com/acme/app/pull/41', repository_full_name: 'acme/app',
     pull_number: 41, title: 'Fix release flow', state: 'open', is_draft: false,
     author_login: 'sam', github_updated_at: '2026-11-22 10:00:00',
+    check_runs: [{
+      id: 81, name: 'PHP tests', html_url: 'https://github.com/acme/app/runs/81',
+      status: 'completed', conclusion: 'success', started_at: '2026-11-22 10:10:00',
+      completed_at: '2026-11-22 10:12:00', github_updated_at: '2026-11-22 10:12:00',
+    }],
   };
   const transition = {
     id: 52, from_status: 'todo', to_status: 'doing', actor_name: 'Sam', created_at: '2026-11-22 09:00:00',
@@ -104,6 +109,8 @@ test('issue relations load, render and link a pull request', async (t) => {
   await ui.loadStatusHistory(12);
   assert.equal(elements.get('#issue-pull-requests-list').children.length, 1);
   assert.equal(elements.get('#issue-pull-requests-empty').hidden, true);
+  assert.equal(elements.get('#issue-pull-requests-list').children[0].children[0].children[2].textContent, 'PHP tests · success');
+  assert.equal(elements.get('#issue-pull-requests-list').children[0].children[0].children[2].href, 'https://github.com/acme/app/runs/81');
   assert.equal(elements.get('#issue-status-history-list').children.length, 1);
   assert.equal(elements.get('#issue-status-history-count').textContent, '1');
   assert.equal(elements.get('#issue-commits').hidden, false);

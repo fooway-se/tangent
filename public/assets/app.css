@@ -1070,6 +1070,9 @@ dialog::backdrop { background: var(--backdrop); }
 .issue-pull-request-meta { display: flex; flex-wrap: wrap; gap: 8px; color: var(--screen-muted); font-size: 11px; }
 .issue-pull-request-state { color: var(--accent); text-transform: capitalize; }
 .issue-pull-request-state.is-closed { color: var(--screen-muted); }
+.issue-pull-request-check { color: var(--screen-muted); font-size: 11px; text-underline-offset: 2px; text-transform: capitalize; }
+.issue-pull-request-check.is-success { color: var(--success); }
+.issue-pull-request-check.is-failure, .issue-pull-request-check.is-timed_out, .issue-pull-request-check.is-action_required { color: var(--danger); }
 .issue-pull-requests-empty { margin: 8px 0 0; color: var(--screen-muted); font-size: 12px; }
 .issue-commits { margin-top: 14px; border-top: 1px solid var(--screen-border); padding-top: 10px; }
 .issue-commits h4 { margin: 0; color: var(--screen-muted); font: 700 11px var(--font-display); letter-spacing: 1.3px; text-transform: uppercase; }

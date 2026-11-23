@@ -113,6 +113,10 @@ export function initIssuePollingController(options) {
                     }
                     options.renderBoard();
                 }
+                const selectedIssue = options.getSelectedIssue();
+                if (options.isIssueDetailVisible() && selectedIssue !== null) {
+                    void options.loadPullRequests?.(selectedIssue.id);
+                }
             }
             delay = nextIssuePollDelay(delay, changed && !deferUpdates, false);
         }

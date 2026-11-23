@@ -77,6 +77,18 @@ export interface LinkedPullRequest {
   author_login: string;
   github_updated_at: string;
   linked_at: string;
+  check_runs: LinkedPullRequestCheckRun[];
+}
+
+export interface LinkedPullRequestCheckRun {
+  id: number;
+  name: string;
+  html_url: string;
+  status: 'queued' | 'in_progress' | 'completed';
+  conclusion: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  github_updated_at: string;
 }
 
 export interface LinkedCommit {

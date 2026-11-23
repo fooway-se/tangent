@@ -68,6 +68,17 @@ export function initIssueRelatedUi(options) {
             updated.textContent = `Updated ${new Date(`${pullRequest.github_updated_at}Z`).toLocaleDateString()}`;
             metadata.append(state, author, updated);
             main.append(link, metadata);
+            for (const checkRun of pullRequest.check_runs ?? []) {
+                const check = doc.createElement('a');
+                const checkState = checkRun.conclusion ?? checkRun.status;
+                check.className = `issue-pull-request-check is-${checkRun.status} is-${checkState}`;
+                check.href = checkRun.html_url;
+                check.target = '_blank';
+                check.rel = 'noopener noreferrer';
+                check.textContent = `${checkRun.name} · ${checkState.replaceAll('_', ' ')}`;
+                check.setAttribute('aria-label', `${checkRun.name}: ${checkState.replaceAll('_', ' ')}`);
+                main.append(check);
+            }
             item.append(main);
             if (canManage && issue !== null) {
                 const issueId = issue.id;

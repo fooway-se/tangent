@@ -57,6 +57,9 @@ test('GitHub API describes repository selection, manual PR links, and signed web
   assert.match(githubDocs, /TANGENT_GITHUB_OAUTH_CLIENT_ID/);
   assert.match(githubDocs, /TANGENT_GITHUB_OAUTH_CLIENT_SECRET/);
   assert.match(githubDocs, /Contents: Read-only/);
+  assert.match(githubDocs, /Checks: Read-only/);
+  assert.match(githubDocs, /Check run/);
   assert.match(githubDocs, /Push/);
+  assert.match(openapi, /LinkedPullRequestCheckRun/);
   assert.match(githubDocs, /api\/v1\/github\/setup\/authorize/);
 });

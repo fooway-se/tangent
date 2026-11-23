@@ -127,7 +127,7 @@ Open the status picker from an issue row or issue details to change status. Stat
 - Use **Edit issue** to change fields. Use the discussion area for decisions and updates tied to that issue; reply to a discussion message to keep context in a thread.
 - A small robot icon before an author name marks a message posted by a coding agent.
 - Use **Prepare AI prompt** to enter context, expected outcome, and acceptance criteria. The preview can be copied or exported as Markdown. Tangent assembles this prompt in your browser and does not send the issue to an AI service.
-- If GitHub is connected to the project, copy a branch name from the issue. Tangent automatically links a pull request opened from that branch; use **Link pull request** for a PR from another branch. Commits pushed to the generated branch appear on the issue and send an internal inbox update. Guests do not see GitHub activity. Linking a pull request does not change the Tangent issue status.
+- If GitHub is connected to the project, copy a branch name from the issue. Tangent automatically links a pull request opened from that branch; use **Link pull request** for a PR from another branch. Linked pull requests show recent CI check runs and their status. Commits pushed to the generated branch appear on the issue and send an internal inbox update. Guests do not see GitHub activity. Linking a pull request does not change the Tangent issue status.
 
 ## 5. Milestones and the team roadmap
 

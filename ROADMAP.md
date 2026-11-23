@@ -10,7 +10,7 @@ The project chat header has a privacy-preserving presence light: it shows whethe
 
 ## GitHub and other integrations
 
-- Keep GitHub as the current integration focus. Two-way issue and comment sync is deferred.
+- Keep GitHub as the current integration focus. Tangent tracks linked pull requests, commits, and CI check runs; two-way issue and comment sync is deferred.
 
 ## AI and API
 

@@ -222,6 +222,7 @@ final class GitHubPullRequestRepository
         $pullRequest['github_repository_id'] = (int) $pullRequest['github_repository_id'];
         $pullRequest['pull_number'] = (int) $pullRequest['pull_number'];
         $pullRequest['is_draft'] = (bool) $pullRequest['is_draft'];
+        $pullRequest['check_runs'] = [];
         return $pullRequest;
     }
 }

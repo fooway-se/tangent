@@ -81,8 +81,8 @@ paths:
   /github/webhook:
     post:
       security: []
-      summary: Receive signed GitHub pull-request and push events
-      description: Validates the raw request body with HMAC-SHA256 before processing. Commit tracking is optional and requires the Push subscription plus read-only Contents permission on the connected GitHub App.
+      summary: Receive signed GitHub pull-request, push, and check-run events
+      description: Validates the raw request body with HMAC-SHA256 before processing. Commit tracking is optional and requires the Push subscription plus read-only Contents permission on the connected GitHub App. Pull-request check tracking requires the Check run subscription plus read-only Checks permission.
       parameters:
         - name: X-Hub-Signature-256
           in: header
@@ -108,7 +108,7 @@ paths:
   /issues/{id}/pull-requests:
     get:
       summary: List pull requests linked to an internal issue
-      description: Available to project admins and developers with issue access. Guests cannot access pull-request metadata.
+      description: Available to project admins and developers with issue access. Each linked pull request includes up to 20 recent GitHub check runs received while it was linked; earlier runs are not backfilled. Guests cannot access pull-request or check-run metadata.
       parameters:
         - $ref: '#/components/parameters/Id'
       responses:
@@ -2252,7 +2252,7 @@ components:
         private: { type: boolean, description: Present on repository-list responses; omitted from a project's saved repository reference. }
     LinkedPullRequest:
       type: object
-      required: [id, github_repository_id, repository_full_name, pull_number, title, html_url, state, is_draft, author_login, github_updated_at, linked_at]
+      required: [id, github_repository_id, repository_full_name, pull_number, title, html_url, state, is_draft, author_login, github_updated_at, linked_at, check_runs]
       properties:
         id: { type: integer }
         github_repository_id: { type: integer }
@@ -2265,6 +2265,22 @@ components:
         author_login: { type: string }
         github_updated_at: { type: string, format: date-time }
         linked_at: { type: string, format: date-time }
+        check_runs:
+          type: array
+          description: Up to 20 most recently updated check runs received while this pull request was linked. Earlier runs are not backfilled.
+          items: { $ref: '#/components/schemas/LinkedPullRequestCheckRun' }
+    LinkedPullRequestCheckRun:
+      type: object
+      required: [id, name, html_url, status, conclusion, started_at, completed_at, github_updated_at]
+      properties:
+        id: { type: integer, minimum: 1 }
+        name: { type: string }
+        html_url: { type: string, format: uri }
+        status: { type: string, enum: [queued, in_progress, completed] }
+        conclusion: { type: [string, 'null'] }
+        started_at: { type: [string, 'null'], format: date-time }
+        completed_at: { type: [string, 'null'], format: date-time }
+        github_updated_at: { type: string, format: date-time }
     LinkedCommit:
       type: object
       required: [id, repository_full_name, sha, message, html_url, author_login, committed_at]

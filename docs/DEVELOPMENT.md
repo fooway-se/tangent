@@ -60,7 +60,7 @@ Configure these values in the host environment or in `config.php` for production
 | `TANGENT_HIBP_ENABLED` | `hibp_enabled` | Enables the optional Have I Been Pwned Pwned Passwords range lookup. | `false` |
 | `TANGENT_SSE_ENABLED` | `realtime_stream_enabled` | Enables the SSE event stream. Leave disabled on hosts where long-running requests could consume too much of the PHP worker pool. | `false` |
 | `TANGENT_SSE_MAX_CONNECTIONS` | `realtime_max_connections` | Global maximum number of active SSE streams across workspaces. Set this below the worker capacity reserved for ordinary requests; only one active stream per workspace user is allowed. | `1` |
-| `TANGENT_GITHUB_APP_ID` | — | Numeric GitHub App ID for repository selection and pull-request tracking. | unset |
+| `TANGENT_GITHUB_APP_ID` | — | Numeric GitHub App ID for repository selection and pull-request, commit, and check-run tracking. | unset |
 | `TANGENT_GITHUB_APP_SLUG` | — | GitHub App URL slug. | unset |
 | `TANGENT_GITHUB_PRIVATE_KEY` | — | GitHub App PEM private key; environment values may use `\n` for newlines. | unset |
 | `TANGENT_GITHUB_OAUTH_CLIENT_ID` | `github_oauth_client_id` | OAuth client ID for the GitHub App user authorization step. | unset |

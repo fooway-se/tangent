@@ -587,6 +587,7 @@ const issuePollingController = initIssuePollingController({
   fetchConditionalIssueList,
   renderIssueDetail,
   loadStatusHistory: (issueId) => issueRelatedUi.loadStatusHistory(issueId),
+  loadPullRequests: (issueId) => issueRelatedUi.loadPullRequests(issueId),
   renderBoard: renderProjectIssueBoard,
   onError: (error) => {
     if (error instanceof ApiFailure && error.status === 401) {

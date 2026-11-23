@@ -504,6 +504,67 @@ PHP;
         self::assertTrue($linked->body['pull_request']['is_draft']);
         self::assertSame(404, $this->cookieRequest('GET', "/api/v1/issues/{$issueId}/pull-requests", $guest['cookie'])->status);
 
+        $checkRunPayload = [
+            'action' => 'created',
+            'installation' => ['id' => 445566],
+            'repository' => ['id' => 7654321, 'full_name' => 'test-org/test-repo'],
+            'check_run' => [
+                'id' => 991122,
+                'name' => 'PHP tests',
+                'html_url' => 'https://github.com/test-org/test-repo/runs/991122',
+                'status' => 'in_progress',
+                'conclusion' => null,
+                'started_at' => '2026-11-18T10:05:00Z',
+                'completed_at' => null,
+                'updated_at' => '2026-11-18T10:05:00Z',
+                'pull_requests' => [['number' => 17]],
+            ],
+        ];
+        $checkRunRawBody = json_encode($checkRunPayload, JSON_THROW_ON_ERROR);
+        $checkRunWebhook = $this->webhookRequest($checkRunRawBody, $checkRunPayload, [
+            'X-Hub-Signature-256' => 'sha256=' . hash_hmac('sha256', $checkRunRawBody, $secret),
+            'X-GitHub-Delivery' => 'delivery-test-check-created',
+            'X-GitHub-Event' => 'check_run',
+        ]);
+        self::assertSame(202, $checkRunWebhook->status, json_encode($checkRunWebhook->body));
+        $checkRunRead = $this->cookieRequest('GET', "/api/v1/issues/{$issueId}/pull-requests", $admin['cookie']);
+        self::assertSame('in_progress', $checkRunRead->body['pull_requests'][0]['check_runs'][0]['status']);
+        self::assertSame('PHP tests', $checkRunRead->body['pull_requests'][0]['check_runs'][0]['name']);
+
+        $checkRunPayload['action'] = 'completed';
+        $checkRunPayload['check_run']['status'] = 'completed';
+        $checkRunPayload['check_run']['conclusion'] = 'failure';
+        $checkRunPayload['check_run']['completed_at'] = '2026-11-18T10:08:00Z';
+        $checkRunPayload['check_run']['updated_at'] = '2026-11-18T10:08:00Z';
+        $checkRunRawBody = json_encode($checkRunPayload, JSON_THROW_ON_ERROR);
+        $checkRunWebhook = $this->webhookRequest($checkRunRawBody, $checkRunPayload, [
+            'X-Hub-Signature-256' => 'sha256=' . hash_hmac('sha256', $checkRunRawBody, $secret),
+            'X-GitHub-Delivery' => 'delivery-test-check-completed',
+            'X-GitHub-Event' => 'check_run',
+        ]);
+        self::assertSame(202, $checkRunWebhook->status, json_encode($checkRunWebhook->body));
+        $checkRunRead = $this->cookieRequest('GET', "/api/v1/issues/{$issueId}/pull-requests", $admin['cookie']);
+        self::assertCount(1, $checkRunRead->body['pull_requests'][0]['check_runs']);
+        self::assertSame('completed', $checkRunRead->body['pull_requests'][0]['check_runs'][0]['status']);
+        self::assertSame('failure', $checkRunRead->body['pull_requests'][0]['check_runs'][0]['conclusion']);
+        self::assertSame(404, $this->cookieRequest('GET', "/api/v1/issues/{$issueId}/pull-requests", $guest['cookie'])->status);
+
+        $checkRunPayload['action'] = 'created';
+        $checkRunPayload['check_run']['status'] = 'in_progress';
+        $checkRunPayload['check_run']['conclusion'] = null;
+        $checkRunPayload['check_run']['completed_at'] = null;
+        $checkRunPayload['check_run']['updated_at'] = '2026-11-18T10:06:00Z';
+        $checkRunRawBody = json_encode($checkRunPayload, JSON_THROW_ON_ERROR);
+        $staleCheckRunWebhook = $this->webhookRequest($checkRunRawBody, $checkRunPayload, [
+            'X-Hub-Signature-256' => 'sha256=' . hash_hmac('sha256', $checkRunRawBody, $secret),
+            'X-GitHub-Delivery' => 'delivery-test-check-stale',
+            'X-GitHub-Event' => 'check_run',
+        ]);
+        self::assertSame(202, $staleCheckRunWebhook->status);
+        $checkRunRead = $this->cookieRequest('GET', "/api/v1/issues/{$issueId}/pull-requests", $admin['cookie']);
+        self::assertSame('completed', $checkRunRead->body['pull_requests'][0]['check_runs'][0]['status']);
+        self::assertSame('failure', $checkRunRead->body['pull_requests'][0]['check_runs'][0]['conclusion']);
+
         $webhookPayload = [
             'action' => 'closed',
             'installation' => ['id' => 445566],
