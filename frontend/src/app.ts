@@ -32,6 +32,7 @@ import { initWorkspacePickerUi } from './workspace-picker-ui.js';
 import { initIssueBoardUi } from './issue-board-ui.js';
 import { initIssueBoardView } from './issue-board-view.js';
 import { initIssueBulkUi } from './issue-bulk-ui.js';
+import { initIssueBulkActions } from './issue-bulk-actions.js';
 import { createIssueRowUi } from './issue-row-ui.js';
 import { initIssueAiPromptUi } from './issue-ai-prompt-ui.js';
 import { initIssueDiscussionUi } from './issue-discussion-ui.js';
@@ -651,6 +652,39 @@ const issueStatusPickerUi = initIssueStatusPickerUi({
   shouldRestoreFocus: () => !commandPaletteUi.isPaletteOpen()
     && !commandPaletteUi.isShortcutHelpOpen() && !workspacePickerUi.isOpen(),
 });
+const issueBulkActions = initIssueBulkActions({
+  getProjectId: () => activeProject?.id ?? null,
+  getActiveProjectId: () => activeProject?.id ?? null,
+  isIssueViewVisible: () => !issuesView.hidden,
+  getIssues: () => projectIssues,
+  setIssues: (issues) => { projectIssues = issues; },
+  getSelectedIssue: () => selectedIssue,
+  setSelectedIssue: (issue) => { selectedIssue = issue; },
+  getSelectedAssignIssueIds: () => selectedBulkAssignIssueIds,
+  getSelectedMoveIssueIds: () => selectedBulkMoveIssueIds,
+  getAssignTargetValue: () => bulkAssignTargetValue,
+  getMoveMilestoneId: () => bulkMoveMilestoneId,
+  getMilestones: () => projectMilestones,
+  isActionPending: () => bulkSelectionActionPending,
+  setActionPending: (pending) => { bulkSelectionActionPending = pending; },
+  isMovePending: () => bulkMovePending,
+  setMovePending: (pending) => { bulkMovePending = pending; },
+  clearAssignSelection: clearBulkAssignSelection,
+  clearMoveSelection: clearBulkMoveSelection,
+  focusMilestoneGroup: (milestoneId) => {
+    issueList.querySelector<HTMLDetailsElement>(`:scope > .issue-group[data-group-key="milestone:${milestoneId}"]`)
+      ?.querySelector<HTMLElement>(':scope > summary')?.focus();
+  },
+  syncAssignControls: syncIssueBulkAssignControls,
+  renderBoard: renderProjectIssueBoard,
+  renderDetail: renderIssueDetail,
+  focusAssignToggle: () => issueBulkAssignToggle.focus(),
+  issueAssigneeLabel,
+  report,
+  loadProjectIssues,
+  onUnauthorized: () => showSignedOut(),
+  api,
+});
 const issueBulkUi = initIssueBulkUi({
   doc: document,
   getState: () => ({
@@ -680,7 +714,7 @@ const issueBulkUi = initIssueBulkUi({
   setBulkAssignTargetValue: (value) => { bulkAssignTargetValue = value; },
   setSelectedBulkMoveIssueIds: (issueIds) => { selectedBulkMoveIssueIds = issueIds; },
   renderBoard: renderProjectIssueBoard,
-  moveSelectedIssuesToMilestone,
+  moveSelectedIssuesToMilestone: issueBulkActions.moveSelectedIssuesToMilestone,
   report,
   setTextContentIfChanged,
 });
@@ -2782,156 +2816,15 @@ function syncIssueBulkMoveToolbar(toolbar: HTMLDivElement, issues: Issue[]): voi
 }
 
 async function assignSelectedIssues(): Promise<void> {
-  const projectId = activeProject?.id;
-  const issueIds = Array.from(selectedBulkAssignIssueIds);
-  const assigneeId = bulkAssignTargetValue === 'unassigned' ? null : Number(bulkAssignTargetValue);
-  if (projectId === undefined || issueIds.length === 0 || issueIds.length > 500
-    || bulkAssignTargetValue === '' || (assigneeId !== null && (!Number.isInteger(assigneeId) || assigneeId < 1))
-    || bulkSelectionActionPending || bulkMovePending) return;
-
-  bulkSelectionActionPending = true;
-  syncIssueBulkAssignControls();
-  try {
-    const result = await api<{ assigned_count: number }>(`/projects/${projectId}/issues/assign`, {
-      method: 'POST',
-      body: JSON.stringify({ issue_ids: issueIds, assignee_id: assigneeId }),
-    });
-    if (activeProject?.id !== projectId) {
-      bulkSelectionActionPending = false;
-      if (activeProject !== null && !issuesView.hidden) renderProjectIssueBoard();
-      return;
-    }
-    projectIssues = projectIssues.map((issue) => issueIds.includes(issue.id)
-      ? { ...issue, assignee_id: assigneeId }
-      : issue);
-    if (selectedIssue !== null && issueIds.includes(selectedIssue.id)) {
-      selectedIssue = { ...selectedIssue, assignee_id: assigneeId };
-      renderIssueDetail();
-    }
-    clearBulkAssignSelection();
-    bulkSelectionActionPending = false;
-    renderProjectIssueBoard();
-    issueBulkAssignToggle.focus();
-    const description = assigneeId === null
-      ? `Unassigned ${result.assigned_count} ${result.assigned_count === 1 ? 'issue' : 'issues'}.`
-      : `Assigned ${result.assigned_count} ${result.assigned_count === 1 ? 'issue' : 'issues'} to ${issueAssigneeLabel(assigneeId)}.`;
-    report(description);
-    void loadProjectIssues(projectId);
-  } catch (error) {
-    bulkSelectionActionPending = false;
-    if (activeProject?.id !== projectId) {
-      if (activeProject !== null && !issuesView.hidden) renderProjectIssueBoard();
-      return;
-    }
-    syncIssueBulkAssignControls();
-    if (error instanceof ApiFailure && error.status === 401) {
-      showSignedOut();
-      return;
-    }
-    report(error instanceof Error ? error.message : 'Could not assign the selected issues.', true);
-  }
+  await issueBulkActions.assignSelectedIssues();
 }
 
 async function updateSelectedIssuesSharing(isShared: boolean): Promise<void> {
-  const projectId = activeProject?.id;
-  const issueIds = Array.from(selectedBulkAssignIssueIds);
-  if (projectId === undefined || issueIds.length === 0 || issueIds.length > 500
-    || bulkSelectionActionPending || bulkMovePending) return;
-
-  bulkSelectionActionPending = true;
-  syncIssueBulkAssignControls();
-  try {
-    const result = await api<{ updated_count: number }>(`/projects/${projectId}/issues/share`, {
-      method: 'POST',
-      body: JSON.stringify({ issue_ids: issueIds, is_shared: isShared }),
-    });
-    if (activeProject?.id !== projectId) {
-      bulkSelectionActionPending = false;
-      if (activeProject !== null && !issuesView.hidden) renderProjectIssueBoard();
-      return;
-    }
-    projectIssues = projectIssues.map((issue) => issueIds.includes(issue.id)
-      ? { ...issue, is_shared: isShared }
-      : issue);
-    if (selectedIssue !== null && issueIds.includes(selectedIssue.id)) {
-      selectedIssue = { ...selectedIssue, is_shared: isShared };
-      renderIssueDetail();
-    }
-    clearBulkAssignSelection();
-    bulkSelectionActionPending = false;
-    renderProjectIssueBoard();
-    issueBulkAssignToggle.focus();
-    const count = result.updated_count;
-    const description = count === 0
-      ? `Selected issues were already ${isShared ? 'shared with guests' : 'internal'}.`
-      : isShared
-        ? `Shared ${count} selected ${count === 1 ? 'issue' : 'issues'} with project guests.`
-        : `Made ${count} selected ${count === 1 ? 'issue' : 'issues'} internal.`;
-    report(description);
-    void loadProjectIssues(projectId);
-  } catch (error) {
-    bulkSelectionActionPending = false;
-    if (activeProject?.id !== projectId) {
-      if (activeProject !== null && !issuesView.hidden) renderProjectIssueBoard();
-      return;
-    }
-    syncIssueBulkAssignControls();
-    if (error instanceof ApiFailure && error.status === 401) {
-      showSignedOut();
-      return;
-    }
-    report(error instanceof Error ? error.message : 'Could not update sharing for selected issues.', true);
-  }
+  await issueBulkActions.updateSelectedIssuesSharing(isShared);
 }
 
 async function moveSelectedIssuesToMilestone(): Promise<void> {
-  const projectId = activeProject?.id;
-  const milestoneId = bulkMoveMilestoneId;
-  const issueIds = Array.from(selectedBulkMoveIssueIds);
-  if (projectId === undefined || milestoneId === null || issueIds.length === 0 || issueIds.length > 500 || bulkMovePending) return;
-
-  bulkMovePending = true;
-  renderProjectIssueBoard();
-  try {
-    await api<{ moved_count: number }>(`/projects/${projectId}/issues/move-to-milestone`, {
-      method: 'POST',
-      body: JSON.stringify({ issue_ids: issueIds, milestone_id: milestoneId }),
-    });
-    if (activeProject?.id !== projectId) {
-      bulkMovePending = false;
-      return;
-    }
-    const milestone = projectMilestones.find((candidate) => candidate.id === milestoneId);
-    const nextSortOrder = Math.max(0, ...projectIssues
-      .filter((issue) => issue.milestone_id === milestoneId)
-      .map((issue) => issue.sort_order)) + 1;
-    let sortOrder = nextSortOrder;
-    projectIssues = projectIssues.map((issue) => issueIds.includes(issue.id)
-      ? {
-        ...issue,
-        milestone_id: milestoneId,
-        milestone_name: milestone?.name ?? null,
-        milestone_due_date: milestone?.due_date ?? null,
-        sort_order: sortOrder++,
-      }
-      : issue);
-    clearBulkMoveSelection();
-    bulkMovePending = false;
-    renderProjectIssueBoard();
-    issueList.querySelector<HTMLDetailsElement>(`:scope > .issue-group[data-group-key="milestone:${milestoneId}"]`)
-      ?.querySelector<HTMLElement>(':scope > summary')?.focus();
-    report(`Moved ${issueIds.length} ${issueIds.length === 1 ? 'issue' : 'issues'} to ${milestone?.name ?? 'the milestone'}.`);
-    void loadProjectIssues(projectId);
-  } catch (error) {
-    bulkMovePending = false;
-    if (activeProject?.id !== projectId) return;
-    renderProjectIssueBoard();
-    if (error instanceof ApiFailure && error.status === 401) {
-      showSignedOut();
-      return;
-    }
-    report(error instanceof Error ? error.message : 'Could not move the selected issues.', true);
-  }
+  await issueBulkActions.moveSelectedIssuesToMilestone();
 }
 
 function setTextContentIfChanged(element: HTMLElement, value: string): void {

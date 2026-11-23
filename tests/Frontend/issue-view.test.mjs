@@ -54,8 +54,8 @@ test('quick add has a mouse cancel action and supports complete issue planning',
   }
   assert.match(html, /id="issue-quick-add-cancel"[^>]*>Cancel/);
   assert.match(app, /issueQuickAddCancelButton\.addEventListener\('click'/);
-  assert.match(app, /milestone_id:/);
-  assert.match(app, /is_shared:/);
+  assert.match(app, /issueInput\.milestone_id =/);
+  assert.match(app, /if \(issueQuickAddShared\.checked\) issueInput\.is_shared = true/);
   assert.match(app, /issueInput\.approval_requested = true/);
   assert.match(css, /\.issue-quick-add-actions\s*\{[^}]*display:\s*flex/);
 });

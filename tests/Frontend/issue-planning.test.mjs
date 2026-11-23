@@ -7,6 +7,7 @@ const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url)
 const issueBoardUi = await readFile(new URL('../../frontend/src/issue-board-ui.ts', import.meta.url), 'utf8');
 const issueBoardView = await readFile(new URL('../../frontend/src/issue-board-view.ts', import.meta.url), 'utf8');
 const issueBulkUi = await readFile(new URL('../../frontend/src/issue-bulk-ui.ts', import.meta.url), 'utf8');
+const issueBulkActions = await readFile(new URL('../../frontend/src/issue-bulk-actions.ts', import.meta.url), 'utf8');
 const issueRowUi = await readFile(new URL('../../frontend/src/issue-row-ui.ts', import.meta.url), 'utf8');
 const dom = await readFile(new URL('../../frontend/src/dom.ts', import.meta.url), 'utf8');
 const css = await readFile(new URL('../../public/assets/app.css', import.meta.url), 'utf8');
@@ -60,7 +61,7 @@ test('No milestone bulk move uses the shared selection and action-group design',
   assert.match(issueBulkUi, /selectAll\.textContent = 'Select all'/);
   assert.match(issueBulkUi, /moveButton\.textContent = 'Move'/);
   assert.match(issueBulkUi, /moveButton\.setAttribute\('aria-label', 'Move selected issues'\)/);
-  assert.match(app, /\/projects\/\$\{projectId\}\/issues\/move-to-milestone/);
+  assert.match(issueBulkActions, /\/projects\/\$\{projectId\}\/issues\/move-to-milestone/);
   assert.match(css, /\.issue-bulk-move-toolbar\s*\{/);
   assert.match(css, /\.issue-bulk-move-selection-actions\s*\{/);
   assert.match(css, /\.issue-bulk-move-action-group\s*\{/);
@@ -74,7 +75,7 @@ test('issue board offers opt-in bulk assignment across milestone groups', () => 
   assert.match(issueBoardView, /setVisibleBulkAssignIssueIds\(visibleBulkAssignIssueIds\)/);
   assert.match(html, /Assign selected/);
   assert.match(html, /Unassigned/);
-  assert.match(app, /\/projects\/\$\{projectId\}\/issues\/assign/);
+  assert.match(issueBulkActions, /\/projects\/\$\{projectId\}\/issues\/assign/);
   assert.match(css, /\.issue-bulk-assign-toolbar\s*\{/);
 });
 
@@ -102,9 +103,9 @@ test('issue selection toolbar groups selection, assignment, and guest-access con
   assert.match(css, /\.issue-bulk-selection-actions\s*\{[^}]*flex:\s*0 0 auto/);
   assert.match(css, /\.issue-bulk-selection-actions\s*\{[^}]*flex-wrap:\s*nowrap/);
   assert.doesNotMatch(toolbar, /Guests with access to this project can see shared issues/);
-  assert.match(app, /function updateSelectedIssuesSharing\(isShared: boolean\)/);
-  assert.match(app, /\/projects\/\$\{projectId\}\/issues\/share/);
-  assert.match(app, /JSON\.stringify\(\{\s*issue_ids: issueIds,\s*is_shared: isShared\s*\}\)/);
+  assert.match(issueBulkActions, /async function updateSelectedIssuesSharing\(isShared: boolean\)/);
+  assert.match(issueBulkActions, /\/projects\/\$\{projectId\}\/issues\/share/);
+  assert.match(issueBulkActions, /JSON\.stringify\(\{\s*issue_ids: issueIds,\s*is_shared: isShared\s*\}\)/);
 });
 
 test('ongoing issues are marked separately, grouped apart from unplanned work, and excluded from project progress', () => {
