@@ -26,6 +26,7 @@ import { initIssueBulkUi } from './issue-bulk-ui.js';
 import { initIssueBulkActions } from './issue-bulk-actions.js';
 import { moveFocusByPage, moveFocusToBoundary, moveFocusWithin, visibleRowsInViewport } from './list-keyboard-ui.js';
 import { initGoPrefixUi } from './go-prefix-ui.js';
+import { initChatMessageNavigationUi } from './chat-message-navigation-ui.js';
 import { createIssueRowUi } from './issue-row-ui.js';
 import { initIssueAiPromptUi } from './issue-ai-prompt-ui.js';
 import { initIssueDiscussionUi } from './issue-discussion-ui.js';
@@ -520,6 +521,18 @@ const projectChatUi = initProjectChatUi({
     avatarInitials,
     compactMessage: compactChatMessage,
     submitFormOnEnter,
+});
+const chatMessageNavigationUi = initChatMessageNavigationUi({
+    getMessageList: activeChatMessageList,
+    getSelectedMessageId: () => selectedChatMessageId,
+    setSelectedMessageId: (id) => { selectedChatMessageId = id; },
+    setFollowLatest: (followLatest) => {
+        if (loungeView.hidden)
+            projectChatUi.setFollowLatest(followLatest);
+        else
+            loungeChatUi.setFollowLatest(followLatest);
+    },
+    focusComposer: focusActiveChatComposer,
 });
 const inboxUi = initInboxUi({
     isVisible: () => !workspacePanel.hidden && !inboxView.hidden,
@@ -1175,62 +1188,19 @@ function focusActiveChatComposer() {
         loungeChatUi.focusComposer();
 }
 function chatMessageElements() {
-    const list = activeChatMessageList();
-    if (list === null)
-        return [];
-    return Array.from(list.querySelectorAll('.chat-message'))
-        .filter((message) => Number(message.dataset.messageId) > 0);
+    return chatMessageNavigationUi.messages();
 }
 function selectChatMessage(id, focus = true) {
-    const list = activeChatMessageList();
-    const item = list?.querySelector(`.chat-message[data-message-id="${id}"]`);
-    if (item === null || item === undefined)
-        return;
-    selectedChatMessageId = id;
-    if (loungeView.hidden)
-        projectChatUi.setFollowLatest(chatMessageElements().at(-1) === item);
-    else
-        loungeChatUi.setFollowLatest(chatMessageElements().at(-1) === item);
-    list?.querySelectorAll('.chat-message').forEach((message) => {
-        message.classList.toggle('is-keyboard-selected', message === item);
-    });
-    if (focus)
-        item.focus();
+    chatMessageNavigationUi.select(id, focus);
 }
 function moveChatMessageSelection(direction) {
-    const messages = chatMessageElements();
-    if (messages.length === 0) {
-        focusActiveChatComposer();
-        return;
-    }
-    const currentIndex = messages.findIndex((message) => Number(message.dataset.messageId) === selectedChatMessageId);
-    const nextIndex = currentIndex < 0
-        ? direction > 0 ? 0 : messages.length - 1
-        : Math.max(0, Math.min(messages.length - 1, currentIndex + direction));
-    const next = messages[nextIndex];
-    if (next !== undefined)
-        selectChatMessage(Number(next.dataset.messageId));
+    chatMessageNavigationUi.move(direction);
 }
 function moveChatMessageSelectionToBoundary(edge) {
-    const messages = chatMessageElements();
-    const target = messages[edge === 'first' ? 0 : messages.length - 1];
-    if (target !== undefined)
-        selectChatMessage(Number(target.dataset.messageId));
+    chatMessageNavigationUi.moveToBoundary(edge);
 }
 function moveChatMessageSelectionByPage(direction) {
-    const messages = chatMessageElements();
-    const list = activeChatMessageList();
-    if (messages.length === 0 || list === null)
-        return;
-    const currentIndex = messages.findIndex((message) => Number(message.dataset.messageId) === selectedChatMessageId);
-    const pageSize = Math.max(1, visibleRowsInViewport(messages, list, '.chat-message') - 1);
-    const baseIndex = currentIndex < 0
-        ? direction > 0 ? 0 : Math.min(pageSize, messages.length - 1)
-        : currentIndex;
-    const targetIndex = Math.max(0, Math.min(messages.length - 1, baseIndex + direction * pageSize));
-    const target = messages[targetIndex];
-    if (target !== undefined)
-        selectChatMessage(Number(target.dataset.messageId));
+    chatMessageNavigationUi.moveByPage(direction);
 }
 function focusProjectChat() {
     const messages = chatMessageElements();

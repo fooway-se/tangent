@@ -7,6 +7,7 @@ const events = await import('../../public/assets/inbox-events.js');
 const guest = await import('../../public/assets/guest-view.js');
 const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
+const chatMessageNavigationUi = await readFile(new URL('../../frontend/src/chat-message-navigation-ui.ts', import.meta.url), 'utf8');
 const projectChatUi = await readFile(new URL('../../frontend/src/project-chat-ui.ts', import.meta.url), 'utf8');
 const authUi = await readFile(new URL('../../frontend/src/auth-ui.ts', import.meta.url), 'utf8');
 const inboxUi = await readFile(new URL('../../frontend/src/inbox-ui.ts', import.meta.url), 'utf8');
@@ -133,7 +134,7 @@ test('chat follows incoming messages until someone navigates into history', () =
   assert.match(projectChatUi, /async function loadHistory[\s\S]*?if \(followLatest\) scrollToBottom\(\)/);
   assert.match(projectChatUi, /function isNearBottom\(\): boolean[\s\S]*?<= 24/);
   assert.match(projectChatUi, /nextMessageList\.addEventListener\('scroll', \(\) => \{\s*if \(messageListElement !== nextMessageList\) return;\s*followLatest = isNearBottom\(\)/);
-  assert.match(app, /projectChatUi\.setFollowLatest\(chatMessageElements\(\)\.at\(-1\) === item\)/);
+  assert.match(chatMessageNavigationUi, /setFollowLatest\(messages\(\)\.at\(-1\) === item\)/);
   assert.match(projectChatUi, /item\.addEventListener\('focusin', \(\) => options\.selectMessage\(message\.id, false\)\)/);
   assert.match(projectChatUi, /function scrollToBottom\(\): void \{\s*followLatest = true;[\s\S]*?messageListElement\.scrollTop = messageListElement\.scrollHeight/);
 });
