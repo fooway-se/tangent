@@ -185,6 +185,32 @@ final class InboxEvents
         $this->record($workspaceId, $projectId, $recipients, null, 'pr', $issueId, null, $summary, $detail);
     }
 
+    public function recordGitHubCommits(int $workspaceId, int $projectId, int $issueId, int $count, string $branch): void
+    {
+        if ($count < 1) return;
+        $recipients = [];
+        foreach ($this->projects->members($workspaceId, $projectId) as $member) {
+            if ((bool) ($member['is_active'] ?? true) && in_array($member['role'] ?? '', ['admin', 'developer'], true)) {
+                $recipients[] = (int) $member['id'];
+            }
+        }
+        foreach ($this->users->list($workspaceId) as $user) {
+            if ((bool) $user['is_active'] && $user['role'] === 'admin') $recipients[] = (int) $user['id'];
+        }
+        $commitWord = $count === 1 ? 'commit' : 'commits';
+        $this->record(
+            $workspaceId,
+            $projectId,
+            $recipients,
+            null,
+            'commit',
+            $issueId,
+            null,
+            "GitHub pushed {$count} {$commitWord}",
+            'Branch ' . $branch,
+        );
+    }
+
     private function record(
         int $workspaceId,
         int $projectId,

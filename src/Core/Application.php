@@ -23,6 +23,7 @@ use Tangent\Modules\Issues\IssuesRoutes;
 use Tangent\Modules\Issues\IssuesService;
 use Tangent\Modules\GitHub\GitHubAppClient;
 use Tangent\Modules\GitHub\GitHubApiClient;
+use Tangent\Modules\GitHub\GitHubCommitRepository;
 use Tangent\Modules\GitHub\GitHubInstallationRepository;
 use Tangent\Modules\GitHub\GitHubPullRequestRepository;
 use Tangent\Modules\GitHub\GitHubRoutes;
@@ -100,6 +101,7 @@ final class Application
             ),
             new GitHubInstallationRepository($pdo),
             new GitHubPullRequestRepository($pdo),
+            new GitHubCommitRepository($pdo),
             $projectRepository,
             $issueRepository,
             $inboxEvents,

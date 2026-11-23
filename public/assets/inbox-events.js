@@ -10,6 +10,7 @@ const ICONS = {
     reply: '↩',
     status: '●',
     pr: '⑂',
+    commit: '⌘',
 };
 export function iconFor(type) {
     return ICONS[type];

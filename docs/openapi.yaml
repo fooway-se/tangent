@@ -81,8 +81,8 @@ paths:
   /github/webhook:
     post:
       security: []
-      summary: Receive signed GitHub pull-request events
-      description: Validates the raw request body with HMAC-SHA256 before processing. Configure the GitHub webhook secret to match TANGENT_GITHUB_WEBHOOK_SECRET.
+      summary: Receive signed GitHub pull-request and push events
+      description: Validates the raw request body with HMAC-SHA256 before processing. Commit tracking is optional and requires the Push subscription plus read-only Contents permission on the connected GitHub App.
       parameters:
         - name: X-Hub-Signature-256
           in: header
@@ -150,6 +150,25 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
         '422': { $ref: '#/components/responses/ValidationFailed' }
+  /issues/{id}/commits:
+    get:
+      summary: List commits linked to an internal issue
+      description: Returns up to 50 commits received from pushes to the issue's generated Tangent branch. Available to project admins and developers with issue access; guests cannot access commit metadata.
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Recent commits linked to the issue.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [commits]
+                properties:
+                  commits:
+                    type: array
+                    items: { $ref: '#/components/schemas/LinkedCommit' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /issues/{id}/pull-requests/{pullRequestId}:
     delete:
       summary: Unlink a pull request from an issue
@@ -1971,6 +1990,17 @@ components:
         author_login: { type: string }
         github_updated_at: { type: string, format: date-time }
         linked_at: { type: string, format: date-time }
+    LinkedCommit:
+      type: object
+      required: [id, repository_full_name, sha, message, html_url, author_login, committed_at]
+      properties:
+        id: { type: integer }
+        repository_full_name: { type: string }
+        sha: { type: string, pattern: '^[a-f0-9]{40,64}$' }
+        message: { type: string }
+        html_url: { type: string, format: uri }
+        author_login: { type: string }
+        committed_at: { type: string, format: date-time }
     GuestProject:
       type: object
       required: [id, name, slug]
@@ -2061,7 +2091,7 @@ components:
       required: [id, type, actor_name, summary, project_id, project_name, read, done, created_at]
       properties:
         id: { type: integer }
-        type: { type: string, enum: [mention, assigned, reply, status, pr] }
+        type: { type: string, enum: [mention, assigned, reply, status, pr, commit] }
         actor_name: { type: string }
         summary: { type: string }
         detail: { type: [string, 'null'] }

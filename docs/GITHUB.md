@@ -1,6 +1,6 @@
 # GitHub pull-request tracking
 
-Tangent can connect one GitHub repository to a project. Internal admins and developers can manually link pull requests to issues, see their current state, and receive inbox events when a linked pull request opens, closes, merges, or changes review readiness. Linking a pull request does not change the Tangent issue status. Guests cannot see GitHub repository or pull-request data.
+Tangent can optionally connect one GitHub repository to a project. Internal admins and developers can manually link pull requests to issues, see their current state, and receive inbox events when a linked pull request opens, closes, merges, or changes review readiness. They can also copy a branch name from an issue; pushes to that branch are attached to the issue and create one grouped inbox event. The issue shows up to 50 recent commits. Linking a pull request does not change the Tangent issue status. Guests cannot see GitHub repository, pull-request, or commit data.
 
 ## Create a GitHub App
 
@@ -11,8 +11,8 @@ Create a GitHub App for your Tangent installation and configure:
 - **Callback URL:** `{TANGENT_APP_URL}/api/v1/github/setup/authorize`.
 - **Webhook URL:** `{TANGENT_APP_URL}/api/v1/github/webhook`.
 - **Webhook secret:** generate a long random secret and keep it for the Tangent environment setting below.
-- **Repository permissions:** `Metadata: Read-only` and `Pull requests: Read-only`.
-- **Subscribe to events:** `Pull request`.
+- **Repository permissions:** `Metadata: Read-only` and `Pull requests: Read-only`. To enable commit tracking, also grant `Contents: Read-only`.
+- **Subscribe to events:** `Pull request`; add `Push` to enable commit tracking.
 
 Generate a private key for the app. Note the app's numeric ID and URL slug from its settings. Install the app on the GitHub account or organization that owns the repository, granting access only to repositories Tangent should offer for project selection.
 
@@ -31,4 +31,4 @@ Set these variables in the PHP process environment. In Docker Compose, they can 
 
 Restart the PHP service after changing its environment. GitHub connection is workspace-scoped: a workspace admin starts the connection from a project's create or edit form, installs the App, then authorizes their GitHub account. Tangent binds both callbacks to the same browser session and associates the installation only if the authorized GitHub user can access it. Project developers can link and unlink pull requests on issues after a repository is selected.
 
-The webhook endpoint is public and verifies every request against the raw body using `X-Hub-Signature-256`. GitHub delivery IDs are stored for 30 days to ignore retries. If an issue is unlinked from a pull request, later webhook events no longer update that link.
+The webhook endpoint is public and verifies every request against the raw body using `X-Hub-Signature-256`. GitHub delivery IDs are stored for 30 days to ignore retries. Commit tracking is opt-in through the connected repository: the App needs read-only Contents access and the Push event subscription. Tangent links commits only when a push targets a branch named `tangent/issue-{id}-{title-slug}`, as provided by **Copy branch name** on the issue. It keeps commit history and shows the 50 most recent commits per issue, and sends one inbox event for each push that adds commits. If an issue is unlinked from a pull request, later webhook events no longer update that link.

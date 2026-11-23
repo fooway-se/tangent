@@ -1056,6 +1056,7 @@ dialog::backdrop { background: var(--backdrop); }
 .issue-pull-request-dialog .dialog-heading { margin: 0 -18px 14px; }
 .issue-pull-requests { margin: 18px 0; border-top: 1px solid var(--screen-border); padding-top: 12px; }
 .issue-pull-requests-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.issue-github-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
 .issue-pull-requests-heading h3 { margin: 0; color: var(--screen-muted); font: 700 11px var(--font-display); letter-spacing: 1.5px; text-transform: uppercase; }
 .issue-pull-requests-list { display: grid; gap: 7px; margin: 8px 0 0; padding: 0; list-style: none; }
 .issue-pull-request-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid var(--screen-border); border-radius: var(--radius-panel); padding: 8px 10px; background: var(--screen-panel); }
@@ -1065,6 +1066,12 @@ dialog::backdrop { background: var(--backdrop); }
 .issue-pull-request-state { color: var(--accent); text-transform: capitalize; }
 .issue-pull-request-state.is-closed { color: var(--screen-muted); }
 .issue-pull-requests-empty { margin: 8px 0 0; color: var(--screen-muted); font-size: 12px; }
+.issue-commits { margin-top: 14px; border-top: 1px solid var(--screen-border); padding-top: 10px; }
+.issue-commits h4 { margin: 0; color: var(--screen-muted); font: 700 11px var(--font-display); letter-spacing: 1.3px; text-transform: uppercase; }
+.issue-commits-list { display: grid; gap: 7px; margin: 8px 0 0; padding: 0; list-style: none; }
+.issue-commit-row { display: grid; gap: 3px; }
+.issue-commit-link { overflow: hidden; color: var(--screen-ink); font: 600 11px var(--font-mono); text-overflow: ellipsis; white-space: nowrap; }
+.issue-commit-meta { color: var(--screen-muted); font-size: 11px; }
 .issue-pull-request-intro { margin: 0 0 14px; color: var(--screen-muted); font-size: 12px; line-height: 1.5; }
 .issue-pull-request-message { margin: 0; color: var(--screen-muted); font-size: 12px; }
 .issue-pull-request-message:empty { display: none; }

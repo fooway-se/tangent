@@ -55,6 +55,12 @@ final class GitHubRoutes
             ]);
         });
 
+        $router->add('GET', '/api/v1/issues/{id}/commits', function (Request $request, array $params, AuthenticatedUser $user): Response {
+            return Response::json(200, [
+                'commits' => $this->service->listCommits($user, PositiveId::parse($params['id'])),
+            ]);
+        });
+
         $router->add('POST', '/api/v1/issues/{id}/pull-requests', function (Request $request, array $params, AuthenticatedUser $user): Response {
             return Response::json(201, [
                 'pull_request' => $this->service->linkPullRequest($user, PositiveId::parse($params['id']), $request->body),

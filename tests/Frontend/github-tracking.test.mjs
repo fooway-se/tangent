@@ -28,17 +28,22 @@ test('project creation and editing can connect an available GitHub repository', 
 
 test('issue pull-request controls are available only for connected project repositories', () => {
   assert.match(html, /id="issue-pull-requests"[^>]*hidden/);
+  assert.match(html, /id="copy-issue-branch-button"[^>]*hidden[^>]*>Copy branch name/);
+  assert.match(html, /id="issue-commits"[^>]*hidden/);
   assert.match(html, /id="link-pull-request-button"[^>]*>Link pull request/);
   assert.match(html, /id="issue-pull-request-dialog"/);
   assert.match(html, /id="issue-pull-request-url"[^>]*type="url"/);
   assert.match(issueRelatedUi, /issuePullRequests\.hidden = !hasIssue[\s\S]{0,200}project\.github_repository === null[\s\S]{0,100}linkedPullRequests\.length === 0/);
   assert.match(issueRelatedUi, /request<\{ pull_requests: LinkedPullRequest\[\] \}>\(`\/issues\/\$\{issueId\}\/pull-requests`\)/);
+  assert.match(issueRelatedUi, /request<\{ commits: LinkedCommit\[\] \}>\(`\/issues\/\$\{issueId\}\/commits`\)/);
   assert.match(issueRelatedUi, /method: 'POST',[\s\S]{0,160}JSON\.stringify\(\{ url: issuePullRequestUrl\.value \}\)/);
 });
 
 test('GitHub API describes repository selection, manual PR links, and signed webhook updates', () => {
   assert.match(openapi, /\/github\/repositories/);
   assert.match(openapi, /\/issues\/\{id\}\/pull-requests/);
+  assert.match(openapi, /\/issues\/\{id\}\/commits/);
+  assert.match(openapi, /enum: \[mention, assigned, reply, status, pr, commit\]/);
   assert.match(openapi, /\/github\/webhook/);
   assert.match(openapi, /X-Hub-Signature-256/);
   assert.match(openapi, /\/github\/setup\/authorize/);
@@ -51,5 +56,7 @@ test('GitHub API describes repository selection, manual PR links, and signed web
   assert.match(development, /github_oauth_client_secret/);
   assert.match(githubDocs, /TANGENT_GITHUB_OAUTH_CLIENT_ID/);
   assert.match(githubDocs, /TANGENT_GITHUB_OAUTH_CLIENT_SECRET/);
+  assert.match(githubDocs, /Contents: Read-only/);
+  assert.match(githubDocs, /Push/);
   assert.match(githubDocs, /api\/v1\/github\/setup\/authorize/);
 });

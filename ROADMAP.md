@@ -10,8 +10,6 @@ The project chat header has a privacy-preserving presence light: it shows whethe
 
 ## GitHub and other integrations
 
-- Link commits to issues and show commit activity in the inbox.
-- Generate a branch name from an issue.
 - Add GitLab support through a provider-neutral integration interface.
 - Expand the GitHub App integration beyond manual pull-request links. Two-way issue and comment sync is deferred.
 

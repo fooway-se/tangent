@@ -566,6 +566,142 @@ PHP;
         self::assertSame(1, (int) $eventCount->fetchColumn());
     }
 
+    public function testPushWebhookTracksIssueCommitsAndNotifiesOnlyInternalMembers(): void
+    {
+        $admin = $this->login($this->adminEmail);
+        $secret = 'commit-tracking-webhook-secret';
+        $client = new FakeGitHubApiClient(
+            [
+                'id' => 8765432,
+                'installation_id' => 445566,
+                'owner' => 'test-org',
+                'name' => 'commit-repo',
+                'full_name' => 'test-org/commit-repo',
+                'html_url' => 'https://github.com/test-org/commit-repo',
+            ],
+            [],
+        );
+        $installation = $this->pdo->prepare(
+            'INSERT INTO github_installations (workspace_id, installation_id, account_login, connected_by)
+             VALUES (:workspace_id, :installation_id, :account_login, :connected_by)'
+        );
+        $installation->execute([
+            'workspace_id' => $this->workspaceId,
+            'installation_id' => 445566,
+            'account_login' => 'test-org',
+            'connected_by' => $this->adminId,
+        ]);
+        $this->application = Application::create(
+            $this->pdo,
+            new AppConfig($this->workspaceId, false, 43200, 'http://localhost:8080', false, '123', 'test-app', 'unused', $secret),
+            $client,
+        );
+
+        $createdProject = $this->cookieRequest('POST', '/api/v1/projects', $admin['cookie'], [
+            'name' => 'Commit tracked project',
+            'github_repository_id' => 8765432,
+        ], $admin['csrf']);
+        self::assertSame(201, $createdProject->status, json_encode($createdProject->body));
+        $projectId = (int) $createdProject->body['project']['id'];
+        $guestId = $this->createUser($admin, 'Customer', 'commit-customer@example.test', 'guest');
+        $this->addMember($admin, $projectId, $guestId);
+
+        $createdIssue = $this->cookieRequest(
+            'POST',
+            "/api/v1/projects/{$projectId}/issues",
+            $admin['cookie'],
+            ['title' => 'Fix branch tracking'],
+            $admin['csrf'],
+        );
+        self::assertSame(201, $createdIssue->status, json_encode($createdIssue->body));
+        $issueId = (int) $createdIssue->body['issue']['id'];
+        $branch = "tangent/issue-{$issueId}-fix-branch-tracking";
+        $payload = [
+            'installation' => ['id' => 445566],
+            'repository' => ['id' => 8765432, 'full_name' => 'test-org/commit-repo'],
+            'ref' => 'refs/heads/' . $branch,
+            'commits' => [
+                [
+                    'id' => str_repeat('a', 40),
+                    'message' => 'Start branch tracking',
+                    'timestamp' => '2026-11-22T10:00:00Z',
+                    'author' => ['username' => 'developer-one'],
+                ],
+                [
+                    'id' => str_repeat('b', 40),
+                    'message' => 'Finish branch tracking',
+                    'timestamp' => '2026-11-22T10:05:00Z',
+                    'author' => ['username' => 'developer-one'],
+                ],
+            ],
+        ];
+        $rawBody = json_encode($payload, JSON_THROW_ON_ERROR);
+        $headers = [
+            'X-Hub-Signature-256' => 'sha256=' . hash_hmac('sha256', $rawBody, $secret),
+            'X-GitHub-Delivery' => 'commit-delivery-1',
+            'X-GitHub-Event' => 'push',
+        ];
+        $webhook = $this->webhookRequest($rawBody, $payload, $headers);
+        self::assertSame(202, $webhook->status, json_encode($webhook->body));
+
+        $commits = $this->cookieRequest('GET', "/api/v1/issues/{$issueId}/commits", $admin['cookie']);
+        self::assertSame(200, $commits->status, json_encode($commits->body));
+        self::assertCount(2, $commits->body['commits']);
+        self::assertSame('test-org/commit-repo', $commits->body['commits'][0]['repository_full_name']);
+        self::assertSame(str_repeat('b', 40), $commits->body['commits'][0]['sha']);
+        self::assertSame('https://github.com/test-org/commit-repo/commit/' . str_repeat('a', 40), $commits->body['commits'][1]['html_url']);
+
+        $guest = $this->login('commit-customer@example.test');
+        self::assertSame(404, $this->cookieRequest('GET', "/api/v1/issues/{$issueId}/commits", $guest['cookie'])->status);
+        $eventCount = $this->pdo->prepare(
+            "SELECT COUNT(*) FROM inbox_events WHERE workspace_id = :workspace_id AND recipient_id = :recipient_id AND event_type = 'commit'"
+        );
+        $eventCount->execute(['workspace_id' => $this->workspaceId, 'recipient_id' => $this->adminId]);
+        self::assertSame(1, (int) $eventCount->fetchColumn());
+        $eventCount->execute(['workspace_id' => $this->workspaceId, 'recipient_id' => $guestId]);
+        self::assertSame(0, (int) $eventCount->fetchColumn());
+
+        $duplicate = $this->webhookRequest($rawBody, $payload, $headers);
+        self::assertTrue($duplicate->body['duplicate']);
+
+        $unmatchedPayload = $payload;
+        $unmatchedPayload['ref'] = 'refs/heads/feature/unrelated-work';
+        $unmatchedRawBody = json_encode($unmatchedPayload, JSON_THROW_ON_ERROR);
+        $unmatched = $this->webhookRequest($unmatchedRawBody, $unmatchedPayload, [
+            'X-Hub-Signature-256' => 'sha256=' . hash_hmac('sha256', $unmatchedRawBody, $secret),
+            'X-GitHub-Delivery' => 'commit-delivery-2',
+            'X-GitHub-Event' => 'push',
+        ]);
+        self::assertSame(202, $unmatched->status);
+        $afterUnmatched = $this->cookieRequest('GET', "/api/v1/issues/{$issueId}/commits", $admin['cookie']);
+        self::assertCount(2, $afterUnmatched->body['commits']);
+
+        $disconnected = $this->cookieRequest(
+            'PATCH',
+            "/api/v1/projects/{$projectId}",
+            $admin['cookie'],
+            ['github_repository_id' => null],
+            $admin['csrf'],
+        );
+        self::assertSame(200, $disconnected->status, json_encode($disconnected->body));
+        $afterDisconnectPayload = $payload;
+        $afterDisconnectPayload['commits'] = [[
+            'id' => str_repeat('c', 40),
+            'message' => 'Do not track while disconnected',
+            'timestamp' => '2026-11-22T10:10:00Z',
+            'author' => ['username' => 'developer-one'],
+        ]];
+        $afterDisconnectRawBody = json_encode($afterDisconnectPayload, JSON_THROW_ON_ERROR);
+        $afterDisconnect = $this->webhookRequest($afterDisconnectRawBody, $afterDisconnectPayload, [
+            'X-Hub-Signature-256' => 'sha256=' . hash_hmac('sha256', $afterDisconnectRawBody, $secret),
+            'X-GitHub-Delivery' => 'commit-delivery-disconnected',
+            'X-GitHub-Event' => 'push',
+        ]);
+        self::assertSame(202, $afterDisconnect->status);
+        $afterDisconnectCommits = $this->cookieRequest('GET', "/api/v1/issues/{$issueId}/commits", $admin['cookie']);
+        self::assertCount(2, $afterDisconnectCommits->body['commits']);
+    }
+
     public function testGuestCannotReadPullRequestMetadataForASharedIssue(): void
     {
         $admin = $this->login($this->adminEmail);

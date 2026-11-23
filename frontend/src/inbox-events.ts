@@ -1,4 +1,4 @@
-export type InboxEventType = 'mention' | 'assigned' | 'reply' | 'status' | 'pr';
+export type InboxEventType = 'mention' | 'assigned' | 'reply' | 'status' | 'pr' | 'commit';
 export type InboxTab = 'unread' | 'all' | 'mentions' | 'done';
 
 export interface InboxEvent {
@@ -29,6 +29,7 @@ const ICONS: Record<InboxEventType, string> = {
   reply: '↩',
   status: '●',
   pr: '⑂',
+  commit: '⌘',
 };
 
 export function iconFor(type: InboxEventType): string {

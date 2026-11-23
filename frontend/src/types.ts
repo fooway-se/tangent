@@ -68,6 +68,16 @@ export interface LinkedPullRequest {
   linked_at: string;
 }
 
+export interface LinkedCommit {
+  id: number;
+  repository_full_name: string;
+  sha: string;
+  message: string;
+  html_url: string;
+  author_login: string;
+  committed_at: string;
+}
+
 export const PROJECT_STATUS_LABELS: Record<Project['status'], string> = {
   active: 'Active',
   paused: 'Paused',

@@ -2437,6 +2437,7 @@ function openIssue(issue) {
     issueDetailEditForm.hidden = true;
     renderIssueDetail();
     void issueRelatedUi.loadPullRequests(issue.id);
+    void issueRelatedUi.loadCommits(issue.id);
     void issueRelatedUi.loadStatusHistory(issue.id);
     void issueDiscussionUi.load(issue.id);
     switchProjectTab('issues');

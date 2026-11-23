@@ -29,6 +29,7 @@ class FakeElement extends EventTarget {
 
 const selectors = [
   'issue-pull-requests', 'issue-pull-requests-list', 'issue-pull-requests-empty', 'link-pull-request-button',
+  'copy-issue-branch-button', 'issue-commits', 'issue-commits-list', 'issue-commits-empty',
   'issue-pull-request-dialog', 'issue-pull-request-form', 'issue-pull-request-close',
   'issue-pull-request-cancel', 'issue-pull-request-url', 'issue-pull-request-message',
   'issue-pull-request-submit', 'issue-status-history', 'issue-status-history-count',
@@ -60,8 +61,17 @@ test('issue relations load, render and link a pull request', async (t) => {
   const transition = {
     id: 52, from_status: 'todo', to_status: 'doing', actor_name: 'Sam', created_at: '2026-11-22 09:00:00',
   };
+  const commit = {
+    repository_full_name: 'acme/app',
+    sha: '0123456789abcdef0123456789abcdef01234567',
+    message: 'Keep mobile chat scrolling stable',
+    html_url: 'https://github.com/acme/app/commit/0123456789abcdef0123456789abcdef01234567',
+    author_login: 'sam',
+    committed_at: '2026-11-22 10:30:00',
+  };
   const requests = [];
   const reports = [];
+  const copied = [];
   const ui = initIssueRelatedUi({
     getIssue: () => issue,
     getProject: () => project,
@@ -71,10 +81,12 @@ test('issue relations load, render and link a pull request', async (t) => {
     issueStatusLabel: (status) => status === 'todo' ? 'To do' : 'In progress',
     onUnauthorized() { assert.fail('unexpected unauthorized response'); },
     report: (message, isError) => reports.push([message, isError]),
+    copyText: async (value) => copied.push(value),
     request: async (path, init) => {
       requests.push({ path, init });
       if (init?.method === 'POST') return { pull_request: pullRequest };
       if (path.endsWith('/history')) return { transitions: [transition] };
+      if (path.endsWith('/commits')) return { commits: [commit] };
       return { pull_requests: [pullRequest] };
     },
     doc,
@@ -88,11 +100,22 @@ test('issue relations load, render and link a pull request', async (t) => {
   });
 
   await ui.loadPullRequests(12);
+  await ui.loadCommits(12);
   await ui.loadStatusHistory(12);
   assert.equal(elements.get('#issue-pull-requests-list').children.length, 1);
   assert.equal(elements.get('#issue-pull-requests-empty').hidden, true);
   assert.equal(elements.get('#issue-status-history-list').children.length, 1);
   assert.equal(elements.get('#issue-status-history-count').textContent, '1');
+  assert.equal(elements.get('#issue-commits').hidden, false);
+  assert.equal(elements.get('#issue-commits-list').children.length, 1);
+  assert.equal(elements.get('#issue-commits-list').children[0].children[0].href, commit.html_url);
+  assert.match(elements.get('#issue-commits-list').children[0].children[0].textContent, /acme\/app/);
+  assert.match(elements.get('#issue-commits-list').children[0].children[0].textContent, /Keep mobile chat scrolling stable/);
+
+  elements.get('#copy-issue-branch-button').click();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.deepEqual(copied, ['tangent/issue-12-fix-release-flow']);
+  assert.deepEqual(reports.at(-1), ['Branch name copied.', undefined]);
 
   elements.get('#link-pull-request-button').click();
   assert.equal(elements.get('#issue-pull-request-dialog').open, true);
@@ -105,4 +128,11 @@ test('issue relations load, render and link a pull request', async (t) => {
   assert.deepEqual(JSON.parse(post.init.body), { url: 'https://github.com/acme/app/pull/41' });
   assert.equal(elements.get('#issue-pull-request-dialog').open, false);
   assert.deepEqual(reports.at(-1), ['Pull request linked.', undefined]);
+
+  project.github_repository = null;
+  ui.renderCommits();
+  assert.equal(elements.get('#issue-commits').hidden, true);
+  assert.equal(elements.get('#copy-issue-branch-button').hidden, true);
+  await ui.loadCommits(12);
+  assert.equal(requests.filter(({ path }) => path.endsWith('/commits')).length, 1);
 });

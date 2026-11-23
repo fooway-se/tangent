@@ -14,7 +14,7 @@
     <link rel="icon" href="./assets/icons/tangent-icon.svg" type="image/svg+xml">
     <link rel="icon" href="./assets/icons/tangent-32.png" sizes="32x32" type="image/png">
     <link rel="stylesheet" href="./assets/tokens.css">
-    <link rel="stylesheet" href="./assets/app.css?v=4f5a719f53ad">
+    <link rel="stylesheet" href="./assets/app.css?v=835c0ca05b72">
     <script type="module" src="./assets/app.js"></script>
   </head>
   <body>
@@ -482,10 +482,18 @@
                   <section id="issue-pull-requests" class="issue-pull-requests" hidden aria-labelledby="issue-pull-requests-heading">
                     <header class="issue-pull-requests-heading">
                       <h3 id="issue-pull-requests-heading">Pull requests</h3>
-                      <button id="link-pull-request-button" class="button button-secondary" type="button" hidden>Link pull request</button>
+                      <div class="issue-github-actions">
+                        <button id="copy-issue-branch-button" class="button button-secondary" type="button" hidden>Copy branch name</button>
+                        <button id="link-pull-request-button" class="button button-secondary" type="button" hidden>Link pull request</button>
+                      </div>
                     </header>
                     <ul id="issue-pull-requests-list" class="issue-pull-requests-list"></ul>
                     <p id="issue-pull-requests-empty" class="issue-pull-requests-empty" hidden>No pull requests linked yet.</p>
+                    <section id="issue-commits" class="issue-commits" hidden aria-labelledby="issue-commits-heading">
+                      <h4 id="issue-commits-heading">Commits</h4>
+                      <ul id="issue-commits-list" class="issue-commits-list"></ul>
+                      <p id="issue-commits-empty" class="issue-pull-requests-empty" hidden>No commits linked yet.</p>
+                    </section>
                   </section>
                   <a id="issue-source-link" class="issue-source-link" href="#project-chat-column" hidden>Open source chat thread</a>
                   <details id="issue-status-history" class="issue-status-history" hidden>

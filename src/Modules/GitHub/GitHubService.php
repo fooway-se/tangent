@@ -23,6 +23,7 @@ final class GitHubService
         private readonly GitHubApiClient $client,
         private readonly GitHubInstallationRepository $installations,
         private readonly GitHubPullRequestRepository $pullRequests,
+        private readonly GitHubCommitRepository $commits,
         private readonly ProjectRepository $projects,
         private readonly IssueRepository $issues,
         private readonly InboxEvents $inboxEvents,
@@ -191,6 +192,13 @@ final class GitHubService
         return $this->pullRequests->listForIssue($user->workspaceId, $issueId);
     }
 
+    public function listCommits(AuthenticatedUser $user, int $issueId): array
+    {
+        $this->requireInternalUser($user);
+        $this->issueAndProject($user, $issueId, 'issues.read');
+        return $this->commits->listForIssue($user->workspaceId, $issueId);
+    }
+
     public function linkPullRequest(AuthenticatedUser $user, int $issueId, array $input): array
     {
         $this->requireInternalUser($user);
@@ -259,12 +267,56 @@ final class GitHubService
                 return ['accepted' => true, 'duplicate' => true];
             }
             if ($eventType === 'pull_request') $this->processPullRequestWebhook($request->body);
+            if ($eventType === 'push') $this->processPushWebhook($request->body);
             if ($ownsTransaction) $this->pdo->commit();
         } catch (\Throwable $exception) {
             if ($ownsTransaction && $this->pdo->inTransaction()) $this->pdo->rollBack();
             throw $exception;
         }
         return ['accepted' => true, 'duplicate' => false];
+    }
+
+    private function processPushWebhook(array $payload): void
+    {
+        $issueId = IssueBranchName::issueIdFromRef($payload['ref'] ?? null);
+        $repository = $payload['repository'] ?? null;
+        $installationId = is_array($payload['installation'] ?? null) ? (int) ($payload['installation']['id'] ?? 0) : 0;
+        $repositoryId = is_array($repository) ? (int) ($repository['id'] ?? 0) : 0;
+        $repositoryFullName = is_array($repository) ? ($repository['full_name'] ?? null) : null;
+        if ($issueId === null || $installationId < 1 || $repositoryId < 1 || !is_string($repositoryFullName)) return;
+
+        $target = $this->commits->findTargetForPush($repositoryId, $installationId, $issueId);
+        if ($target === null || strcasecmp($repositoryFullName, (string) $target['github_repository_full_name']) !== 0) return;
+
+        $commitRows = is_array($payload['commits'] ?? null) ? $payload['commits'] : [];
+        $recordedCount = 0;
+        foreach ($commitRows as $commitRow) {
+            if (!is_array($commitRow)) continue;
+            $commit = GitHubCommitPayload::normalize($commitRow, (string) $target['github_repository_full_name']);
+            if ($commit === null) continue;
+            if ($this->commits->record(
+                $target['workspace_id'],
+                $target['project_id'],
+                $target['issue_id'],
+                $target['github_repository_id'],
+                (string) $target['github_repository_full_name'],
+                $commit,
+            )) {
+                $recordedCount++;
+            }
+        }
+
+        if ($recordedCount > 0) {
+            $ref = (string) $payload['ref'];
+            $branch = substr($ref, strlen('refs/heads/'));
+            $this->inboxEvents->recordGitHubCommits(
+                $target['workspace_id'],
+                $target['project_id'],
+                $target['issue_id'],
+                $recordedCount,
+                $branch,
+            );
+        }
     }
 
     private function processPullRequestWebhook(array $payload): void

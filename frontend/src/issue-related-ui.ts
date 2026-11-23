@@ -1,9 +1,12 @@
 import { ApiFailure, api } from './api.js';
-import type { Issue, IssueStatusTransition, LinkedPullRequest, Project, User } from './types.js';
+import { issueBranchName } from './issue-branch-name.js';
+import type { Issue, IssueStatusTransition, LinkedCommit, LinkedPullRequest, Project, User } from './types.js';
 
 export interface IssueRelatedUiController {
   renderPullRequests(message?: string): void;
   loadPullRequests(issueId: number): Promise<void>;
+  renderCommits(message?: string): void;
+  loadCommits(issueId: number): Promise<void>;
   loadStatusHistory(issueId: number): Promise<void>;
   reset(): void;
   isStatusHistoryFocused(target: EventTarget | null): boolean;
@@ -21,6 +24,7 @@ export function initIssueRelatedUi(options: {
   onUnauthorized: () => void;
   report: (message: string, isError?: boolean) => void;
   request?: typeof api;
+  copyText?: (value: string) => Promise<void>;
   doc?: Document;
 }): IssueRelatedUiController {
   const doc = options.doc ?? document;
@@ -29,6 +33,10 @@ export function initIssueRelatedUi(options: {
   const issuePullRequestsList = required<HTMLUListElement>('#issue-pull-requests-list');
   const issuePullRequestsEmpty = required<HTMLElement>('#issue-pull-requests-empty');
   const linkPullRequestButton = required<HTMLButtonElement>('#link-pull-request-button');
+  const copyIssueBranchButton = required<HTMLButtonElement>('#copy-issue-branch-button');
+  const issueCommits = required<HTMLElement>('#issue-commits');
+  const issueCommitsList = required<HTMLUListElement>('#issue-commits-list');
+  const issueCommitsEmpty = required<HTMLElement>('#issue-commits-empty');
   const issuePullRequestDialog = required<HTMLDialogElement>('#issue-pull-request-dialog');
   const issuePullRequestForm = required<HTMLFormElement>('#issue-pull-request-form');
   const issuePullRequestClose = required<HTMLButtonElement>('#issue-pull-request-close');
@@ -42,7 +50,9 @@ export function initIssueRelatedUi(options: {
   const issueStatusHistoryList = required<HTMLOListElement>('#issue-status-history-list');
   const listeners = new AbortController();
   let linkedPullRequests: LinkedPullRequest[] = [];
+  let linkedCommits: LinkedCommit[] = [];
   let pullRequestsRequestVersion = 0;
+  let commitsRequestVersion = 0;
   let statusHistoryRequestVersion = 0;
 
   function required<T extends Element>(selector: string): T {
@@ -61,6 +71,7 @@ export function initIssueRelatedUi(options: {
       && !options.isProjectReadOnly(project)
       && user?.role !== 'guest';
     const canLink = canManage && project !== null && project.github_repository !== null;
+    const canCopyBranch = hasIssue && project !== null && project.github_repository !== null && user?.role !== 'guest';
     issuePullRequestsList.replaceChildren(...linkedPullRequests.map((pullRequest) => {
       const item = doc.createElement('li');
       item.className = 'issue-pull-request-row';
@@ -99,9 +110,42 @@ export function initIssueRelatedUi(options: {
     }));
     issuePullRequests.hidden = !hasIssue
       || ((project === null || project.github_repository === null) && linkedPullRequests.length === 0);
+    issueCommits.hidden = !hasIssue || project === null || project.github_repository === null;
     linkPullRequestButton.hidden = !canLink;
+    copyIssueBranchButton.hidden = !canCopyBranch;
     issuePullRequestsEmpty.hidden = linkedPullRequests.length > 0;
     issuePullRequestsEmpty.textContent = message || 'No pull requests linked yet.';
+  }
+
+  function renderCommits(message = ''): void {
+    const issue = options.getIssue();
+    const project = options.getProject();
+    const hasGitHub = issue !== null && project !== null && project.github_repository !== null;
+    issueCommitsList.replaceChildren(...linkedCommits.map((commit) => {
+      const item = doc.createElement('li');
+      item.className = 'issue-commit-row';
+      const link = doc.createElement('a');
+      link.className = 'issue-commit-link';
+      link.href = commit.html_url;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      const firstLine = commit.message.split(/\r?\n/, 1)[0]?.trim() ?? '';
+      link.textContent = `${commit.repository_full_name} · ${commit.sha.slice(0, 7)} · ${firstLine || '(no commit message)'}`;
+      const metadata = doc.createElement('span');
+      metadata.className = 'issue-commit-meta';
+      const author = commit.author_login === '' ? 'Author unknown' : `@${commit.author_login}`;
+      const parsedDate = new Date(commit.committed_at.replace(' ', 'T') + 'Z');
+      const date = Number.isNaN(parsedDate.getTime())
+        ? commit.committed_at
+        : new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(parsedDate);
+      metadata.textContent = `${author} · ${date}`;
+      item.append(link, metadata);
+      return item;
+    }));
+    issueCommits.hidden = !hasGitHub;
+    issueCommitsEmpty.hidden = !hasGitHub || linkedCommits.length > 0;
+    issueCommitsEmpty.textContent = message || 'No commits linked yet.';
+    renderPullRequests();
   }
 
   async function loadPullRequests(issueId: number): Promise<void> {
@@ -116,6 +160,28 @@ export function initIssueRelatedUi(options: {
       if (requestVersion !== pullRequestsRequestVersion || options.getIssue()?.id !== issueId) return;
       linkedPullRequests = [];
       renderPullRequests(error instanceof Error ? error.message : 'Could not load linked pull requests.');
+    }
+  }
+
+  async function loadCommits(issueId: number): Promise<void> {
+    const project = options.getProject();
+    const user = options.getUser();
+    if (options.getIssue()?.id !== issueId || project?.github_repository == null || user?.role === 'guest') {
+      linkedCommits = [];
+      renderCommits();
+      return;
+    }
+    const requestVersion = ++commitsRequestVersion;
+    renderCommits('Loading commits…');
+    try {
+      const result = await request<{ commits: LinkedCommit[] }>(`/issues/${issueId}/commits`);
+      if (requestVersion !== commitsRequestVersion || options.getIssue()?.id !== issueId) return;
+      linkedCommits = result.commits;
+      renderCommits();
+    } catch (error) {
+      if (requestVersion !== commitsRequestVersion || options.getIssue()?.id !== issueId) return;
+      linkedCommits = [];
+      renderCommits(error instanceof Error ? error.message : 'Could not load commits.');
     }
   }
 
@@ -216,6 +282,19 @@ export function initIssueRelatedUi(options: {
     }
   }
 
+  async function copyBranchName(): Promise<void> {
+    const issue = options.getIssue();
+    const project = options.getProject();
+    if (issue === null || project?.github_repository == null || options.getUser()?.role === 'guest') return;
+    try {
+      const copyText = options.copyText ?? ((value: string) => navigator.clipboard.writeText(value));
+      await copyText(issueBranchName(issue.id, issue.title));
+      options.report('Branch name copied.');
+    } catch (error) {
+      options.report(error instanceof Error ? error.message : 'Could not copy branch name.', true);
+    }
+  }
+
   linkPullRequestButton.addEventListener('click', openLinkDialog, { signal: listeners.signal });
   issuePullRequestClose.addEventListener('click', () => issuePullRequestDialog.close(), { signal: listeners.signal });
   issuePullRequestCancel.addEventListener('click', () => issuePullRequestDialog.close(), { signal: listeners.signal });
@@ -226,15 +305,21 @@ export function initIssueRelatedUi(options: {
     if (options.getIssue() !== null && options.isDetailVisible()) linkPullRequestButton.focus();
   }, { signal: listeners.signal });
   issuePullRequestForm.addEventListener('submit', (event) => void submitLink(event), { signal: listeners.signal });
+  copyIssueBranchButton.addEventListener('click', () => void copyBranchName(), { signal: listeners.signal });
 
   return {
     renderPullRequests,
     loadPullRequests,
+    renderCommits,
+    loadCommits,
     loadStatusHistory,
     reset: () => {
       linkedPullRequests = [];
+      linkedCommits = [];
       pullRequestsRequestVersion += 1;
+      commitsRequestVersion += 1;
       renderPullRequests();
+      renderCommits();
     },
     isStatusHistoryFocused: (target) => issueStatusHistory.open && target instanceof Node
       && issueStatusHistory.contains(target),
@@ -242,6 +327,7 @@ export function initIssueRelatedUi(options: {
     dispose: () => {
       listeners.abort();
       pullRequestsRequestVersion += 1;
+      commitsRequestVersion += 1;
       statusHistoryRequestVersion += 1;
     },
   };
