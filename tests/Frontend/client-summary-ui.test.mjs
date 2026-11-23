@@ -4,13 +4,14 @@ import test from 'node:test';
 
 const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
+const paletteCommands = await readFile(new URL('../../frontend/src/command-palette-commands.ts', import.meta.url), 'utf8');
 const summaryUi = await readFile(new URL('../../frontend/src/client-summary-ui.ts', import.meta.url), 'utf8');
 const api = await readFile(new URL('../../docs/openapi.yaml', import.meta.url), 'utf8');
 
 test('summary is project-scoped in the command palette, not a persistent project-header control', () => {
-  const commands = app.slice(app.indexOf('function getPaletteCommands'), app.indexOf('function renderCommandResults'));
-  assert.match(commands, /label: 'Generate summary'/);
-  assert.match(commands, /activeProject !== null && activeUser\.role === 'admin' && !projectView\.hidden/);
+  assert.match(paletteCommands, /label: 'Generate summary'/);
+  assert.match(paletteCommands, /context\.activeProject !== null && user\.role === 'admin' && context\.projectViewVisible/);
+  assert.match(app, /generateSummary: \(\) => clientSummaryUi\.open\(\)/);
   assert.doesNotMatch(html.slice(html.indexOf('id="project-view"'), html.indexOf('id="admin-view"')), /Generate summary/);
 });
 

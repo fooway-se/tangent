@@ -5,6 +5,7 @@ import { resolveShortcut, shouldSendChatOnEnter } from '../../public/assets/shor
 
 const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
+const paletteCommands = await readFile(new URL('../../frontend/src/command-palette-commands.ts', import.meta.url), 'utf8');
 const workspaceAdminUi = await readFile(new URL('../../frontend/src/workspace-admin-ui.ts', import.meta.url), 'utf8');
 const loungeChatUi = await readFile(new URL('../../frontend/src/lounge-chat-ui.ts', import.meta.url), 'utf8');
 const projectChatUi = await readFile(new URL('../../frontend/src/project-chat-ui.ts', import.meta.url), 'utf8');
@@ -302,7 +303,7 @@ test('command palette, shortcut help, and contextual hints are present in the wo
   assert.match(app, /adminGoPrefixOption\.hidden = activeUser\?\.role !== 'admin'/);
   assert.match(workspacePickerUi, /workspaceSwitcher\.disabled = workspaces\.length < 2/);
   assert.match(workspacePickerUi, /function open\(proposedWorkspaceId\?: number\)[\s\S]{0,120}workspaces\.length < 2/);
-  const commands = app.slice(app.indexOf('function getPaletteCommands'), app.indexOf('function openCommandPalette'));
-  assert.ok(commands.indexOf("label: 'Workspace admin'") < commands.indexOf('if (activeProject !== null)'), 'workspace admin command is available outside projects');
-  assert.match(commands, /if \(activeWorkspaces\.length > 1\)/);
+  const commands = paletteCommands;
+  assert.ok(commands.indexOf("label: 'Workspace admin'") < commands.indexOf('if (context.activeProject !== null)'), 'workspace admin command is available outside projects');
+  assert.match(commands, /if \(context\.activeWorkspaces\.length > 1\)/);
 });

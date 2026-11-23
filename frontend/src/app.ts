@@ -26,7 +26,8 @@ import { initLoungePresence } from './lounge-presence.js';
 import { initLoungeChatUi } from './lounge-chat-ui.js';
 import { initWorkspaceAdminUi } from './workspace-admin-ui.js';
 import { initProjectChatUi } from './project-chat-ui.js';
-import { initCommandPaletteUi, type PaletteCommand } from './command-palette-ui.js';
+import { initCommandPaletteUi } from './command-palette-ui.js';
+import { buildPaletteCommands } from './command-palette-commands.js';
 import { initWorkspacePickerUi } from './workspace-picker-ui.js';
 import { initIssueBoardUi } from './issue-board-ui.js';
 import { createIssueRowUi } from './issue-row-ui.js';
@@ -1861,183 +1862,57 @@ function beginCreateIssueFromChatMessage(message: ChatMessage, trigger: HTMLButt
   issueQuickAddTitle.setSelectionRange(issueQuickAddTitle.value.length, issueQuickAddTitle.value.length);
 }
 
-function getPaletteCommands(): PaletteCommand[] {
-  if (activeUser === null) return [];
-  const commands: PaletteCommand[] = [
-    { label: 'Go to Projects', detail: 'Open the project list', shortcut: 'g p', run: goToProjects },
-    { label: 'Open My Work', detail: 'Review inbox updates and tasks assigned to you', shortcut: 'g n', run: goToInbox },
-    { label: 'Open Lounge', detail: 'Open the workspace-wide Lounge chat', shortcut: 'g l', run: goToLounge },
-    { label: 'Show keyboard shortcuts', detail: 'View key bindings', shortcut: '?', run: showShortcutHelp },
-  ];
-  if (activeUser.role !== 'guest' && !workspacePanel.hidden) {
-    commands.push({
-      label: keyboardHintsVisible ? 'Hide keyboard hints' : 'Show keyboard hints',
-      detail: keyboardHintsVisible
-        ? 'Hide the shortcut hints along the bottom of the workspace'
-        : 'Show the shortcut hints along the bottom of the workspace',
-      shortcut: 'h',
-      run: toggleKeyboardHints,
-    });
-  }
-  if (activeUser.role === 'admin' || activeUser.role === 'developer') {
-    commands.splice(1, 0, {
-      label: 'Open Roadmap',
-      detail: 'Review milestones across your projects',
-      shortcut: 'g r',
-      run: goToRoadmap,
-    });
-  }
-  if (activeWorkspaces.length > 1) {
-    commands.splice(2, 0, {
-      label: 'Switch workspace',
-      detail: 'Choose a workspace; Enter switches, Escape cancels',
-      shortcut: 'g w',
-      run: () => workspacePickerUi.open(),
-    });
-    for (const workspace of activeWorkspaces) {
-      if (workspace.id === activeUser.workspace_id) continue;
-      commands.splice(1, 0, {
-        label: `Switch to ${workspace.name}`,
-        detail: `Review and confirm switching to ${workspace.name}`,
-        shortcut: '',
-        run: () => workspacePickerUi.open(workspace.id),
-      });
-    }
-  }
-  if (activeUser?.role === 'admin' && !projectsView.hidden) {
-    commands.unshift({
-      label: 'New project',
-      detail: 'Create a project in this workspace',
-      shortcut: '',
-      run: () => {
+function getPaletteCommands() {
+  const hasSelectedIssue = hasSelectedIssueInVisibleView();
+  return buildPaletteCommands({
+    user: activeUser,
+    keyboardHintsVisible,
+    workspaceVisible: !workspacePanel.hidden,
+    activeWorkspaces,
+    projectsViewVisible: !projectsView.hidden,
+    projectViewVisible: !projectView.hidden,
+    activeProject,
+    hasSelectedIssueInVisibleView: hasSelectedIssue,
+    selectedIssueInVisibleView: hasSelectedIssue ? issueSelectedInVisibleView() : null,
+    hasLatestChatIssue: latestChatIssueButton() !== null,
+    deletedProjectIssues,
+    currentThemeLabel: themeLabel(themeUi.getActiveTheme()),
+    nextThemeLabel: themeLabel(nextTheme(themeUi.getActiveTheme())),
+    issueStatusLabel,
+    actions: {
+      goToProjects,
+      goToInbox,
+      goToLounge,
+      showShortcutHelp,
+      toggleKeyboardHints,
+      goToRoadmap,
+      switchWorkspace: (workspaceId) => workspacePickerUi.open(workspaceId),
+      openWorkspaceAdmin,
+      newProject: () => {
         if (projectFormPanel.hidden) toggleProjectFormButton.click();
         else projectForm.querySelector<HTMLInputElement>('input[name="name"]')?.focus();
       },
-    });
-  }
-  if (activeUser.role === 'admin') {
-    commands.unshift({
-      label: 'Workspace admin',
-      detail: 'Open workspace administration',
-      shortcut: 'g a',
-      run: openWorkspaceAdmin,
-    });
-    commands.unshift({
-      label: 'Create workspace',
-      detail: 'Create a workspace for a separate organization',
-      shortcut: '',
-      run: () => {
+      createWorkspace: () => {
         openWorkspaceAdmin();
         switchWorkspaceAdminTab('workspaces');
         createWorkspaceForm.querySelector<HTMLInputElement>('input[name="name"]')?.focus();
       },
-    });
-  }
-  if (activeProject !== null && activeUser.role === 'admin' && !projectView.hidden) {
-    commands.splice(1, 0, {
-      label: 'Generate summary',
-      detail: 'Prepare a client-safe summary for ' + activeProject.name,
-      shortcut: '',
-      run: clientSummaryUi.open,
-    }, {
-      label: 'Preview guest view',
-      detail: 'Preview the client portal for ' + activeProject.name,
-      shortcut: '',
-      run: () => { void guestUi.openPreview(); },
-    });
-  }
-  if (activeProject !== null) {
-    commands.splice(1, 0,
-      {
-        label: 'Project issues',
-        detail: `Focus issues in ${activeProject.name}`,
-        shortcut: 'g i',
-        run: goToProjectIssues,
-      },
-      {
-        label: 'Project chat',
-        detail: 'Focus the latest project chat message or composer',
-        shortcut: 'g c',
-        run: focusProjectChat,
-      },
-      {
-        label: 'Project members',
-        detail: `Focus members in ${activeProject.name}`,
-        shortcut: 'g m',
-        run: goToProjectMembers,
-      },
-      {
-        label: 'Project notes',
-        detail: `Open notes for ${activeProject.name}`,
-        shortcut: '',
-        run: goToProjectNotes,
-      },
-    );
-    commands.splice(1, 0, {
-      label: 'New issue',
-      detail: `Create an issue in ${activeProject.name}`,
-      shortcut: 'c',
-      run: beginCreateIssue,
-    });
-    if (hasSelectedIssueInVisibleView()) {
-      const issue = issueSelectedInVisibleView();
-      commands.splice(2, 0, {
-        label: 'Edit selected issue',
-        detail: 'Edit the title and description',
-        shortcut: 'e',
-        run: editSelectedIssue,
-      }, {
-        label: 'Change issue status',
-        detail: 'Choose a status, then save or cancel',
-        shortcut: 's',
-        run: focusSelectedIssueStatus,
-      }, {
-        label: 'Delete issue',
-        detail: issue === null
-          ? 'Move the selected issue to Deleted issues; it can be restored later'
-          : `Move “${issue.title}” (${issueStatusLabel(issue.status)}) to Deleted issues; it can be restored later`,
-        shortcut: '',
-        run: () => issueDeleteUi.open(issue),
-      });
-    }
-    if (latestChatIssueButton() !== null) {
-      commands.splice(1, 0, {
-        label: 'Create issue from selected chat message',
-        detail: 'Use the selected message, or the latest message',
-        shortcut: 'i',
-        run: createIssueFromSelectedChatMessage,
-      });
-    }
-    if (deletedProjectIssues.length > 0) {
-      commands.push({
-        label: 'Show deleted issues',
-        detail: `Jump to ${deletedProjectIssues.length} deleted issue${deletedProjectIssues.length === 1 ? '' : 's'} in ${activeProject.name}`,
-        shortcut: '',
-        run: () => showDeletedIssues(),
-      });
-      for (const issue of deletedProjectIssues) {
-        commands.push({
-          label: `Restore issue: ${issue.title}`,
-          detail: `Restore it with its previous status (${issueStatusLabel(issue.status)})`,
-          shortcut: '',
-          run: () => showDeletedIssues(issue.id),
-        });
-      }
-    }
-  }
-  commands.push({
-    label: 'Switch theme',
-    detail: `Now ${themeLabel(themeUi.getActiveTheme())}; next ${themeLabel(nextTheme(themeUi.getActiveTheme()))}`,
-    shortcut: '',
-    run: () => themeUi.setTheme(nextTheme(themeUi.getActiveTheme())),
+      generateSummary: () => clientSummaryUi.open(),
+      previewGuestView: () => { void guestUi.openPreview(); },
+      goToProjectIssues,
+      focusProjectChat,
+      goToProjectMembers,
+      goToProjectNotes,
+      beginCreateIssue,
+      editSelectedIssue,
+      focusSelectedIssueStatus,
+      deleteIssue: (issue) => issueDeleteUi.open(issue),
+      createIssueFromSelectedChatMessage,
+      showDeletedIssues,
+      switchTheme: () => themeUi.setTheme(nextTheme(themeUi.getActiveTheme())),
+      signOut: () => { void signOut(); },
+    },
   });
-  commands.push({
-    label: 'Sign out',
-    detail: 'Sign out of Tangent',
-    shortcut: '',
-    run: () => { void signOut(); },
-  });
-  return commands;
 }
 
 function openCommandPalette(): void {
