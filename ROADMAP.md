@@ -6,7 +6,7 @@ Planned work, in no fixed order. Tangent is actively developed, so this list wil
 
 The project chat header has a privacy-preserving presence light: it shows whether another authorized viewer has an active heartbeat, without exposing their identity or a viewer count. Heartbeats run while the project page is visible and expire after 45 seconds. The workspace-wide **Lounge** is available for internal off-topic conversation, separate from project chats. No DMs or user-created channels are planned.
 
-- Evaluate optional SSE or WebSocket updates for hosts that support persistent connections.
+- Realtime refresh now uses opt-in Server-Sent Events (SSE) with adaptive polling fallback across chat, inbox, and issue views. SSE is disabled by default for shared hosts; operators can enable it in the private `config.php` and limit concurrent streams. See [development and hosting configuration](docs/DEVELOPMENT.md).
 
 ## GitHub and other integrations
 
