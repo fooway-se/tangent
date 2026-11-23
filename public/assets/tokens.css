@@ -1308,7 +1308,7 @@
   --signal-stripe: linear-gradient(to bottom, #e88438 0 25%, #f0bd62 25% 50%, #a8c87d 50% 75%, #534832 75% 100%);
 }
 
-/* Daisy & Data Pack: paper-toned hardware, ink-dark screen, and ribbon red. */
+/* Daisy & Data Pack: paper keys, black function keys, and the ADAM rainbow badge. */
 :root[data-theme="coleco-adam"] {
   --night: #160d13;
   --night-glow: #38232e;
@@ -1332,17 +1332,17 @@
   --key-bottom: #d3cec3;
   --key-highlight: #fffaf0;
 
-  --cap-top: #51494c;
-  --cap-bottom: #393236;
-  --cap-edge: #241e22;
+  --cap-top: #302c32;
+  --cap-bottom: #1c191e;
+  --cap-edge: #0d0b0e;
   --plate: #2c2529;
   --plate-ink: #f1ece8;
   --plate-muted: #c9c0c3;
 
   --screen: #21151d;
   --screen-rim: #120b10;
-  --screen-glow: rgba(255, 112, 120, 0.12);
-  --screen-vignette: rgba(240, 175, 81, 0.08);
+  --screen-glow: rgba(209, 91, 156, 0.13);
+  --screen-vignette: rgba(65, 133, 163, 0.07);
   --screen-ink: #f8e9e3;
   --screen-muted: #d9c5c8;
   --screen-header: rgba(255, 255, 255, 0.04);
@@ -1360,15 +1360,15 @@
   --screen-group-top: #543744;
   --screen-group-bottom: #422b37;
 
-  --accent: #ef746d;
-  --accent-edge: #a44149;
-  --accent-ink: #301416;
+  --accent: #d967a3;
+  --accent-edge: #93436d;
+  --accent-ink: #2a1421;
   --accent-shine: rgba(255, 255, 255, 0.48);
   --success: #92dfb7;
   --danger: #ff9c8d;
   --power-light: #f1c35c;
-  --focus-ring: rgba(239, 116, 109, 0.5);
-  --signal-stripe: linear-gradient(to bottom, #c24447 0 25%, #f08a68 25% 50%, #ecc268 50% 75%, #6f4758 75% 100%);
+  --focus-ring: rgba(217, 103, 163, 0.52);
+  --signal-stripe: linear-gradient(to right, #ce4f91 0 16%, #a54c9a 16% 32%, #6857a4 32% 48%, #3e77ad 48% 64%, #3d9d9c 64% 78%, #68aa53 78% 90%, #d2b64f 90% 100%);
 }
 
 /* Ivory & Ink: the Ace's pale case, rubber keys, and restrained red mark. */

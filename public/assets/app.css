@@ -1135,6 +1135,19 @@ dialog::backdrop { background: var(--backdrop); }
 .theme-about-button:hover { color: var(--accent-ink); background-image: none; background-color: var(--accent); }
 .theme-about-button:active { transform: translateY(1px); }
 .theme-select:focus-visible, .theme-about-button:focus-visible { position: relative; outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ADAM's dark function keys become the five workspace navigation keys. */
+:root[data-theme="coleco-adam"] .workspace-nav-button,
+:root[data-theme="coleco-adam"] .workspace-nav-button.is-active {
+  border-color: var(--cap-edge);
+  color: var(--plate-ink);
+  background: linear-gradient(180deg, var(--cap-top), var(--cap-bottom));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  font-weight: 700;
+}
+:root[data-theme="coleco-adam"] #lounge-nav .lounge-nav-presence,
+:root[data-theme="coleco-adam"] #lounge-nav.is-active #lounge-nav-presence { color: var(--plate-ink); }
+
 /* Dragon's logo colors stay in its signal stripe; controls keep black-key faces. */
 :root[data-theme="dragon-32"] .workspace-nav-button.is-active,
 :root[data-theme="dragon-32"] .project-sidebar-link.is-active,
