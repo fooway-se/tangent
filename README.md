@@ -70,7 +70,7 @@ Planned: expanded GitHub and GitLab integrations and agent-focused API tooling. 
 
 ## Documentation
 
-- [English user manual (PDF)](docs/USER_MANUAL.pdf) | [Markdown source](docs/USER_MANUAL.md)
+- [English user manual](docs/USER_MANUAL.md)
 - [Issues and AI prompt builder](docs/ISSUES.md)
 - [Architecture and conventions](docs/ARCHITECTURE.md)
 - [Development setup](docs/DEVELOPMENT.md)

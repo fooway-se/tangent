@@ -16,11 +16,11 @@ $requiredFiles = [
     'bootstrap.php', 'LICENSE', 'INSTALL.md', 'bin/migrate.php',
     'public/.htaccess', 'public/index.php', 'public/install.php', 'public/upgrade.php',
     'public/assets/app.js', 'public/assets/app.css',
-    'docs/GITHUB.md', 'docs/ISSUES.md', 'docs/USER_MANUAL.md', 'docs/USER_MANUAL.pdf', 'docs/openapi.yaml',
+    'docs/GITHUB.md', 'docs/ISSUES.md', 'docs/USER_MANUAL.md', 'docs/openapi.yaml',
 ];
 $releaseFiles = [
     'bootstrap.php', 'bin/migrate.php', 'LICENSE', 'INSTALL.md',
-    'docs/GITHUB.md', 'docs/ISSUES.md', 'docs/USER_MANUAL.md', 'docs/USER_MANUAL.pdf', 'docs/openapi.yaml',
+    'docs/GITHUB.md', 'docs/ISSUES.md', 'docs/USER_MANUAL.md', 'docs/openapi.yaml',
 ];
 $releaseDirectories = ['migrations/', 'resources/', 'src/', 'public/'];
 $fail = static function (string $message): never {

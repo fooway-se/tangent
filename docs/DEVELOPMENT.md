@@ -12,16 +12,16 @@ docker compose exec -it php php bin/seed-admin.php
 ```
 
 Composer installs PHPUnit from the `require-dev` section of `composer.json`. It does not add a runtime dependency to the release.
-The seed command is enabled only when `TANGENT_ENV=development`; enter an admin name, email, and password when prompted. Then open [http://localhost:8080](http://localhost:8080) to sign in. The seed command is for local development; production setup creates the workspace and first admin through the installer, which also saves the public site URL and sender email address in the private config.
-If port 8080 is already in use, start the stack with `TANGENT_HTTP_PORT=8081 docker compose up -d --build` and open [http://localhost:8081](http://localhost:8081).
+The seed command is enabled only when `TANGENT_ENV=development`; enter an admin name, email, and password when prompted. Then open [http://localhost:8081](http://localhost:8081) to sign in. The seed command is for local development; production setup creates the workspace and first admin through the installer, which also saves the public site URL and sender email address in the private config.
+If port 8081 is already in use, start the stack with `TANGENT_HTTP_PORT=8082 docker compose up -d --build` and open [http://localhost:8082](http://localhost:8082).
 
-To sign in from a phone on the same network, set `TANGENT_APP_URL` to the development machine’s LAN address and use that exact URL on the phone. For example, replace `192.168.1.50` with the machine’s address and run:
+To open the development server from a phone on the same network, browse to `http://<development-machine-LAN-IP>:8081` (replace `8081` if you changed `TANGENT_HTTP_PORT`). This is enough to sign in. Set `TANGENT_APP_URL` to that same address only if Tangent needs to generate invite, password recovery, or GitHub links that you will open from the phone. For example, replace `192.168.1.50` with the machine’s address and run:
 
 ```sh
 TANGENT_APP_URL=http://192.168.1.50:8081 docker compose up -d --build
 ```
 
-The default development URL is `localhost`, which refers to the phone itself when opened there.
+The default `TANGENT_APP_URL` uses `localhost`; links generated with that default refer to the phone itself when opened there, so use the LAN address above if you need those links on the phone.
 
 To test the PHP 8.5 baseline, rebuild and run the suite with:
 

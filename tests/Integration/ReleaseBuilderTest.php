@@ -25,7 +25,7 @@ final class ReleaseBuilderTest extends TestCase
             'bootstrap.php', 'LICENSE', 'INSTALL.md', 'tsconfig.json',
             'bin/migrate.php', 'bin/build-release.php',
             'migrations', 'resources', 'src', 'public', 'frontend/src',
-            'docs/GITHUB.md', 'docs/ISSUES.md', 'docs/USER_MANUAL.md', 'docs/USER_MANUAL.pdf', 'docs/openapi.yaml',
+            'docs/GITHUB.md', 'docs/ISSUES.md', 'docs/USER_MANUAL.md', 'docs/openapi.yaml',
         ];
 
         try {
