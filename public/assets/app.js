@@ -33,7 +33,7 @@ import { initProjectEditUi } from './project-edit-ui.js';
 import { initProjectListUi } from './project-list-ui.js';
 import { initGithubProjectUi } from './github-project-ui.js';
 import { parseQuickIssueInput } from './quick-issue.js';
-import { milestoneStatus } from './roadmap.js';
+import { initRoadmapUi } from './roadmap-ui.js';
 import { filterIssues, filterIssuesByMilestoneArchive, groupIssues, groupIssuesByMilestone, projectProgress, sortIssues, } from './issue-board.js';
 import { diffConditionalIssueCollections, loadIssueCollections, nextIssuePollDelay, refreshDeletedIssuesOnOpen, shouldDeferIssueUpdates, } from './issue-polling.js';
 import { dom } from './dom.js';
@@ -111,6 +111,13 @@ function populateIssueMilestoneSelect(select, selectedMilestoneId) {
 }
 const themeUi = initThemeUi();
 const commandPaletteUi = initCommandPaletteUi();
+const roadmapUi = initRoadmapUi({
+    doc: document,
+    summary: roadmapSummary,
+    milestoneList: roadmapMilestoneList,
+    emptyState: roadmapEmptyState,
+    openProject: (projectId) => { void loadProjectDetail(projectId, 'issues'); },
+});
 const projectSidebarSection = projectSidebarList.closest('.sidebar-projects');
 const projectSidebarMore = createScrollMoreIndicator();
 projectSidebarList.after(projectSidebarMore);
@@ -2207,89 +2214,11 @@ function updateProjectSidebarMoreCue() {
 async function loadRoadmap() {
     try {
         const result = await api('/roadmap');
-        renderRoadmap(result.milestones);
+        roadmapUi.render(result.milestones);
     }
     catch (error) {
         report(error instanceof Error ? error.message : 'Could not load the roadmap.', true);
     }
-}
-function renderRoadmap(milestones) {
-    const today = new Date();
-    const statuses = milestones.map((milestone) => milestoneStatus(milestone, today));
-    const completed = statuses.filter((status) => status.key === 'complete').length;
-    const needsAttention = statuses.filter((status) => status.key === 'needs-attention').length;
-    const missedDeadline = statuses.filter((status) => status.key === 'missed-deadline').length;
-    const summary = [
-        ['Left', milestones.length - completed],
-        ['Complete', completed],
-        ['Needs attention', needsAttention],
-        ['Missed deadline', missedDeadline],
-    ];
-    roadmapSummary.replaceChildren(...summary.map(([label, value]) => {
-        const item = document.createElement('li');
-        item.className = 'roadmap-summary-item';
-        const count = document.createElement('strong');
-        count.className = 'roadmap-summary-count';
-        count.textContent = String(value);
-        const name = document.createElement('span');
-        name.textContent = label;
-        item.append(count, name);
-        return item;
-    }));
-    roadmapMilestoneList.replaceChildren();
-    roadmapEmptyState.hidden = milestones.length > 0;
-    milestones.forEach((milestone, index) => {
-        const status = statuses[index];
-        const item = document.createElement('li');
-        item.className = 'roadmap-milestone';
-        item.dataset.status = status.key;
-        const top = document.createElement('div');
-        top.className = 'roadmap-milestone-top';
-        const titleBlock = document.createElement('div');
-        titleBlock.className = 'roadmap-milestone-title';
-        const projectButton = document.createElement('button');
-        projectButton.type = 'button';
-        projectButton.className = 'roadmap-project-link';
-        projectButton.textContent = milestone.project_name;
-        projectButton.setAttribute('aria-label', `Open ${milestone.project_name} issues`);
-        projectButton.addEventListener('click', () => void loadProjectDetail(milestone.project_id, 'issues'));
-        const title = document.createElement('h2');
-        title.textContent = milestone.name;
-        titleBlock.append(projectButton, title);
-        const badge = document.createElement('span');
-        badge.className = `roadmap-status is-${status.key}`;
-        badge.textContent = status.label;
-        top.append(titleBlock, badge);
-        const details = document.createElement('div');
-        details.className = 'roadmap-milestone-details';
-        const date = document.createElement('span');
-        date.className = 'roadmap-milestone-date';
-        date.textContent = milestone.due_date === null ? 'No due date' : `Due ${formatRoadmapDate(milestone.due_date)}`;
-        const workload = document.createElement('span');
-        workload.className = 'roadmap-milestone-workload';
-        const teamMemberLabel = milestone.assigned_team_members === 1 ? 'team member assigned' : 'team members assigned';
-        const unassignedLabel = milestone.tasks_without_team_assignee === 1 ? 'task without team assignment' : 'tasks without team assignment';
-        workload.textContent = `${milestone.remaining_tasks} remaining · ${milestone.assigned_team_members} ${teamMemberLabel} · ${milestone.tasks_without_team_assignee} ${unassignedLabel}`;
-        details.append(date, workload);
-        const progress = document.createElement('progress');
-        progress.className = `roadmap-progress${status.key === 'complete' ? ' is-complete' : ''}`;
-        progress.max = Math.max(1, milestone.total_tasks);
-        progress.value = milestone.completed_tasks;
-        progress.setAttribute('aria-label', `${milestone.completed_tasks} of ${milestone.total_tasks} tasks complete for ${milestone.name}`);
-        const progressLabel = document.createElement('span');
-        progressLabel.className = 'roadmap-progress-label';
-        progressLabel.textContent = `${milestone.completed_tasks} of ${milestone.total_tasks} tasks done`;
-        item.append(top, details, progress, progressLabel);
-        roadmapMilestoneList.append(item);
-    });
-}
-function formatRoadmapDate(value) {
-    return new Intl.DateTimeFormat(undefined, {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        timeZone: 'UTC',
-    }).format(new Date(`${value}T00:00:00Z`));
 }
 async function openInboxEvent(event) {
     await loadProjectDetail(event.project_id);

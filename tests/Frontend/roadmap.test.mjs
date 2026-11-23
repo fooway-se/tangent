@@ -5,6 +5,7 @@ import test from 'node:test';
 const roadmap = await import('../../public/assets/roadmap.js');
 const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
+const roadmapUi = await readFile(new URL('../../frontend/src/roadmap-ui.ts', import.meta.url), 'utf8');
 const css = await readFile(new URL('../../public/assets/app.css', import.meta.url), 'utf8');
 const guestView = await readFile(new URL('../../frontend/src/guest-view.ts', import.meta.url), 'utf8');
 
@@ -42,13 +43,13 @@ test('roadmap is an internal workspace view with project and task summaries', ()
   assert.match(html, /id="roadmap-view"/);
   assert.match(html, /id="roadmap-milestone-list"/);
   assert.match(app, /api<\{ milestones: RoadmapMilestone\[\] \}>\('\/roadmap'\)/);
-  assert.match(app, /function renderRoadmap\(/);
+  assert.match(app, /roadmapUi\.render\(result\.milestones\)/);
   assert.match(guestView, /renderClientView/);
   assert.doesNotMatch(guestView, /Needs attention|Missed deadline/);
 });
 
 test('roadmap progress uses the same bar styling as project issue progress', () => {
-  assert.match(app, /progress\.className = `roadmap-progress/);
+  assert.match(roadmapUi, /progress\.className = `roadmap-progress/);
   assert.match(css, /#issue-progress, \.guest-progress, \.roadmap-progress\s*\{[^}]*height: 10px/);
   assert.match(css, /#issue-progress::-webkit-progress-value, \.guest-progress::-webkit-progress-value, \.roadmap-progress::-webkit-progress-value\s*\{/);
 });
