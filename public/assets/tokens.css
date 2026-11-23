@@ -1182,6 +1182,323 @@
   --signal-stripe: linear-gradient(to bottom, #ff625c 0 25%, #f8b744 25% 50%, #52c77c 50% 75%, #55d9e7 75% 100%);
 }
 
+/* Kana & Keycaps: NEC’s warm keys, Japanese legends, and phosphor display. */
+:root[data-theme="pc88"] {
+  --night: #0e1715;
+  --night-glow: #344c42;
+  --night-muted: #d7e3d4;
+
+  --case-top: #ded7c8;
+  --case-mid: #d1c9b8;
+  --case-bottom: #c1b8a4;
+  --case-shade: #a69c86;
+  --case-edge: #8e8574;
+  --case-light: #f1ebdd;
+  --case-ink: #282824;
+  --case-muted: #474940;
+  --case-error: #96392d;
+  --vent-dark: #9e957f;
+  --vent-light: #e9e2d3;
+  --footer-top: #cfc7b5;
+  --footer-bottom: #bfb6a3;
+
+  --key-top: #eeeadc;
+  --key-bottom: #cfc5af;
+  --key-highlight: #fffaf0;
+
+  --cap-top: #353735;
+  --cap-bottom: #1c1e1c;
+  --cap-edge: #101210;
+  --plate: #292b29;
+  --plate-ink: #efe8d8;
+  --plate-muted: #c9c2b4;
+
+  --screen: #0b211a;
+  --screen-rim: #06120f;
+  --screen-glow: rgba(185, 220, 145, 0.12);
+  --screen-vignette: rgba(193, 142, 65, 0.08);
+  --screen-ink: #edf5db;
+  --screen-muted: #c5d4b4;
+  --screen-header: rgba(255, 255, 255, 0.04);
+  --screen-highlight: rgba(255, 255, 255, 0.06);
+  --backdrop: rgba(9, 22, 16, 0.72);
+  --screen-panel: #183527;
+  --screen-control-top: #234632;
+  --screen-inset: #07170f;
+  --screen-field: #091a11;
+  --screen-border: #46674e;
+  --screen-line: #2b4935;
+  --screen-hover: #20402d;
+  --screen-track: #07160d;
+  --screen-group: #1d3928;
+  --screen-group-top: #34553a;
+  --screen-group-bottom: #29442f;
+
+  --accent: #e3b654;
+  --accent-edge: #9c6b20;
+  --accent-ink: #261c0d;
+  --accent-shine: rgba(255, 255, 255, 0.5);
+  --success: #9fd783;
+  --danger: #ff9987;
+  --power-light: #d96a47;
+  --focus-ring: rgba(227, 182, 84, 0.5);
+  --signal-stripe: linear-gradient(to bottom, #d96a47 0 25%, #e3b654 25% 50%, #91bd72 50% 75%, #4b9587 75% 100%);
+}
+
+/* Beehive & Beige: warm keycaps, charcoal accents, and amber terminal light. */
+:root[data-theme="microbee"] {
+  --night: #17140e;
+  --night-glow: #44351e;
+  --night-muted: #e3d9c1;
+
+  --case-top: #ded7c5;
+  --case-mid: #d0c8b5;
+  --case-bottom: #bdb49e;
+  --case-shade: #9a907a;
+  --case-edge: #807762;
+  --case-light: #f1ead8;
+  --case-ink: #24231f;
+  --case-muted: #474339;
+  --case-error: #92372c;
+  --vent-dark: #968d78;
+  --vent-light: #e8e2d2;
+  --footer-top: #c7bfa9;
+  --footer-bottom: #b7ae96;
+
+  --key-top: #eee7d5;
+  --key-bottom: #d0c8b2;
+  --key-highlight: #fbf5e5;
+
+  --cap-top: #3a3a36;
+  --cap-bottom: #242521;
+  --cap-edge: #141512;
+  --plate: #232521;
+  --plate-ink: #f1eddf;
+  --plate-muted: #c9c3b0;
+
+  --screen: #201b10;
+  --screen-rim: #100e09;
+  --screen-glow: rgba(235, 171, 76, 0.09);
+  --screen-vignette: rgba(217, 118, 47, 0.08);
+  --screen-ink: #fff0c6;
+  --screen-muted: #d8c79e;
+  --screen-header: rgba(255, 255, 255, 0.04);
+  --screen-highlight: rgba(255, 255, 255, 0.06);
+  --backdrop: rgba(18, 15, 9, 0.76);
+  --screen-panel: #332917;
+  --screen-control-top: #44351e;
+  --screen-inset: #151108;
+  --screen-field: #1a140b;
+  --screen-border: #665332;
+  --screen-line: #49381e;
+  --screen-hover: #40321c;
+  --screen-track: #151108;
+  --screen-group: #382b18;
+  --screen-group-top: #5a4325;
+  --screen-group-bottom: #4b391f;
+
+  --accent: #eb9a43;
+  --accent-edge: #9a5c20;
+  --accent-ink: #2e1a0b;
+  --accent-shine: rgba(255, 255, 255, 0.5);
+  --success: #a9d986;
+  --danger: #ff9c82;
+  --power-light: #eb7b34;
+  --focus-ring: rgba(235, 154, 67, 0.5);
+  --signal-stripe: linear-gradient(to bottom, #e88438 0 25%, #f0bd62 25% 50%, #a8c87d 50% 75%, #534832 75% 100%);
+}
+
+/* Daisy & Data Pack: paper-toned hardware, ink-dark screen, and ribbon red. */
+:root[data-theme="coleco-adam"] {
+  --night: #160d13;
+  --night-glow: #38232e;
+  --night-muted: #ead7dd;
+
+  --case-top: #e2e0d9;
+  --case-mid: #d3d0c9;
+  --case-bottom: #beb9ae;
+  --case-shade: #999187;
+  --case-edge: #827a70;
+  --case-light: #f4f0e8;
+  --case-ink: #2a2628;
+  --case-muted: #4a4344;
+  --case-error: #933a3c;
+  --vent-dark: #a29b90;
+  --vent-light: #ebe7de;
+  --footer-top: #d0cbbf;
+  --footer-bottom: #bdb7aa;
+
+  --key-top: #f0ede3;
+  --key-bottom: #d3cec3;
+  --key-highlight: #fffaf0;
+
+  --cap-top: #51494c;
+  --cap-bottom: #393236;
+  --cap-edge: #241e22;
+  --plate: #2c2529;
+  --plate-ink: #f1ece8;
+  --plate-muted: #c9c0c3;
+
+  --screen: #21151d;
+  --screen-rim: #120b10;
+  --screen-glow: rgba(255, 112, 120, 0.12);
+  --screen-vignette: rgba(240, 175, 81, 0.08);
+  --screen-ink: #f8e9e3;
+  --screen-muted: #d9c5c8;
+  --screen-header: rgba(255, 255, 255, 0.04);
+  --screen-highlight: rgba(255, 255, 255, 0.07);
+  --backdrop: rgba(21, 11, 17, 0.76);
+  --screen-panel: #35232d;
+  --screen-control-top: #49303c;
+  --screen-inset: #160d13;
+  --screen-field: #1c1118;
+  --screen-border: #674754;
+  --screen-line: #49313e;
+  --screen-hover: #472d3a;
+  --screen-track: #150c12;
+  --screen-group: #30202b;
+  --screen-group-top: #543744;
+  --screen-group-bottom: #422b37;
+
+  --accent: #ef746d;
+  --accent-edge: #a44149;
+  --accent-ink: #301416;
+  --accent-shine: rgba(255, 255, 255, 0.48);
+  --success: #92dfb7;
+  --danger: #ff9c8d;
+  --power-light: #f1c35c;
+  --focus-ring: rgba(239, 116, 109, 0.5);
+  --signal-stripe: linear-gradient(to bottom, #c24447 0 25%, #f08a68 25% 50%, #ecc268 50% 75%, #6f4758 75% 100%);
+}
+
+/* Ivory & Ink: the Ace's pale case, rubber keys, and restrained red mark. */
+:root[data-theme="jupiter-ace"] {
+  --night: #151619;
+  --night-glow: #34363d;
+  --night-muted: #d8d9da;
+
+  --case-top: #F0EBDD;
+  --case-mid: #e2dece;
+  --case-bottom: #d0cbbb;
+  --case-shade: #a49f90;
+  --case-edge: #827d70;
+  --case-light: #faf7ef;
+  --case-ink: #2B2A30;
+  --case-muted: #545259;
+  --case-error: #C9564F;
+  --vent-dark: #a39d8d;
+  --vent-light: #f3efe4;
+  --footer-top: #d8d3c5;
+  --footer-bottom: #c7c1b1;
+
+  --key-top: #37363d;
+  --key-bottom: #2B2A30;
+  --key-highlight: #55535a;
+  --key-ink: #F0EBDD;
+
+  --cap-top: #34333a;
+  --cap-bottom: #211f25;
+  --cap-edge: #111014;
+  --plate: #2B2A30;
+  --plate-ink: #f0eee7;
+  --plate-muted: #c4c1bd;
+
+  --screen: #101317;
+  --screen-rim: #07090c;
+  --screen-glow: rgba(141, 175, 195, 0.1);
+  --screen-vignette: rgba(201, 86, 79, 0.07);
+  --screen-ink: #E4E8E3;
+  --screen-muted: #b7bfbd;
+  --screen-header: rgba(255, 255, 255, 0.04);
+  --screen-highlight: rgba(255, 255, 255, 0.06);
+  --backdrop: rgba(12, 13, 16, 0.76);
+  --screen-panel: #24272d;
+  --screen-control-top: #30343b;
+  --screen-inset: #0a0c0f;
+  --screen-field: #111419;
+  --screen-border: #454b54;
+  --screen-line: #30343b;
+  --screen-hover: #343940;
+  --screen-track: #0b0d10;
+  --screen-group: #202329;
+  --screen-group-top: #3b4048;
+  --screen-group-bottom: #2b2f36;
+
+  --accent: #C9564F;
+  --accent-edge: #923d39;
+  --accent-ink: #fff8f2;
+  --accent-shine: rgba(255, 255, 255, 0.48);
+  --success: #86b88a;
+  --danger: #ed7770;
+  --power-light: #8DAFC3;
+  --focus-ring: rgba(141, 175, 195, 0.52);
+  --signal-stripe: linear-gradient(to bottom, #C9564F 0 25%, #d5b49a 25% 50%, #8DAFC3 50% 75%, #676b72 75% 100%);
+}
+
+/* Chroma & Charcoal: dark shell, blue pinstripes, and light key-style buttons. */
+:root[data-theme="oric-1"] {
+  --night: #101827;
+  --night-glow: #2b4c70;
+  --night-muted: #e8e9e5;
+
+  --case-top: #34383d;
+  --case-mid: #292d32;
+  --case-bottom: #202428;
+  --case-shade: #15191d;
+  --case-edge: #0d1115;
+  --case-light: #44494f;
+  --case-ink: #efeee8;
+  --case-muted: #c0c2c0;
+  --case-error: #ff887e;
+  --vent-dark: #191d21;
+  --vent-light: #484d52;
+  --footer-top: #2b3035;
+  --footer-bottom: #202428;
+
+  --key-top: #f5f4ee;
+  --key-bottom: #d1d0c9;
+  --key-highlight: #fffefa;
+  --key-ink: #2C2629;
+
+  --cap-top: #343337;
+  --cap-bottom: #211f22;
+  --cap-edge: #100f11;
+  --plate: #272629;
+  --plate-ink: #f3f1eb;
+  --plate-muted: #c8c6c1;
+
+  --screen: #081a30;
+  --screen-rim: #050e1a;
+  --screen-glow: rgba(58, 166, 216, 0.14);
+  --screen-vignette: rgba(39, 113, 178, 0.09);
+  --screen-ink: #f1eee5;
+  --screen-muted: #bdc9d3;
+  --screen-header: rgba(255, 255, 255, 0.04);
+  --screen-highlight: rgba(255, 255, 255, 0.06);
+  --backdrop: rgba(6, 13, 22, 0.78);
+  --screen-panel: #1b2d41;
+  --screen-control-top: #29415a;
+  --screen-inset: #09172a;
+  --screen-field: #0c1d32;
+  --screen-border: #45617a;
+  --screen-line: #2d4358;
+  --screen-hover: #263e56;
+  --screen-track: #091729;
+  --screen-group: #182b3e;
+  --screen-group-top: #36536d;
+  --screen-group-bottom: #263f56;
+
+  --accent: #39a6d7;
+  --accent-edge: #17658e;
+  --accent-ink: #081927;
+  --accent-shine: rgba(255, 255, 255, 0.48);
+  --success: #7ECB72;
+  --danger: #ff887e;
+  --power-light: #49BAD2;
+  --focus-ring: rgba(57, 166, 215, 0.55);
+  --signal-stripe: linear-gradient(to bottom, #3784b4 0 22%, #34383d 22% 58%, #3784b4 58% 80%, #34383d 80% 100%);
+}
+
 /*
  * Clean: a neutral, modern light theme for people who would rather not use a
  * retro computer. Same layout as every other theme; it only flattens the

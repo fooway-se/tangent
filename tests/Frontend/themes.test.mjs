@@ -21,6 +21,7 @@ const base = declarations(block(':root'));
 const themeIds = THEMES.map((theme) => theme.id).filter((id) => id !== 'putty');
 const themes = Object.fromEntries(themeIds.map((id) => [id, { ...base, ...declarations(block(`:root[data-theme="${id}"]`)) }]));
 themes.putty = base;
+for (const values of Object.values(themes)) values['--key-ink'] ??= values['--case-ink'];
 
 test('classic computer themes use the chosen indirect names', () => {
   assert.deepEqual(
@@ -73,7 +74,7 @@ test('theme helpers normalise and cycle', () => {
   assert.equal(nextTheme('copper'), 'altair');
   assert.equal(nextTheme('altair'), 'atari-st');
   assert.equal(nextTheme('atari-st'), 'x68000');
-  assert.equal(nextTheme('x68000'), 'clean');
+  assert.equal(nextTheme('x68000'), 'pc88');
   assert.equal(nextTheme('clean'), 'clean-dark');
   assert.equal(nextTheme('clean-dark'), 'putty');
   assert.equal(normalizeTheme('clean-dark'), 'clean-dark');
@@ -118,7 +119,7 @@ const pairs = [
   ['--screen-muted', '--screen'], ['--screen-muted', '--screen-panel'], ['--screen-muted', '--screen-group'],
   ['--accent', '--screen'], ['--accent', '--screen-panel'], ['--danger', '--screen'], ['--danger', '--screen-panel'], ['--success', '--screen'],
   ['--accent-ink', '--accent'], ['--case-ink', '--case-mid'], ['--case-muted', '--case-mid'], ['--case-muted', '--case-bottom'],
-  ['--case-ink', '--key-top'], ['--case-ink', '--key-bottom'], ['--plate-ink', '--plate'], ['--night-muted', '--night'],
+  ['--key-ink', '--key-top'], ['--key-ink', '--key-bottom'], ['--plate-ink', '--plate'], ['--night-muted', '--night'],
 ];
 
 for (const [id, values] of Object.entries(themes)) {

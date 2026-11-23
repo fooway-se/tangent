@@ -18,6 +18,11 @@ export const THEMES = [
     { id: 'altair', label: 'Switches & Steel' },
     { id: 'atari-st', label: 'Studio & Sound' },
     { id: 'x68000', label: 'Arcade & Towers' },
+    { id: 'pc88', label: 'Kana & Keycaps' },
+    { id: 'microbee', label: 'Beehive & Beige' },
+    { id: 'coleco-adam', label: 'Daisy & Data Pack' },
+    { id: 'jupiter-ace', label: 'Ivory & Ink' },
+    { id: 'oric-1', label: 'Chroma & Charcoal' },
     { id: 'clean', label: 'Clean' },
     { id: 'clean-dark', label: 'Clean (dark)' },
 ];
