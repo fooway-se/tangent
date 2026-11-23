@@ -5,13 +5,14 @@ import test from 'node:test';
 const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
 const issueBoardUi = await readFile(new URL('../../frontend/src/issue-board-ui.ts', import.meta.url), 'utf8');
+const issueBoardView = await readFile(new URL('../../frontend/src/issue-board-view.ts', import.meta.url), 'utf8');
 const issueRowUi = await readFile(new URL('../../frontend/src/issue-row-ui.ts', import.meta.url), 'utf8');
 const dom = await readFile(new URL('../../frontend/src/dom.ts', import.meta.url), 'utf8');
 const css = await readFile(new URL('../../public/assets/app.css', import.meta.url), 'utf8');
 
 test('issue ordering offers a dedicated Next Up view', () => {
   assert.match(html, /<option value="next_up">Order: Next up<\/option>/);
-  assert.match(app, /function renderNextUpIssueBoard\(/);
+  assert.match(issueBoardView, /function renderNextUpIssueBoard\(/);
   assert.match(app, /issueGrouping\.disabled = true/);
   assert.match(app, /issueGrouping\.value = issueGroupingBeforeNextUp/);
   assert.match(app, /issueOrder\.value = 'updated';\s*synchronizeIssueGroupingForOrder\(\)/);
@@ -21,7 +22,7 @@ test('issue rows show their milestone and Next Up exposes accessible move contro
   assert.match(issueRowUi, /issue-milestone-tag/);
   assert.match(issueRowUi, /dataset\.moveDirection = direction/);
   assert.match(app, /`\/issues\/\$\{issue\.id\}\/move`/);
-  assert.match(app, /className: 'issue-group milestone-issue-group'/);
+  assert.match(issueBoardView, /className: 'issue-group milestone-issue-group'/);
 });
 
 test('Next Up keeps keyboard focus when a move disables the selected arrow', () => {
@@ -39,19 +40,16 @@ test('milestone groups are collapsible and their headings show issue counts', ()
   assert.match(issueBoardUi, /summary\.className = 'issue-group-summary'/);
   assert.match(issueBoardUi, /groupCount\.textContent = String\(count\)/);
   assert.match(issueBoardUi, /createGroupSummary\(group\.name, group\.issues\.length\)/);
-  assert.match(app, /issueBoardUi\.render\(groups\)/);
+  assert.match(issueBoardView, /issueBoardUi\.render\(groups\)/);
 });
 
 test('history milestone groups start collapsed and existing disclosure state is preserved', () => {
-  const milestoneBoardStart = app.indexOf('function renderMilestoneIssueBoard(');
-  const milestoneBoardEnd = app.indexOf('\nfunction renderNextUpIssueBoard(', milestoneBoardStart);
-  const milestoneBoard = app.slice(milestoneBoardStart, milestoneBoardEnd);
-  assert.match(milestoneBoard, /openByDefault: issueScope\.value !== 'history'/);
+  assert.match(issueBoardView, /openByDefault: options\.scope\(\) !== 'history'/);
   assert.match(issueBoardUi, /if \(details === undefined\) \{\s*details = doc\.createElement\('details'\);\s*details\.open = group\.openByDefault \?\? true;/);
 });
 
 test('No milestone bulk move uses the shared selection and action-group design', () => {
-  assert.match(app, /allowBulkMove: group\.milestoneId === null/);
+  assert.match(issueBoardView, /allowBulkMove: group\.milestoneId === null/);
   assert.match(issueBoardUi, /issue-bulk-select-toggle/);
   assert.match(app, /issue-bulk-move-toolbar/);
   assert.match(app, /selectionActions\.className = 'issue-bulk-move-selection-actions'/);
@@ -72,7 +70,7 @@ test('issue board offers opt-in bulk assignment across milestone groups', () => 
   assert.match(dom, /issue-bulk-assign-toolbar/);
   assert.match(app, /issue-bulk-assign-checkbox/);
   assert.match(issueBoardUi, /const allowBulkAssignSelection = state\.bulkAssignSelectionMode/);
-  assert.match(app, /visibleBulkAssignIssueIds = new Set\(visible\.map\(\(issue\) => issue\.id\)\)/);
+  assert.match(issueBoardView, /setVisibleBulkAssignIssueIds\(visibleBulkAssignIssueIds\)/);
   assert.match(html, /Assign selected/);
   assert.match(html, /Unassigned/);
   assert.match(app, /\/projects\/\$\{projectId\}\/issues\/assign/);
@@ -111,8 +109,8 @@ test('issue selection toolbar groups selection, assignment, and guest-access con
 test('ongoing issues are marked separately, grouped apart from unplanned work, and excluded from project progress', () => {
   assert.match(html, /name="is_ongoing"/);
   assert.match(app, /if \(issueQuickAddOngoing\.checked\) \{\s*issueInput\.is_ongoing = true/);
-  assert.match(app, /projectProgress\(projectIssues\)/);
-  assert.match(app, /group\.isOngoing \? 'milestone:ongoing'/);
+  assert.match(issueBoardView, /projectProgress\(projectIssues\)/);
+  assert.match(issueBoardView, /group\.isOngoing \? 'milestone:ongoing'/);
   assert.match(app, /issue\.is_ongoing/);
   assert.match(css, /\.issue-ongoing-tag\s*\{/);
 });

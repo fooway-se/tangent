@@ -4,6 +4,7 @@ import test from 'node:test';
 
 const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
+const issueBoardView = await readFile(new URL('../../frontend/src/issue-board-view.ts', import.meta.url), 'utf8');
 const milestoneUi = await readFile(new URL('../../frontend/src/milestone-ui.ts', import.meta.url), 'utf8');
 const css = await readFile(new URL('../../public/assets/app.css', import.meta.url), 'utf8');
 
@@ -33,7 +34,7 @@ test('issue board has separate current-work and history views for archived miles
   assert.match(html, /id="issue-scope"/);
   assert.match(html, /<option value="active">Current work<\/option>/);
   assert.match(html, /<option value="history">History<\/option>/);
-  assert.match(app, /filterIssuesByMilestoneArchive\(/);
+  assert.match(issueBoardView, /filterIssuesByMilestoneArchive\(/);
 });
 
 test('milestone manager offers archive and restore actions without deleting milestones', () => {

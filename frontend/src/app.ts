@@ -30,6 +30,7 @@ import { initCommandPaletteUi } from './command-palette-ui.js';
 import { buildPaletteCommands } from './command-palette-commands.js';
 import { initWorkspacePickerUi } from './workspace-picker-ui.js';
 import { initIssueBoardUi } from './issue-board-ui.js';
+import { initIssueBoardView } from './issue-board-view.js';
 import { createIssueRowUi } from './issue-row-ui.js';
 import { initIssueAiPromptUi } from './issue-ai-prompt-ui.js';
 import { initIssueDiscussionUi } from './issue-discussion-ui.js';
@@ -44,17 +45,10 @@ import { initGithubProjectUi } from './github-project-ui.js';
 import { parseQuickIssueInput } from './quick-issue.js';
 import type { RoadmapMilestone } from './roadmap.js';
 import { initRoadmapUi } from './roadmap-ui.js';
-import {
-  filterIssues,
-  filterIssuesByMilestoneArchive,
-  groupIssues,
-  groupIssuesByMilestone,
-  discussionIndicatorLabel,
-  projectProgress,
-  sortIssues,
-  type IssueSortOrder,
-  type IssueBoardScope,
-  type IssueStatus,
+import type {
+  IssueSortOrder,
+  IssueBoardScope,
+  IssueStatus,
 } from './issue-board.js';
 import {
   diffConditionalIssueCollections,
@@ -695,6 +689,30 @@ const issueBoardUi = initIssueBoardUi({
   setTextContentIfChanged,
   placeNodeAtPosition,
   replaceIssueRowPreservingFocus,
+});
+const issueBoardView = initIssueBoardView({
+  issues: () => projectIssues,
+  milestones: () => projectMilestones,
+  deletedIssues: () => deletedProjectIssues,
+  scope: () => issueScope.value as IssueBoardScope,
+  order: () => issueOrder.value as IssueSortOrder,
+  grouping: () => issueGrouping.value as IssueGrouping,
+  filter: () => issueFilter.value,
+  issueAssigneeLabel,
+  issueProgress,
+  issueProgressLabel,
+  issueCountSummary,
+  emptyIssues,
+  deletedIssueCount,
+  deletedIssuesDetails,
+  getSelectedBulkMoveIssueIds: () => selectedBulkMoveIssueIds,
+  getSelectedBulkAssignIssueIds: () => selectedBulkAssignIssueIds,
+  setVisibleBulkAssignIssueIds: (ids) => { visibleBulkAssignIssueIds = ids; },
+  clearBulkMoveSelection,
+  syncBulkAssignControls: syncIssueBulkAssignControls,
+  reconcileDeletedIssueRows,
+  issueBoardUi,
+  setTextContentIfChanged,
 });
 const issueDeleteUi = initIssueDeleteUi({
   getProjectId: () => activeProject?.id ?? null,
@@ -2753,129 +2771,7 @@ function syncIssueBulkAssignControls(): void {
 }
 
 function renderProjectIssueBoard(): void {
-  const projectIssueProgress = projectProgress(projectIssues);
-  issueProgress.max = Math.max(projectIssueProgress.total, 1);
-  issueProgress.value = projectIssueProgress.done;
-  issueProgress.classList.toggle('is-complete', projectIssueProgress.complete);
-  const progressUnit = projectIssueProgress.ongoing > 0
-    ? 'planned issues'
-    : projectIssueProgress.cancelled > 0 ? 'non-cancelled issues' : 'issues';
-  const progressExtras = [
-    projectIssueProgress.ongoing > 0 ? `${projectIssueProgress.ongoing} ongoing` : '',
-    projectIssueProgress.cancelled > 0 ? `${projectIssueProgress.cancelled} cancelled` : '',
-  ].filter(Boolean);
-  setTextContentIfChanged(issueProgressLabel,
-    `${projectIssueProgress.done} of ${projectIssueProgress.total} ${progressUnit} done${progressExtras.length > 0 ? ` · ${progressExtras.join(' · ')}` : ''}`);
-
-  const boardIssues = filterIssuesByMilestoneArchive(projectIssues, projectMilestones, issueScope.value as IssueBoardScope);
-  const total = boardIssues.length;
-  const completed = boardIssues.filter((issue) => issue.status === 'done').length;
-  const cancelled = boardIssues.filter((issue) => issue.status === 'cancelled').length;
-  const ongoing = boardIssues.filter((issue) => issue.is_ongoing && issue.status !== 'cancelled').length;
-  const open = total - completed - cancelled - ongoing;
-  setTextContentIfChanged(issueCountSummary, issueScope.value === 'history'
-    ? `${total} ${total === 1 ? 'issue' : 'issues'} in History`
-    : [
-      `${open} open`,
-      `${completed} done`,
-      ongoing > 0 ? `${ongoing} ongoing` : '',
-      cancelled > 0 ? `${cancelled} cancelled` : '',
-    ].filter(Boolean).join(' · '));
-
-  const searchableIssues = boardIssues.map((issue) => ({
-    ...issue,
-    assignee_name: issueAssigneeLabel(issue.assignee_id),
-    milestone_name: projectMilestones.find((milestone) => milestone.id === issue.milestone_id)?.name ?? null,
-    milestone_due_date: projectMilestones.find((milestone) => milestone.id === issue.milestone_id)?.due_date ?? null,
-  }));
-  const ordered = sortIssues(searchableIssues, issueOrder.value as IssueSortOrder);
-  const nextUpMode = issueScope.value === 'active' && issueOrder.value === 'next_up';
-  const workQueue = nextUpMode ? ordered.filter((issue) => ['backlog', 'todo', 'doing', 'testing'].includes(issue.status)) : ordered;
-  const visible = filterIssues(workQueue, issueFilter.value);
-  visibleBulkAssignIssueIds = new Set(visible.map((issue) => issue.id));
-  for (const issueId of selectedBulkAssignIssueIds) {
-    if (!visibleBulkAssignIssueIds.has(issueId)) selectedBulkAssignIssueIds.delete(issueId);
-  }
-  syncIssueBulkAssignControls();
-  emptyIssues.hidden = visible.length > 0;
-  setTextContentIfChanged(emptyIssues, nextUpMode && workQueue.length === 0
-    ? 'No open issues to work on next.'
-    : total === 0
-      ? issueScope.value === 'history'
-        ? 'No archived milestone issues. Archive a milestone to move its issues into History.'
-        : projectIssues.length > 0
-          ? 'No issues in Current work. View History or create a new issue.'
-          : deletedProjectIssues.length > 0
-            ? 'No active issues. Restore one from Deleted issues or create a new issue.'
-            : 'No issues yet. Create the first one.'
-      : 'No issues match that filter.');
-
-  setTextContentIfChanged(deletedIssueCount, String(deletedProjectIssues.length));
-  deletedIssuesDetails.hidden = false;
-  reconcileDeletedIssueRows();
-
-  if (nextUpMode) {
-    renderNextUpIssueBoard(visible, workQueue);
-    return;
-  }
-
-  if (issueGrouping.value === 'milestone') {
-    renderMilestoneIssueBoard(visible);
-    return;
-  }
-
-  issueBoardUi.render(groupIssues(visible).map((group) => ({
-    key: `status:${group.status}`,
-    name: group.status,
-    className: 'issue-group',
-    issues: group.issues,
-  })));
-}
-
-function renderMilestoneIssueBoard(visibleIssues: Issue[]): void {
-  const hasActiveMilestones = projectMilestones.some((milestone) => milestone.archived_at === null);
-  if (!hasActiveMilestones) clearBulkMoveSelection();
-  const visibleUnassignedIssueIds = new Set(visibleIssues
-    .filter((issue) => issue.milestone_id === null && !issue.is_ongoing)
-    .map((issue) => issue.id));
-  for (const issueId of selectedBulkMoveIssueIds) {
-    if (!visibleUnassignedIssueIds.has(issueId)) selectedBulkMoveIssueIds.delete(issueId);
-  }
-  issueBoardUi.render(groupIssuesByMilestone(visibleIssues, projectMilestones).map((group) => ({
-    key: group.isOngoing ? 'milestone:ongoing' : `milestone:${group.milestoneId ?? 'none'}`,
-    name: group.dueDate === null ? group.name : `${group.name} · due ${group.dueDate}`,
-    className: 'issue-group milestone-issue-group',
-    issues: group.issues,
-    isOngoing: group.isOngoing,
-    allowBulkMove: group.milestoneId === null && group.isOngoing !== true && hasActiveMilestones,
-    openByDefault: issueScope.value !== 'history',
-  })));
-}
-
-function renderNextUpIssueBoard(visibleIssues: Issue[], allOpenIssues: Issue[]): void {
-  const groups = groupIssuesByMilestone(visibleIssues, projectMilestones).map((group) => {
-    const allGroupIssues = allOpenIssues.filter((issue) => group.isOngoing
-      ? issue.is_ongoing
-      : !issue.is_ongoing && issue.milestone_id === group.milestoneId);
-    const reorderByIssueId = new Map<number, { canMoveEarlier?: boolean; canMoveLater?: boolean; showMilestoneTag?: boolean }>();
-    for (const issue of group.isOngoing ? [] : group.issues) {
-      const index = allGroupIssues.findIndex((candidate) => candidate.id === issue.id);
-      reorderByIssueId.set(issue.id, {
-        canMoveEarlier: index > 0,
-        canMoveLater: index >= 0 && index < allGroupIssues.length - 1,
-        showMilestoneTag: false,
-      });
-    }
-    return {
-      key: group.isOngoing ? 'milestone:ongoing' : `milestone:${group.milestoneId ?? 'none'}`,
-      name: group.dueDate === null ? group.name : `${group.name} · due ${group.dueDate}`,
-      className: 'issue-group milestone-issue-group',
-      issues: group.issues,
-      reorderByIssueId,
-      isOngoing: group.isOngoing,
-    };
-  });
-  issueBoardUi.render(groups);
+  issueBoardView.render();
 }
 
 function createIssueBulkMoveToolbar(issues: Issue[]): HTMLDivElement {

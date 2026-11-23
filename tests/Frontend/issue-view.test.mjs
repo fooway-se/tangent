@@ -4,6 +4,7 @@ import test from 'node:test';
 
 const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
+const issueBoardView = await readFile(new URL('../../frontend/src/issue-board-view.ts', import.meta.url), 'utf8');
 const projectChatUi = await readFile(new URL('../../frontend/src/project-chat-ui.ts', import.meta.url), 'utf8');
 const css = await readFile(new URL('../../public/assets/app.css', import.meta.url), 'utf8');
 
@@ -24,8 +25,8 @@ test('the issue board keeps chat in its separate right column', () => {
 
 test('the issue grouping control switches between status and milestone groups', () => {
   assert.match(app, /issueGrouping\.addEventListener\('change', \(\) => \{\s*clearBulkMoveSelection\(\);\s*renderProjectIssueBoard\(\);\s*\}\)/);
-  assert.match(app, /if \(issueGrouping\.value === 'milestone'\) \{\s*renderMilestoneIssueBoard\(visible\)/);
-  assert.match(app, /function renderMilestoneIssueBoard\(/);
+  assert.match(issueBoardView, /if \(options\.grouping\(\) === 'milestone'\) \{\s*renderMilestoneIssueBoard\(visible\)/);
+  assert.match(issueBoardView, /function renderMilestoneIssueBoard\(/);
 });
 
 test('quick add parses optional metadata tokens only when creating an issue', () => {
