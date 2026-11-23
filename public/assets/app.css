@@ -152,7 +152,7 @@ kbd {
 .lounge-nav-presence::before { width: 7px; height: 7px; flex: 0 0 auto; border-radius: 50%; background: currentColor; box-shadow: none; content: ""; }
 #lounge-nav.is-active #lounge-nav-presence { color: var(--accent-ink); }
 .section-title { margin: 0 0 8px; color: var(--case-muted); font: 700 11px/1.4 var(--font-display); letter-spacing: 2px; text-transform: uppercase; }
-.sidebar-projects { position: relative; display: flex; flex: 1; flex-direction: column; min-height: 0; }
+.sidebar-projects { position: relative; display: flex; flex: 1 0 124px; flex-direction: column; min-height: 124px; }
 .sidebar-projects .section-title { margin: 14px 4px 8px; }
 .project-sidebar-list { display: grid; align-content: start; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .sidebar-scroll-more {
@@ -195,6 +195,13 @@ kbd {
   .project-sidebar-list { flex: 1 1 0; min-height: 0; overflow-y: auto; }
 }
 @media (min-width: 761px) and (max-height: 560px) {
+  .keyboard-hints { display: flex; min-width: 0; align-items: center; gap: 12px; overflow-x: auto; padding: 4px 12px; }
+  .keyboard-hint-group { flex: 0 0 auto; flex-direction: row; align-items: center; gap: 8px; padding-right: 10px; }
+  .keyboard-hint-group-label { display: none; }
+  .keyboard-hint-group-items { flex-wrap: nowrap; gap: 8px; }
+  .keyboard-hint-group-items #go-prefix-hint { white-space: nowrap; }
+  .keyboard-hint-group-items #go-prefix-hint:not([hidden]) { flex-basis: auto; }
+  .keyboard-hints kbd { padding: 1px 5px; }
   .workspace-sidebar { padding-block: 8px; }
   .workspace-sidebar::before { display: none; }
   .workspace-brand { display: flex; min-width: 0; align-items: center; gap: 6px; padding: 6px 8px; }

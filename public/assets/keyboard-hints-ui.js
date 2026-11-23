@@ -7,9 +7,22 @@ export function initKeyboardHintsUi(options) {
     catch {
         preferenceEnabled = true;
     }
+    const isCompactViewport = options.isCompactViewport ?? (() => false);
+    let compactViewport = isCompactViewport();
+    let compactOverride = null;
+    function syncViewportMode() {
+        const nextCompactViewport = isCompactViewport();
+        if (nextCompactViewport !== compactViewport) {
+            compactViewport = nextCompactViewport;
+            compactOverride = null;
+        }
+        return compactViewport;
+    }
     function updateVisibility() {
+        const isCompact = syncViewportMode();
         const role = options.getUserRole();
-        options.element.hidden = !preferenceEnabled
+        const showByPreference = isCompact ? (compactOverride ?? false) : preferenceEnabled;
+        options.element.hidden = !showByPreference
             || role === null
             || role === 'guest'
             || !options.isWorkspaceVisible();
@@ -18,6 +31,11 @@ export function initKeyboardHintsUi(options) {
         const role = options.getUserRole();
         if (role === null || role === 'guest' || !options.isWorkspaceVisible())
             return;
+        if (syncViewportMode()) {
+            compactOverride = !(compactOverride ?? false);
+            updateVisibility();
+            return;
+        }
         preferenceEnabled = !preferenceEnabled;
         try {
             options.setStoredPreference(String(preferenceEnabled));
@@ -28,7 +46,10 @@ export function initKeyboardHintsUi(options) {
         updateVisibility();
     }
     return {
-        isPreferenceEnabled: () => preferenceEnabled,
+        isPreferenceEnabled: () => {
+            const isCompact = syncViewportMode();
+            return isCompact ? (compactOverride ?? false) : preferenceEnabled;
+        },
         updateVisibility,
         toggle,
     };

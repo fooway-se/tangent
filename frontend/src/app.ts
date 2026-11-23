@@ -498,6 +498,7 @@ const keyboardHintsUi = initKeyboardHintsUi({
   element: keyboardHints,
   getUserRole: () => activeUser?.role ?? null,
   isWorkspaceVisible: () => !workspacePanel.hidden,
+  isCompactViewport: () => window.matchMedia('(min-width: 761px) and (max-height: 560px)').matches,
   getStoredPreference: () => window.localStorage.getItem(KEYBOARD_HINTS_STORAGE_KEY),
   setStoredPreference: (value) => window.localStorage.setItem(KEYBOARD_HINTS_STORAGE_KEY, value),
 });
@@ -2149,6 +2150,7 @@ document.addEventListener('focusout', () => {
 projectsNavButton.addEventListener('click', goToProjects);
 projectSidebarList.addEventListener('scroll', updateProjectSidebarMoreCue, { passive: true });
 window.addEventListener('resize', updateProjectSidebarMoreCue);
+window.addEventListener('resize', updateKeyboardHintsVisibility);
 const projectSidebarResizeObserver = new ResizeObserver(updateProjectSidebarMoreCue);
 projectSidebarResizeObserver.observe(projectSidebarList);
 roadmapNavButton.addEventListener('click', goToRoadmap);
