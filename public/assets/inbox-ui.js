@@ -1,6 +1,7 @@
 import { ApiFailure, api, apiBaseUrl } from './api.js';
 import { INBOX_TABS, createEventRow, eventsForTab, inboxEventPagePath, mergeInboxEventPage, } from './inbox-events.js';
 import { groupMyWorkTasks } from './my-work.js';
+import { bindRealtimePolling, shouldUsePolling } from './realtime-polling.js';
 import { diffInboxCollections, nextInboxPollDelay, shouldDeferInboxUpdates, } from './inbox-polling.js';
 export function initInboxUi(options) {
     const doc = options.doc ?? document;
@@ -44,19 +45,28 @@ export function initInboxUi(options) {
         return options.isVisible();
     }
     function stopPolling() {
-        if (inboxPollTimer !== null)
-            window.clearTimeout(inboxPollTimer);
-        inboxPollTimer = null;
-        inboxPollRequestVersion += 1;
-        inboxPollInFlight = false;
+        pausePolling();
         inboxPollDelay = 1000;
         inboxIssuesEtag = null;
         inboxEventsEtag = null;
         inboxPollHasDeferredChanges = false;
     }
+    function pausePolling() {
+        if (inboxPollTimer !== null)
+            window.clearTimeout(inboxPollTimer);
+        inboxPollTimer = null;
+        inboxPollRequestVersion += 1;
+        inboxPollInFlight = false;
+    }
     function schedulePoll(delay = inboxPollDelay) {
         if (!isPollingActive()) {
             stopPolling();
+            return;
+        }
+        if (!shouldUsePolling(options.realtime)) {
+            if (inboxPollTimer !== null)
+                window.clearTimeout(inboxPollTimer);
+            inboxPollTimer = null;
             return;
         }
         if (inboxPollTimer !== null)
@@ -608,12 +618,23 @@ export function initInboxUi(options) {
         if (!isPollingActive())
             return;
         inboxPollDelay = 1000;
-        schedulePoll(0);
+        if (options.realtime?.isConnected())
+            void pollNow();
+        else
+            schedulePoll(0);
     }
     function dispose() {
+        unbindRealtime();
         listeners.abort();
         stopPolling();
     }
+    const unbindRealtime = bindRealtimePolling({
+        realtime: options.realtime,
+        isActive: isPollingActive,
+        pausePolling,
+        resumePolling: () => schedulePoll(0),
+        refresh: () => { void pollNow(); },
+    });
     myWorkInboxTab.addEventListener('click', () => selectMyWorkTab('inbox'), { signal: listeners.signal });
     myWorkTasksTab.addEventListener('click', () => selectMyWorkTab('tasks'), { signal: listeners.signal });
     myWorkTabsElement.addEventListener('keydown', (event) => {

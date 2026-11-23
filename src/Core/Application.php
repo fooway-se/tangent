@@ -20,6 +20,7 @@ use Tangent\Modules\Agents\AgentsService;
 use Tangent\Modules\Chat\ChatRepository;
 use Tangent\Modules\Chat\ChatRoutes;
 use Tangent\Modules\Chat\ChatService;
+use Tangent\Modules\Chat\RealtimeRoutes;
 use Tangent\Modules\Issues\IssueRepository;
 use Tangent\Modules\Issues\IssueDiscussionRepository;
 use Tangent\Modules\Issues\IssuesRoutes;
@@ -59,6 +60,7 @@ final class Application
         ?Mailer $mailer = null,
     ): Gateway
     {
+        $realtimeFeed = new WorkspaceRealtimeFeed($pdo);
         $basePath = AppBasePath::fromPublicUrl($config->publicAppUrl);
         $apiCookiePath = AppBasePath::apiCookiePath($basePath);
         $csrfCookiePath = AppBasePath::csrfCookiePath($basePath);
@@ -121,6 +123,7 @@ final class Application
             $inboxEvents,
             $pdo,
             $config,
+            $realtimeFeed,
         );
         $projects = new ProjectService($projectRepository, $users, $pdo, $chat, $issues, $workspaceRepository, $github);
         $inbox = new InboxService($issueRepository, $projects);
@@ -149,11 +152,16 @@ final class Application
         (new ClientViewRoutes($clientView, $chat))->register($router);
         (new MilestoneRoutes($milestones))->register($router);
         (new ChatRoutes($chat))->register($router);
+        (new RealtimeRoutes(
+            $realtimeFeed,
+            $config->realtimeStreamEnabled,
+            $config->realtimeMaxConnections,
+        ))->register($router);
         (new IssuesRoutes($issues))->register($router);
         (new AgentsRoutes($agents))->register($router);
         (new InboxRoutes($inbox, $inboxEvents))->register($router);
         (new GitHubRoutes($github, $config))->register($router);
 
-        return new Gateway($router, new Authenticator($tokens, $config));
+        return new Gateway($router, new Authenticator($tokens, $config), new RequestErrorReporter(), $realtimeFeed);
     }
 }

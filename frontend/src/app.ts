@@ -1,5 +1,6 @@
 import type { InboxEvent } from './inbox-events.js';
 import { api, apiBaseUrl, ApiFailure } from './api.js';
+import { initRealtimeTransport } from './realtime-transport.js';
 import {
   ISSUE_STATUS_OPTIONS, ISSUE_TYPE_OPTIONS, PROJECT_STATUS_LABELS,
   type ChatMessage, type ConditionalIssueList,
@@ -215,6 +216,7 @@ const issueBulkUnshareApply = issueBulkAssignToolbar.querySelector<HTMLButtonEle
 const issueBulkAssignCancel = issueBulkAssignToolbar.querySelector<HTMLButtonElement>('.issue-bulk-assign-cancel')!;
 
 let activeUser: User | null = null;
+const realtimeTransport = initRealtimeTransport({ url: `${apiBaseUrl}/events/stream` });
 const keyboardHintsUi = initKeyboardHintsUi({
   element: keyboardHints,
   getUserRole: () => activeUser?.role ?? null,
@@ -343,6 +345,7 @@ const issueDiscussionUi = initIssueDiscussionUi({
   onDiscussionCountChanged: updateProjectIssueDiscussionCount,
   onUnauthorized: () => showSignedOut(),
   avatarInitials,
+  realtime: realtimeTransport,
 });
 const issueRelatedUi = initIssueRelatedUi({
   getIssue: () => selectedIssue,
@@ -595,6 +598,7 @@ const issuePollingController = initIssuePollingController({
   },
   setTimeout: (callback, delay) => window.setTimeout(callback, delay),
   clearTimeout: (timer) => window.clearTimeout(timer),
+  realtime: realtimeTransport,
 });
 const issueActions = initIssueActions({
   api,
@@ -657,6 +661,7 @@ const loungeChatUi = initLoungeChatUi({
   onUnauthorized: () => showSignedOut(),
   report,
   presence: loungePresenceUi,
+  realtime: realtimeTransport,
   avatarInitials,
   compactMessage: compactChatMessage,
   submitFormOnEnter,
@@ -675,6 +680,7 @@ const projectChatUi = initProjectChatUi({
   avatarInitials,
   compactMessage: compactChatMessage,
   submitFormOnEnter,
+  realtime: realtimeTransport,
 });
 
 const chatMessageNavigationUi = initChatMessageNavigationUi({
@@ -701,6 +707,7 @@ const inboxUi = initInboxUi({
   formatDueDate: formatIssueDueDate,
   isIssueOverdue,
   createDiscussionIndicator: issueRowUi.createDiscussionIndicator,
+  realtime: realtimeTransport,
 });
 
 const workspaceAdminUi = initWorkspaceAdminUi({
@@ -785,6 +792,7 @@ function invalidateProjectNavigation(sessionChanged = false): void {
 }
 
 function showSignedOut(): void {
+  realtimeTransport.stop();
   invalidateProjectNavigation(true);
   authUi.resetForms();
   workspaceHistory.clear();
@@ -827,6 +835,7 @@ function showSignedOut(): void {
 }
 
 function showSignedIn(user: User): void {
+  realtimeTransport.stop();
   invalidateProjectNavigation(true);
   workspaceHistory.clear();
   projectReturnFocusId = null;
@@ -842,6 +851,7 @@ function showSignedIn(user: User): void {
     void guestUi.showGuestShell(user);
     return;
   }
+  realtimeTransport.start();
   guestUi.reset();
   loginShell.hidden = true;
   loginPanel.hidden = true;
@@ -1860,7 +1870,12 @@ document.addEventListener('visibilitychange', () => {
   if (!document.hidden && !loungeActive) void loungePresenceUi.pollWorkspacePresence();
   if (!document.hidden && activeProject !== null && issuePollingIsActive(activeProject.id)) {
     issuePollingController.resetDelay();
-    scheduleIssuePoll(0);
+    if (realtimeTransport.isConnected()) {
+      void issuePollingController.poll(activeProject.id);
+      if (!issueDetailView.hidden && selectedIssue !== null) {
+        void issueDiscussionUi.load(selectedIssue.id, false);
+      }
+    } else scheduleIssuePoll(0);
   }
   if (!document.hidden && inboxUi.isPollingActive()) inboxUi.resumePolling();
 });

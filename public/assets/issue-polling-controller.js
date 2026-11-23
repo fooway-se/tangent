@@ -1,3 +1,4 @@
+import { bindRealtimePolling, shouldUsePolling } from './realtime-polling.js';
 import { diffConditionalIssueCollections, loadIssueCollections, nextIssuePollDelay, } from './issue-polling.js';
 export function initIssuePollingController(options) {
     let timer = null;
@@ -26,6 +27,10 @@ export function initIssuePollingController(options) {
     function schedule(nextDelay = delay) {
         const projectId = options.getProjectId();
         if (projectId === null || !options.isPollingActive(projectId)) {
+            pause();
+            return;
+        }
+        if (!shouldUsePolling(options.realtime)) {
             pause();
             return;
         }
@@ -128,6 +133,20 @@ export function initIssuePollingController(options) {
             }
         }
     }
+    const unbindRealtime = bindRealtimePolling({
+        realtime: options.realtime,
+        isActive: () => {
+            const projectId = options.getProjectId();
+            return projectId !== null && options.isPollingActive(projectId);
+        },
+        pausePolling: pause,
+        resumePolling: () => schedule(0),
+        refresh: () => {
+            const projectId = options.getProjectId();
+            if (projectId !== null)
+                void poll(projectId);
+        },
+    });
     return {
         pause,
         stop,
@@ -141,5 +160,6 @@ export function initIssuePollingController(options) {
         seedDeletedEtag: (etag) => { deletedEtag = etag; },
         clearDeferredChanges: () => { hasDeferredChanges = false; },
         hasDeferredChanges: () => hasDeferredChanges,
+        dispose: unbindRealtime,
     };
 }

@@ -634,9 +634,17 @@ PHP;
             'X-GitHub-Delivery' => 'automatic-pr-delivery-1',
             'X-GitHub-Event' => 'pull_request',
         ];
+        $readRealtimeCursor = $this->pdo->prepare(
+            'SELECT last_cursor FROM workspace_realtime_cursors WHERE workspace_id = :workspace_id'
+        );
+        $readRealtimeCursor->execute(['workspace_id' => $this->workspaceId]);
+        $cursorBeforeWebhook = (int) ($readRealtimeCursor->fetchColumn() ?: 0);
 
         $webhook = $this->webhookRequest($rawBody, $payload, $headers);
         self::assertSame(202, $webhook->status, json_encode($webhook->body));
+        $readRealtimeCursor->execute(['workspace_id' => $this->workspaceId]);
+        $cursorAfterWebhook = (int) $readRealtimeCursor->fetchColumn();
+        self::assertGreaterThan($cursorBeforeWebhook, $cursorAfterWebhook);
 
         $pullRequests = $this->cookieRequest('GET', "/api/v1/issues/{$issueId}/pull-requests", $admin['cookie']);
         self::assertSame(200, $pullRequests->status, json_encode($pullRequests->body));
@@ -657,6 +665,8 @@ PHP;
 
         $duplicate = $this->webhookRequest($rawBody, $payload, $headers);
         self::assertTrue($duplicate->body['duplicate']);
+        $readRealtimeCursor->execute(['workspace_id' => $this->workspaceId]);
+        self::assertSame($cursorAfterWebhook, (int) $readRealtimeCursor->fetchColumn());
         $pullRequests = $this->cookieRequest('GET', "/api/v1/issues/{$issueId}/pull-requests", $admin['cookie']);
         self::assertCount(1, $pullRequests->body['pull_requests']);
         $eventCount->execute(['workspace_id' => $this->workspaceId, 'recipient_id' => $this->adminId]);

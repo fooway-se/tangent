@@ -1,4 +1,6 @@
 import type { ConditionalIssueList, Issue } from './types.js';
+import { bindRealtimePolling, shouldUsePolling } from './realtime-polling.js';
+import type { RealtimeUpdates } from './realtime-transport.js';
 import {
   diffConditionalIssueCollections,
   loadIssueCollections,
@@ -26,6 +28,7 @@ export interface IssuePollingControllerOptions {
   onError: (error: unknown) => boolean;
   setTimeout: (callback: () => void, delay: number) => number;
   clearTimeout: (timer: number) => void;
+  realtime?: RealtimeUpdates;
 }
 
 export function initIssuePollingController(options: IssuePollingControllerOptions): {
@@ -41,6 +44,7 @@ export function initIssuePollingController(options: IssuePollingControllerOption
   seedDeletedEtag: (etag: string | null) => void;
   clearDeferredChanges: () => void;
   hasDeferredChanges: () => boolean;
+  dispose: () => void;
 } {
   let timer: number | null = null;
   let delay = 1000;
@@ -69,6 +73,10 @@ export function initIssuePollingController(options: IssuePollingControllerOption
   function schedule(nextDelay = delay): void {
     const projectId = options.getProjectId();
     if (projectId === null || !options.isPollingActive(projectId)) {
+      pause();
+      return;
+    }
+    if (!shouldUsePolling(options.realtime)) {
       pause();
       return;
     }
@@ -171,6 +179,20 @@ export function initIssuePollingController(options: IssuePollingControllerOption
     }
   }
 
+  const unbindRealtime = bindRealtimePolling({
+    realtime: options.realtime,
+    isActive: () => {
+      const projectId = options.getProjectId();
+      return projectId !== null && options.isPollingActive(projectId);
+    },
+    pausePolling: pause,
+    resumePolling: () => schedule(0),
+    refresh: () => {
+      const projectId = options.getProjectId();
+      if (projectId !== null) void poll(projectId);
+    },
+  });
+
   return {
     pause,
     stop,
@@ -184,5 +206,6 @@ export function initIssuePollingController(options: IssuePollingControllerOption
     seedDeletedEtag: (etag) => { deletedEtag = etag; },
     clearDeferredChanges: () => { hasDeferredChanges = false; },
     hasDeferredChanges: () => hasDeferredChanges,
+    dispose: unbindRealtime,
   };
 }

@@ -5,14 +5,14 @@ This document is for contributors and AI agents. Follow it unless there is a goo
 ## Hard constraints (and why)
 
 - **PHP 8.4.27 or later within PHP 8, with PHP 8.5.0 through 8.5.11 excluded; no framework or runtime dependencies in the web app.** The tool must install on a plain PHP + MySQL or MariaDB webhost by uploading files. No Composer in production. PHPUnit is a dev-only dependency. The optional Node MCP adapter lives outside the web app.
-- **The backend is a REST API only.** It serves JSON, never HTML.
+- **The backend is a REST API.** It serves JSON, never HTML; the authenticated `/api/v1/events/stream` endpoint is the one Server-Sent Events stream.
 - **Frontend is plain HTML, CSS and TypeScript** (ES modules). No React or other framework. `tsc` is a dev tool; the release ships compiled JavaScript.
 - **Authentication uses opaque tokens.** API and session tokens, invite links, and password-reset links are generated with `random_bytes`; only hashes are stored. Browser sessions use `HttpOnly`, `SameSite=Lax` cookies with a CSRF token required for state-changing requests. One-time invite and password-reset tokens are carried in the URL fragment, then sent in request bodies. Passwords are account-level credentials in `user_accounts`, normalized to NFC and hashed with Argon2id. A single policy covers seed, direct API creation, invite acceptance, and reset. Login upgrades older password hashes.
 - **Coding agents have separate principals and narrow API access.** Agent tokens remain workspace-scoped opaque bearer tokens but are linked to a named agent, its human owner, explicit project grants, and a fixed issue capability allowlist. The permission layer denies all ordinary human actions for an agent token; dedicated agent routes expose only granted project discovery, issue reads, progress comments, and transitions to Doing or Testing. Token expiry and revocation are enforced during authentication. Issue discussion and status history retain the human owner FK and record the agent ID for attribution.
-- **Realtime is adaptive polling** against a small, cheap endpoint (`GET /api/v1/events?since=<id>`). The client uses one transport interface, so WebSockets can be added later as an optional extra.
+- **Realtime SSE is opt-in and has adaptive polling as fallback.** The stream sends cursor-only refresh signals; clients fetch changed data through their normal permission-checked APIs. Successful authenticated workspace mutations and matched GitHub webhooks advance the workspace cursor; presence heartbeats and per-user inbox read-state writes do not. The stream sends heartbeats and closes after 20 seconds so EventSource can reconnect with `Last-Event-ID`. If SSE is disabled, at capacity, or cannot connect, the frontend resumes the existing polling loops and retries SSE after a delay. SSE is disabled by default because each active stream holds one PHP request worker while connected, and checks its cursor once a second. Hosts must explicitly enable it after checking their worker budget, using `TANGENT_SSE_ENABLED=true` or `realtime_stream_enabled` in the private `config.php`. A database-backed global limit (`TANGENT_SSE_MAX_CONNECTIONS` or `realtime_max_connections`, default `1`) prevents an unbounded number of streams; only one stream per workspace user is allowed, and abandoned leases expire after 45 seconds. The message feed's own cursor remains the source for ordered chat delivery.
 - **Project chat presence is a separate heartbeat.** While the project page is visible, the client posts to `POST /api/v1/projects/{id}/presence` every 15 seconds. The server checks normal chat access and returns only whether a different user has checked in within 45 seconds; it never returns names or counts. Presence expires after 45 seconds, and rows older than a day are cleaned on the next heartbeat for that project.
 - **The workspace Lounge is one internal standalone chat per workspace.** It uses the existing channel and message storage, is available to admins and developers, and does not create project inbox events. `@` autocomplete lists active workspace admins and developers; selected names are highlighted in messages but do not send notifications. Guests cannot access it. Project channels remain scoped to their projects; user-created channels and DMs are not part of the product.
-- **Issue lists use conditional polling** while a project issue view is open. `ETag`/`If-None-Match` avoids resending unchanged active and deleted issue collections; the frontend retains unchanged row elements and defers remote changes while issue controls are being edited.
+- **Issue lists use conditional reads** while a project issue view is open. `ETag`/`If-None-Match` avoids resending unchanged active and deleted issue collections; the frontend retains unchanged row elements and defers remote changes while issue controls are being edited. SSE refresh signals replace the recurring request when the stream is healthy.
 - **Open source and self-hostable.** Prefer simple over clever.
 
 ## Structure
@@ -37,7 +37,7 @@ tools/agent-mcp/            optional stdio MCP adapter for agent endpoints
 
 1. `public/index.php` creates a `Request` from the PHP superglobals. This is the only place they are read.
 2. The gateway matches the route, runs middleware (token auth, rate limiting, error formatting) and calls the module's handler.
-3. The handler returns a `Response`.
+3. The handler returns a `Response`, which may be JSON or the event stream.
 
 Each module registers its own routes. Modules do not touch each other's tables; they call each other's public classes.
 
@@ -63,7 +63,7 @@ Each module registers its own routes. Modules do not touch each other's tables; 
 
 - Resource-oriented, versioned under `/api/v1/`.
 - Use sensible action endpoints where something is not a pure resource, for example `PATCH /issues/{id}` for issue field changes, `DELETE /issues/{id}` plus `POST /issues/{id}/restore` for recoverable deletion, and `POST /messages/{id}/issue` to create an issue from a message.
-- The polling endpoint supports `ETag` and `304` so empty polls are almost free.
+- Read endpoints support `ETag` and `304` so unchanged fallback polls are almost free. The opt-in SSE stream is same-origin and session-cookie authenticated; guests and agent principals cannot subscribe.
 - Non-empty API request bodies must use `Content-Type: application/json`. The gateway accepts request bodies up to 1 MiB and returns `413 payload_too_large` above that limit.
 - Browser sessions use the `tangent_workspace` cookie to select the active workspace. Bearer tokens are workspace-scoped; non-default workspaces use the `X-Tangent-Workspace` header.
 - Workspace admins create one-use invites that Tangent emails to the invited address; raw invite tokens are never returned to the admin. Invite acceptance creates or links the global account, workspace membership, guest project access, and session in one transaction. Admin-initiated password recovery emails use the same typed, one-use credential-token table and revoke all sessions and API tokens for the account across workspaces after a successful reset.

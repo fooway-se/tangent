@@ -66,6 +66,8 @@ final class InstallerTest extends ApiTestCase
             $config = require $configPath;
             self::assertSame($workspaceId, $config['workspace_id']);
             self::assertSame('no-reply@install.example.test', $config['mail_from']);
+            self::assertFalse($config['realtime_stream_enabled']);
+            self::assertSame(1, $config['realtime_max_connections']);
 
             $workspace = $database->prepare('SELECT name, slug FROM workspaces WHERE id = :id');
             $workspace->execute(['id' => $workspaceId]);

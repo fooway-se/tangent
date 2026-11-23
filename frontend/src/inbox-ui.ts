@@ -9,6 +9,8 @@ import {
   type InboxTab,
 } from './inbox-events.js';
 import { groupMyWorkTasks } from './my-work.js';
+import { bindRealtimePolling, shouldUsePolling } from './realtime-polling.js';
+import type { RealtimeUpdates } from './realtime-transport.js';
 import type { IssueStatus } from './issue-board.js';
 import {
   diffInboxCollections,
@@ -51,6 +53,7 @@ export function initInboxUi(options: {
   createDiscussionIndicator: (count: number) => HTMLElement | null;
   request?: typeof api;
   fetcher?: typeof fetch;
+  realtime?: RealtimeUpdates;
   doc?: Document;
 }): InboxUiController {
   const doc = options.doc ?? document;
@@ -97,19 +100,28 @@ export function initInboxUi(options: {
   }
 
   function stopPolling(): void {
-    if (inboxPollTimer !== null) window.clearTimeout(inboxPollTimer);
-    inboxPollTimer = null;
-    inboxPollRequestVersion += 1;
-    inboxPollInFlight = false;
+    pausePolling();
     inboxPollDelay = 1000;
     inboxIssuesEtag = null;
     inboxEventsEtag = null;
     inboxPollHasDeferredChanges = false;
   }
 
+  function pausePolling(): void {
+    if (inboxPollTimer !== null) window.clearTimeout(inboxPollTimer);
+    inboxPollTimer = null;
+    inboxPollRequestVersion += 1;
+    inboxPollInFlight = false;
+  }
+
   function schedulePoll(delay = inboxPollDelay): void {
     if (!isPollingActive()) {
       stopPolling();
+      return;
+    }
+    if (!shouldUsePolling(options.realtime)) {
+      if (inboxPollTimer !== null) window.clearTimeout(inboxPollTimer);
+      inboxPollTimer = null;
       return;
     }
     if (inboxPollTimer !== null) window.clearTimeout(inboxPollTimer);
@@ -672,13 +684,23 @@ export function initInboxUi(options: {
   function resumePolling(): void {
     if (!isPollingActive()) return;
     inboxPollDelay = 1000;
-    schedulePoll(0);
+    if (options.realtime?.isConnected()) void pollNow();
+    else schedulePoll(0);
   }
 
   function dispose(): void {
+    unbindRealtime();
     listeners.abort();
     stopPolling();
   }
+
+  const unbindRealtime = bindRealtimePolling({
+    realtime: options.realtime,
+    isActive: isPollingActive,
+    pausePolling,
+    resumePolling: () => schedulePoll(0),
+    refresh: () => { void pollNow(); },
+  });
 
   myWorkInboxTab.addEventListener('click', () => selectMyWorkTab('inbox'), { signal: listeners.signal });
   myWorkTasksTab.addEventListener('click', () => selectMyWorkTab('tasks'), { signal: listeners.signal });

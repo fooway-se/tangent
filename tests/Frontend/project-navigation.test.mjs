@@ -104,7 +104,7 @@ test('project detail wiring aborts obsolete requests and invalidates on navigati
   assert.match(loader, /signal \}/);
   assert.doesNotMatch(app, /projectDetailAbortController/);
   assert.match(navigation, /this\.controller\?\.abort\(\)/);
-  assert.match(app, /function showSignedOut\(\): void \{\s*invalidateProjectNavigation\(true\)/);
-  assert.match(app, /function showSignedIn\(user: User\): void \{\s*invalidateProjectNavigation\(true\)/);
+  assert.match(app, /function showSignedOut\(\): void \{\s*realtimeTransport\.stop\(\);\s*invalidateProjectNavigation\(true\)/);
+  assert.match(app, /function showSignedIn\(user: User\): void \{\s*realtimeTransport\.stop\(\);\s*invalidateProjectNavigation\(true\)/);
   assert.match(app, /if \(view !== 'project'\) invalidateProjectNavigation\(\)/);
 });

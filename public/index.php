@@ -96,5 +96,5 @@ $response = new Response($response->status, $response->body, array_merge([
     'content-security-policy' => "default-src 'none'; frame-ancestors 'none'; base-uri 'none'",
     'x-content-type-options' => 'nosniff',
     'referrer-policy' => 'no-referrer',
-], $response->headers));
+], $response->headers), $response->streamer());
 $response->send();

@@ -22,32 +22,7 @@ final class Runtime
 
     public static function appConfig(): AppConfig
     {
-        $fileConfig = self::fileConfig();
-        $workspaceId = (int) self::environment(
-            'TANGENT_WORKSPACE_ID',
-            $fileConfig['workspace_id'] ?? '1',
-        );
-        $cookieSecure = self::environment(
-            'TANGENT_COOKIE_SECURE',
-            $fileConfig['cookie_secure'] ?? 'true',
-        );
-        $publicAppUrl = self::environment('TANGENT_APP_URL', $fileConfig['app_url'] ?? 'http://localhost:8080');
-        $hibpEnabled = self::environment('TANGENT_HIBP_ENABLED', $fileConfig['hibp_enabled'] ?? 'false');
-
-        return new AppConfig(
-            max(1, $workspaceId),
-            filter_var($cookieSecure, FILTER_VALIDATE_BOOL),
-            43200,
-            rtrim($publicAppUrl, '/'),
-            filter_var($hibpEnabled, FILTER_VALIDATE_BOOL),
-            self::environment('TANGENT_GITHUB_APP_ID', ''),
-            self::environment('TANGENT_GITHUB_APP_SLUG', ''),
-            str_replace('\\n', "\n", self::environment('TANGENT_GITHUB_PRIVATE_KEY', '')),
-            self::environment('TANGENT_GITHUB_WEBHOOK_SECRET', ''),
-            self::environment('TANGENT_MAIL_FROM', $fileConfig['mail_from'] ?? ''),
-            self::environment('TANGENT_GITHUB_OAUTH_CLIENT_ID', $fileConfig['github_oauth_client_id'] ?? ''),
-            self::environment('TANGENT_GITHUB_OAUTH_CLIENT_SECRET', $fileConfig['github_oauth_client_secret'] ?? ''),
-        );
+        return AppConfig::fromEnvironment(self::fileConfig());
     }
 
     public static function configPath(): string

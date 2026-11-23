@@ -58,6 +58,8 @@ Configure these values in the host environment or in `config.php` for production
 | `TANGENT_APP_URL` | `app_url` | Public base URL used to build invite links and emailed password recovery links; set this to the exact HTTPS site address. | `http://localhost:8080` |
 | `TANGENT_MAIL_FROM` | `mail_from` | Sender address used for workspace invitations and password recovery email. The installer saves it in `config.php`; this environment variable overrides that value. | unset |
 | `TANGENT_HIBP_ENABLED` | `hibp_enabled` | Enables the optional Have I Been Pwned Pwned Passwords range lookup. | `false` |
+| `TANGENT_SSE_ENABLED` | `realtime_stream_enabled` | Enables the SSE event stream. Leave disabled on hosts where long-running requests could consume too much of the PHP worker pool. | `false` |
+| `TANGENT_SSE_MAX_CONNECTIONS` | `realtime_max_connections` | Global maximum number of active SSE streams across workspaces. Set this below the worker capacity reserved for ordinary requests; only one active stream per workspace user is allowed. | `1` |
 | `TANGENT_GITHUB_APP_ID` | — | Numeric GitHub App ID for repository selection and pull-request tracking. | unset |
 | `TANGENT_GITHUB_APP_SLUG` | — | GitHub App URL slug. | unset |
 | `TANGENT_GITHUB_PRIVATE_KEY` | — | GitHub App PEM private key; environment values may use `\n` for newlines. | unset |
@@ -66,6 +68,15 @@ Configure these values in the host environment or in `config.php` for production
 | `TANGENT_GITHUB_WEBHOOK_SECRET` | — | Secret used to verify GitHub webhook signatures. | unset |
 
 Tangent sends plain-text invitation and recovery email through PHP's configured mail transport. Invites fail closed when delivery is unavailable, and no usable invite link is issued. Existing-account invite acceptance still requires the account password. The optional breach lookup sends only the first five hexadecimal characters of the password's SHA-1 hash to the service, verifies the full hash against the returned suffix list, and fails open when the network check is unavailable. Leave it disabled on hosts without outbound HTTPS access.
+
+The installer writes `config.php` in the private application directory, alongside `src/` and outside `public/`. On shared hosts without environment-variable controls, edit these entries inside its returned configuration array:
+
+```php
+'realtime_stream_enabled' => true,
+'realtime_max_connections' => 1,
+```
+
+Keep SSE disabled if the host has too few PHP workers for long-running requests. Environment variables, when available, override the file values. Changes normally apply on the next request; a host's OPcache settings may delay them.
 
 Configure the GitHub App's Setup URL as `{TANGENT_APP_URL}/api/v1/github/setup` and its OAuth callback URL as `{TANGENT_APP_URL}/api/v1/github/setup/authorize`. Use the App's OAuth client ID and secret for the OAuth settings above; the user who starts setup must remain signed into the same Tangent browser session and must be able to manage the selected GitHub installation.
 

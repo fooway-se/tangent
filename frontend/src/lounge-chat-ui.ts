@@ -1,4 +1,6 @@
 import { ApiFailure, api, apiBaseUrl } from './api.js';
+import { bindRealtimePolling, shouldUsePolling } from './realtime-polling.js';
+import type { RealtimeUpdates } from './realtime-transport.js';
 import {
   filterMentionMembers,
   findMentionQuery,
@@ -44,6 +46,7 @@ export function initLoungeChatUi(options: {
   submitFormOnEnter: (event: KeyboardEvent, form: HTMLFormElement) => void;
   request?: typeof api;
   fetcher?: typeof fetch;
+  realtime?: RealtimeUpdates;
   doc?: Document;
 }): LoungeChatUiController {
   const doc = options.doc ?? document;
@@ -118,6 +121,11 @@ export function initLoungeChatUi(options: {
 
   function schedulePoll(delay = pollDelay): void {
     if (!active) return;
+    if (!shouldUsePolling(options.realtime)) {
+      if (pollTimer !== null) window.clearTimeout(pollTimer);
+      pollTimer = null;
+      return;
+    }
     if (pollTimer !== null) window.clearTimeout(pollTimer);
     pollTimer = window.setTimeout(() => {
       pollTimer = null;
@@ -488,7 +496,8 @@ export function initLoungeChatUi(options: {
   function resume(): void {
     if (!active) return;
     pollDelay = 1000;
-    schedulePoll(0);
+    if (options.realtime?.isConnected()) void pollNow();
+    else schedulePoll(0);
   }
 
   loungeMessageList.addEventListener('scroll', () => {
@@ -510,6 +519,17 @@ export function initLoungeChatUi(options: {
     if (!handleMentionKeydown(event)) options.submitFormOnEnter(event, loungeForm);
   }, { signal: listeners.signal });
 
+  const unbindRealtime = bindRealtimePolling({
+    realtime: options.realtime,
+    isActive: () => active && options.isVisible(),
+    pausePolling: () => {
+      if (pollTimer !== null) window.clearTimeout(pollTimer);
+      pollTimer = null;
+    },
+    resumePolling: () => schedulePoll(0),
+    refresh: () => { void pollNow(); },
+  });
+
   return {
     isActive,
     load: () => { void loadNow(); },
@@ -523,6 +543,7 @@ export function initLoungeChatUi(options: {
     setFollowLatest: (value) => { followLatest = value; },
     isComposer: (target) => target === loungeInput,
     dispose: () => {
+      unbindRealtime();
       listeners.abort();
       stop();
     },

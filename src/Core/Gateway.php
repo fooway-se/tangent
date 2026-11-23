@@ -14,6 +14,7 @@ final class Gateway
         private readonly Router $router,
         private readonly Authenticator $authenticator,
         private readonly RequestErrorReporter $errorReporter = new RequestErrorReporter(),
+        private readonly ?WorkspaceRealtimeFeed $realtimeFeed = null,
     ) {
     }
 
@@ -61,6 +62,10 @@ final class Gateway
             throw new UnexpectedValueException('Route handlers must return a response.');
         }
 
+        if ($user !== null && self::shouldSignalRealtime($request) && $response->status >= 200 && $response->status < 300) {
+            $this->realtimeFeed?->notifyWorkspace($user->workspaceId);
+        }
+
         return $response;
     }
 
@@ -69,6 +74,14 @@ final class Gateway
         $token = $request->header('X-CSRF-Token');
         return $token !== null && $expectedHash !== null
             && hash_equals($expectedHash, hash('sha256', $token));
+    }
+
+    private static function shouldSignalRealtime(Request $request): bool
+    {
+        if ($request->isSafeMethod()) return false;
+        if (preg_match('#/presence/?$#', $request->path) === 1) return false;
+        if (str_starts_with($request->path, '/api/v1/inbox/events')) return false;
+        return true;
     }
 
     private function error(int $status, string $code, string $message): Response

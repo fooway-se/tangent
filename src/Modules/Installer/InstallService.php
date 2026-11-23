@@ -53,6 +53,8 @@ final class InstallService
                 'app_url' => $input['app_url'],
                 'mail_from' => $input['mail_from'],
                 'hibp_enabled' => false,
+                'realtime_stream_enabled' => false,
+                'realtime_max_connections' => 1,
             ]);
             if (!InstallerKey::consume($this->keyPath)) {
                 error_log('Tangent installed successfully, but .install-key could not be removed.');

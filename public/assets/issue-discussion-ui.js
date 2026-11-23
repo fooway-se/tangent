@@ -1,4 +1,5 @@
 import { ApiFailure, api } from './api.js';
+import { bindRealtimePolling, shouldUsePolling } from './realtime-polling.js';
 import { shouldSubmitOnEnter } from './shortcuts.js';
 export function initIssueDiscussionUi(options) {
     const doc = options.doc ?? document;
@@ -46,16 +47,18 @@ export function initIssueDiscussionUi(options) {
         clearIssueDiscussionReply();
         renderIssueDiscussion();
     }
-    function scheduleIssueDiscussionPoll(issueId) {
+    function scheduleIssueDiscussionPoll(issueId, delay = 5_000) {
         if (issueDiscussionPollTimer !== null)
             window.clearTimeout(issueDiscussionPollTimer);
         issueDiscussionPollTimer = null;
         if (options.getIssue()?.id !== issueId || !options.isDetailVisible())
             return;
+        if (!shouldUsePolling(options.realtime))
+            return;
         issueDiscussionPollTimer = window.setTimeout(() => {
             issueDiscussionPollTimer = null;
             void loadIssueDiscussion(issueId, false);
-        }, 5_000);
+        }, delay);
     }
     async function loadIssueDiscussion(issueId, showLoading = true) {
         const requestVersion = ++issueDiscussionRequestVersion;
@@ -457,6 +460,21 @@ export function initIssueDiscussionUi(options) {
     }, { signal: listeners.signal });
     issueDiscussionForm.addEventListener('submit', (event) => void postIssueDiscussionMessage(event), { signal: listeners.signal });
     issueDiscussionReplyCancel.addEventListener('click', clearIssueDiscussionReply, { signal: listeners.signal });
+    const unbindRealtime = bindRealtimePolling({
+        realtime: options.realtime,
+        isActive: () => options.getIssue() !== null && options.isDetailVisible(),
+        pausePolling: stopIssueDiscussionPolling,
+        resumePolling: () => {
+            const issueId = options.getIssue()?.id;
+            if (issueId !== undefined)
+                scheduleIssueDiscussionPoll(issueId, 0);
+        },
+        refresh: () => {
+            const issueId = options.getIssue()?.id;
+            if (issueId !== undefined)
+                void loadIssueDiscussion(issueId, false);
+        },
+    });
     return {
         stopPolling: stopIssueDiscussionPolling,
         clear: clearIssueDiscussion,
@@ -490,6 +508,7 @@ export function initIssueDiscussionUi(options) {
         replyToSelected: replyToSelectedIssueDiscussionMessage,
         clearReply: clearIssueDiscussionReply,
         dispose: () => {
+            unbindRealtime();
             listeners.abort();
             stopIssueDiscussionPolling();
         },

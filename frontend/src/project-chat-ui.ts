@@ -1,5 +1,7 @@
 import { ApiFailure, api, apiBaseUrl } from './api.js';
 import { ChatEventFeed, pollProjectChatEvents } from './chat-event-feed.js';
+import { bindRealtimePolling, shouldUsePolling } from './realtime-polling.js';
+import type { RealtimeUpdates } from './realtime-transport.js';
 import { formatChatTimestamp } from './chat-time.js';
 import {
   filterMentionMembers,
@@ -48,6 +50,7 @@ export function initProjectChatUi(options: {
   request?: typeof api;
   fetcher?: typeof fetch;
   pollEvents?: typeof pollProjectChatEvents;
+  realtime?: RealtimeUpdates;
   doc?: Document;
 }): ProjectChatUiController {
   const doc = options.doc ?? document;
@@ -118,6 +121,11 @@ export function initProjectChatUi(options: {
 
   function schedulePoll(delay = pollDelay): void {
     if (activeId === null) return;
+    if (!shouldUsePolling(options.realtime)) {
+      if (pollTimer !== null) window.clearTimeout(pollTimer);
+      pollTimer = null;
+      return;
+    }
     if (pollTimer !== null) window.clearTimeout(pollTimer);
     pollTimer = window.setTimeout(() => {
       pollTimer = null;
@@ -753,7 +761,8 @@ export function initProjectChatUi(options: {
     const projectId = activeId;
     if (projectId === null) return;
     pollDelay = 1000;
-    schedulePoll(0);
+    if (options.realtime?.isConnected()) void pollChat(projectId);
+    else schedulePoll(0);
     void pollPresence(projectId);
   }
 
@@ -761,6 +770,20 @@ export function initProjectChatUi(options: {
     if (input !== null) input.disabled = readOnly;
     if (sendButton !== null) sendButton.disabled = readOnly;
   }
+
+  const unbindRealtime = bindRealtimePolling({
+    realtime: options.realtime,
+    isActive: () => activeId !== null,
+    pausePolling: () => {
+      if (pollTimer !== null) window.clearTimeout(pollTimer);
+      pollTimer = null;
+    },
+    resumePolling: () => schedulePoll(0),
+    refresh: () => {
+      const projectId = activeId;
+      if (projectId !== null) void pollChat(projectId);
+    },
+  });
 
   return {
     create,
@@ -778,6 +801,7 @@ export function initProjectChatUi(options: {
     appendMessage,
     setReadOnly,
     dispose: () => {
+      unbindRealtime();
       stop();
     },
   };

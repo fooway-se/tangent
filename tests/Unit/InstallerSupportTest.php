@@ -130,6 +130,8 @@ final class InstallerSupportTest extends TestCase
             'app_url' => 'https://tangent.example.test',
             'mail_from' => 'no-reply@tangent.example.test',
             'hibp_enabled' => false,
+            'realtime_stream_enabled' => false,
+            'realtime_max_connections' => 1,
         ], require $configPath);
     }
 

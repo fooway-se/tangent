@@ -12,6 +12,7 @@ use Tangent\Core\AppConfig;
 use Tangent\Core\AuthenticatedUser;
 use Tangent\Core\Permissions;
 use Tangent\Core\Request;
+use Tangent\Core\WorkspaceRealtimeFeed;
 use Tangent\Modules\Inbox\InboxEvents;
 use Tangent\Modules\Issues\IssueRepository;
 use Tangent\Modules\Projects\ProjectLifecycle;
@@ -29,6 +30,7 @@ final class GitHubService
         private readonly InboxEvents $inboxEvents,
         private readonly PDO $pdo,
         private readonly AppConfig $config,
+        private readonly ?WorkspaceRealtimeFeed $realtimeFeed = null,
     ) {
     }
 
@@ -266,8 +268,10 @@ final class GitHubService
                 if ($ownsTransaction) $this->pdo->commit();
                 return ['accepted' => true, 'duplicate' => true];
             }
-            if ($eventType === 'pull_request') $this->processPullRequestWebhook($request->body);
-            if ($eventType === 'push') $this->processPushWebhook($request->body);
+            $changedWorkspaceId = null;
+            if ($eventType === 'pull_request') $changedWorkspaceId = $this->processPullRequestWebhook($request->body);
+            if ($eventType === 'push') $changedWorkspaceId = $this->processPushWebhook($request->body);
+            if ($changedWorkspaceId !== null) $this->realtimeFeed?->notifyWorkspace($changedWorkspaceId);
             if ($ownsTransaction) $this->pdo->commit();
         } catch (\Throwable $exception) {
             if ($ownsTransaction && $this->pdo->inTransaction()) $this->pdo->rollBack();
@@ -276,17 +280,17 @@ final class GitHubService
         return ['accepted' => true, 'duplicate' => false];
     }
 
-    private function processPushWebhook(array $payload): void
+    private function processPushWebhook(array $payload): ?int
     {
         $issueId = IssueBranchName::issueIdFromRef($payload['ref'] ?? null);
         $repository = $payload['repository'] ?? null;
         $installationId = is_array($payload['installation'] ?? null) ? (int) ($payload['installation']['id'] ?? 0) : 0;
         $repositoryId = is_array($repository) ? (int) ($repository['id'] ?? 0) : 0;
         $repositoryFullName = is_array($repository) ? ($repository['full_name'] ?? null) : null;
-        if ($issueId === null || $installationId < 1 || $repositoryId < 1 || !is_string($repositoryFullName)) return;
+        if ($issueId === null || $installationId < 1 || $repositoryId < 1 || !is_string($repositoryFullName)) return null;
 
         $target = $this->commits->findTargetForPush($repositoryId, $installationId, $issueId);
-        if ($target === null || strcasecmp($repositoryFullName, (string) $target['github_repository_full_name']) !== 0) return;
+        if ($target === null || strcasecmp($repositoryFullName, (string) $target['github_repository_full_name']) !== 0) return null;
 
         $commitRows = is_array($payload['commits'] ?? null) ? $payload['commits'] : [];
         $recordedCount = 0;
@@ -316,10 +320,12 @@ final class GitHubService
                 $recordedCount,
                 $branch,
             );
+            return (int) $target['workspace_id'];
         }
+        return null;
     }
 
-    private function processPullRequestWebhook(array $payload): void
+    private function processPullRequestWebhook(array $payload): ?int
     {
         $action = $payload['action'] ?? null;
         $repository = $payload['repository'] ?? null;
@@ -328,7 +334,7 @@ final class GitHubService
         $installationId = is_array($payload['installation'] ?? null) ? (int) ($payload['installation']['id'] ?? 0) : 0;
         $number = is_array($remotePullRequest) ? (int) ($remotePullRequest['number'] ?? $payload['number'] ?? 0) : 0;
         if (!is_string($action) || $repositoryId < 1 || $installationId < 1 || $number < 1
-            || !is_array($repository) || !is_array($remotePullRequest)) return;
+            || !is_array($repository) || !is_array($remotePullRequest)) return null;
 
         $linked = $this->pullRequests->findForWebhook($repositoryId, $number, $installationId);
         $pullRequest = null;
@@ -360,17 +366,17 @@ final class GitHubService
             }
         }
         if ($linked === null || $linked['connected_repository_id'] !== $repositoryId
-            || $linked['connected_installation_id'] !== $linked['github_installation_id']) return;
-        if ($installationId !== $linked['github_installation_id']) return;
-        if (strcasecmp((string) ($repository['full_name'] ?? ''), (string) $linked['repository_full_name']) !== 0) return;
+            || $linked['connected_installation_id'] !== $linked['github_installation_id']) return null;
+        if ($installationId !== $linked['github_installation_id']) return null;
+        if (strcasecmp((string) ($repository['full_name'] ?? ''), (string) $linked['repository_full_name']) !== 0) return null;
 
         $pullRequest ??= self::normalizePullRequest($remotePullRequest, $number, (string) $linked['repository_full_name']);
-        if (strtotime($pullRequest['updated_at']) < strtotime((string) $linked['github_updated_at'])) return;
+        if (strtotime($pullRequest['updated_at']) < strtotime((string) $linked['github_updated_at'])) return null;
         $oldState = $linked['state'];
         $oldDraft = $linked['is_draft'];
-        if (!$this->pullRequests->updateFromWebhook((int) $linked['id'], $pullRequest)) return;
+        if (!$this->pullRequests->updateFromWebhook((int) $linked['id'], $pullRequest)) return null;
         if ($oldState === $pullRequest['state'] && $oldDraft === $pullRequest['is_draft']
-            && !in_array($action, ['opened', 'reopened', 'closed', 'ready_for_review', 'converted_to_draft', 'review_requested'], true)) return;
+            && !in_array($action, ['opened', 'reopened', 'closed', 'ready_for_review', 'converted_to_draft', 'review_requested'], true)) return null;
 
         $actionText = match ($action) {
             'opened' => 'opened',
@@ -390,6 +396,7 @@ final class GitHubService
             $title,
             $detail,
         );
+        return (int) $linked['workspace_id'];
     }
 
     private function issueAndProject(AuthenticatedUser $user, int $issueId, string $action): array

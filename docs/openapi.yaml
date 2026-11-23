@@ -778,6 +778,26 @@ paths:
             ETag: { schema: { type: string } }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '422': { $ref: '#/components/responses/ValidationFailed' }
+  /events/stream:
+    get:
+      summary: Subscribe to workspace refresh signals
+      description: Opens a same-origin Server-Sent Events stream for internal workspace users when SSE is enabled by the host and a global stream slot is available. SSE is disabled by default. The stream contains no application records; clients refetch changed resources through their normal authorized endpoints. EventSource reconnects with Last-Event-ID. The server sends heartbeat events and closes each connection after about 20 seconds.
+      parameters:
+        - name: Last-Event-ID
+          in: header
+          required: false
+          description: Cursor from the latest ready or refresh event, supplied automatically by EventSource when reconnecting.
+          schema: { type: integer, minimum: 0 }
+      responses:
+        '200':
+          description: Server-Sent Events stream. Event types are ready, refresh, and heartbeat.
+          content:
+            text/event-stream:
+              schema: { type: string }
+        '204':
+          description: SSE is disabled or the global stream connection limit has been reached; clients should continue polling and retry later.
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /projects:
     get:
       summary: List projects visible to the authenticated user
