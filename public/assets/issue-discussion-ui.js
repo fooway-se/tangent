@@ -219,6 +219,14 @@ export function initIssueDiscussionUi(options) {
         }
         const heading = doc.createElement('header');
         heading.className = 'issue-discussion-message-heading';
+        if (message.author_agent_id !== undefined && message.author_agent_id !== null) {
+            const agentMarker = doc.createElement('span');
+            agentMarker.className = 'issue-discussion-agent-marker';
+            agentMarker.setAttribute('role', 'img');
+            agentMarker.setAttribute('aria-label', 'Coding agent');
+            agentMarker.title = 'Coding agent';
+            heading.append(agentMarker);
+        }
         const author = doc.createElement('span');
         author.className = 'issue-discussion-author';
         author.textContent = message.author_name;

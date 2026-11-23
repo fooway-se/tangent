@@ -1110,6 +1110,9 @@ dialog::backdrop { background: var(--backdrop); }
 .issue-discussion-message-heading { display: flex; align-items: baseline; gap: 6px; }
 .issue-discussion-message time { color: var(--screen-muted); font-size: 11px; }
 .issue-discussion-author { color: var(--screen-ink); font: 700 13px var(--font-display); }
+.issue-discussion-agent-marker { position: relative; display: inline-block; flex: 0 0 12px; width: 12px; height: 9px; transform: translateY(1px); border: 1px solid var(--accent); color: var(--accent); }
+.issue-discussion-agent-marker::before { position: absolute; top: 2px; left: 2px; width: 2px; height: 2px; background: currentColor; box-shadow: 4px 0 currentColor; content: ""; }
+.issue-discussion-agent-marker::after { position: absolute; top: -4px; left: 5px; width: 1px; height: 3px; background: currentColor; box-shadow: 0 -1px 0 currentColor; content: ""; }
 .issue-discussion-body { margin: 4px 0 0; color: var(--screen-ink); font-size: 13px; line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; }
 .issue-discussion-actions { display: inline-flex; align-items: center; gap: 2px; margin-left: auto; opacity: 0; }
 .issue-discussion-message:hover .issue-discussion-actions, .issue-discussion-message:focus-within .issue-discussion-actions, .issue-discussion-message.is-keyboard-selected .issue-discussion-actions { opacity: 1; }
