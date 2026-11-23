@@ -334,7 +334,7 @@ select { padding-right: 28px; background: var(--screen-inset) url("data:image/sv
 .project-status.is-paused { color: var(--screen-muted); }
 .project-status.is-paused::before, .project-status.is-read-only::before { background: var(--screen-muted); }
 .project-status.is-read-only { color: var(--screen-muted); }
-.project-read-only-notice { margin: 0 0 12px; border-left: 3px solid var(--screen-muted); padding: 7px 10px; color: var(--screen-muted); background: var(--screen-inset); font-size: 12px; line-height: 1.5; }
+.project-read-only-notice { margin: 0 0 12px; color: var(--screen-muted); font-size: 12px; line-height: 1.5; }
 .member-add-status { margin: 0; color: var(--screen-muted); font-size: 12px; line-height: 1.5; }
 .detail-description { margin-bottom: 0; color: var(--screen-muted); white-space: pre-wrap; }
 .member-list { display: grid; gap: 6px; max-width: 680px; margin: 4px 0 20px; padding: 0; list-style: none; color: var(--screen-ink); }
@@ -867,7 +867,7 @@ dialog::backdrop { background: var(--backdrop); }
 .guest-overline { color: var(--screen-muted); font: 700 11px var(--font-display); letter-spacing: 2px; text-transform: uppercase; }
 .guest-project-title { margin: 0; color: var(--screen-ink); font: 800 clamp(28px, 3.6vw, 42px)/1.1 var(--font-display); overflow-wrap: anywhere; }
 .guest-project-description { max-width: 880px; margin: 4px 0 0; color: var(--screen-muted); font-size: 14px; line-height: 1.55; }
-.guest-project-read-only { margin: 0 0 18px; border-left: 3px solid var(--screen-muted); padding: 8px 11px; color: var(--screen-muted); background: var(--screen-panel); font-size: 12px; line-height: 1.5; }
+.guest-project-read-only { margin: 0 0 18px; color: var(--screen-muted); font-size: 12px; line-height: 1.5; }
 .guest-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
 .guest-stat { display: grid; min-width: 0; min-height: 104px; align-content: start; gap: 7px; border: 1px solid var(--screen-border); border-radius: var(--radius-panel); padding: 13px 15px; background: var(--screen-panel); box-shadow: inset 0 1px 0 var(--screen-highlight), inset 0 -3px 8px var(--inset-wash); }
 .guest-stat-label { color: var(--screen-muted); font: 700 11px var(--font-display); letter-spacing: 1.6px; text-transform: uppercase; }
