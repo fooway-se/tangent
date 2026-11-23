@@ -4,7 +4,6 @@ import { initGuestUi } from './guest-ui.js';
 import { initInboxUi } from './inbox-ui.js';
 import { createLogoutController } from './logout.js';
 import { ProjectNavigationOwner, runOwnedRequest } from './project-navigation.js';
-import { githubRepositorySelectionValue, parseGitHubRepositorySelection } from './github-repository-selection.js';
 import { switchWorkspaceMembership } from './workspace-switch.js';
 import { initAuthUi } from './auth-ui.js';
 import { initClientSummaryUi } from './client-summary-ui.js';
@@ -28,12 +27,13 @@ import { initIssueDeleteUi } from './issue-delete-ui.js';
 import { initProjectMembersUi } from './project-members-ui.js';
 import { initProjectEditUi } from './project-edit-ui.js';
 import { initProjectListUi } from './project-list-ui.js';
+import { initGithubProjectUi } from './github-project-ui.js';
 import { parseQuickIssueInput } from './quick-issue.js';
 import { milestoneStatus } from './roadmap.js';
 import { filterIssues, filterIssuesByMilestoneArchive, groupIssues, groupIssuesByMilestone, discussionIndicatorLabel, projectProgress, sortIssues, } from './issue-board.js';
 import { diffConditionalIssueCollections, loadIssueCollections, nextIssuePollDelay, refreshDeletedIssuesOnOpen, shouldDeferIssueUpdates, } from './issue-polling.js';
 import { dom } from './dom.js';
-const { project: { projectHeading, projectEditDialog, projectReadOnlyNotice, editProjectButton, projectGithubRepository, projectEditGithubRepository, githubProjectSelectionStatus, githubProjectEditStatus, connectGithubCreateButton, connectGithubEditButton, projectsNavButton, projectsView, projectView, projectForm, projectList, projectFormPanel, projectDescription, projectState, projectChatColumn, projectSidebarList, projectMain, projectTabs, projectKeyboardHints, }, auth: { loginPanel, loginShell, accountBar, currentUserLabel, loginStatusMessage, logoutButton, }, workspace: { workspacePanel, workspaceNav, adminNavButton, adminView, adminHeading, membersView, adminGoPrefixOption, membersTabButton, }, shell: { createWorkspaceForm, breadcrumbProjectsButton, breadcrumbDivider, breadcrumbCurrent, notesTabButton, emptyIssues, statusMessage, }, roadmap: { roadmapNavButton, roadmapView, roadmapHeading, roadmapSummary, roadmapMilestoneList, roadmapEmptyState, roadmapGoPrefixOption, }, inbox: { inboxNavButton, inboxView, inboxHeading, }, lounge: { loungeNavButton, loungeView, loungeHeading, loungeMessageList, }, shortcuts: { toggleProjectFormButton, keyboardHints, goPrefixHint, goPrefixWorkspaceOption, goPrefixProjectOptions, }, chat: { chatView, }, issues: { issuesView, issueDetailView, issueDetailDisplay, issueDetailTitle, issueDetailPriority, issueDetailDueDate, issueDetailDescription, issueDetailBrief, issueDetailContextSection, issueDetailContext, issueDetailExpectedOutcomeSection, issueDetailExpectedOutcome, issueDetailAcceptanceCriteriaSection, issueDetailAcceptanceCriteria, issueDetailStatus, issueDetailStatusLabel, issueSourceLink, issueDetailEditForm, issueDetailTitleInput, issueDetailDescriptionInput, issueDetailPriorityInput, issueDetailDueDateInput, issueDetailEditButton, issueDetailDeleteButton, issueDetailSaveButton, issuesTabButton, issueBackButton, issueDetailCancelButton, issueForm, issueQuickAddTitle, issueQuickAddPriority, issueQuickAddDueDate, issueQuickAddAssignee, issueQuickAddMilestone, issueQuickAddOngoing, issueQuickAddShared, issueQuickAddApproval, issueQuickAddCancelButton, issueDetailType, issueDetailAssignee, issueDetailMilestone, issueDetailOngoingRow, issueDetailSharing, issueDetailApproval, issueDetailTypeInput, issueDetailAssigneeInput, issueDetailMilestoneInput, issueDetailOngoingInput, issueDetailSharedInput, issueDetailApprovalInput, issueDescriptionDetails, issueProgress, issueProgressLabel, issueFilter, issueGrouping, issueOrder, issueScope, issueCountSummary, issueBulkAssignToggle, issueBulkAssignToolbar, issueList, deletedIssuesDetails, deletedIssueCount, deletedIssueList, }, guest: { guestLogoutButton, }, } = dom;
+const { project: { projectHeading, projectEditDialog, projectReadOnlyNotice, editProjectButton, projectsNavButton, projectsView, projectView, projectForm, projectList, projectFormPanel, projectDescription, projectState, projectChatColumn, projectSidebarList, projectMain, projectTabs, projectKeyboardHints, }, auth: { loginPanel, loginShell, accountBar, currentUserLabel, loginStatusMessage, logoutButton, }, workspace: { workspacePanel, workspaceNav, adminNavButton, adminView, adminHeading, membersView, adminGoPrefixOption, membersTabButton, }, shell: { createWorkspaceForm, breadcrumbProjectsButton, breadcrumbDivider, breadcrumbCurrent, notesTabButton, emptyIssues, statusMessage, }, roadmap: { roadmapNavButton, roadmapView, roadmapHeading, roadmapSummary, roadmapMilestoneList, roadmapEmptyState, roadmapGoPrefixOption, }, inbox: { inboxNavButton, inboxView, inboxHeading, }, lounge: { loungeNavButton, loungeView, loungeHeading, loungeMessageList, }, shortcuts: { toggleProjectFormButton, keyboardHints, goPrefixHint, goPrefixWorkspaceOption, goPrefixProjectOptions, }, chat: { chatView, }, issues: { issuesView, issueDetailView, issueDetailDisplay, issueDetailTitle, issueDetailPriority, issueDetailDueDate, issueDetailDescription, issueDetailBrief, issueDetailContextSection, issueDetailContext, issueDetailExpectedOutcomeSection, issueDetailExpectedOutcome, issueDetailAcceptanceCriteriaSection, issueDetailAcceptanceCriteria, issueDetailStatus, issueDetailStatusLabel, issueSourceLink, issueDetailEditForm, issueDetailTitleInput, issueDetailDescriptionInput, issueDetailPriorityInput, issueDetailDueDateInput, issueDetailEditButton, issueDetailDeleteButton, issueDetailSaveButton, issuesTabButton, issueBackButton, issueDetailCancelButton, issueForm, issueQuickAddTitle, issueQuickAddPriority, issueQuickAddDueDate, issueQuickAddAssignee, issueQuickAddMilestone, issueQuickAddOngoing, issueQuickAddShared, issueQuickAddApproval, issueQuickAddCancelButton, issueDetailType, issueDetailAssignee, issueDetailMilestone, issueDetailOngoingRow, issueDetailSharing, issueDetailApproval, issueDetailTypeInput, issueDetailAssigneeInput, issueDetailMilestoneInput, issueDetailOngoingInput, issueDetailSharedInput, issueDetailApprovalInput, issueDescriptionDetails, issueProgress, issueProgressLabel, issueFilter, issueGrouping, issueOrder, issueScope, issueCountSummary, issueBulkAssignToggle, issueBulkAssignToolbar, issueList, deletedIssuesDetails, deletedIssueCount, deletedIssueList, }, guest: { guestLogoutButton, }, } = dom;
 const KEYBOARD_HINTS_STORAGE_KEY = 'tangent.keyboard-hints-visible';
 function loadKeyboardHintsPreference() {
     try {
@@ -153,6 +153,12 @@ const projectListUi = initProjectListUi({
     api,
     report,
 });
+const githubProjectUi = initGithubProjectUi({
+    getRole: () => activeUser?.role,
+    getProject: () => activeProject,
+    api,
+    report,
+});
 const projectMembersUi = initProjectMembersUi({
     getProjectId: () => activeProject?.id ?? null,
     getMembers: () => activeProjectMembers,
@@ -167,7 +173,7 @@ const projectEditUi = initProjectEditUi({
     getRole: () => activeUser?.role,
     getProject: () => activeProject,
     isProjectViewVisible: () => !projectView.hidden,
-    populateRepositorySelect: populateGithubRepositorySelect,
+    populateRepositorySelect: githubProjectUi.populateRepositorySelect,
     api,
     onUpdated: applyEditedProject,
     refreshProjects: () => projectListUi.load(),
@@ -204,7 +210,6 @@ const milestoneUi = initMilestoneUi({
     shouldRestoreFocus: () => !projectView.hidden && activeProject !== null
         && !commandPaletteUi.isPaletteOpen() && !commandPaletteUi.isShortcutHelpOpen() && !workspacePickerUi.isOpen(),
 });
-let githubRepositories = [];
 let loungeActive = false;
 let issuePollTimer = null;
 let issuePollDelay = 1000;
@@ -543,13 +548,7 @@ function showSignedOut() {
     if (clientSummaryUi.dialog.open)
         clientSummaryUi.close();
     activeUser = null;
-    githubRepositories = [];
-    projectGithubRepository.replaceChildren(new Option('No repository connected', ''));
-    projectEditGithubRepository.replaceChildren(new Option('No repository connected', ''));
-    githubProjectSelectionStatus.textContent = '';
-    githubProjectEditStatus.textContent = '';
-    connectGithubCreateButton.hidden = true;
-    connectGithubEditButton.hidden = true;
+    githubProjectUi.reset();
     editProjectButton.hidden = true;
     if (projectEditDialog.open)
         projectEditDialog.close();
@@ -602,7 +601,7 @@ function showSignedIn(user) {
     showWorkspaceView('projects');
     void loungePresenceUi.pollWorkspacePresence();
     if (user.role === 'admin')
-        void loadGithubRepositories();
+        void githubProjectUi.load();
     report('');
 }
 async function loadWorkspaces() {
@@ -1793,77 +1792,6 @@ function issueQuickAddHasDraft() {
         || issueQuickAddShared.checked
         || issueQuickAddApproval.checked;
 }
-function populateGithubRepositorySelect(select, selected = null, unavailableRepository = null) {
-    const selectedRepositoryId = selected === null
-        ? null
-        : 'id' in selected ? selected.id : selected.repository_id;
-    const options = [new Option('No repository connected', '')];
-    for (const repository of githubRepositories) {
-        options.push(new Option(repository.full_name, githubRepositorySelectionValue(repository)));
-    }
-    if (selected !== null && !githubRepositories.some((repository) => repository.id === selectedRepositoryId && repository.installation_id === selected.installation_id)) {
-        if (unavailableRepository?.id === selectedRepositoryId
-            && unavailableRepository.installation_id === selected.installation_id) {
-            options.push(new Option(`${unavailableRepository.full_name} (access unavailable)`, githubRepositorySelectionValue(unavailableRepository)));
-        }
-    }
-    select.replaceChildren(...options);
-    select.value = selected === null ? '' : githubRepositorySelectionValue({
-        installation_id: selected.installation_id,
-        id: selectedRepositoryId ?? 0,
-        owner: selected.owner,
-        name: selected.name,
-    });
-}
-async function loadGithubRepositories() {
-    if (activeUser?.role !== 'admin')
-        return;
-    try {
-        const result = await api('/github/repositories');
-        githubRepositories = result.repositories;
-        const createSelected = parseGitHubRepositorySelection(projectGithubRepository.value);
-        const editSelected = activeProject?.github_repository
-            ?? parseGitHubRepositorySelection(projectEditGithubRepository.value);
-        populateGithubRepositorySelect(projectGithubRepository, createSelected);
-        populateGithubRepositorySelect(projectEditGithubRepository, editSelected, activeProject?.github_repository ?? null);
-        const status = !result.configured
-            ? 'GitHub App settings are not configured for this Tangent installation.'
-            : !result.can_connect && !result.connected
-                ? 'Configure GitHub user authorization before connecting an installation.'
-                : !result.connected
-                    ? 'Connect a GitHub App installation to choose a repository.'
-                    : result.repositories.length === 0
-                        ? 'No repositories are available. Check which repositories the GitHub App can access.'
-                        : 'Choose a repository available to this workspace.';
-        githubProjectSelectionStatus.textContent = status;
-        githubProjectEditStatus.textContent = status;
-        connectGithubCreateButton.hidden = !result.can_connect;
-        connectGithubEditButton.hidden = !result.can_connect;
-    }
-    catch (error) {
-        const message = error instanceof Error ? error.message : 'Could not load GitHub repositories.';
-        githubProjectSelectionStatus.textContent = message;
-        githubProjectEditStatus.textContent = message;
-        connectGithubCreateButton.hidden = false;
-        connectGithubEditButton.hidden = false;
-    }
-}
-async function connectGithub() {
-    const githubWindow = window.open('about:blank', '_blank');
-    if (githubWindow === null) {
-        report('Allow pop-up windows to connect a GitHub installation.', true);
-        return;
-    }
-    githubWindow.opener = null;
-    try {
-        const result = await api('/github/install', { method: 'POST', body: '{}' });
-        githubWindow.location.assign(result.url);
-    }
-    catch (error) {
-        githubWindow.close();
-        report(error instanceof Error ? error.message : 'Could not start GitHub connection.', true);
-    }
-}
 function projectStatusIsReadOnly(status) {
     return status === 'completed' || status === 'archived';
 }
@@ -2294,8 +2222,6 @@ issueBulkAssignCancel.addEventListener('click', () => {
     renderProjectIssueBoard();
     issueBulkAssignToggle.focus();
 });
-connectGithubCreateButton.addEventListener('click', () => void connectGithub());
-connectGithubEditButton.addEventListener('click', () => void connectGithub());
 issueForm.addEventListener('submit', async (event) => {
     event.preventDefault();
     if (activeProject === null)
@@ -3759,8 +3685,8 @@ createWorkspaceForm.addEventListener('submit', async (event) => {
 });
 guestLogoutButton.addEventListener('click', () => { void signOut(); });
 window.addEventListener('storage', (event) => {
-    if (event.key === 'tangent-github-connected' && activeUser?.role === 'admin')
-        void loadGithubRepositories();
+    if (event.key === 'tangent-github-connected')
+        void githubProjectUi.load();
 });
 const signOut = createLogoutController({
     logout: () => api('/auth/logout', { method: 'POST' }),
