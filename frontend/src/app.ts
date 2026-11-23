@@ -33,6 +33,7 @@ import { initIssueDiscussionUi } from './issue-discussion-ui.js';
 import { initIssueRelatedUi } from './issue-related-ui.js';
 import { initIssueStatusPickerUi } from './issue-status-picker-ui.js';
 import { initIssueDeleteUi } from './issue-delete-ui.js';
+import { initIssueDetailEditUi } from './issue-detail-edit-ui.js';
 import { initProjectMembersUi } from './project-members-ui.js';
 import { initProjectEditUi } from './project-edit-ui.js';
 import { initProjectListUi } from './project-list-ui.js';
@@ -103,15 +104,12 @@ const {
     issueDetailContext, issueDetailExpectedOutcomeSection, issueDetailExpectedOutcome,
     issueDetailAcceptanceCriteriaSection, issueDetailAcceptanceCriteria, issueDetailStatus,
     issueDetailStatusLabel, issueSourceLink,
-    issueDetailEditForm, issueDetailTitleInput, issueDetailDescriptionInput, issueDetailPriorityInput,
-    issueDetailDueDateInput, issueDetailEditButton,
-    issueDetailDeleteButton, issueDetailSaveButton, issuesTabButton, issueBackButton,
-    issueDetailCancelButton, issueForm, issueQuickAddTitle, issueQuickAddPriority, issueQuickAddDueDate,
+    issueDetailEditForm, issueDetailEditButton,
+    issueDetailDeleteButton, issuesTabButton, issueBackButton,
+    issueForm, issueQuickAddTitle, issueQuickAddPriority, issueQuickAddDueDate,
     issueQuickAddAssignee, issueQuickAddMilestone, issueQuickAddOngoing, issueQuickAddShared,
     issueQuickAddApproval, issueQuickAddCancelButton, issueDetailType, issueDetailAssignee,
     issueDetailMilestone, issueDetailOngoingRow, issueDetailSharing, issueDetailApproval,
-    issueDetailTypeInput, issueDetailAssigneeInput, issueDetailMilestoneInput, issueDetailOngoingInput,
-    issueDetailSharedInput, issueDetailApprovalInput,
     issueDescriptionDetails, issueProgress, issueProgressLabel, issueFilter,
     issueGrouping, issueOrder, issueScope, issueCountSummary, issueBulkAssignToggle,
     issueBulkAssignToolbar, issueList, deletedIssuesDetails, deletedIssueCount, deletedIssueList,
@@ -680,7 +678,7 @@ const issueDeleteUi = initIssueDeleteUi({
     if (activeProject?.id !== projectId) return false;
     if (selectedIssue?.id === issue.id) {
       selectedIssue = null;
-      resetIssueDetailEditForm();
+      issueDetailEditUi.reset();
       issueDetailEditForm.hidden = true;
       issueDetailDisplay.hidden = false;
       switchProjectTab('issues', issue.id);
@@ -697,6 +695,23 @@ const issueDeleteUi = initIssueDeleteUi({
     if (!focusIssueTitleButton(issue.id)) issuesTabButton.focus();
   },
   onUnauthorized: () => showSignedOut(),
+  report,
+});
+const issueDetailEditUi = initIssueDetailEditUi({
+  getIssue: () => selectedIssue,
+  getProjectId: () => activeProject?.id ?? null,
+  isDetailVisible: () => !issueDetailView.hidden,
+  populateAssigneeSelect: populateIssueAssigneeSelect,
+  populateMilestoneSelect: populateIssueMilestoneSelect,
+  updateOngoingMilestoneControl,
+  submitFormOnEnter,
+  api,
+  onUpdated: (issue) => {
+    selectedIssue = issue;
+    projectIssues = projectIssues.map((candidate) => candidate.id === issue.id ? issue : candidate);
+  },
+  renderDetail: renderIssueDetail,
+  renderBoard: renderProjectIssueBoard,
   report,
 });
 let selectedChatMessageId: number | null = null;
@@ -2080,7 +2095,7 @@ function dismissCurrentView(): void {
   } else if (commandPaletteUi.isShortcutHelpOpen()) {
     commandPaletteUi.closeShortcutHelp();
   } else if (!workspacePanel.hidden && !projectView.hidden && !issueDetailEditForm.hidden) {
-    issueDetailCancelButton.click();
+    issueDetailEditUi.close();
   } else if (!workspacePanel.hidden && !projectView.hidden && !issueDetailView.hidden) {
     issueBackButton.click();
   } else if (!workspacePanel.hidden && !projectsView.hidden && !projectFormPanel.hidden) {
@@ -2412,13 +2427,10 @@ issueQuickAddCancelButton.addEventListener('click', cancelIssueQuickAdd);
 issueQuickAddShared.addEventListener('change', updateIssueQuickAddApproval);
 issueQuickAddOngoing.addEventListener('change', () =>
   updateOngoingMilestoneControl(issueQuickAddOngoing, issueQuickAddMilestone));
-issueDetailOngoingInput.addEventListener('change', () =>
-  updateOngoingMilestoneControl(issueDetailOngoingInput, issueDetailMilestoneInput));
 issueQuickAddTitle.addEventListener('input', () => issueQuickAddTitle.setCustomValidity(''));
 projectForm.querySelector<HTMLTextAreaElement>('textarea[name="description"]')
   ?.addEventListener('keydown', (event) => submitFormOnEnter(event, projectForm));
 issueDescriptionInput?.addEventListener('keydown', (event) => submitFormOnEnter(event, issueForm));
-issueDetailDescriptionInput.addEventListener('keydown', (event) => submitFormOnEnter(event, issueDetailEditForm));
 issueFilter.addEventListener('input', () => {
   clearBulkMoveSelection();
   renderProjectIssueBoard();
@@ -2735,7 +2747,6 @@ async function loadProjectDetail(
         projectMilestones = milestoneResult.milestones;
         populateIssueAssigneeSelect(issueQuickAddAssignee, null);
         populateIssueMilestoneSelect(issueQuickAddMilestone, null);
-        populateIssueAssigneeSelect(issueDetailAssigneeInput, null);
         projectSidebarList.querySelectorAll<HTMLButtonElement>('.project-sidebar-link').forEach((button) => {
           button.classList.toggle('is-active', button.dataset.projectId === String(result.project.id));
         });
@@ -3481,20 +3492,6 @@ function focusIssueTitleButton(issueId: number): boolean {
   return true;
 }
 
-function closeIssueDetailEditForm(): void {
-  resetIssueDetailEditForm();
-  issueDetailEditForm.hidden = true;
-  issueDetailDisplay.hidden = false;
-  if (!issueDetailView.hidden) issueDetailEditButton.focus();
-}
-
-function resetIssueDetailEditForm(): void {
-  issueDetailEditForm.reset();
-  issueDetailOngoingInput.disabled = false;
-  issueDetailOngoingInput.title = '';
-  updateOngoingMilestoneControl(issueDetailOngoingInput, issueDetailMilestoneInput);
-}
-
 function openIssue(issue: Issue): void {
   selectedIssue = issue;
   issueRelatedUi.reset();
@@ -3517,7 +3514,7 @@ function showDeletedIssues(restoreIssueId?: number): void {
   if (projectId === undefined || deletedProjectIssues.length === 0) return;
 
   selectedIssue = null;
-  resetIssueDetailEditForm();
+  issueDetailEditUi.reset();
   issueDetailEditForm.hidden = true;
   issueDetailDisplay.hidden = false;
   switchProjectTab('issues', undefined, false);
@@ -3820,85 +3817,15 @@ async function moveIssue(issue: Issue, direction: 'up' | 'down', button: HTMLBut
   }
 }
 
-issueDetailEditButton.addEventListener('click', () => {
-  if (selectedIssue === null) return;
-  issueDetailTitleInput.value = selectedIssue.title;
-  issueDetailDescriptionInput.value = selectedIssue.description;
-  issueDetailPriorityInput.value = selectedIssue.priority;
-  issueDetailDueDateInput.value = selectedIssue.due_date ?? '';
-  issueDetailTypeInput.value = selectedIssue.type;
-  populateIssueAssigneeSelect(issueDetailAssigneeInput, selectedIssue.assignee_id);
-  populateIssueMilestoneSelect(issueDetailMilestoneInput, selectedIssue.milestone_id);
-  issueDetailOngoingInput.checked = selectedIssue.is_ongoing;
-  issueDetailOngoingInput.disabled = selectedIssue.status === 'done' && !selectedIssue.is_ongoing;
-  issueDetailOngoingInput.title = issueDetailOngoingInput.disabled ? 'Move this issue out of Done before marking it as ongoing.' : '';
-  updateOngoingMilestoneControl(issueDetailOngoingInput, issueDetailMilestoneInput);
-  issueDetailSharedInput.checked = selectedIssue.is_shared;
-  issueDetailApprovalInput.checked = selectedIssue.approval_requested_at !== null;
-  issueDetailApprovalInput.disabled = !selectedIssue.is_shared;
-  issueDetailDisplay.hidden = true;
-  issueDetailEditForm.hidden = false;
-  issueDetailTitleInput.focus();
-});
-
 issueDetailDeleteButton.addEventListener('click', () => issueDeleteUi.open(selectedIssue));
-
-issueDetailCancelButton.addEventListener('click', () => {
-  closeIssueDetailEditForm();
-});
 
 issueBackButton.addEventListener('click', () => {
   const issueId = selectedIssue?.id;
   selectedIssue = null;
-  resetIssueDetailEditForm();
+  issueDetailEditUi.reset();
   issueDetailEditForm.hidden = true;
   issueDetailDisplay.hidden = false;
   switchProjectTab('issues', issueId);
-});
-
-issueDetailEditForm.addEventListener('submit', async (event) => {
-  event.preventDefault();
-  if (selectedIssue === null || activeProject === null) return;
-  const issue = selectedIssue;
-  issueDetailSaveButton.disabled = true;
-  try {
-    const result = await api<{ issue: Issue }>(`/issues/${issue.id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({
-        title: issueDetailTitleInput.value,
-        description: issueDetailDescriptionInput.value,
-        priority: issueDetailPriorityInput.value,
-        due_date: issueDetailDueDateInput.value === '' ? null : issueDetailDueDateInput.value,
-        type: issueDetailTypeInput.value,
-        assignee_id: issueDetailAssigneeInput.value === '' ? null : Number(issueDetailAssigneeInput.value),
-        milestone_id: issueDetailOngoingInput.checked || issueDetailMilestoneInput.value === ''
-          ? null
-          : Number(issueDetailMilestoneInput.value),
-        is_ongoing: issueDetailOngoingInput.checked,
-        is_shared: issueDetailSharedInput.checked,
-        approval_requested: issueDetailApprovalInput.checked,
-      }),
-    });
-    if (selectedIssue?.id !== issue.id || activeProject?.id !== issue.project_id) return;
-    selectedIssue = result.issue;
-    projectIssues = projectIssues.map((candidate) => candidate.id === issue.id ? result.issue : candidate);
-    renderIssueDetail();
-    renderProjectIssueBoard();
-    closeIssueDetailEditForm();
-    report('Issue updated.');
-  } catch (error) {
-    if (selectedIssue?.id === issue.id && activeProject?.id === issue.project_id) {
-      issueDetailTitleInput.focus();
-    }
-    report(error instanceof Error ? error.message : 'Could not update the issue.', true);
-  } finally {
-    issueDetailSaveButton.disabled = false;
-  }
-});
-
-issueDetailSharedInput.addEventListener('change', () => {
-  if (!issueDetailSharedInput.checked) issueDetailApprovalInput.checked = false;
-  issueDetailApprovalInput.disabled = !issueDetailSharedInput.checked;
 });
 
 issueDetailStatus.addEventListener('click', () => {

@@ -10,6 +10,7 @@ const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url)
 const projectChatUi = await readFile(new URL('../../frontend/src/project-chat-ui.ts', import.meta.url), 'utf8');
 const authUi = await readFile(new URL('../../frontend/src/auth-ui.ts', import.meta.url), 'utf8');
 const inboxUi = await readFile(new URL('../../frontend/src/inbox-ui.ts', import.meta.url), 'utf8');
+const issueDetailEditUi = await readFile(new URL('../../frontend/src/issue-detail-edit-ui.ts', import.meta.url), 'utf8');
 const css = await readFile(new URL('../../public/assets/app.css', import.meta.url), 'utf8');
 const guestSource = await readFile(new URL('../../frontend/src/guest-view.ts', import.meta.url), 'utf8');
 const guestUi = await readFile(new URL('../../frontend/src/guest-ui.ts', import.meta.url), 'utf8');
@@ -169,8 +170,8 @@ test('assigned issue type and status align with the title column', () => {
 test('issue editor can share work and request guest approval', () => {
   assert.match(html, /name="is_shared"/);
   assert.match(html, /name="approval_requested"/);
-  assert.match(app, /is_shared:/);
-  assert.match(app, /approval_requested:/);
+  assert.match(issueDetailEditUi, /is_shared:/);
+  assert.match(issueDetailEditUi, /approval_requested:/);
 });
 
 test('new views never use innerHTML', async () => {

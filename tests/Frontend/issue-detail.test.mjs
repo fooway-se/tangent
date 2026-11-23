@@ -5,6 +5,7 @@ import test from 'node:test';
 const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
 const issueRelatedUi = await readFile(new URL('../../frontend/src/issue-related-ui.ts', import.meta.url), 'utf8');
+const issueDetailEditUi = await readFile(new URL('../../frontend/src/issue-detail-edit-ui.ts', import.meta.url), 'utf8');
 const css = await readFile(new URL('../../public/assets/app.css', import.meta.url), 'utf8');
 
 test('issue detail editor sits in the center pane beside project chat', () => {
@@ -36,12 +37,12 @@ test('issue detail editor sits in the center pane beside project chat', () => {
 });
 
 test('issue detail can save existing editable fields and jump to its source message', () => {
-  assert.match(app, /api<\{ issue: Issue \}>\s*\(`\/issues\/\$\{issue\.id\}`/);
-  assert.match(app, /method:\s*'PATCH'/);
+  assert.match(issueDetailEditUi, /api<\{ issue: Issue \}>\(`\/issues\/\$\{issue\.id\}`/);
+  assert.match(issueDetailEditUi, /method:\s*'PATCH'/);
   assert.match(app, /source_message_id/);
   assert.match(app, /scrollIntoView/);
-  assert.match(app, /priority:\s*issueDetailPriorityInput\.value/);
-  assert.match(app, /due_date:\s*issueDetailDueDateInput\.value === '' \? null : issueDetailDueDateInput\.value/);
+  assert.match(issueDetailEditUi, /priority:\s*priorityInput\.value/);
+  assert.match(issueDetailEditUi, /due_date:\s*dueDateInput\.value === '' \? null : dueDateInput\.value/);
   assert.match(app, /issueDetailPriority\.textContent = issuePriorityLabel\(selectedIssue\.priority\)/);
   assert.match(app, /issueDetailDueDate\.textContent = selectedIssue\.due_date/);
 });
