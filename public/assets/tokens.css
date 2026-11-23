@@ -1245,36 +1245,36 @@
   --signal-stripe: linear-gradient(to bottom, #d96a47 0 25%, #e3b654 25% 50%, #91bd72 50% 75%, #4b9587 75% 100%);
 }
 
-/* Beehive & Beige: warm keycaps, charcoal accents, and amber terminal light. */
+/* Beehive & Beige: ivory shell, black keyboard surround, and Microbee orange. */
 :root[data-theme="microbee"] {
   --night: #17140e;
   --night-glow: #44351e;
   --night-muted: #e3d9c1;
 
-  --case-top: #ded7c5;
-  --case-mid: #d0c8b5;
-  --case-bottom: #bdb49e;
-  --case-shade: #9a907a;
-  --case-edge: #807762;
-  --case-light: #f1ead8;
-  --case-ink: #24231f;
-  --case-muted: #474339;
+  --case-top: #f5f5ef;
+  --case-mid: #ebebe5;
+  --case-bottom: #d7d8d2;
+  --case-shade: #a2a49e;
+  --case-edge: #787a75;
+  --case-light: #ffffff;
+  --case-ink: #242522;
+  --case-muted: #484a46;
   --case-error: #92372c;
-  --vent-dark: #968d78;
-  --vent-light: #e8e2d2;
-  --footer-top: #c7bfa9;
-  --footer-bottom: #b7ae96;
+  --vent-dark: #92948e;
+  --vent-light: #f0f0ea;
+  --footer-top: #e0e1db;
+  --footer-bottom: #d0d1cb;
 
-  --key-top: #eee7d5;
-  --key-bottom: #d0c8b2;
-  --key-highlight: #fbf5e5;
+  --key-top: #f5f5ee;
+  --key-bottom: #dedfd8;
+  --key-highlight: #ffffff;
 
-  --cap-top: #3a3a36;
-  --cap-bottom: #242521;
-  --cap-edge: #141512;
-  --plate: #232521;
-  --plate-ink: #f1eddf;
-  --plate-muted: #c9c3b0;
+  --cap-top: #252724;
+  --cap-bottom: #111310;
+  --cap-edge: #080a08;
+  --plate: #111310;
+  --plate-ink: #f4f4ee;
+  --plate-muted: #c7c9c2;
 
   --screen: #201b10;
   --screen-rim: #100e09;
@@ -1305,7 +1305,7 @@
   --danger: #ff9c82;
   --power-light: #eb7b34;
   --focus-ring: rgba(235, 154, 67, 0.5);
-  --signal-stripe: linear-gradient(to bottom, #e88438 0 25%, #f0bd62 25% 50%, #a8c87d 50% 75%, #534832 75% 100%);
+  --signal-stripe: linear-gradient(to right, #171916 0 25%, #f16312 25% 50%, #171916 50% 75%, #f16312 75% 100%);
 }
 
 /* Daisy & Data Pack: paper keys, black function keys, and the ADAM rainbow badge. */
