@@ -196,7 +196,7 @@ Workspace admins use **Workspace admin** to manage members, invitations, coding 
 - Use Agents to create coding-agent identities with access limited to selected active or paused projects and issue capabilities. The raw token appears once at creation or rotation; copy it to the agent's secret store before closing the dialog. The list shows each agent's grants and token activity. To change its grants, revoke the identity and create a replacement.
 - Use Workspaces to create a separate workspace for another client, then switch to it from the workspace picker.
 
-See [Coding agent access](AGENTS.md) for the available capabilities and API usage.
+See [Coding agent access](AGENTS.md) for the available capabilities and REST API usage, and [MCP adapter setup](../tools/agent-mcp/README.md) for connecting a coding-agent host. The adapter's `list_projects` tool returns the project IDs and names granted to that agent.
 
 > **Invite safety:** Tangent sends the single-use link to the address entered by the admin. Existing accounts must prove their identity with their current password.
 
