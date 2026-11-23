@@ -1499,6 +1499,134 @@
   --signal-stripe: linear-gradient(to bottom, #3784b4 0 22%, #34383d 22% 58%, #3784b4 58% 80%, #34383d 80% 100%);
 }
 
+/* Wedge & Raster: pale case, black keys, and Dragon's multicolour badge. */
+:root[data-theme="dragon-32"] {
+  --night: #17120f;
+  --night-glow: #49301f;
+  --night-muted: #e6d8bc;
+
+  --case-top: #E4DDCB;
+  --case-mid: #d8ceba;
+  --case-bottom: #c7bca5;
+  --case-shade: #a79d87;
+  --case-edge: #8d836f;
+  --case-light: #f6f0e4;
+  --case-ink: #292725;
+  --case-muted: #433d34;
+  --case-error: #b23b37;
+  --vent-dark: #9b907a;
+  --vent-light: #efe7d6;
+  --footer-top: #d2c7b1;
+  --footer-bottom: #c2b69e;
+
+  --key-top: #393633;
+  --key-bottom: #272522;
+  --key-highlight: #514d48;
+  --key-ink: #F1EADB;
+
+  --cap-top: #393633;
+  --cap-bottom: #272522;
+  --cap-edge: #151412;
+  --plate: #292725;
+  --plate-ink: #f2ead9;
+  --plate-muted: #c7bda9;
+
+  --screen: #111F1B;
+  --screen-rim: #080f0d;
+  --screen-glow: rgba(83, 139, 199, 0.12);
+  --screen-vignette: rgba(194, 54, 51, 0.08);
+  --screen-ink: #F1EADB;
+  --screen-muted: #c3c8b6;
+  --screen-header: rgba(255, 255, 255, 0.04);
+  --screen-highlight: rgba(255, 255, 255, 0.06);
+  --backdrop: rgba(16, 11, 8, 0.78);
+  --screen-panel: #1b2c25;
+  --screen-control-top: #2a3e34;
+  --screen-inset: #0c1713;
+  --screen-field: #111b16;
+  --screen-border: #43584c;
+  --screen-line: #2e4138;
+  --screen-hover: #2b4036;
+  --screen-track: #0a1510;
+  --screen-group: #182821;
+  --screen-group-top: #365045;
+  --screen-group-bottom: #273c32;
+
+  --accent: #6FA9E8;
+  --accent-edge: #3d6c9f;
+  --accent-ink: #14243a;
+  --accent-shine: rgba(255, 255, 255, 0.48);
+  --success: #88bd70;
+  --danger: #EF6962;
+  --power-light: #d7443c;
+  --focus-ring: rgba(111, 169, 232, 0.52);
+  --signal-stripe: linear-gradient(to right, #d63d3b 0 25%, #f1d23d 25% 50%, #43a458 50% 75%, #315fae 75% 100%);
+}
+
+/* Ivory & Assembly: Atom's cream shell, charcoal keyboard, and Acorn green. */
+:root[data-theme="acorn-atom"] {
+  --night: #151710;
+  --night-glow: #3a442d;
+  --night-muted: #e8e4d7;
+
+  --case-top: #F0E8D8;
+  --case-mid: #e1d6c3;
+  --case-bottom: #cfc3ad;
+  --case-shade: #ac9f89;
+  --case-edge: #8b7e6c;
+  --case-light: #fbf5e9;
+  --case-ink: #2c2925;
+  --case-muted: #4c453b;
+  --case-error: #a9443d;
+  --vent-dark: #a09580;
+  --vent-light: #f2eada;
+  --footer-top: #d8cdb9;
+  --footer-bottom: #c7baa3;
+
+  --key-top: #403d38;
+  --key-bottom: #282623;
+  --key-highlight: #58534b;
+  --key-ink: #F0E8D8;
+
+  --cap-top: #393633;
+  --cap-bottom: #272522;
+  --cap-edge: #151412;
+  --plate: #2c2926;
+  --plate-ink: #f0e8d8;
+  --plate-muted: #c8beac;
+
+  --screen: #111913;
+  --screen-rim: #080e0a;
+  --screen-glow: rgba(120, 168, 104, 0.13);
+  --screen-vignette: rgba(130, 112, 72, 0.07);
+  --screen-ink: #e9eddd;
+  --screen-muted: #bdc7b4;
+  --screen-header: rgba(255, 255, 255, 0.04);
+  --screen-highlight: rgba(255, 255, 255, 0.06);
+  --backdrop: rgba(11, 15, 10, 0.76);
+  --screen-panel: #202c21;
+  --screen-control-top: #30402e;
+  --screen-inset: #0a130d;
+  --screen-field: #101b14;
+  --screen-border: #4a5b43;
+  --screen-line: #2e3e2c;
+  --screen-hover: #2b3e2a;
+  --screen-track: #0a130d;
+  --screen-group: #19261b;
+  --screen-group-top: #394b35;
+  --screen-group-bottom: #283a27;
+
+  --accent: #7da96d;
+  --accent-edge: #527544;
+  --accent-ink: #1a2417;
+  --accent-shine: rgba(255, 255, 255, 0.48);
+  --success: #9bc979;
+  --danger: #e67c61;
+  --power-light: #6e9b54;
+  --focus-ring: rgba(125, 169, 109, 0.52);
+  --signal-stripe: linear-gradient(to bottom, #7da96d 0 20%, #2c2926 20% 80%, #7da96d 80% 100%);
+}
+
 /*
  * Clean: a neutral, modern light theme for people who would rather not use a
  * retro computer. Same layout as every other theme; it only flattens the

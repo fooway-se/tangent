@@ -198,6 +198,22 @@ export const THEME_MACHINES: Record<ThemeId, ThemeMachineInfo> = {
     historyUrl: 'https://www.ricomputermuseum.org/collections-gallery/foreign-market-personal-computers/tangerine-computer-systems-oric-1',
     facts: ['Its 6502 processor powered colour graphics and sound.', 'It became a popular British home computer and also sold in France.'],
   },
+  'dragon-32': {
+    model: 'Dragon 32', year: '1982', imageFile: 'Dragon 32.jpg',
+    imageUrl: './assets/machines/dragon-32.jpg',
+    imagePage: 'https://commons.wikimedia.org/wiki/File:Dragon_32.jpg',
+    photoCredit: 'Liftarn; edited by Bill Bertram (Pixel8)', license: 'CC BY-SA 2.0',
+    historyUrl: 'https://www.homecomputermuseum.nl/en/collectie/dragondata/dragondata-dragon-32/',
+    facts: ['DragonData launched the Welsh-made computer in August 1982 with 32 KB of RAM.', 'Its 6809E processor and Color BASIC made it a close cousin of Tandy’s Color Computer.'],
+  },
+  'acorn-atom': {
+    model: 'Acorn Atom', year: '1980', imageFile: 'Acorn Atom 1981.jpg',
+    imageUrl: './assets/machines/acorn-atom.jpg',
+    imagePage: 'https://commons.wikimedia.org/wiki/File:Acorn_Atom_1981.jpg',
+    photoCredit: 'Simon Inns', license: 'CC BY 2.0',
+    historyUrl: 'https://www.homecomputermuseum.nl/en/collectie/acorn/acorn-atom/',
+    facts: ['Acorn released the Atom in 1980 as a hobby computer sold as a kit or assembled.', 'Its 6502 and built-in BASIC made it an early step toward the BBC Micro.'],
+  },
   clean: {
     model: 'Laptop', year: 'Recently', imageFile: 'generic-laptop.svg',
     imageUrl: './assets/machines/generic-laptop.svg',
