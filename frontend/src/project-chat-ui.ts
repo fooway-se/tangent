@@ -1,5 +1,6 @@
 import { ApiFailure, api, apiBaseUrl } from './api.js';
 import { ChatEventFeed, pollProjectChatEvents } from './chat-event-feed.js';
+import { formatChatTimestamp } from './chat-time.js';
 import {
   filterMentionMembers,
   findMentionQuery,
@@ -274,10 +275,7 @@ export function initProjectChatUi(options: {
     const time = doc.createElement('time');
     time.className = 'chat-message-time';
     time.dateTime = message.created_at;
-    const parsedDate = new Date(message.created_at);
-    time.textContent = Number.isNaN(parsedDate.getTime())
-      ? ''
-      : new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' }).format(parsedDate);
+    time.textContent = formatChatTimestamp(message.created_at);
     authorDetails.append(author);
     if (message.author_role === 'guest') authorDetails.append(chatMessageMarker('client'));
     if (message.is_client_visible) authorDetails.append(chatMessageMarker('visible'));

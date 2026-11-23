@@ -6,17 +6,13 @@ export function formatChatTimestamp(value, now = new Date()) {
     const dateDay = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
     const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
     const daysAgo = Math.round((today - dateDay) / 86_400_000);
-    if (daysAgo === 0)
+    if (daysAgo <= 0)
         return time;
-    if (daysAgo === 1)
-        return `Yesterday · ${time}`;
-    if (daysAgo > 1 && daysAgo < 7)
-        return `${daysAgo} days ago · ${time}`;
-    const dateOptions = {
-        day: 'numeric',
-        month: 'short',
-        ...(date.getFullYear() !== now.getFullYear() ? { year: 'numeric' } : {}),
-    };
-    const calendarDate = new Intl.DateTimeFormat(undefined, dateOptions).format(date);
-    return `${calendarDate} · ${time}`;
+    if (daysAgo < 7)
+        return `${daysAgo}d · ${time}`;
+    if (daysAgo < 30)
+        return `${Math.floor(daysAgo / 7)}w · ${time}`;
+    if (daysAgo < 365)
+        return `${Math.floor(daysAgo / 30)}mo · ${time}`;
+    return `${Math.floor(daysAgo / 365)}y · ${time}`;
 }
