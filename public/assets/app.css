@@ -255,9 +255,9 @@ kbd {
 .status-message-text { min-width: 0; overflow-wrap: anywhere; }
 .status-message-dismiss { flex: 0 0 auto; margin-left: auto; border: 0; padding: 0 4px; color: inherit; background: transparent; font: 700 16px/1 var(--font-display); cursor: pointer; }
 .status-message-dismiss:hover { color: var(--screen-ink); }
-#status-message { position: absolute; z-index: 1; top: 0; right: 0; width: min(52%, 440px); min-width: 0; justify-content: flex-end; overflow: hidden; padding: 0; font-size: 12px; }
-#status-message:not(:empty) { min-height: 0; padding: 0; }
-#status-message .status-message-text { overflow: hidden; overflow-wrap: normal; text-overflow: ellipsis; white-space: nowrap; }
+#status-message { position: absolute; z-index: 1; top: 0; right: 0; width: min(80%, 440px); min-width: 0; align-items: flex-start; justify-content: flex-end; overflow: visible; padding: 0; font-size: 12px; }
+#status-message:not(:empty) { min-height: 0; border: 1px solid var(--screen-border); border-radius: var(--radius-panel); padding: 6px 8px; background: var(--screen-panel); box-shadow: 0 4px 12px var(--inset-shade); }
+#status-message .status-message-text { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; white-space: normal; }
 .workspace-view { flex: 1; min-height: 0; }
 .projects-view, .inbox-view, .admin-view { overflow: auto; padding: 14px 22px 22px; }
 .roadmap-view { overflow: auto; padding: 14px 22px 22px; }
