@@ -158,6 +158,7 @@ function canEditIssueDiscussionMessage(message: IssueDiscussionMessage): boolean
   const project = options.getProject();
   return user !== null
     && message.author_id === user.id
+    && (message.author_agent_id === undefined || message.author_agent_id === null)
     && issueDiscussionMessages.at(-1)?.id === message.id
     && project !== null
     && !options.isProjectReadOnly(project);

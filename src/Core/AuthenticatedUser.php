@@ -16,11 +16,30 @@ final class AuthenticatedUser
         public readonly int $tokenId,
         public readonly ?string $csrfHash,
         public readonly int $accountId = 0,
+        public readonly ?int $agentId = null,
+        public readonly ?string $agentName = null,
+        public readonly array $agentProjectIds = [],
+        public readonly array $agentCapabilities = [],
     ) {
+    }
+
+    public function isAgent(): bool
+    {
+        return $this->agentId !== null;
     }
 
     public function publicData(): array
     {
+        if ($this->agentId !== null) {
+            return [
+                'id' => $this->agentId,
+                'workspace_id' => $this->workspaceId,
+                'name' => $this->agentName ?? 'Agent',
+                'role' => 'agent',
+                'principal_type' => 'agent',
+            ];
+        }
+
         return [
             'id' => $this->id,
             'workspace_id' => $this->workspaceId,

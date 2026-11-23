@@ -6,6 +6,17 @@ export type Role = 'admin' | 'developer' | 'guest';
 export type IssueType = 'task' | 'bug' | 'feature' | 'research' | 'maintenance';
 export type IssuePriority = 'low' | 'medium' | 'high' | 'urgent';
 export type IssueGrouping = 'status' | 'milestone';
+export type AgentCapability = 'issues.read' | 'issues.comment' | 'issues.status.update';
+
+export interface AgentIdentity {
+  id: number;
+  name: string;
+  is_active: boolean;
+  project_ids: number[];
+  capabilities: AgentCapability[];
+  token_expires_at: string | null;
+  token_last_used_at: string | null;
+}
 
 export type WorkspaceLocation =
   | { view: 'projects'; focusedProjectId?: number }
@@ -187,6 +198,7 @@ export interface IssueDiscussionMessage {
   issue_id: number;
   parent_id: number | null;
   author_id: number;
+  author_agent_id?: number | null;
   author_name: string;
   parent_author_name: string | null;
   parent_body: string | null;

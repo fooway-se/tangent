@@ -961,7 +961,7 @@ function openWorkspaceAdmin(): void {
   adminHeading.focus();
 }
 
-function switchWorkspaceAdminTab(tab: 'members' | 'invites' | 'workspaces'): void {
+function switchWorkspaceAdminTab(tab: 'members' | 'invites' | 'agents' | 'workspaces'): void {
   workspaceAdminUi.switchTab(tab);
 }
 

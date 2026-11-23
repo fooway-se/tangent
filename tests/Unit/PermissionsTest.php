@@ -79,6 +79,49 @@ final class PermissionsTest extends TestCase
         self::assertTrue(Permissions::can($this->user('developer', 2), 'milestones.manage', ['is_member' => true]));
     }
 
+    public function testAgentPermissionsRequireBothCapabilityAndProjectGrantAndDenyHumanActions(): void
+    {
+        $agent = new AuthenticatedUser(
+            7,
+            1,
+            'Developer',
+            'developer@example.test',
+            'developer',
+            'bearer',
+            44,
+            null,
+            12,
+            5,
+            'Build agent',
+            [3],
+            ['issues.read', 'issues.comment'],
+        );
+
+        self::assertTrue(Permissions::can($agent, 'agent.issues.read', [
+            'project_id' => 3,
+            'is_member' => true,
+        ]));
+        self::assertTrue(Permissions::can($agent, 'agent.issues.comment', [
+            'project_id' => 3,
+            'is_member' => true,
+        ]));
+        self::assertFalse(Permissions::can($agent, 'agent.issues.status.update', [
+            'project_id' => 3,
+            'is_member' => true,
+        ]));
+        self::assertFalse(Permissions::can($agent, 'agent.issues.read', [
+            'project_id' => 4,
+            'is_member' => true,
+        ]));
+        self::assertFalse(Permissions::can($agent, 'agent.issues.read', [
+            'project_id' => 3,
+            'is_member' => false,
+        ]));
+        self::assertFalse(Permissions::can($agent, 'issues.read', ['is_member' => true]));
+        self::assertFalse(Permissions::can($agent, 'users.list'));
+        self::assertFalse(Permissions::can($agent, 'tokens.create'));
+    }
+
     private function user(string $role, int $id): AuthenticatedUser
     {
         return new AuthenticatedUser($id, 1, ucfirst($role), $role . '@example.test', $role, 'cookie', 1, null);

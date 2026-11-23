@@ -175,7 +175,7 @@ final class IssuesService
 
     private function requireDiscussionMessageAuthor(array $message, AuthenticatedUser $user): void
     {
-        if ($message['author_id'] !== $user->id) {
+        if (($message['author_agent_id'] ?? null) !== null || $message['author_id'] !== $user->id) {
             throw new ApiException(403, 'forbidden', 'Only the message author can edit or delete it.');
         }
     }

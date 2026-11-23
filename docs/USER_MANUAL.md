@@ -52,7 +52,7 @@ The workspace sidebar is the main way to move between areas.
 | Roadmap | Milestones across accessible projects with progress and deadline signals. Internal team only. |
 | My Work | Inbox updates and open issues assigned to you. |
 | Lounge | Workspace-wide off-topic conversation for internal team members. |
-| Workspace admin | For admins: members, invitations, and workspaces. |
+| Workspace admin | For admins: members, invitations, coding agents, and workspaces. |
 
 Within a project, use the **Issues**, **Members**, and **Notes** tabs. Project chat is shown with project work on wide screens; on smaller screens, use the project navigation controls to focus Chat.
 
@@ -188,12 +188,15 @@ Guests see a separate, read-only project overview with limited actions. The proj
 
 ## 9. Workspace administration
 
-Workspace admins use **Workspace admin** to manage members, invitations, and workspaces.
+Workspace admins use **Workspace admin** to manage members, invitations, coding agents, and workspaces.
 
 - Create an invite, choose **Developer** or **Guest**, and send it. Tangent emails a single-use link to the invited address; the link expires after seven days. Guest invites require at least one project to be selected.
 - Use **Resend invite** to email a replacement link. This invalidates the previous link.
 - Manage existing members and guest project access from the Members area. An account can be a member of more than one workspace.
+- Use Agents to create coding-agent identities with access limited to selected active or paused projects and issue capabilities. The raw token appears once at creation or rotation; copy it to the agent's secret store before closing the dialog. The list shows each agent's grants and token activity. To change its grants, revoke the identity and create a replacement.
 - Use Workspaces to create a separate workspace for another client, then switch to it from the workspace picker.
+
+See [Coding agent access](AGENTS.md) for the available capabilities and API usage.
 
 > **Invite safety:** Tangent sends the single-use link to the address entered by the admin. Existing accounts must prove their identity with their current password.
 

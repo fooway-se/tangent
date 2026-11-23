@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: Tangent API
   version: 1.0.0
-  description: Authentication, workspace membership and switching, internal project work, event inbox, and a permission-filtered guest client view.
+  description: Authentication, workspace membership and switching, internal project work, scoped coding-agent identities and issue tools, event inbox, and a permission-filtered guest client view.
 servers:
   - url: /api/v1
 security:
@@ -315,7 +315,10 @@ paths:
               schema:
                 type: object
                 properties:
-                  user: { $ref: '#/components/schemas/User' }
+                  user:
+                    oneOf:
+                      - { $ref: '#/components/schemas/User' }
+                      - { $ref: '#/components/schemas/AgentPrincipal' }
         '401': { $ref: '#/components/responses/Unauthorized' }
   /auth/logout:
     post:
@@ -1888,6 +1891,186 @@ paths:
         '204': { description: Member removed. }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+  /agents:
+    get:
+      summary: List agent identities in the workspace (admin only)
+      responses:
+        '200':
+          description: Agent identities and their project and capability grants. Secret tokens are never returned.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [agents]
+                properties:
+                  agents:
+                    type: array
+                    items: { $ref: '#/components/schemas/AgentIdentity' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      summary: Create a scoped agent identity and its first token (admin only)
+      description: The token secret is returned once. Agents are limited to selected active or paused projects and the selected issue capabilities. The token expires after 90 days by default.
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, project_ids, capabilities]
+              properties:
+                name: { type: string, minLength: 2, maxLength: 120 }
+                project_ids:
+                  type: array
+                  minItems: 1
+                  maxItems: 100
+                  uniqueItems: true
+                  items: { type: integer, minimum: 1 }
+                capabilities:
+                  type: array
+                  minItems: 1
+                  uniqueItems: true
+                  items: { type: string, enum: [issues.read, issues.comment, issues.status.update] }
+                expires_in_days: { type: integer, minimum: 1, maximum: 365, default: 90 }
+      responses:
+        '201':
+          description: Agent identity and one-time token secret.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [agent, token, expires_at]
+                properties:
+                  agent: { $ref: '#/components/schemas/AgentIdentity' }
+                  token: { type: string, pattern: '^[a-f0-9]{64}$' }
+                  expires_at: { type: string, format: date-time }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /agents/{id}/tokens:
+    post:
+      summary: Rotate an agent token (admin only)
+      description: Revokes existing active tokens for the agent and returns a new secret once. Expiry defaults to 90 days.
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                expires_in_days: { type: integer, minimum: 1, maximum: 365, default: 90 }
+      responses:
+        '201':
+          description: New one-time token secret.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [agent_id, token, expires_at]
+                properties:
+                  agent_id: { type: integer }
+                  token: { type: string, pattern: '^[a-f0-9]{64}$' }
+                  expires_at: { type: string, format: date-time }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+  /agents/{id}:
+    delete:
+      summary: Revoke an agent and all its tokens (admin only)
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/CsrfToken'
+      responses:
+        '204': { description: Agent and its active tokens revoked. }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /agent/projects/{id}/issues:
+    get:
+      summary: List active issues in an agent's granted project
+      description: Requires an agent bearer token with issues.read. Returns non-deleted issues in Backlog, Todo, Doing, or Testing.
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Issues available to the agent.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [issues]
+                properties:
+                  issues:
+                    type: array
+                    items: { $ref: '#/components/schemas/AgentIssue' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /agent/issues/{id}:
+    get:
+      summary: Read an issue through the agent API
+      description: Requires an agent bearer token with issues.read and a project grant.
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Issue details and saved prompt context.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [issue]
+                properties:
+                  issue: { $ref: '#/components/schemas/AgentIssue' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /agent/issues/{id}/discussion:
+    post:
+      summary: Add an issue progress note as an agent
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [body]
+              properties:
+                body: { type: string, minLength: 1, maxLength: 10000 }
+      responses:
+        '201': { description: Discussion message attributed to the named agent. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+  /agent/issues/{id}/status:
+    patch:
+      summary: Update an issue status as an agent
+      description: Agents may move an open issue to Doing or Testing. They cannot complete, cancel, or reopen a closed issue.
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { type: string, enum: [doing, testing] }
+      responses:
+        '200': { description: Updated issue and status history attributed to the named agent. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
 components:
   securitySchemes:
     SessionCookie:
@@ -1898,7 +2081,7 @@ components:
     BearerToken:
       type: http
       scheme: bearer
-      description: Opaque workspace-scoped API token for agents and integrations. Include X-Tangent-Workspace with the workspace ID when the token is for a non-default workspace.
+      description: Opaque workspace-scoped API token. Human tokens retain their user's permissions; named agent tokens are restricted to explicit project and issue capability grants. Include X-Tangent-Workspace with the workspace ID when the token is for a non-default workspace.
   parameters:
     Id:
       name: id
@@ -1933,6 +2116,53 @@ components:
         name: { type: string }
         email: { type: string, format: email }
         role: { type: string, enum: [admin, developer, guest] }
+    AgentPrincipal:
+      type: object
+      required: [id, workspace_id, name, role, principal_type]
+      properties:
+        id: { type: integer }
+        workspace_id: { type: integer }
+        name: { type: string }
+        role: { type: string, const: agent }
+        principal_type: { type: string, const: agent }
+    AgentIdentity:
+      type: object
+      required: [id, workspace_id, owner_user_id, name, is_active, project_ids, capabilities, created_at]
+      properties:
+        id: { type: integer }
+        workspace_id: { type: integer }
+        owner_user_id: { type: integer }
+        name: { type: string }
+        is_active: { type: boolean }
+        project_ids:
+          type: array
+          items: { type: integer }
+        capabilities:
+          type: array
+          items: { type: string, enum: [issues.read, issues.comment, issues.status.update] }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        token_expires_at: { type: string, format: date-time, nullable: true }
+        token_last_used_at: { type: string, format: date-time, nullable: true }
+    AgentIssue:
+      type: object
+      required: [id, workspace_id, project_id, title, description, context, expected_outcome, acceptance_criteria, type, status, priority]
+      properties:
+        id: { type: integer }
+        workspace_id: { type: integer }
+        project_id: { type: integer }
+        title: { type: string }
+        description: { type: string }
+        context: { type: string }
+        expected_outcome: { type: string }
+        acceptance_criteria: { type: string }
+        type: { type: string }
+        status: { type: string, enum: [backlog, todo, doing, testing, done, cancelled] }
+        priority: { type: string, enum: [low, medium, high, urgent] }
+        due_date: { type: string, format: date, nullable: true }
+        is_ongoing: { type: boolean }
+        milestone_id: { type: integer, nullable: true }
+        milestone_name: { type: string, nullable: true }
     WorkspaceMember:
       type: object
       required: [id, workspace_id, name, email, role, is_active, created_at]
@@ -2033,6 +2263,7 @@ components:
         issue_id: { type: integer }
         parent_id: { type: [integer, 'null'], minimum: 1 }
         author_id: { type: integer }
+        author_agent_id: { type: [integer, 'null'], description: Named agent identity for agent-authored messages. }
         author_name: { type: string }
         parent_author_name: { type: [string, 'null'] }
         parent_body: { type: [string, 'null'] }

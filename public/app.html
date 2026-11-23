@@ -593,6 +593,7 @@
             <nav id="workspace-admin-tabs" class="project-tabs workspace-admin-tabs" role="tablist" aria-label="Workspace administration">
               <button id="workspace-admin-members-tab" class="project-tab is-active" type="button" role="tab" aria-selected="true" aria-controls="workspace-admin-members-panel" tabindex="0">Members</button>
               <button id="workspace-admin-invites-tab" class="project-tab" type="button" role="tab" aria-selected="false" aria-controls="workspace-admin-invites-panel" tabindex="-1">Invites</button>
+              <button id="workspace-admin-agents-tab" class="project-tab" type="button" role="tab" aria-selected="false" aria-controls="workspace-admin-agents-panel" tabindex="-1">Agents</button>
               <button id="workspace-admin-workspaces-tab" class="project-tab" type="button" role="tab" aria-selected="false" aria-controls="workspace-admin-workspaces-panel" tabindex="-1">Workspaces</button>
             </nav>
             <section id="workspace-admin-members-panel" class="project-tab-view workspace-admin-tab-panel" role="tabpanel" tabindex="0" aria-labelledby="workspace-admin-members-tab">
@@ -631,6 +632,39 @@
                 <h2>Pending invites</h2>
                 <p id="workspace-invites-empty" class="panel-description" hidden>No pending invites.</p>
                 <ul id="workspace-invites-list" class="member-list workspace-invites-list"></ul>
+              </article>
+            </section>
+            <section id="workspace-admin-agents-panel" class="project-tab-view workspace-admin-tab-panel" role="tabpanel" tabindex="0" hidden aria-labelledby="workspace-admin-agents-tab">
+              <article class="panel admin-panel">
+                <h2>Add a coding agent</h2>
+                <p class="panel-description">Give each agent access only to selected projects and actions. Start with read access; comments and status updates are optional. To change grants later, revoke this identity and create a replacement.</p>
+                <form id="agent-form" class="form-stack">
+                  <label>Agent name
+                    <input id="agent-name" name="name" minlength="2" maxlength="120" required>
+                  </label>
+                  <fieldset class="workspace-agent-fieldset">
+                    <legend>Projects</legend>
+                    <div id="agent-project-options" class="admin-project-options" aria-label="Projects this agent can access"></div>
+                  </fieldset>
+                  <fieldset class="workspace-agent-fieldset">
+                    <legend>Capabilities</legend>
+                    <div id="agent-capability-options" class="admin-project-options">
+                      <label class="admin-project-option"><input type="checkbox" name="capabilities" value="issues.read" checked>Read issues</label>
+                      <label class="admin-project-option"><input type="checkbox" name="capabilities" value="issues.comment">Post comments</label>
+                      <label class="admin-project-option"><input type="checkbox" name="capabilities" value="issues.status.update">Update issue status</label>
+                    </div>
+                  </fieldset>
+                  <label>Token lifetime in days
+                    <input id="agent-expires-in-days" name="expires_in_days" type="number" min="1" max="365" value="90" required>
+                  </label>
+                  <button class="button button-primary" type="submit">Create agent</button>
+                </form>
+              </article>
+              <article class="panel admin-panel">
+                <h2>Managed agents</h2>
+                <p class="panel-description">Tokens appear only when created or rotated. Copy them into the agent's secret store; Tangent cannot show them again.</p>
+                <p id="workspace-agents-empty" class="panel-description" hidden>No agents yet.</p>
+                <ul id="workspace-agents-list" class="member-list workspace-agents-list"></ul>
               </article>
             </section>
             <section id="workspace-admin-workspaces-panel" class="project-tab-view workspace-admin-tab-panel" role="tabpanel" tabindex="0" hidden aria-labelledby="workspace-admin-workspaces-tab">
@@ -683,6 +717,27 @@
                 <div class="form-actions">
                   <button id="workspace-guest-projects-cancel" class="button button-quiet" type="button">Cancel</button>
                   <button id="workspace-guest-projects-save" class="button button-primary" type="button" disabled>Save access</button>
+                </div>
+              </section>
+            </dialog>
+            <dialog id="workspace-agent-token-dialog" class="issue-delete-confirmation workspace-agent-token-dialog" aria-labelledby="workspace-agent-token-heading" aria-describedby="workspace-agent-token-description">
+              <section class="issue-delete-confirmation-content">
+                <header class="dialog-heading"><h2 id="workspace-agent-token-heading">Copy agent token</h2></header>
+                <p id="workspace-agent-token-description" class="issue-delete-description">This token is shown once. Copy it to the agent's secret store before closing this dialog.</p>
+                <pre class="workspace-agent-token"><code id="workspace-agent-token-value"></code></pre>
+                <div class="form-actions">
+                  <button id="workspace-agent-token-copy" class="button button-quiet" type="button">Copy token</button>
+                  <button id="workspace-agent-token-close" class="button button-primary" type="button">Done</button>
+                </div>
+              </section>
+            </dialog>
+            <dialog id="workspace-agent-revoke-dialog" class="issue-delete-confirmation" aria-labelledby="workspace-agent-revoke-heading" aria-describedby="workspace-agent-revoke-description">
+              <section class="issue-delete-confirmation-content">
+                <header class="dialog-heading"><h2 id="workspace-agent-revoke-heading">Revoke agent?</h2></header>
+                <p id="workspace-agent-revoke-description" class="issue-delete-description"></p>
+                <div class="form-actions">
+                  <button id="workspace-agent-revoke-cancel" class="button button-quiet" type="button">Cancel</button>
+                  <button id="workspace-agent-revoke-confirm" class="button button-primary button-danger" type="button">Revoke agent</button>
                 </div>
               </section>
             </dialog>

@@ -5,15 +5,30 @@ export function initWorkspaceAdminUi(options) {
     const tabs = required('#workspace-admin-tabs');
     const membersTab = required('#workspace-admin-members-tab');
     const invitesTab = required('#workspace-admin-invites-tab');
+    const agentsTab = required('#workspace-admin-agents-tab');
     const workspacesTab = required('#workspace-admin-workspaces-tab');
     const membersPanel = required('#workspace-admin-members-panel');
     const invitesPanel = required('#workspace-admin-invites-panel');
+    const agentsPanel = required('#workspace-admin-agents-panel');
     const workspacesPanel = required('#workspace-admin-workspaces-panel');
     const membersList = required('#workspace-members-list');
     const membersEmpty = required('#workspace-members-empty');
     const invitesList = required('#workspace-invites-list');
     const invitesEmpty = required('#workspace-invites-empty');
     const inviteForm = required('#invite-form');
+    const agentsList = required('#workspace-agents-list');
+    const agentsEmpty = required('#workspace-agents-empty');
+    const agentForm = required('#agent-form');
+    const agentProjectOptions = required('#agent-project-options');
+    const agentExpiresInDays = required('#agent-expires-in-days');
+    const agentTokenDialog = required('#workspace-agent-token-dialog');
+    const agentTokenValue = required('#workspace-agent-token-value');
+    const agentTokenCopy = required('#workspace-agent-token-copy');
+    const agentTokenClose = required('#workspace-agent-token-close');
+    const agentRevokeDialog = required('#workspace-agent-revoke-dialog');
+    const agentRevokeDescription = required('#workspace-agent-revoke-description');
+    const agentRevokeCancel = required('#workspace-agent-revoke-cancel');
+    const agentRevokeConfirm = required('#workspace-agent-revoke-confirm');
     const inviteRoleInput = required('#invite-role');
     const inviteProjectSelection = required('#invite-project-selection');
     const inviteProjectOptions = required('#invite-project-options');
@@ -39,6 +54,7 @@ export function initWorkspaceAdminUi(options) {
     let deactivationTarget = null;
     let roleChangeTarget = null;
     let guestProjectsTarget = null;
+    let agentRevokeTarget = null;
     function required(selector) {
         const element = doc.querySelector(selector);
         if (element === null)
@@ -50,6 +66,7 @@ export function initWorkspaceAdminUi(options) {
         const states = [
             ['members', membersTab, membersPanel],
             ['invites', invitesTab, invitesPanel],
+            ['agents', agentsTab, agentsPanel],
             ['workspaces', workspacesTab, workspacesPanel],
         ];
         for (const [name, button, panel] of states) {
@@ -68,7 +85,7 @@ export function initWorkspaceAdminUi(options) {
         tabs.querySelector('[role="tab"][aria-selected="true"]')?.focus();
     }
     function updatePanelTabIndex() {
-        const panel = [membersPanel, invitesPanel, workspacesPanel].find((candidate) => !candidate.hidden);
+        const panel = [membersPanel, invitesPanel, agentsPanel, workspacesPanel].find((candidate) => !candidate.hidden);
         if (panel === undefined)
             return;
         const hasFocusableContent = Array.from(panel.querySelectorAll('a[href], button, input, select, textarea, [tabindex]')).some((element) => element.tabIndex >= 0 && !element.matches(':disabled') && element.closest('[hidden]') === null);
@@ -78,10 +95,11 @@ export function initWorkspaceAdminUi(options) {
         if (options.getUser()?.role !== 'admin')
             return;
         try {
-            const [members, invites, projects] = await Promise.all([
+            const [members, invites, projects, agents] = await Promise.all([
                 request('/users'),
                 request('/users/invites'),
                 request('/projects'),
+                request('/agents'),
             ]);
             if (!options.isVisible())
                 return;
@@ -89,6 +107,8 @@ export function initWorkspaceAdminUi(options) {
             renderMembers(members.users);
             renderInvites(invites.invites);
             renderInviteProjectOptions();
+            renderAgentProjectOptions();
+            renderAgents(agents.agents);
             updatePanelTabIndex();
         }
         catch (error) {
@@ -398,6 +418,167 @@ export function initWorkspaceAdminUi(options) {
             inviteProjectOptions.append(empty);
         }
     }
+    function renderAgentProjectOptions() {
+        agentProjectOptions.replaceChildren();
+        for (const project of adminProjects) {
+            const label = doc.createElement('label');
+            label.className = 'admin-project-option';
+            const checkbox = doc.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.name = 'project_ids';
+            checkbox.value = String(project.id);
+            label.append(checkbox, doc.createTextNode(project.name));
+            agentProjectOptions.append(label);
+        }
+        if (adminProjects.length === 0) {
+            const empty = doc.createElement('p');
+            empty.className = 'panel-description';
+            empty.textContent = 'Create an active or paused project before adding an agent.';
+            agentProjectOptions.append(empty);
+        }
+    }
+    function renderAgents(agents) {
+        agentsList.replaceChildren();
+        agentsEmpty.hidden = agents.length > 0;
+        for (const agent of agents) {
+            const item = doc.createElement('li');
+            item.className = 'workspace-agent-row';
+            const identity = doc.createElement('span');
+            identity.className = 'workspace-admin-member-identity';
+            identity.textContent = `${agent.name} · ${agent.is_active ? 'Active' : 'Revoked'}`;
+            const grants = doc.createElement('span');
+            grants.className = 'workspace-agent-grants';
+            const projectNames = agent.project_ids.map((id) => adminProjects.find((project) => project.id === id)?.name ?? `Project ${id}`);
+            const capabilityNames = {
+                'issues.read': 'Read issues',
+                'issues.comment': 'Post comments',
+                'issues.status.update': 'Update status',
+            };
+            const capabilities = agent.capabilities.map((capability) => capabilityNames[capability]);
+            grants.textContent = `Projects: ${projectNames.join(', ')} · Access: ${capabilities.join(', ')}`;
+            const tokenInfo = doc.createElement('span');
+            tokenInfo.className = 'workspace-agent-token-info';
+            const expires = agent.token_expires_at ?? 'unknown';
+            const lastUsed = agent.token_last_used_at ?? 'Never used';
+            tokenInfo.textContent = `Token expires ${expires} · Last used ${lastUsed}`;
+            item.append(identity, grants, tokenInfo);
+            if (agent.is_active) {
+                const actions = doc.createElement('div');
+                actions.className = 'workspace-admin-member-actions';
+                const rotate = doc.createElement('button');
+                rotate.type = 'button';
+                rotate.className = 'button button-quiet';
+                rotate.textContent = 'Rotate token';
+                rotate.addEventListener('click', () => void rotateAgentToken(agent), { signal: listeners.signal });
+                const revoke = doc.createElement('button');
+                revoke.type = 'button';
+                revoke.className = 'button button-quiet button-danger';
+                revoke.textContent = 'Revoke agent';
+                revoke.addEventListener('click', () => openAgentRevokeConfirmation(agent, revoke), { signal: listeners.signal });
+                actions.append(rotate, revoke);
+                item.append(actions);
+            }
+            agentsList.append(item);
+        }
+    }
+    function showAgentToken(token) {
+        agentTokenValue.textContent = token;
+        agentTokenDialog.showModal();
+        agentTokenClose.focus();
+    }
+    function closeAgentTokenDialog() {
+        if (agentTokenDialog.open)
+            agentTokenDialog.close();
+        agentTokenValue.textContent = '';
+    }
+    function openAgentRevokeConfirmation(agent, button) {
+        agentRevokeTarget = { agent, button };
+        agentRevokeDescription.textContent = `Revoke ${agent.name}? Its current token will stop working immediately. Create a replacement if this agent needs access again.`;
+        agentRevokeDialog.showModal();
+        agentRevokeCancel.focus();
+    }
+    function closeAgentRevokeConfirmation(restoreFocus = true) {
+        if (agentRevokeDialog.open)
+            agentRevokeDialog.close();
+        const target = agentRevokeTarget;
+        agentRevokeTarget = null;
+        if (restoreFocus && options.isVisible() && target?.button.isConnected)
+            target.button.focus();
+    }
+    async function createAgent(event) {
+        event.preventDefault();
+        const values = new FormData(agentForm);
+        const name = String(values.get('name') ?? '').trim();
+        const projectIds = values.getAll('project_ids').map(Number).filter((id) => Number.isSafeInteger(id) && id > 0);
+        const capabilities = values.getAll('capabilities').map(String);
+        const expiresInDays = Number(values.get('expires_in_days') ?? 90);
+        if (name.length < 2 || name.length > 120) {
+            options.report('Agent name must be between 2 and 120 characters.', true);
+            return;
+        }
+        if (projectIds.length === 0) {
+            options.report('Choose at least one project for this agent.', true);
+            agentProjectOptions.querySelector('input')?.focus();
+            return;
+        }
+        const allowedCapabilities = ['issues.read', 'issues.comment', 'issues.status.update'];
+        if (capabilities.length === 0 || capabilities.some((capability) => !allowedCapabilities.includes(capability))) {
+            options.report('Choose one or more supported agent capabilities.', true);
+            return;
+        }
+        if (!Number.isInteger(expiresInDays) || expiresInDays < 1 || expiresInDays > 365) {
+            options.report('Token lifetime must be between 1 and 365 days.', true);
+            return;
+        }
+        try {
+            const result = await request('/agents', {
+                method: 'POST',
+                body: JSON.stringify({ name, project_ids: projectIds, capabilities, expires_in_days: expiresInDays }),
+            });
+            agentForm.reset();
+            showAgentToken(result.token);
+            options.report('Agent created. Copy its token now; Tangent will not show it again.');
+            await load();
+        }
+        catch (error) {
+            options.report(error instanceof Error ? error.message : 'Could not create the agent.', true);
+        }
+    }
+    async function rotateAgentToken(agent) {
+        const expiresInDays = Number(agentExpiresInDays.value || 90);
+        if (!Number.isInteger(expiresInDays) || expiresInDays < 1 || expiresInDays > 365) {
+            options.report('Token lifetime must be between 1 and 365 days.', true);
+            agentExpiresInDays.focus();
+            return;
+        }
+        try {
+            const result = await request(`/agents/${agent.id}/tokens`, {
+                method: 'POST',
+                body: JSON.stringify({ expires_in_days: expiresInDays }),
+            });
+            showAgentToken(result.token);
+            options.report(`Token rotated for ${agent.name}. Copy it now; Tangent will not show it again.`);
+            await load();
+        }
+        catch (error) {
+            options.report(error instanceof Error ? error.message : `Could not rotate ${agent.name}'s token.`, true);
+        }
+    }
+    async function revokeAgent() {
+        const target = agentRevokeTarget;
+        if (target === null)
+            return;
+        closeAgentRevokeConfirmation(false);
+        try {
+            await request(`/agents/${target.agent.id}`, { method: 'DELETE' });
+            options.report(`${target.agent.name} revoked.`);
+            await load();
+            agentForm.querySelector('input')?.focus();
+        }
+        catch (error) {
+            options.report(error instanceof Error ? error.message : `Could not revoke ${target.agent.name}.`, true);
+        }
+    }
     async function sendPasswordRecoveryEmail(member) {
         try {
             await request(`/users/${member.id}/password-reset`, {
@@ -437,7 +618,8 @@ export function initWorkspaceAdminUi(options) {
         }
     }
     function hasOpenDialog() {
-        return deactivationDialog.open || roleDialog.open || guestProjectsDialog.open;
+        return deactivationDialog.open || roleDialog.open || guestProjectsDialog.open
+            || agentTokenDialog.open || agentRevokeDialog.open;
     }
     function closeOpenDialogs() {
         if (deactivationDialog.open)
@@ -446,6 +628,10 @@ export function initWorkspaceAdminUi(options) {
             closeRoleConfirmation();
         if (guestProjectsDialog.open)
             closeGuestProjectAccess();
+        if (agentTokenDialog.open)
+            closeAgentTokenDialog();
+        if (agentRevokeDialog.open)
+            closeAgentRevokeConfirmation();
     }
     function closeCurrentDialog() {
         if (deactivationDialog.open)
@@ -454,16 +640,21 @@ export function initWorkspaceAdminUi(options) {
             closeRoleConfirmation();
         else if (guestProjectsDialog.open)
             closeGuestProjectAccess();
+        else if (agentTokenDialog.open)
+            closeAgentTokenDialog();
+        else if (agentRevokeDialog.open)
+            closeAgentRevokeConfirmation();
         else
             return false;
         return true;
     }
     membersTab.addEventListener('click', () => switchTab('members'), { signal: listeners.signal });
     invitesTab.addEventListener('click', () => switchTab('invites'), { signal: listeners.signal });
+    agentsTab.addEventListener('click', () => switchTab('agents'), { signal: listeners.signal });
     workspacesTab.addEventListener('click', () => switchTab('workspaces'), { signal: listeners.signal });
     tabs.addEventListener('keydown', (event) => {
-        const tabButtons = [membersTab, invitesTab, workspacesTab];
-        const names = ['members', 'invites', 'workspaces'];
+        const tabButtons = [membersTab, invitesTab, agentsTab, workspacesTab];
+        const names = ['members', 'invites', 'agents', 'workspaces'];
         const currentIndex = tabButtons.indexOf(event.target);
         if (currentIndex < 0 || event.altKey || event.ctrlKey || event.metaKey)
             return;
@@ -517,6 +708,29 @@ export function initWorkspaceAdminUi(options) {
         closeGuestProjectAccess();
     }, { signal: listeners.signal });
     guestProjectsSave.addEventListener('click', () => void saveGuestProjectAccess(), { signal: listeners.signal });
+    agentTokenClose.addEventListener('click', closeAgentTokenDialog, { signal: listeners.signal });
+    agentTokenDialog.addEventListener('cancel', (event) => {
+        event.preventDefault();
+        closeAgentTokenDialog();
+    }, { signal: listeners.signal });
+    agentTokenCopy.addEventListener('click', async () => {
+        try {
+            if (navigator.clipboard === undefined)
+                throw new Error('Clipboard access is unavailable in this browser.');
+            await navigator.clipboard.writeText(agentTokenValue.textContent ?? '');
+            options.report('Agent token copied.');
+        }
+        catch (error) {
+            options.report(error instanceof Error ? error.message : 'Could not copy the agent token.', true);
+        }
+    }, { signal: listeners.signal });
+    agentRevokeCancel.addEventListener('click', () => closeAgentRevokeConfirmation(), { signal: listeners.signal });
+    agentRevokeDialog.addEventListener('cancel', (event) => {
+        event.preventDefault();
+        closeAgentRevokeConfirmation();
+    }, { signal: listeners.signal });
+    agentRevokeConfirm.addEventListener('click', () => void revokeAgent(), { signal: listeners.signal });
+    agentForm.addEventListener('submit', (event) => void createAgent(event), { signal: listeners.signal });
     inviteRoleInput.addEventListener('change', () => {
         inviteProjectSelection.hidden = inviteRoleInput.value !== 'guest';
     }, { signal: listeners.signal });

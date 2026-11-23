@@ -353,6 +353,15 @@ select { padding-right: 28px; background: var(--screen-inset) url("data:image/sv
 .admin-panel { max-width: 620px; padding: 16px; }
 .workspace-admin-tabs { margin-top: 0; }
 .workspace-admin-tab-panel { padding-top: 14px; }
+.workspace-agent-fieldset { display: grid; gap: 8px; border: 1px solid var(--screen-border); border-radius: var(--radius-panel); padding: 10px 12px; }
+.workspace-agent-fieldset legend { padding: 0 4px; color: var(--screen-muted); font-size: 12px; }
+.workspace-agent-fieldset .admin-project-options { margin: 0; }
+.workspace-agents-list { max-width: 760px; }
+.member-list .workspace-agent-row { display: grid; align-items: start; gap: 7px; }
+.workspace-agent-grants, .workspace-agent-token-info { color: var(--screen-muted); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.workspace-agent-row .workspace-admin-member-actions { flex: 0 1 auto; justify-content: flex-start; }
+.workspace-agent-token { max-width: 100%; overflow-wrap: anywhere; white-space: pre-wrap; border: 1px solid var(--screen-border); border-radius: var(--radius-panel); padding: 12px; color: var(--screen-ink); background: var(--screen-inset); user-select: all; }
+.workspace-agent-token-dialog { width: min(520px, calc(100vw - 32px)); }
 .member-list .workspace-admin-member-row { display: grid; grid-template-columns: minmax(0, 1fr); align-items: stretch; gap: 8px; }
 .workspace-admin-member-identity { min-width: 0; overflow-wrap: anywhere; }
 .workspace-admin-member-tools { display: flex; min-width: 0; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 12px; }

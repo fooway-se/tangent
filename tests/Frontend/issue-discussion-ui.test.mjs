@@ -109,7 +109,7 @@ test('issue discussion UI loads messages and posts a reply for the selected issu
   globalThis.HTMLElement = FakeElement;
   const issue = { id: 12, project_id: 3 };
   const initialMessage = {
-    id: 21, issue_id: 12, author_id: 4, author_name: 'Rae', body: 'First note',
+    id: 21, issue_id: 12, author_id: 7, author_agent_id: 99, author_name: 'Build agent', body: 'First note',
     parent_id: null, parent_body: null, parent_author_name: null, created_at: '2026-11-22 10:00:00',
   };
   const postedMessage = {
@@ -147,12 +147,17 @@ test('issue discussion UI loads messages and posts a reply for the selected issu
   assert.equal(requests[0].path, '/issues/12/discussion');
   assert.equal(elements.get('#issue-discussion-count').textContent, '1');
   assert.equal(elements.get('#issue-discussion-list').children.length, 1);
+  assert.equal(
+    elements.get('#issue-discussion-list').children[0].findByClass('issue-discussion-action'),
+    null,
+    'The human token owner must not see edit/delete controls for an agent-authored note.',
+  );
   assert.deepEqual(discussionCounts, [[12, 1]]);
 
   const input = elements.get('#issue-discussion-input');
   elements.get('#issue-discussion-list').children[0].findByClass('issue-discussion-reply-button').click();
   assert.equal(elements.get('#issue-discussion-reply-context').hidden, false);
-  assert.match(elements.get('#issue-discussion-reply-label').textContent, /Replying to Rae: First note/);
+  assert.match(elements.get('#issue-discussion-reply-label').textContent, /Replying to Build agent: First note/);
   input.value = 'A follow-up';
   elements.get('#issue-discussion-form').dispatchEvent(new Event('submit', { cancelable: true }));
   await new Promise((resolve) => setImmediate(resolve));

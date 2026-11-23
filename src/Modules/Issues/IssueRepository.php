@@ -31,6 +31,57 @@ final class IssueRepository
         return array_map(self::normalize(...), $statement->fetchAll(PDO::FETCH_ASSOC));
     }
 
+    public function listForAgent(int $workspaceId, int $projectId): array
+    {
+        $statement = $this->pdo->prepare(
+            "SELECT issues.id, issues.workspace_id, issues.project_id, issues.title, issues.description,
+                    issues.context, issues.expected_outcome, issues.acceptance_criteria,
+                    issues.issue_type AS type, issues.status, issues.priority, issues.due_date,
+                    issues.is_ongoing, issues.milestone_id, milestones.name AS milestone_name,
+                    issues.created_at, issues.updated_at
+             FROM issues
+             LEFT JOIN milestones ON milestones.workspace_id = issues.workspace_id AND milestones.id = issues.milestone_id
+             WHERE issues.workspace_id = :workspace_id AND issues.project_id = :project_id
+               AND issues.deleted_at IS NULL AND issues.status IN ('backlog', 'todo', 'doing', 'testing')
+             ORDER BY FIELD(issues.status, 'doing', 'testing', 'todo', 'backlog'), issues.updated_at DESC, issues.id DESC"
+        );
+        $statement->execute(['workspace_id' => $workspaceId, 'project_id' => $projectId]);
+        return array_map(self::normalizeAgent(...), $statement->fetchAll(PDO::FETCH_ASSOC));
+    }
+
+    public function findForAgent(int $workspaceId, int $issueId): ?array
+    {
+        $statement = $this->pdo->prepare(
+            'SELECT issues.id, issues.workspace_id, issues.project_id, issues.title, issues.description,
+                    issues.context, issues.expected_outcome, issues.acceptance_criteria,
+                    issues.issue_type AS type, issues.status, issues.priority, issues.due_date,
+                    issues.is_ongoing, issues.milestone_id, milestones.name AS milestone_name,
+                    issues.created_at, issues.updated_at
+             FROM issues
+             LEFT JOIN milestones ON milestones.workspace_id = issues.workspace_id AND milestones.id = issues.milestone_id
+             WHERE issues.workspace_id = :workspace_id AND issues.id = :id AND issues.deleted_at IS NULL
+             LIMIT 1'
+        );
+        $statement->execute(['workspace_id' => $workspaceId, 'id' => $issueId]);
+        $issue = $statement->fetch(PDO::FETCH_ASSOC);
+        return $issue === false ? null : self::normalizeAgent($issue);
+    }
+
+    public function setAgentStatus(int $workspaceId, int $issueId, string $status): bool
+    {
+        $statement = $this->pdo->prepare(
+            'UPDATE issues SET status = :status
+             WHERE workspace_id = :workspace_id AND id = :id AND deleted_at IS NULL'
+        );
+        $statement->execute(['status' => $status, 'workspace_id' => $workspaceId, 'id' => $issueId]);
+        $changed = $statement->rowCount() > 0;
+        if ($changed) {
+            $projectId = $this->projectIdForIssue($workspaceId, $issueId);
+            if ($projectId !== null) $this->bumpProjectRevisions($workspaceId, $projectId, true, false, true);
+        }
+        return $changed;
+    }
+
     public function listOpenAssignedToUser(int $workspaceId, int $userId, array $projectIds): array
     {
         if ($projectIds === []) {
@@ -423,16 +474,24 @@ final class IssueRepository
         $this->bumpProjectRevisions($workspaceId, $projectId, true, false, true);
     }
 
-    public function recordStatusTransition(int $workspaceId, int $issueId, ?int $actorId, string $from, string $to): void
+    public function recordStatusTransition(
+        int $workspaceId,
+        int $issueId,
+        ?int $actorId,
+        string $from,
+        string $to,
+        ?int $agentId = null,
+    ): void
     {
         $statement = $this->pdo->prepare(
-            'INSERT INTO issue_status_history (workspace_id, issue_id, actor_id, from_status, to_status)
-             VALUES (:workspace_id, :issue_id, :actor_id, :from_status, :to_status)'
+            'INSERT INTO issue_status_history (workspace_id, issue_id, actor_id, agent_id, from_status, to_status)
+             VALUES (:workspace_id, :issue_id, :actor_id, :agent_id, :from_status, :to_status)'
         );
         $statement->execute([
             'workspace_id' => $workspaceId,
             'issue_id' => $issueId,
             'actor_id' => $actorId,
+            'agent_id' => $agentId,
             'from_status' => $from,
             'to_status' => $to,
         ]);
@@ -441,9 +500,10 @@ final class IssueRepository
     public function statusHistory(int $workspaceId, int $issueId): array
     {
         $statement = $this->pdo->prepare(
-            "SELECT h.id, h.from_status, h.to_status, COALESCE(u.name, 'System') AS actor_name, h.created_at
+            "SELECT h.id, h.from_status, h.to_status, COALESCE(a.name, u.name, 'System') AS actor_name, h.created_at
              FROM issue_status_history h
              LEFT JOIN users u ON u.workspace_id = h.workspace_id AND u.id = h.actor_id
+             LEFT JOIN agent_identities a ON a.workspace_id = h.workspace_id AND a.id = h.agent_id
              WHERE h.workspace_id = :workspace_id AND h.issue_id = :issue_id
              ORDER BY h.id DESC LIMIT 20"
         );
@@ -786,6 +846,23 @@ final class IssueRepository
         foreach (['source_channel_id', 'source_message_id'] as $field) {
             $issue[$field] = $issue[$field] === null ? null : (int) $issue[$field];
         }
+        return $issue;
+    }
+
+    private static function normalizeAgent(array $issue): array
+    {
+        foreach (['id', 'workspace_id', 'project_id'] as $field) {
+            $issue[$field] = (int) $issue[$field];
+        }
+        $issue['milestone_id'] = $issue['milestone_id'] === null ? null : (int) $issue['milestone_id'];
+        $issue['is_ongoing'] = (bool) $issue['is_ongoing'];
+        $issue['priority'] = (string) $issue['priority'];
+        $issue['due_date'] = $issue['due_date'] === null ? null : (string) $issue['due_date'];
+        $issue['type'] = (string) $issue['type'];
+        foreach (['context', 'expected_outcome', 'acceptance_criteria'] as $field) {
+            $issue[$field] = $issue[$field] === null ? '' : (string) $issue[$field];
+        }
+        $issue['milestone_name'] = $issue['milestone_name'] === null ? null : (string) $issue['milestone_name'];
         return $issue;
     }
 }

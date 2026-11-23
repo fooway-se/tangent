@@ -8,6 +8,23 @@ final class Permissions
 {
     public static function can(AuthenticatedUser $user, string $action, array $resource = []): bool
     {
+        if ($user->isAgent()) {
+            $capability = match ($action) {
+                'agent.issues.read' => 'issues.read',
+                'agent.issues.comment' => 'issues.comment',
+                'agent.issues.status.update' => 'issues.status.update',
+                default => null,
+            };
+            $projectId = $resource['project_id'] ?? null;
+            return $capability !== null
+                && in_array($capability, $user->agentCapabilities, true)
+                && is_int($projectId)
+                && in_array($projectId, $user->agentProjectIds, true)
+                && ($user->role === 'admin' || (
+                    $user->role === 'developer' && ($resource['is_member'] ?? false) === true
+                ));
+        }
+
         if ($user->role === 'guest') {
             return match ($action) {
                 'client_view.read', 'client_comments.create', 'approvals.approve'
@@ -18,7 +35,7 @@ final class Permissions
         }
 
         return match ($action) {
-            'users.list', 'users.create', 'users.manage_members', 'projects.create', 'projects.update', 'projects.manage_members'
+            'users.list', 'users.create', 'users.manage_members', 'projects.create', 'projects.update', 'projects.manage_members', 'agents.manage'
                 => $user->role === 'admin',
             'workspaces.create'
                 => $user->role === 'admin' && $user->accountId > 0,

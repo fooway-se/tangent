@@ -15,8 +15,8 @@ The project chat header has a privacy-preserving presence light: it shows whethe
 
 ## AI and API
 
-- Define agent identities, permissions and any agent-specific issue statuses.
-- Consider a CLI or MCP server for agents. The REST API is described in [docs/openapi.yaml](docs/openapi.yaml).
+- Named agents now have expiring tokens, project grants, three issue capabilities, and dedicated read, discussion, and status endpoints. Agents use the existing `doing` and `testing` statuses; human review remains the completion step. See [coding agent access](docs/AGENTS.md).
+- Consider an optional CLI or MCP adapter for the agent endpoints. The REST API is described in [docs/openapi.yaml](docs/openapi.yaml).
 - Choose how browser credentials are stored, balancing local storage against secure cookies and CSRF protection.
 
 ## Installation and hosting

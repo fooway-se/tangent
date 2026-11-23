@@ -14,6 +14,9 @@ use Tangent\Modules\Auth\PasswordSecurity;
 use Tangent\Modules\Auth\RateLimiter;
 use Tangent\Modules\Auth\TokenRepository;
 use Tangent\Modules\Auth\UserRepository;
+use Tangent\Modules\Agents\AgentRepository;
+use Tangent\Modules\Agents\AgentsRoutes;
+use Tangent\Modules\Agents\AgentsService;
 use Tangent\Modules\Chat\ChatRepository;
 use Tangent\Modules\Chat\ChatRoutes;
 use Tangent\Modules\Chat\ChatService;
@@ -82,6 +85,7 @@ final class Application
         $inboxEvents = new InboxEvents(new InboxEventRepository($pdo), $projectRepository, $users);
         $chat = new ChatService(new ChatRepository($pdo), $projectRepository, $inboxEvents, $pdo);
         $issueRepository = new IssueRepository($pdo);
+        $issueDiscussionRepository = new IssueDiscussionRepository($pdo);
         $milestoneRepository = new MilestoneRepository($pdo);
         $issues = new IssuesService(
             $issueRepository,
@@ -90,7 +94,17 @@ final class Application
             $inboxEvents,
             $pdo,
             $milestoneRepository,
-            new IssueDiscussionRepository($pdo),
+            $issueDiscussionRepository,
+        );
+        $agents = new AgentsService(
+            new AgentRepository($pdo),
+            $projectRepository,
+            $tokens,
+            $rateLimiter,
+            $issueRepository,
+            $issueDiscussionRepository,
+            $inboxEvents,
+            $pdo,
         );
         $github = new GitHubService(
             $githubApiClient ?? new GitHubAppClient(
@@ -136,6 +150,7 @@ final class Application
         (new MilestoneRoutes($milestones))->register($router);
         (new ChatRoutes($chat))->register($router);
         (new IssuesRoutes($issues))->register($router);
+        (new AgentsRoutes($agents))->register($router);
         (new InboxRoutes($inbox, $inboxEvents))->register($router);
         (new GitHubRoutes($github, $config))->register($router);
 

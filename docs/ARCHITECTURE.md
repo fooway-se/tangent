@@ -8,6 +8,7 @@ This document is for contributors and AI agents. Follow it unless there is a goo
 - **The backend is a REST API only.** It serves JSON, never HTML.
 - **Frontend is plain HTML, CSS and TypeScript** (ES modules). No React or other framework. `tsc` is a dev tool; the release ships compiled JavaScript.
 - **Authentication uses opaque tokens.** API and session tokens, invite links, and password-reset links are generated with `random_bytes`; only hashes are stored. Browser credential tokens are carried in the URL fragment, then sent in request bodies. Passwords are account-level credentials in `user_accounts`, normalized to NFC and hashed with Argon2id. A single policy covers seed, direct API creation, invite acceptance, and reset. Login upgrades older password hashes.
+- **Coding agents have separate principals and narrow API access.** Agent tokens remain workspace-scoped opaque bearer tokens but are linked to a named agent, its human owner, explicit project grants, and a fixed issue capability allowlist. The permission layer denies all ordinary human actions for an agent token; dedicated agent routes expose only issue reads, progress comments, and transitions to Doing or Testing. Token expiry and revocation are enforced during authentication. Issue discussion and status history retain the human owner FK and record the agent ID for attribution.
 - **Realtime is adaptive polling** against a small, cheap endpoint (`GET /api/v1/events?since=<id>`). The client uses one transport interface, so WebSockets can be added later as an optional extra.
 - **Project chat presence is a separate heartbeat.** While the project page is visible, the client posts to `POST /api/v1/projects/{id}/presence` every 15 seconds. The server checks normal chat access and returns only whether a different user has checked in within 45 seconds; it never returns names or counts. Presence expires after 45 seconds, and rows older than a day are cleaned on the next heartbeat for that project.
 - **The workspace Lounge is one internal standalone chat per workspace.** It uses the existing channel and message storage, is available to admins and developers, and does not create project inbox events. `@` autocomplete lists active workspace admins and developers; selected names are highlighted in messages but do not send notifications. Guests cannot access it. Project channels remain scoped to their projects; user-created channels and DMs are not part of the product.
@@ -20,6 +21,7 @@ This document is for contributors and AI agents. Follow it unless there is a goo
 public/index.php            builds Request, hands it to the gateway
 src/Core/                   Request, Response, Router, Database, Gateway
 src/Modules/Auth/           routes, handlers, repository, rules
+src/Modules/Agents/         named agent identities, scoped tokens and issue tools
 src/Modules/Workspaces/     workspace membership, creation and switching
 src/Modules/Projects/
 src/Modules/Chat/
