@@ -6,6 +6,7 @@ const html = await readFile(new URL('../../public/app.html', import.meta.url), '
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
 const issueBoardUi = await readFile(new URL('../../frontend/src/issue-board-ui.ts', import.meta.url), 'utf8');
 const issueBoardView = await readFile(new URL('../../frontend/src/issue-board-view.ts', import.meta.url), 'utf8');
+const issueBulkUi = await readFile(new URL('../../frontend/src/issue-bulk-ui.ts', import.meta.url), 'utf8');
 const issueRowUi = await readFile(new URL('../../frontend/src/issue-row-ui.ts', import.meta.url), 'utf8');
 const dom = await readFile(new URL('../../frontend/src/dom.ts', import.meta.url), 'utf8');
 const css = await readFile(new URL('../../public/assets/app.css', import.meta.url), 'utf8');
@@ -51,14 +52,14 @@ test('history milestone groups start collapsed and existing disclosure state is 
 test('No milestone bulk move uses the shared selection and action-group design', () => {
   assert.match(issueBoardView, /allowBulkMove: group\.milestoneId === null/);
   assert.match(issueBoardUi, /issue-bulk-select-toggle/);
-  assert.match(app, /issue-bulk-move-toolbar/);
-  assert.match(app, /selectionActions\.className = 'issue-bulk-move-selection-actions'/);
-  assert.match(app, /selectionLabel\.textContent = 'Selection'/);
-  assert.match(app, /actionGroup\.className = 'issue-bulk-move-action-group'/);
-  assert.match(app, /milestoneLabel\.textContent = 'Milestone'/);
-  assert.match(app, /selectAll\.textContent = 'Select all'/);
-  assert.match(app, /moveButton\.textContent = 'Move'/);
-  assert.match(app, /moveButton\.setAttribute\('aria-label', 'Move selected issues'\)/);
+  assert.match(issueBulkUi, /issue-bulk-move-toolbar/);
+  assert.match(issueBulkUi, /selectionActions\.className = 'issue-bulk-move-selection-actions'/);
+  assert.match(issueBulkUi, /selectionLabel\.textContent = 'Selection'/);
+  assert.match(issueBulkUi, /actionGroup\.className = 'issue-bulk-move-action-group'/);
+  assert.match(issueBulkUi, /milestoneLabel\.textContent = 'Milestone'/);
+  assert.match(issueBulkUi, /selectAll\.textContent = 'Select all'/);
+  assert.match(issueBulkUi, /moveButton\.textContent = 'Move'/);
+  assert.match(issueBulkUi, /moveButton\.setAttribute\('aria-label', 'Move selected issues'\)/);
   assert.match(app, /\/projects\/\$\{projectId\}\/issues\/move-to-milestone/);
   assert.match(css, /\.issue-bulk-move-toolbar\s*\{/);
   assert.match(css, /\.issue-bulk-move-selection-actions\s*\{/);
@@ -68,7 +69,7 @@ test('No milestone bulk move uses the shared selection and action-group design',
 test('issue board offers opt-in bulk assignment across milestone groups', () => {
   assert.match(html, /id="issue-bulk-assign-toggle"/);
   assert.match(dom, /issue-bulk-assign-toolbar/);
-  assert.match(app, /issue-bulk-assign-checkbox/);
+  assert.match(issueBulkUi, /issue-bulk-assign-checkbox/);
   assert.match(issueBoardUi, /const allowBulkAssignSelection = state\.bulkAssignSelectionMode/);
   assert.match(issueBoardView, /setVisibleBulkAssignIssueIds\(visibleBulkAssignIssueIds\)/);
   assert.match(html, /Assign selected/);

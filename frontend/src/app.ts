@@ -31,6 +31,7 @@ import { buildPaletteCommands } from './command-palette-commands.js';
 import { initWorkspacePickerUi } from './workspace-picker-ui.js';
 import { initIssueBoardUi } from './issue-board-ui.js';
 import { initIssueBoardView } from './issue-board-view.js';
+import { initIssueBulkUi } from './issue-bulk-ui.js';
 import { createIssueRowUi } from './issue-row-ui.js';
 import { initIssueAiPromptUi } from './issue-ai-prompt-ui.js';
 import { initIssueDiscussionUi } from './issue-discussion-ui.js';
@@ -649,6 +650,39 @@ const issueStatusPickerUi = initIssueStatusPickerUi({
   focusIssueDetailStatus: () => issueDetailStatus.focus(),
   shouldRestoreFocus: () => !commandPaletteUi.isPaletteOpen()
     && !commandPaletteUi.isShortcutHelpOpen() && !workspacePickerUi.isOpen(),
+});
+const issueBulkUi = initIssueBulkUi({
+  doc: document,
+  getState: () => ({
+    bulkMovePending,
+    bulkSelectionActionPending,
+    bulkAssignSelectionMode,
+    selectedBulkMoveIssueIds,
+    selectedBulkAssignIssueIds,
+    visibleBulkAssignIssueIds,
+    bulkMoveMilestoneId,
+    bulkAssignTargetValue,
+    activeMembers: activeProjectMembers,
+    milestones: projectMilestones,
+    readOnly: activeProject !== null && projectStatusIsReadOnly(activeProject.status),
+  }),
+  issueList,
+  assignTarget: issueBulkAssignTarget,
+  assignToolbar: issueBulkAssignToolbar,
+  assignToggle: issueBulkAssignToggle,
+  assignCount: issueBulkAssignCount,
+  selectVisible: issueBulkAssignSelectVisible,
+  assignApply: issueBulkAssignApply,
+  shareApply: issueBulkShareApply,
+  unshareApply: issueBulkUnshareApply,
+  assignCancel: issueBulkAssignCancel,
+  setBulkMoveMilestoneId: (milestoneId) => { bulkMoveMilestoneId = milestoneId; },
+  setBulkAssignTargetValue: (value) => { bulkAssignTargetValue = value; },
+  setSelectedBulkMoveIssueIds: (issueIds) => { selectedBulkMoveIssueIds = issueIds; },
+  renderBoard: renderProjectIssueBoard,
+  moveSelectedIssuesToMilestone,
+  report,
+  setTextContentIfChanged,
 });
 const issueRowUi = createIssueRowUi({
   doc: document,
@@ -2732,42 +2766,7 @@ function clearBulkAssignSelection(): void {
 }
 
 function syncIssueBulkAssignControls(): void {
-  const readOnly = activeProject !== null && projectStatusIsReadOnly(activeProject.status);
-  const activeMembers = activeProjectMembers.filter((member) => member.is_active !== false && member.is_active !== 0);
-  const optionsSignature = JSON.stringify(activeMembers.map((member) => [member.id, member.name]));
-  if (issueBulkAssignTarget.dataset.optionsSignature !== optionsSignature) {
-    const choose = new Option('Choose assignee', '');
-    const unassigned = new Option('Unassigned', 'unassigned');
-    issueBulkAssignTarget.replaceChildren(choose, unassigned);
-    for (const member of activeMembers) issueBulkAssignTarget.add(new Option(member.name, String(member.id)));
-    issueBulkAssignTarget.dataset.optionsSignature = optionsSignature;
-  }
-  if (bulkAssignTargetValue !== 'unassigned'
-    && bulkAssignTargetValue !== ''
-    && !activeMembers.some((member) => String(member.id) === bulkAssignTargetValue)) {
-    bulkAssignTargetValue = '';
-  }
-  issueBulkAssignTarget.value = bulkAssignTargetValue;
-  issueBulkAssignToolbar.hidden = !bulkAssignSelectionMode;
-  issueBulkAssignToggle.textContent = bulkAssignSelectionMode ? 'Cancel selection' : 'Select issues';
-  issueBulkAssignToggle.setAttribute('aria-pressed', String(bulkAssignSelectionMode));
-  issueBulkAssignToggle.disabled = bulkSelectionActionPending || bulkMovePending || readOnly
-    || (!bulkAssignSelectionMode && visibleBulkAssignIssueIds.size === 0);
-  setTextContentIfChanged(issueBulkAssignCount, `${selectedBulkAssignIssueIds.size} selected`);
-  issueBulkAssignSelectVisible.disabled = bulkSelectionActionPending || readOnly || visibleBulkAssignIssueIds.size === 0
-    || visibleBulkAssignIssueIds.size > 500 || bulkMovePending;
-  issueBulkAssignSelectVisible.title = visibleBulkAssignIssueIds.size > 500 ? 'Select up to 500 issues at a time.' : '';
-  issueBulkAssignTarget.disabled = bulkSelectionActionPending || bulkMovePending || readOnly;
-  issueBulkAssignApply.disabled = bulkSelectionActionPending || bulkMovePending || readOnly || selectedBulkAssignIssueIds.size === 0
-    || bulkAssignTargetValue === '';
-  issueBulkShareApply.disabled = bulkSelectionActionPending || bulkMovePending || readOnly || selectedBulkAssignIssueIds.size === 0;
-  issueBulkUnshareApply.disabled = bulkSelectionActionPending || bulkMovePending || readOnly || selectedBulkAssignIssueIds.size === 0;
-  issueBulkAssignCancel.disabled = bulkSelectionActionPending || bulkMovePending;
-  for (const checkbox of issueList.querySelectorAll<HTMLInputElement>('.issue-bulk-assign-checkbox')) {
-    checkbox.checked = selectedBulkAssignIssueIds.has(Number(checkbox.dataset.issueId));
-    checkbox.disabled = bulkSelectionActionPending || readOnly
-      || (!checkbox.checked && selectedBulkAssignIssueIds.size >= 500);
-  }
+  issueBulkUi.syncAssignControls();
 }
 
 function renderProjectIssueBoard(): void {
@@ -2775,126 +2774,11 @@ function renderProjectIssueBoard(): void {
 }
 
 function createIssueBulkMoveToolbar(issues: Issue[]): HTMLDivElement {
-  const toolbar = document.createElement('div');
-  toolbar.className = 'issue-bulk-move-toolbar';
-  toolbar.setAttribute('role', 'group');
-  toolbar.setAttribute('aria-label', 'Move unassigned issues to a milestone');
-
-  const selectionActions = document.createElement('div');
-  selectionActions.className = 'issue-bulk-move-selection-actions';
-  selectionActions.setAttribute('role', 'group');
-  selectionActions.setAttribute('aria-label', 'Selection');
-
-  const selectionLabel = document.createElement('span');
-  selectionLabel.className = 'issue-bulk-action-label';
-  selectionLabel.textContent = 'Selection';
-
-  const count = document.createElement('span');
-  count.className = 'issue-bulk-move-count';
-  count.setAttribute('aria-live', 'polite');
-
-  const selectAll = document.createElement('button');
-  selectAll.type = 'button';
-  selectAll.className = 'button button-secondary issue-bulk-select-all';
-  selectAll.textContent = 'Select all';
-  selectAll.addEventListener('click', () => {
-    if (bulkMovePending) return;
-    const details = toolbar.parentElement;
-    if (!(details instanceof HTMLDetailsElement)) return;
-    const issueIds = Array.from(details.querySelectorAll<HTMLInputElement>('.issue-bulk-select-checkbox'))
-      .map((checkbox) => Number(checkbox.dataset.issueId))
-      .filter((issueId) => Number.isInteger(issueId) && issueId > 0);
-    if (issueIds.length > 500) return;
-    selectedBulkMoveIssueIds = new Set(issueIds);
-    renderProjectIssueBoard();
-  });
-
-  selectionActions.append(selectionLabel, count, selectAll);
-
-  const actionGroup = document.createElement('div');
-  actionGroup.className = 'issue-bulk-move-action-group';
-  actionGroup.setAttribute('role', 'group');
-  actionGroup.setAttribute('aria-label', 'Milestone');
-
-  const milestoneLabel = document.createElement('span');
-  milestoneLabel.className = 'issue-bulk-action-label';
-  milestoneLabel.textContent = 'Milestone';
-
-  const milestoneSelect = document.createElement('select');
-  milestoneSelect.className = 'issue-bulk-move-milestone';
-  milestoneSelect.setAttribute('aria-label', 'Move selected issues to milestone');
-  milestoneSelect.addEventListener('change', () => {
-    bulkMoveMilestoneId = milestoneSelect.value === '' ? null : Number(milestoneSelect.value);
-    const moveButton = toolbar.querySelector<HTMLButtonElement>('.issue-bulk-move-button');
-    if (moveButton !== null) moveButton.disabled = bulkMovePending
-      || selectedBulkMoveIssueIds.size === 0
-      || bulkMoveMilestoneId === null
-      || (activeProject !== null && projectStatusIsReadOnly(activeProject.status));
-  });
-
-  const moveButton = document.createElement('button');
-  moveButton.type = 'button';
-  moveButton.className = 'button button-primary issue-bulk-move-button';
-  moveButton.textContent = 'Move';
-  moveButton.setAttribute('aria-label', 'Move selected issues');
-  moveButton.addEventListener('click', () => void moveSelectedIssuesToMilestone());
-
-  actionGroup.append(milestoneLabel, milestoneSelect, moveButton);
-  toolbar.append(selectionActions, actionGroup);
-  syncIssueBulkMoveToolbar(toolbar, issues);
-  return toolbar;
+  return issueBulkUi.createMoveToolbar(issues);
 }
 
 function syncIssueBulkMoveToolbar(toolbar: HTMLDivElement, issues: Issue[]): void {
-  const count = toolbar.querySelector<HTMLElement>('.issue-bulk-move-count');
-  const selectAll = toolbar.querySelector<HTMLButtonElement>('.issue-bulk-select-all');
-  const milestoneSelect = toolbar.querySelector<HTMLSelectElement>('.issue-bulk-move-milestone');
-  const moveButton = toolbar.querySelector<HTMLButtonElement>('.issue-bulk-move-button');
-  const disabled = bulkMovePending || bulkSelectionActionPending
-    || (activeProject !== null && projectStatusIsReadOnly(activeProject.status));
-  if (count !== null) setTextContentIfChanged(count, `${selectedBulkMoveIssueIds.size} selected`);
-  if (selectAll !== null) {
-    selectAll.disabled = disabled || issues.length > 500;
-    selectAll.title = issues.length > 500 ? 'Select up to 500 issues at a time.' : '';
-  }
-  if (milestoneSelect !== null) {
-    const optionsSignature = projectMilestones
-      .filter((milestone) => milestone.archived_at === null)
-      .map((milestone) => `${milestone.id}:${milestone.name}`)
-      .join('|');
-    if (milestoneSelect.dataset.optionsSignature !== optionsSignature) {
-      const placeholder = document.createElement('option');
-      placeholder.value = '';
-      placeholder.textContent = 'Choose milestone';
-      milestoneSelect.replaceChildren(placeholder);
-      for (const milestone of projectMilestones) {
-        if (milestone.archived_at !== null) continue;
-        const option = document.createElement('option');
-        option.value = String(milestone.id);
-        option.textContent = milestone.name;
-        milestoneSelect.append(option);
-      }
-      milestoneSelect.dataset.optionsSignature = optionsSignature;
-    }
-    if (bulkMoveMilestoneId !== null && !projectMilestones.some((milestone) =>
-      milestone.id === bulkMoveMilestoneId && milestone.archived_at === null)) {
-      bulkMoveMilestoneId = null;
-    }
-    milestoneSelect.value = bulkMoveMilestoneId === null ? '' : String(bulkMoveMilestoneId);
-    milestoneSelect.disabled = disabled;
-  }
-  if (moveButton !== null) moveButton.disabled = disabled
-    || selectedBulkMoveIssueIds.size === 0
-    || bulkMoveMilestoneId === null;
-
-  const details = toolbar.parentElement;
-  if (details instanceof HTMLDetailsElement) {
-    for (const checkbox of details.querySelectorAll<HTMLInputElement>('.issue-bulk-select-checkbox')) {
-      checkbox.checked = selectedBulkMoveIssueIds.has(Number(checkbox.dataset.issueId));
-      checkbox.disabled = disabled
-        || (!checkbox.checked && selectedBulkMoveIssueIds.size >= 500);
-    }
-  }
+  issueBulkUi.syncMoveToolbar(toolbar, issues);
 }
 
 async function assignSelectedIssues(): Promise<void> {
@@ -3252,57 +3136,11 @@ async function updateIssueStatus(issue: Issue, nextStatus: IssueStatus): Promise
 }
 
 function createIssueBulkSelectCheckbox(issue: Issue): HTMLInputElement {
-  const checkbox = document.createElement('input');
-  checkbox.type = 'checkbox';
-  checkbox.className = 'issue-bulk-select-checkbox';
-  checkbox.dataset.issueId = String(issue.id);
-  checkbox.checked = selectedBulkMoveIssueIds.has(issue.id);
-  checkbox.disabled = bulkMovePending || bulkSelectionActionPending
-    || (!checkbox.checked && selectedBulkMoveIssueIds.size >= 500)
-    || (activeProject !== null && projectStatusIsReadOnly(activeProject.status));
-  checkbox.setAttribute('aria-label', `Select ${issue.title}`);
-  checkbox.addEventListener('change', () => {
-          if (bulkMovePending || bulkSelectionActionPending) return;
-    if (checkbox.checked) {
-      if (selectedBulkMoveIssueIds.size >= 500) {
-        checkbox.checked = false;
-        report('Move up to 500 issues at a time.', true);
-        return;
-      }
-      selectedBulkMoveIssueIds.add(issue.id);
-    } else {
-      selectedBulkMoveIssueIds.delete(issue.id);
-    }
-    renderProjectIssueBoard();
-  });
-  return checkbox;
+  return issueBulkUi.createMoveCheckbox(issue);
 }
 
 function createIssueBulkAssignCheckbox(issue: Issue): HTMLInputElement {
-  const checkbox = document.createElement('input');
-  checkbox.type = 'checkbox';
-  checkbox.className = 'issue-bulk-assign-checkbox';
-  checkbox.dataset.issueId = String(issue.id);
-  checkbox.checked = selectedBulkAssignIssueIds.has(issue.id);
-  checkbox.disabled = bulkSelectionActionPending || bulkMovePending
-    || (!checkbox.checked && selectedBulkAssignIssueIds.size >= 500)
-    || (activeProject !== null && projectStatusIsReadOnly(activeProject.status));
-  checkbox.setAttribute('aria-label', `Select ${issue.title} for assignment`);
-  checkbox.addEventListener('change', () => {
-    if (bulkSelectionActionPending) return;
-    if (checkbox.checked) {
-      if (selectedBulkAssignIssueIds.size >= 500) {
-        checkbox.checked = false;
-        report('Assign up to 500 issues at a time.', true);
-        return;
-      }
-      selectedBulkAssignIssueIds.add(issue.id);
-    } else {
-      selectedBulkAssignIssueIds.delete(issue.id);
-    }
-    renderProjectIssueBoard();
-  });
-  return checkbox;
+  return issueBulkUi.createAssignCheckbox(issue);
 }
 
 async function moveIssue(issue: Issue, direction: 'up' | 'down', button: HTMLButtonElement): Promise<void> {
