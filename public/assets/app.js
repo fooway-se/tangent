@@ -4,6 +4,7 @@ import { initGuestUi } from './guest-ui.js';
 import { initInboxUi } from './inbox-ui.js';
 import { createLogoutController } from './logout.js';
 import { ProjectNavigationOwner, runOwnedRequest } from './project-navigation.js';
+import { createWorkspaceHistory } from './workspace-history.js';
 import { switchWorkspaceMembership } from './workspace-switch.js';
 import { initAuthUi } from './auth-ui.js';
 import { initClientSummaryUi } from './client-summary-ui.js';
@@ -123,7 +124,7 @@ let keyboardHintsVisible = loadKeyboardHintsPreference();
 let activeWorkspaces = [];
 let activeProject = null;
 let projectReturnFocusId = null;
-const workspaceViewHistory = [];
+const workspaceHistory = createWorkspaceHistory();
 const projectNavigation = new ProjectNavigationOwner();
 const workspacePickerUi = initWorkspacePickerUi({
     getWorkspaces: () => activeWorkspaces,
@@ -551,7 +552,7 @@ function invalidateProjectNavigation(sessionChanged = false) {
 function showSignedOut() {
     invalidateProjectNavigation(true);
     authUi.resetForms();
-    workspaceViewHistory.length = 0;
+    workspaceHistory.clear();
     projectReturnFocusId = null;
     issueQuickAddSourceMessageId = null;
     issueQuickAddSourceProjectId = null;
@@ -593,7 +594,7 @@ function showSignedOut() {
 }
 function showSignedIn(user) {
     invalidateProjectNavigation(true);
-    workspaceViewHistory.length = 0;
+    workspaceHistory.clear();
     projectReturnFocusId = null;
     activeProject = null;
     loungeChatUi.stop();
@@ -724,8 +725,7 @@ function showWorkspaceView(view) {
 }
 function openWorkspaceAdmin() {
     const currentLocation = currentWorkspaceLocation();
-    if (currentLocation.view !== 'admin')
-        workspaceViewHistory.push(currentLocation);
+    workspaceHistory.record(currentLocation, { view: 'admin' });
     showWorkspaceView('admin');
     workspaceAdminUi.open();
     adminHeading.focus();
@@ -757,45 +757,29 @@ function currentWorkspaceLocation() {
     }
     return { view: 'projects' };
 }
-function sameWorkspaceLocation(left, right) {
-    if (left.view !== right.view)
-        return false;
-    if (left.view === 'project' && right.view === 'project') {
-        return left.projectId === right.projectId && left.tab === right.tab;
-    }
-    if (left.view === 'projects' && right.view === 'projects') {
-        return left.focusedProjectId === right.focusedProjectId;
-    }
-    if (left.view === 'lounge' && right.view === 'lounge')
-        return true;
-    return left.view === right.view;
-}
 function goToProjects() {
-    workspaceViewHistory.length = 0;
+    workspaceHistory.clear();
     showWorkspaceView('projects');
 }
 function goToRoadmap() {
     if (activeUser === null || activeUser.role === 'guest')
         return;
     const currentLocation = currentWorkspaceLocation();
-    if (currentLocation.view !== 'roadmap')
-        workspaceViewHistory.push(currentLocation);
+    workspaceHistory.record(currentLocation, { view: 'roadmap' });
     showWorkspaceView('roadmap');
     roadmapHeading.focus();
     void loadRoadmap();
 }
 function goToInbox() {
     const currentLocation = currentWorkspaceLocation();
-    if (currentLocation.view !== 'inbox')
-        workspaceViewHistory.push(currentLocation);
+    workspaceHistory.record(currentLocation, { view: 'inbox' });
     showWorkspaceView('inbox');
     inboxHeading.focus();
     inboxUi.load();
 }
 function goToLounge() {
     const currentLocation = currentWorkspaceLocation();
-    if (currentLocation.view !== 'lounge')
-        workspaceViewHistory.push(currentLocation);
+    workspaceHistory.record(currentLocation, { view: 'lounge' });
     showWorkspaceView('lounge');
     loungeHeading.focus();
     loungeChatUi.load();
@@ -804,7 +788,7 @@ function goBackWorkspaceView() {
     const currentLocation = currentWorkspaceLocation();
     if (currentLocation.view === 'projects')
         return;
-    const previousLocation = workspaceViewHistory.pop();
+    const previousLocation = workspaceHistory.pop();
     if (previousLocation?.view === 'project') {
         void loadProjectDetail(previousLocation.projectId, previousLocation.tab, false);
     }
@@ -2489,9 +2473,8 @@ async function loadProjectDetail(projectId, tab = 'issues', recordHistory = true
         return { result, milestoneResult };
     }, ({ result, milestoneResult }) => {
         const nextLocation = { view: 'project', projectId, tab };
-        if (recordHistory && !sameWorkspaceLocation(previousLocation, nextLocation)) {
-            workspaceViewHistory.push(previousLocation);
-        }
+        if (recordHistory)
+            workspaceHistory.record(previousLocation, nextLocation);
         activeProject = result.project;
         activeProjectMembers = result.members;
         projectHeading.textContent = result.project.name;
@@ -2521,7 +2504,7 @@ async function loadProjectDetail(projectId, tab = 'issues', recordHistory = true
         switchProjectTab(tab);
         (tab === 'issues' ? issuesTabButton : tab === 'members' ? membersTabButton : notesTabButton).focus();
     }, (error) => {
-        workspaceViewHistory.length = 0;
+        workspaceHistory.clear();
         report(error instanceof Error ? error.message : 'Could not load the project.', true);
         showWorkspaceView('projects');
     });
