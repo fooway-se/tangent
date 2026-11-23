@@ -39,15 +39,21 @@ final class Request
         if (!self::hasHeader($headers, 'Content-Type')) {
             $headers['Content-Type'] = 'application/json';
         }
+        $uriPath = parse_url($path, PHP_URL_PATH);
+        $uriQuery = parse_url($path, PHP_URL_QUERY);
+        $uriParameters = [];
+        if (is_string($uriQuery) && $uriQuery !== '') {
+            parse_str($uriQuery, $uriParameters);
+        }
         return new self(
             strtoupper($method),
-            $path,
+            is_string($uriPath) && $uriPath !== '' ? $uriPath : '/',
             $body,
             $headers,
             $cookies,
             $remoteAddress,
             true,
-            $query,
+            array_replace($uriParameters, $query),
             $rawBody,
             strlen($rawBody) > self::MAX_BODY_BYTES,
         );
