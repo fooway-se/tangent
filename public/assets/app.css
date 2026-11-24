@@ -1567,6 +1567,28 @@ dialog::backdrop { background: var(--backdrop); }
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.36);
 }
 
+/* C64 breadbin: dark individual keys on the warm shell and a cool blue screen. */
+:root[data-theme="breadbin"] .workspace-nav-button,
+:root[data-theme="breadbin"] .project-sidebar-link {
+  border-color: var(--cap-edge);
+  border-radius: 3px;
+  color: var(--plate-ink);
+  background: linear-gradient(180deg, var(--key-top), var(--key-bottom));
+  box-shadow: inset 0 1px 0 var(--key-highlight), 0 1px 0 rgba(0, 0, 0, 0.34);
+}
+:root[data-theme="breadbin"] .workspace-nav-button.is-active,
+:root[data-theme="breadbin"] .project-sidebar-link.is-active {
+  border-color: var(--accent-edge);
+  color: var(--accent-ink);
+  background: var(--accent);
+  box-shadow: inset 0 1px 0 var(--accent-shine), 0 1px 0 rgba(0, 0, 0, 0.34);
+}
+:root[data-theme="breadbin"] .login-shell {
+  background-image: radial-gradient(ellipse at 50% 45%, var(--night-glow), transparent 72%);
+}
+:root[data-theme="breadbin"] .login-shell::before { opacity: 0.5; }
+:root[data-theme="breadbin"] .login-shell::after { height: 12px; }
+
 /* BBC Micro Model B: a recessed black keybed, one red function key, and quiet LEDs. */
 :root[data-theme="broadcast"] .workspace-nav {
   gap: 5px;
