@@ -129,7 +129,8 @@ kbd {
 .workspace-picker-trigger:disabled { cursor: default; opacity: 0.65; }
 #workspace-switcher-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .workspace-picker-caret { flex: 0 0 auto; font-size: 11px; }
-.workspace-nav { display: flex; flex-direction: column; gap: 8px; margin: 0; }
+.workspace-nav { display: flex; flex-direction: column; margin: 0; }
+.workspace-key-list { gap: 5px; }
 .workspace-nav::before { display: block; height: 8px; margin: 6px 0 10px; border-radius: 2px; background: var(--signal-stripe); box-shadow: 0 1px 0 var(--case-light); content: ""; }
 .workspace-nav-button, .project-sidebar-link {
   display: block;
@@ -157,7 +158,7 @@ kbd {
 .section-title { margin: 0 0 8px; color: var(--case-muted); font: 700 11px/1.4 var(--font-display); letter-spacing: 2px; text-transform: uppercase; }
 .sidebar-projects { position: relative; display: flex; flex: 1 0 124px; flex-direction: column; min-height: 124px; }
 .sidebar-projects .section-title { margin: 14px 4px 8px; }
-.project-sidebar-list { display: grid; align-content: start; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.project-sidebar-list { display: grid; align-content: start; margin: 0; padding: 0; list-style: none; }
 .sidebar-scroll-more {
   position: absolute;
   z-index: 1;
@@ -214,10 +215,8 @@ kbd {
   .workspace-brand .brand > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .workspace-brand .brand-mark { width: 20px; height: 20px; flex: 0 0 auto; font-size: 12px; }
   .workspace-picker-trigger { width: auto; min-width: 0; flex: 0 0 84px; margin: 0 0 0 auto; padding: 2px 3px; font-size: 11px; white-space: nowrap; }
-  .workspace-nav { gap: 4px; }
   .workspace-nav::before { display: none; }
   .workspace-nav-button, .project-sidebar-link { padding: 4px 8px; font-size: 12px; }
-  .project-sidebar-list { gap: 4px; }
   .sidebar-projects .section-title { margin: 6px 4px 4px; }
   .workspace-sidebar .sidebar-account { flex-wrap: nowrap; gap: 4px; margin-top: 6px; padding-top: 6px; }
   .workspace-sidebar .sidebar-account #current-user { display: none; }
@@ -767,7 +766,7 @@ dialog::backdrop { background: var(--backdrop); }
   :root[data-theme="broadcast"] .workspace-brand::before,
   :root[data-theme="pc88"] .workspace-brand::before { display: none; }
   .workspace-brand { margin: 0; }
-  .workspace-nav { grid-column: 1 / -1; grid-row: 2; display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 6px; }
+  .workspace-nav { grid-column: 1 / -1; grid-row: 2; display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
   .workspace-nav-button { width: auto; white-space: nowrap; }
   .sidebar-projects { grid-column: 1 / -1; min-height: 0; }
   .sidebar-projects .section-title { margin: 4px 4px 6px; }
@@ -1143,7 +1142,6 @@ dialog::backdrop { background: var(--backdrop); }
 /* ZX81 red branding carries across the full Tangent logo. */
 :root[data-theme="mono"] .brand { color: var(--accent); }
 :root[data-theme="mono"] .workspace-nav {
-  gap: 5px;
   border: 1px solid var(--case-shade);
   border-radius: 4px;
   padding: 5px;
@@ -1163,7 +1161,6 @@ dialog::backdrop { background: var(--backdrop); }
 
 /* Atari 800XL's power lamp is a flat red indicator on the dark controls. */
 :root[data-theme="stripe"] .workspace-nav {
-  gap: 5px;
   border: 1px solid var(--case-shade);
   border-radius: 4px;
   padding: 5px;
@@ -1175,7 +1172,6 @@ dialog::backdrop { background: var(--backdrop); }
 
 /* Apple IIe key faces are light stone; keep the dark drive face for branding. */
 :root[data-theme="paper"] .workspace-nav {
-  gap: 5px;
   border: 1px solid var(--case-shade);
   border-radius: 4px;
   padding: 5px;
@@ -1195,6 +1191,13 @@ dialog::backdrop { background: var(--backdrop); }
 :root[data-theme="paper"] .chat-presence-light.is-on { box-shadow: none; }
 
 /* Microbee's black function keys sit above its ivory keyboard. */
+:root[data-theme="microbee"] .workspace-nav {
+  border: 1px solid var(--case-shade);
+  border-radius: 4px;
+  padding: 5px;
+  background: linear-gradient(180deg, var(--case-mid), var(--case-bottom));
+  box-shadow: inset 0 1px 3px rgba(36, 37, 34, 0.14), 0 1px 0 rgba(255, 255, 255, 0.32);
+}
 :root[data-theme="microbee"] .workspace-nav-button,
 :root[data-theme="microbee"] .workspace-nav-button.is-active {
   border-color: var(--cap-edge);
@@ -1207,6 +1210,13 @@ dialog::backdrop { background: var(--backdrop); }
 :root[data-theme="microbee"] #lounge-nav.is-active #lounge-nav-presence { color: var(--plate-ink); }
 
 /* ADAM's dark function keys become the five workspace navigation keys. */
+:root[data-theme="coleco-adam"] .workspace-nav {
+  border: 1px solid var(--case-shade);
+  border-radius: 4px;
+  padding: 5px;
+  background: linear-gradient(180deg, var(--case-mid), var(--case-bottom));
+  box-shadow: inset 0 1px 3px rgba(42, 38, 40, 0.14), 0 1px 0 rgba(255, 255, 255, 0.3);
+}
 :root[data-theme="coleco-adam"] .workspace-nav-button,
 :root[data-theme="coleco-adam"] .workspace-nav-button.is-active {
   border-color: var(--cap-edge);
@@ -1219,6 +1229,13 @@ dialog::backdrop { background: var(--backdrop); }
 :root[data-theme="coleco-adam"] #lounge-nav.is-active #lounge-nav-presence { color: var(--plate-ink); }
 
 /* Dragon's logo colors stay in its signal stripe; controls keep black-key faces. */
+:root[data-theme="dragon-32"] .workspace-nav {
+  border: 1px solid var(--case-shade);
+  border-radius: 4px;
+  padding: 5px;
+  background: linear-gradient(180deg, var(--case-mid), var(--case-bottom));
+  box-shadow: inset 0 1px 3px rgba(41, 39, 37, 0.16), 0 1px 0 rgba(255, 255, 255, 0.28);
+}
 :root[data-theme="dragon-32"] .workspace-nav-button.is-active,
 :root[data-theme="dragon-32"] .project-sidebar-link.is-active,
 :root[data-theme="dragon-32"] .button-primary:not(.button-danger),
@@ -1240,6 +1257,22 @@ dialog::backdrop { background: var(--backdrop); }
   color: var(--key-ink);
   background-color: var(--key-bottom);
   background-image: linear-gradient(180deg, var(--key-top), var(--key-bottom));
+}
+/* Acorn Atom: a shallow warm-case recess around the charcoal keys. */
+:root[data-theme="acorn-atom"] .workspace-nav {
+  border: 1px solid var(--case-shade);
+  border-radius: 4px;
+  padding: 5px;
+  background: linear-gradient(180deg, var(--case-mid), var(--case-bottom));
+  box-shadow: inset 0 1px 3px rgba(44, 41, 37, 0.16), 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+/* Icon & Mouse: a shallow warm-gray recess around the light keycaps. */
+:root[data-theme="desktop"] .workspace-nav {
+  border: 1px solid var(--case-shade);
+  border-radius: 4px;
+  padding: 5px;
+  background: linear-gradient(180deg, var(--case-mid), var(--case-bottom));
+  box-shadow: inset 0 1px 3px rgba(41, 40, 39, 0.14), 0 1px 0 rgba(255, 255, 255, 0.28);
 }
 .retro-computer-icon { position: relative; display: block; width: 14px; height: 10px; margin-bottom: 5px; border: 2px solid currentColor; }
 .retro-computer-icon > span { position: absolute; bottom: 1px; left: 1px; width: 4px; height: 2px; background: currentColor; }
@@ -1273,6 +1306,41 @@ dialog::backdrop { background: var(--backdrop); }
 :root[data-theme="pc88"] .workspace-sidebar,
 :root[data-theme="x68000"] .workspace-sidebar { --project-sidebar-top-vent-space: 0px; }
 
+/* Clean: flat neutral surfaces group the navigation keys. */
+:root[data-theme="clean"] .workspace-nav,
+:root[data-theme="clean-dark"] .workspace-nav {
+  border: 1px solid var(--case-edge);
+  border-radius: var(--radius-panel);
+  padding: 5px;
+  background: var(--case-shade);
+  box-shadow: none;
+}
+
+/* X68000: a shallow graphite recess around the console navigation keys. */
+:root[data-theme="x68000"] .workspace-nav {
+  border: 1px solid var(--case-shade);
+  border-radius: 3px;
+  padding: 5px;
+  background: linear-gradient(180deg, var(--case-bottom), var(--case-shade));
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2), 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+/* Oric-1: a subtle graphite well beneath the light keycaps. */
+:root[data-theme="oric-1"] .workspace-nav {
+  border: 1px solid var(--case-shade);
+  border-radius: 4px;
+  padding: 5px;
+  background: linear-gradient(180deg, var(--case-bottom), var(--case-shade));
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.18), 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+/* Jupiter Ace: a quiet ivory-case recess around the charcoal keys. */
+:root[data-theme="jupiter-ace"] .workspace-nav {
+  border: 1px solid var(--case-shade);
+  border-radius: 4px;
+  padding: 5px;
+  background: linear-gradient(180deg, var(--case-mid), var(--case-bottom));
+  box-shadow: inset 0 1px 3px rgba(42, 42, 48, 0.14), 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
 :root[data-theme="broadcast"] .workspace-sidebar { --project-sidebar-top-vent-space: 11px; }
 :root[data-theme="broadcast"] .workspace-brand { padding-top: 6px; }
 :root[data-theme="broadcast"] .workspace-brand::before {
@@ -1296,6 +1364,13 @@ dialog::backdrop { background: var(--backdrop); }
 }
 
 /* PC-8801 controls echo the ivory alphanumeric keys and charcoal function keys. */
+:root[data-theme="pc88"] .workspace-nav {
+  border: 1px solid var(--case-shade);
+  border-radius: 4px;
+  padding: 5px;
+  background: linear-gradient(180deg, var(--case-mid), var(--case-bottom));
+  box-shadow: inset 0 1px 3px rgba(40, 40, 36, 0.16), 0 1px 0 rgba(255, 255, 255, 0.28);
+}
 :root[data-theme="pc88"] .workspace-nav-button.is-active,
 :root[data-theme="pc88"] .project-sidebar-link.is-active {
   border-color: var(--cap-edge);
@@ -1362,6 +1437,13 @@ dialog::backdrop { background: var(--backdrop); }
   border-left: 4px solid var(--case-edge);
   border-radius: 2px;
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.48), 0 1px 0 var(--case-light);
+}
+:root[data-theme="altair"] .workspace-nav {
+  border: 1px solid var(--case-shade);
+  border-radius: 2px;
+  padding: 5px;
+  background: linear-gradient(180deg, var(--case-mid), var(--case-bottom));
+  box-shadow: inset 0 1px 3px rgba(32, 39, 43, 0.16), 0 1px 0 rgba(255, 255, 255, 0.28);
 }
 :root[data-theme="altair"] .workspace-nav-button,
 :root[data-theme="altair"] .project-sidebar-link {
@@ -1466,9 +1548,17 @@ dialog::backdrop { background: var(--backdrop); }
   box-shadow: inset 0 1px 0 var(--key-highlight);
 }
 
+/* Atari ST: a shallow molded recess around the warm keycaps. */
+:root[data-theme="atari-st"] .workspace-nav {
+  border: 1px solid var(--case-shade);
+  border-radius: 4px;
+  padding: 5px;
+  background: linear-gradient(180deg, var(--case-mid), var(--case-bottom));
+  box-shadow: inset 0 1px 3px rgba(43, 41, 36, 0.16), 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+
 /* TI-99/4A: black chiclet controls, silver function keys, and one red status lamp. */
 :root[data-theme="silver"] .workspace-nav {
-  gap: 5px;
   border: 1px solid var(--case-shade);
   border-radius: 3px;
   padding: 5px;
@@ -1573,7 +1663,6 @@ dialog::backdrop { background: var(--backdrop); }
 
 /* TRS-80 Model III: compact black keybed, one orange function key, ivory Enter key. */
 :root[data-theme="desk"] .workspace-nav {
-  gap: 5px;
   border: 1px solid var(--cap-edge);
   border-radius: 3px;
   padding: 6px;
@@ -1651,7 +1740,6 @@ dialog::backdrop { background: var(--backdrop); }
 
 /* C64 breadbin: dark individual keys on the warm shell and a cool blue screen. */
 :root[data-theme="breadbin"] .workspace-nav {
-  gap: 5px;
   border: 1px solid var(--case-shade);
   border-radius: 4px;
   padding: 5px;
@@ -1679,9 +1767,33 @@ dialog::backdrop { background: var(--backdrop); }
 :root[data-theme="breadbin"] .login-shell::before { opacity: 0.5; }
 :root[data-theme="breadbin"] .login-shell::after { height: 12px; }
 
+/* VIC-20: a restrained recess in the ivory shell around the dark keys. */
+:root[data-theme="blue"] .workspace-nav {
+  border: 1px solid var(--case-shade);
+  border-radius: 4px;
+  padding: 5px;
+  background: linear-gradient(180deg, var(--case-mid), var(--case-bottom));
+  box-shadow: inset 0 1px 3px rgba(41, 38, 31, 0.16), 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+/* SVI-728: a soft shell-toned recess around the warm keycaps. */
+:root[data-theme="cartridge"] .workspace-nav {
+  border: 1px solid var(--case-shade);
+  border-radius: 4px;
+  padding: 5px;
+  background: linear-gradient(180deg, var(--case-mid), var(--case-bottom));
+  box-shadow: inset 0 1px 3px rgba(41, 44, 49, 0.14), 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+/* A500: a shallow recess in the warm case around the light control keys. */
+:root[data-theme="copper"] .workspace-nav {
+  border: 1px solid var(--case-shade);
+  border-radius: 4px;
+  padding: 5px;
+  background: linear-gradient(180deg, var(--case-mid), var(--case-bottom));
+  box-shadow: inset 0 1px 3px rgba(39, 40, 39, 0.16), 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+
 /* BBC Micro Model B: a recessed black keybed, one red function key, and quiet LEDs. */
 :root[data-theme="broadcast"] .workspace-nav {
-  gap: 5px;
   border: 1px solid var(--cap-edge);
   border-radius: 3px;
   padding: 6px;
@@ -1715,7 +1827,6 @@ dialog::backdrop { background: var(--backdrop); }
 
 /* CPC 464: blue boot glow, quiet CRT lines, and a slim RGB badge stripe. */
 :root[data-theme="cassette"] .workspace-nav {
-  gap: 5px;
   border: 1px solid var(--case-shade);
   border-radius: 4px;
   padding: 5px;
@@ -1734,7 +1845,6 @@ dialog::backdrop { background: var(--backdrop); }
   background-size: 4px 4px, auto;
 }
 :root[data-theme="rainbow"] .workspace-nav {
-  gap: 5px;
   border: 1px solid var(--cap-edge);
   border-radius: 5px;
   padding: 6px;
@@ -1758,7 +1868,6 @@ dialog::backdrop { background: var(--backdrop); }
   background-size: 4px 4px, auto;
 }
 :root:not([data-theme]) .workspace-nav {
-  gap: 5px;
   border: 1px solid var(--cap-edge);
   border-radius: 4px;
   padding: 6px;
@@ -1793,6 +1902,13 @@ dialog::backdrop { background: var(--backdrop); }
 
 /* Luxor ABC 80: a broad black louvred fan grille above the keyboard. */
 :root[data-theme="nordic"] .workspace-sidebar { --project-sidebar-top-vent-space: 56px; }
+:root[data-theme="nordic"] .workspace-nav {
+  border: 1px solid var(--case-shade);
+  border-radius: 4px;
+  padding: 5px;
+  background: linear-gradient(180deg, var(--case-mid), var(--case-bottom));
+  box-shadow: inset 0 1px 3px rgba(45, 40, 31, 0.18), 0 1px 0 rgba(255, 255, 255, 0.28);
+}
 :root[data-theme="nordic"] .workspace-sidebar::before {
   flex-basis: 40px;
   height: 40px;
