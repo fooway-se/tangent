@@ -768,7 +768,7 @@ dialog::backdrop { background: var(--backdrop); }
   :root[data-theme="broadcast"] .workspace-brand::before,
   :root[data-theme="pc88"] .workspace-brand::before { display: none; }
   .workspace-brand { margin: 0; }
-  .workspace-nav { flex-direction: row; flex-wrap: wrap; gap: 6px; }
+  .workspace-nav { grid-column: 1 / -1; grid-row: 2; flex-direction: row; flex-wrap: wrap; gap: 6px; }
   .workspace-nav-button { width: auto; white-space: nowrap; }
   .sidebar-projects { grid-column: 1 / -1; min-height: 0; }
   .sidebar-projects .section-title { margin: 4px 4px 6px; }
