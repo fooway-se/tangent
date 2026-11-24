@@ -1136,6 +1136,10 @@ dialog::backdrop { background: var(--backdrop); }
 .theme-about-button:active { transform: translateY(1px); }
 .theme-select:focus-visible, .theme-about-button:focus-visible { position: relative; outline: 2px solid var(--accent); outline-offset: 2px; }
 
+/* Atari 800XL's power lamp is a flat red indicator on the dark controls. */
+:root[data-theme="stripe"] .login-power-light,
+:root[data-theme="stripe"] .chat-presence-light.is-on { box-shadow: none; }
+
 /* Apple IIe key faces are light stone; keep the dark drive face for branding. */
 :root[data-theme="paper"] .workspace-sidebar .button,
 :root[data-theme="paper"] .login-keyboard-hints kbd,

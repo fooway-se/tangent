@@ -429,67 +429,68 @@
   --signal-stripe: linear-gradient(to bottom, #eeeeeb 0 25%, #c7cac7 25% 50%, #858a87 50% 75%, #454a48 75% 100%);
 }
 
-/* Stripe & Signal: graphite casework and a restrained four-colour accent. */
+/* Stripe & Signal: warm 800XL shell, dark keybed, silver controls, and a quiet Atari stripe. */
 :root[data-theme="stripe"] {
   --night: #0c1014;
-  --night-glow: #293746;
-  --night-muted: #d7d9d3;
+  --night-glow: #303332;
+  --night-muted: #d9d8d0;
 
-  --case-top: #606263;
-  --case-mid: #505253;
-  --case-bottom: #414344;
-  --case-shade: #303233;
-  --case-edge: #292c2c;
-  --case-light: #77797a;
-  --case-ink: #f1f1eb;
-  --case-muted: #d0d1ca;
-  --case-error: #ff9985;
-  --vent-dark: #303233;
-  --vent-light: #6a6c6d;
-  --footer-top: #4a4c4d;
-  --footer-bottom: #3b3d3e;
+  --case-top: #e8e5db;
+  --case-mid: #d3d0c6;
+  --case-bottom: #bdbab0;
+  --case-shade: #93918a;
+  --case-edge: #77766f;
+  --case-light: #f1eee5;
+  --case-ink: #292a29;
+  --case-muted: #555653;
+  --case-error: #a8443b;
+  --vent-dark: #8b8982;
+  --vent-light: #e3e0d7;
+  --footer-top: #d3d0c6;
+  --footer-bottom: #c1beb4;
 
-  --key-top: #424546;
-  --key-bottom: #2b2e2f;
-  --key-highlight: #646869;
+  --key-top: #383a3b;
+  --key-bottom: #222526;
+  --key-highlight: #525555;
+  --key-ink: #f1f1eb;
 
-  --cap-top: #252829;
-  --cap-bottom: #151819;
-  --cap-edge: #090b0c;
-  --plate: #222526;
-  --plate-ink: #f1f1eb;
-  --plate-muted: #c7cbc5;
+  --cap-top: #272a2b;
+  --cap-bottom: #131516;
+  --cap-edge: #090a0b;
+  --plate: #252828;
+  --plate-ink: #efefea;
+  --plate-muted: #c7c9c4;
 
-  --screen: #0c1c23;
-  --screen-rim: #090f13;
-  --screen-glow: rgba(141, 192, 173, 0.1);
-  --screen-vignette: rgba(93, 143, 194, 0.11);
-  --screen-ink: #e5e9dc;
-  --screen-muted: #b9c8be;
+  --screen: #111719;
+  --screen-rim: #090c0d;
+  --screen-glow: rgba(195, 204, 190, 0.045);
+  --screen-vignette: rgba(139, 143, 126, 0.055);
+  --screen-ink: #d9ddd5;
+  --screen-muted: #b8beb7;
   --screen-header: rgba(255, 255, 255, 0.04);
   --screen-highlight: rgba(255, 255, 255, 0.06);
   --backdrop: rgba(8, 11, 14, 0.72);
-  --screen-panel: #132a33;
-  --screen-control-top: #1c3740;
-  --screen-inset: #071317;
-  --screen-field: #060f13;
-  --screen-border: #38535a;
-  --screen-line: #263f47;
-  --screen-hover: #1a333b;
-  --screen-track: #09151a;
-  --screen-group: #1a3037;
-  --screen-group-top: #2a4147;
-  --screen-group-bottom: #20363d;
+  --screen-panel: #202627;
+  --screen-control-top: #2a3132;
+  --screen-inset: #0b0e0f;
+  --screen-field: #080a0b;
+  --screen-border: #4a5252;
+  --screen-line: #313a3c;
+  --screen-hover: #2a3234;
+  --screen-track: #090b0d;
+  --screen-group: #1d2425;
+  --screen-group-top: #2a3232;
+  --screen-group-bottom: #202727;
 
-  --accent: #f1a65b;
-  --accent-edge: #966032;
-  --accent-ink: #23180c;
-  --accent-shine: rgba(255, 255, 255, 0.48);
-  --success: #9ed28d;
-  --danger: #ff9985;
-  --power-light: #dc6549;
-  --focus-ring: rgba(241, 166, 91, 0.48);
-  --signal-stripe: linear-gradient(to bottom, #d95145 0 25%, #e6b74b 25% 50%, #61a66e 50% 75%, #5d8fc2 75% 100%);
+  --accent: #b5b8b7;
+  --accent-edge: #6f7473;
+  --accent-ink: #16191a;
+  --accent-shine: rgba(255, 255, 255, 0.42);
+  --success: #86bd78;
+  --danger: #e77668;
+  --power-light: #cc4e43;
+  --focus-ring: rgba(181, 184, 183, 0.44);
+  --signal-stripe: linear-gradient(to bottom, #c95748 0 25%, #cf9d43 25% 50%, #819653 50% 75%, #597f9d 75% 100%);
 }
 
 /* Paper & Rainbow: parchment case, stone keys, a green CRT, and a restrained rainbow badge. */
