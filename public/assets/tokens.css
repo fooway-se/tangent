@@ -681,67 +681,75 @@
   --signal-stripe: linear-gradient(to bottom, #d85242 0 25%, #e8bc56 25% 50%, #72b987 50% 75%, #7298d5 75% 100%);
 }
 
-/* Blue & Byte: a cream case around a saturated blue text display. */
+/* Blue & Byte: ivory VIC-20 case, black keybed, and cobalt display. */
 :root[data-theme="blue"] {
-  --night: #0b0d35;
-  --night-glow: #353c92;
-  --night-muted: #e0e2f5;
+  --night: #091527;
+  --night-glow: #183f7a;
+  --night-muted: #e4dfd1;
 
-  --case-top: #ded7c4;
-  --case-mid: #c9c1ac;
-  --case-bottom: #bcb39c;
-  --case-shade: #9b927b;
-  --case-edge: #918774;
-  --case-light: #f0e9d6;
-  --case-ink: #2b281f;
-  --case-muted: #454134;
-  --case-error: #94382c;
-  --vent-dark: #9e957d;
-  --vent-light: #e8e0cd;
-  --footer-top: #cfc6b1;
-  --footer-bottom: #bdb49e;
+  --case-top: #eee3c6;
+  --case-mid: #e0d2b0;
+  --case-bottom: #cdbd99;
+  --case-shade: #9c8b68;
+  --case-edge: #7e7057;
+  --case-light: #faf2de;
+  --case-ink: #29261f;
+  --case-muted: #484033;
+  --case-error: #96392d;
+  --vent-dark: #2b2a26;
+  --vent-light: #eee3c8;
+  --footer-top: #d9c9a4;
+  --footer-bottom: #c3b18a;
 
-  --key-top: #e8dfca;
-  --key-bottom: #c7bda7;
-  --key-highlight: #fff8e8;
+  --key-top: #302f2b;
+  --key-bottom: #1c1c1a;
+  --key-highlight: #4b4943;
+  --key-ink: #f2ead8;
 
-  --cap-top: #514339;
-  --cap-bottom: #382f29;
-  --cap-edge: #211b17;
-  --plate: #3c332e;
-  --plate-ink: #f2eadb;
-  --plate-muted: #d0c5b2;
+  --cap-top: #403e39;
+  --cap-bottom: #252522;
+  --cap-edge: #111211;
+  --plate: #191a19;
+  --plate-ink: #f1ead9;
+  --plate-muted: #c8c0ae;
 
-  --screen: #252c79;
-  --screen-rim: #151b52;
-  --screen-glow: rgba(156, 166, 255, 0.11);
-  --screen-vignette: rgba(100, 115, 240, 0.14);
-  --screen-ink: #e6e8ff;
-  --screen-muted: #c0c5f0;
-  --screen-header: rgba(255, 255, 255, 0.05);
-  --screen-highlight: rgba(255, 255, 255, 0.07);
-  --backdrop: rgba(11, 13, 53, 0.7);
-  --screen-panel: #303a91;
-  --screen-control-top: #3b46a0;
-  --screen-inset: #1a205f;
-  --screen-field: #171c56;
-  --screen-border: #5964a8;
-  --screen-line: #424e9c;
-  --screen-hover: #39449a;
-  --screen-track: #171c56;
-  --screen-group: #3c45a0;
-  --screen-group-top: #4e57b0;
-  --screen-group-bottom: #424b9f;
+  --screen: #153e96;
+  --screen-rim: #101722;
+  --screen-glow: rgba(123, 178, 255, 0.1);
+  --screen-vignette: rgba(4, 25, 82, 0.13);
+  --screen-ink: #f0f3f6;
+  --screen-muted: #c5d3e4;
+  --screen-header: rgba(255, 255, 255, 0.055);
+  --screen-highlight: rgba(255, 255, 255, 0.08);
+  --backdrop: rgba(6, 19, 39, 0.74);
+  --screen-panel: #183982;
+  --screen-control-top: #1b438c;
+  --screen-inset: #102857;
+  --screen-field: #122d62;
+  --screen-border: #617da9;
+  --screen-line: #2b4b83;
+  --screen-hover: #20478d;
+  --screen-track: #0d2450;
+  --screen-group: #153574;
+  --screen-group-top: #2b4d86;
+  --screen-group-bottom: #20417c;
 
-  --accent: #ffbb65;
-  --accent-edge: #a36c2d;
-  --accent-ink: #281909;
-  --accent-shine: rgba(255, 255, 255, 0.5);
+  --accent: #f0a13b;
+  --accent-edge: #a45f16;
+  --accent-ink: #24180c;
+  --accent-shine: rgba(255, 255, 255, 0.42);
   --success: #96d985;
   --danger: #ff9d8b;
   --power-light: #e95643;
-  --focus-ring: rgba(255, 187, 101, 0.5);
-  --signal-stripe: linear-gradient(to bottom, #e45a49 0 25%, #f0b24c 25% 50%, #7bc886 50% 75%, #697ee0 75% 100%);
+  --focus-ring: rgba(240, 161, 59, 0.52);
+  --signal-stripe: linear-gradient(to right, #d94a3b 0 20%, #ef8e2e 20% 40%, #f2cf49 40% 60%, #5cae67 60% 80%, #398bc4 80% 100%);
+
+  --radius-screen: 10px;
+  --radius-panel: 4px;
+  --radius-key: 5px;
+  --radius-cap: 2px;
+  --key-depth: 2px;
+  --key-depth-lg: 3px;
 }
 
 /* Cartridge & Cobalt: warm SVI-style keys around an MSX blue screen. */
