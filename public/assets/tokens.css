@@ -933,67 +933,80 @@
   --signal-stripe: linear-gradient(to bottom, #f2f0e9 0 25%, #b9b8b4 25% 50%, #8e9eb0 50% 75%, #d8836c 75% 100%);
 }
 
-/* Copper & Chroma: cool gray hardware with the Amiga's bright 16-bit palette. */
+/* Copper & Chroma: warm A500 plastic, dark keyboard panel, and Workbench blue. */
 :root[data-theme="copper"] {
-  --night: #0b1020;
-  --night-glow: #47386f;
-  --night-muted: #d8d2eb;
+  --night: #061a36;
+  --night-glow: #0a3d79;
+  --night-muted: #dce7f2;
 
-  --case-top: #d4d0c7;
-  --case-mid: #c3c0ba;
-  --case-bottom: #b1b0ae;
-  --case-shade: #918f92;
-  --case-edge: #7f7e83;
-  --case-light: #ece8e2;
-  --case-ink: #29252f;
-  --case-muted: #403b48;
-  --case-error: #963b38;
-  --vent-dark: #9b969a;
-  --vent-light: #e4e0dc;
-  --footer-top: #ccc8c1;
-  --footer-bottom: #b8b5b4;
+  --case-top: #e1ddcf;
+  --case-mid: #d4cfbf;
+  --case-bottom: #c3bdad;
+  --case-shade: #9b9689;
+  --case-edge: #827c70;
+  --case-light: #f5f1e5;
+  --case-ink: #272827;
+  --case-muted: #49473f;
+  --case-error: #9d3029;
+  --vent-dark: #827d74;
+  --vent-light: #ece7d9;
+  --footer-top: #c9c3b3;
+  --footer-bottom: #b9b3a4;
 
-  --key-top: #e2dfdc;
-  --key-bottom: #c5c2c4;
-  --key-highlight: #f5f1ed;
+  --key-top: #eeeade;
+  --key-bottom: #cec9ba;
+  --key-highlight: #fbf8ed;
 
-  --cap-top: #3e3652;
-  --cap-bottom: #292339;
-  --cap-edge: #171323;
-  --plate: #29243a;
-  --plate-ink: #f0edfb;
-  --plate-muted: #c4bfd7;
+  --cap-top: #5a5858;
+  --cap-bottom: #3b393a;
+  --cap-edge: #211f20;
+  --plate: #39383a;
+  --plate-ink: #f2f0e8;
+  --plate-muted: #cbc8c0;
 
-  --screen: #17152f;
-  --screen-rim: #0e0c21;
-  --screen-glow: rgba(105, 90, 255, 0.14);
-  --screen-vignette: rgba(235, 70, 194, 0.12);
-  --screen-ink: #f4f0ff;
-  --screen-muted: #c5bedf;
-  --screen-header: rgba(255, 255, 255, 0.04);
-  --screen-highlight: rgba(255, 255, 255, 0.07);
-  --backdrop: rgba(11, 16, 32, 0.74);
-  --screen-panel: #282444;
-  --screen-control-top: #373158;
-  --screen-inset: #0e0d21;
-  --screen-field: #13122a;
-  --screen-border: #4b4670;
-  --screen-line: #383355;
-  --screen-hover: #363158;
-  --screen-track: #0e0d21;
-  --screen-group: #2c2749;
-  --screen-group-top: #464068;
-  --screen-group-bottom: #39345c;
+  --screen: #004b98;
+  --screen-rim: #111a29;
+  --screen-glow: rgba(79, 166, 255, 0.12);
+  --screen-vignette: rgba(0, 15, 42, 0.1);
+  --screen-ink: #ffffff;
+  --screen-muted: #d5e5f5;
+  --screen-header: rgba(255, 255, 255, 0.08);
+  --screen-highlight: rgba(255, 255, 255, 0.12);
+  --backdrop: rgba(2, 18, 42, 0.76);
+  --screen-panel: #0a3d75;
+  --screen-control-top: #10477f;
+  --screen-inset: #062b50;
+  --screen-field: #082f57;
+  --screen-border: #7598bc;
+  --screen-line: #31567d;
+  --screen-hover: #104880;
+  --screen-track: #052649;
+  --screen-group: #073765;
+  --screen-group-top: #275783;
+  --screen-group-bottom: #164574;
 
-  --accent: #65d3cc;
-  --accent-edge: #298f90;
-  --accent-ink: #15282d;
-  --accent-shine: rgba(255, 255, 255, 0.48);
-  --success: #8ada83;
-  --danger: #ff927c;
-  --power-light: #ff834f;
-  --focus-ring: rgba(101, 211, 204, 0.5);
-  --signal-stripe: linear-gradient(to bottom, #65d3cc 0 25%, #8975ff 25% 50%, #ed69c3 50% 75%, #f7a64a 75% 100%);
+  --accent: #ffb23f;
+  --accent-edge: #b76712;
+  --accent-ink: #17191c;
+  --accent-shine: rgba(255, 255, 255, 0.5);
+  --success: #9ce59a;
+  --danger: #ffaaa0;
+  --power-light: #ff9d2e;
+  --focus-ring: rgba(255, 178, 63, 0.55);
+  --signal-stripe: linear-gradient(to right, #004b98 0 25%, #f2f0e8 25% 50%, #17191c 50% 75%, #ff9d2e 75% 100%);
+
+  --scanline: rgba(0, 0, 0, 0.12);
+  --inset-shade: rgba(0, 0, 0, 0.45);
+  --inset-shade-soft: rgba(0, 0, 0, 0.34);
+  --inset-wash: rgba(0, 0, 0, 0.16);
+  --inset-wash-strong: rgba(0, 0, 0, 0.24);
+
+  --radius-screen: 8px;
+  --radius-panel: 3px;
+  --radius-key: 5px;
+  --radius-cap: 2px;
+  --key-depth: 2px;
+  --key-depth-lg: 3px;
 }
 
 :root[data-theme="altair"] {
