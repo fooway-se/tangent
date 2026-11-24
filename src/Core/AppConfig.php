@@ -21,6 +21,7 @@ final class AppConfig
         public readonly string $githubOAuthClientSecret = '',
         public readonly bool $realtimeStreamEnabled = false,
         public readonly int $realtimeMaxConnections = 1,
+        public readonly ?array $githubRepositoryAllowlist = null,
     ) {
     }
 
@@ -35,10 +36,10 @@ final class AppConfig
             43200,
             rtrim(self::environmentValue('TANGENT_APP_URL', $fileConfig['app_url'] ?? 'http://localhost:8080'), '/'),
             filter_var(self::environmentValue('TANGENT_HIBP_ENABLED', $fileConfig['hibp_enabled'] ?? 'false'), FILTER_VALIDATE_BOOL),
-            getenv('TANGENT_GITHUB_APP_ID') ?: '',
-            getenv('TANGENT_GITHUB_APP_SLUG') ?: '',
-            str_replace('\\n', "\n", getenv('TANGENT_GITHUB_PRIVATE_KEY') ?: ''),
-            getenv('TANGENT_GITHUB_WEBHOOK_SECRET') ?: '',
+            self::environmentValue('TANGENT_GITHUB_APP_ID', $fileConfig['github_app_id'] ?? ''),
+            self::environmentValue('TANGENT_GITHUB_APP_SLUG', $fileConfig['github_app_slug'] ?? ''),
+            str_replace('\\n', "\n", self::environmentValue('TANGENT_GITHUB_PRIVATE_KEY', $fileConfig['github_private_key'] ?? '')),
+            self::environmentValue('TANGENT_GITHUB_WEBHOOK_SECRET', $fileConfig['github_webhook_secret'] ?? ''),
             self::environmentValue('TANGENT_MAIL_FROM', $fileConfig['mail_from'] ?? ''),
             self::environmentValue('TANGENT_GITHUB_OAUTH_CLIENT_ID', $fileConfig['github_oauth_client_id'] ?? ''),
             self::environmentValue('TANGENT_GITHUB_OAUTH_CLIENT_SECRET', $fileConfig['github_oauth_client_secret'] ?? ''),
@@ -51,6 +52,9 @@ final class AppConfig
             max(0, (int) ($maxConnections === false || $maxConnections === ''
                 ? ($fileConfig['realtime_max_connections'] ?? 1)
                 : $maxConnections)),
+            array_key_exists('github_repository_allowlist', $fileConfig)
+                ? (is_array($fileConfig['github_repository_allowlist']) ? $fileConfig['github_repository_allowlist'] : [])
+                : null,
         );
     }
 

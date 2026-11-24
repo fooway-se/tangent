@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Tangent\Modules\GitHub;
 
 use PDO;
-use Tangent\Core\ApiException;
 
 final class GitHubInstallationRepository
 {
@@ -104,14 +103,6 @@ final class GitHubInstallationRepository
             'account_login' => $accountLogin,
             'connected_by' => $userId,
         ]);
-
-        $owner = $this->pdo->prepare(
-            'SELECT workspace_id FROM github_installations WHERE installation_id = :installation_id FOR UPDATE'
-        );
-        $owner->execute(['installation_id' => $installationId]);
-        if ((int) $owner->fetchColumn() !== $workspaceId) {
-            throw new ApiException(409, 'github_installation_connected', 'This GitHub installation is already connected to another Tangent workspace.');
-        }
     }
 
     public function listForWorkspace(int $workspaceId): array

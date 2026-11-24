@@ -338,84 +338,316 @@ PHP;
         self::assertSame(0, $this->installationCount(445566));
     }
 
-    public function testConcurrentGitHubInstallationClaimCannotChangeTheWorkspaceOwner(): void
+    public function testGitHubInstallationCanBeConnectedToMultipleWorkspaces(): void
     {
-        $this->pdo->query('SELECT workspace_id FROM github_installations WHERE installation_id = 445566')->fetchColumn();
-        $otherPdo = Database::connect(
-            getenv('TANGENT_TEST_DB_HOST') ?: '127.0.0.1',
-            (int) (getenv('TANGENT_TEST_DB_PORT') ?: 3306),
-            getenv('TANGENT_TEST_DB_NAME') ?: 'tangent_test_suite',
-            getenv('TANGENT_TEST_DB_USER') ?: 'tangent',
-            getenv('TANGENT_TEST_DB_PASSWORD') ?: 'tangent_dev_password',
-        )->pdo();
-        $otherPdo->beginTransaction();
-        try {
-            $workspace = $otherPdo->prepare('INSERT INTO workspaces (name, slug) VALUES (:name, :slug)');
-            $workspace->execute(['name' => 'Concurrent GitHub owner', 'slug' => 'github-owner-' . bin2hex(random_bytes(4))]);
-            $otherWorkspaceId = (int) $otherPdo->lastInsertId();
-            $ownerEmail = 'github-owner-' . bin2hex(random_bytes(4)) . '@example.test';
-            $account = $otherPdo->prepare('INSERT INTO user_accounts (email, password_hash) VALUES (:email, :password_hash)');
-            $account->execute([
-                'email' => $ownerEmail,
-                'password_hash' => password_hash('github owner secure password', PASSWORD_ARGON2ID),
-            ]);
-            $accountId = (int) $otherPdo->lastInsertId();
-            $membership = $otherPdo->prepare(
-                'INSERT INTO users (workspace_id, account_id, name, email, role, is_active)
-                 VALUES (:workspace_id, :account_id, :name, :email, :role, 1)'
-            );
-            $membership->execute([
-                'workspace_id' => $otherWorkspaceId,
-                'account_id' => $accountId,
-                'name' => 'GitHub Owner',
-                'email' => $ownerEmail,
-                'role' => 'admin',
-            ]);
-            $otherUserId = (int) $otherPdo->lastInsertId();
-            $installation = $otherPdo->prepare(
-                'INSERT INTO github_installations (workspace_id, installation_id, account_login, connected_by)
-                 VALUES (:workspace_id, :installation_id, :account_login, :connected_by)'
-            );
-            $installation->execute([
-                'workspace_id' => $otherWorkspaceId,
-                'installation_id' => 445566,
-                'account_login' => 'original-owner',
-                'connected_by' => $otherUserId,
-            ]);
-            $otherPdo->commit();
+        $otherWorkspace = $this->createWorkspaceAdmin('shared-installation');
+        $installations = new GitHubInstallationRepository($this->pdo);
 
-            try {
-                (new GitHubInstallationRepository($this->pdo))->add($this->workspaceId, 445566, 'replacement-owner', $this->adminId);
-                self::fail('A concurrent installation claim must not succeed for a second workspace.');
-            } catch (ApiException $exception) {
-                self::assertSame(409, $exception->status);
-            }
+        $installations->add($this->workspaceId, 445566, 'company', $this->adminId);
+        $installations->add($otherWorkspace['workspace_id'], 445566, 'company', $otherWorkspace['user_id']);
 
-            $owner = $otherPdo->prepare('SELECT workspace_id, account_login, connected_by FROM github_installations WHERE installation_id = 445566');
-            $owner->execute();
-            $ownerData = $owner->fetch(\PDO::FETCH_ASSOC);
-            self::assertSame($otherWorkspaceId, (int) $ownerData['workspace_id']);
-            self::assertSame('original-owner', $ownerData['account_login']);
-            self::assertSame($otherUserId, (int) $ownerData['connected_by']);
-        } finally {
-            if ($this->pdo->inTransaction()) $this->pdo->rollBack();
-            if ($otherPdo->inTransaction()) $otherPdo->rollBack();
-            if (isset($otherWorkspaceId, $accountId)) {
-                $cleanup = Database::connect(
-                    getenv('TANGENT_TEST_DB_HOST') ?: '127.0.0.1',
-                    (int) (getenv('TANGENT_TEST_DB_PORT') ?: 3306),
-                    getenv('TANGENT_TEST_DB_NAME') ?: 'tangent_test_suite',
-                    getenv('TANGENT_TEST_DB_USER') ?: 'tangent',
-                    getenv('TANGENT_TEST_DB_PASSWORD') ?: 'tangent_dev_password',
-                )->pdo();
-                $cleanup->beginTransaction();
-                $cleanup->prepare('DELETE FROM github_installations WHERE installation_id = 445566')->execute();
-                $cleanup->prepare('DELETE FROM users WHERE workspace_id = :workspace_id')->execute(['workspace_id' => $otherWorkspaceId]);
-                $cleanup->prepare('DELETE FROM workspaces WHERE id = :id')->execute(['id' => $otherWorkspaceId]);
-                $cleanup->prepare('DELETE FROM user_accounts WHERE id = :id')->execute(['id' => $accountId]);
-                $cleanup->commit();
-            }
+        self::assertSame([445566], array_column($installations->listForWorkspace($this->workspaceId), 'installation_id'));
+        self::assertSame([445566], array_column($installations->listForWorkspace($otherWorkspace['workspace_id']), 'installation_id'));
+    }
+
+    public function testGitHubRepositoryAllowlistIsWorkspaceScopedAndEnforcedOnProjectSave(): void
+    {
+        $otherWorkspace = $this->createWorkspaceAdmin('repo-allowlist');
+        $workspaceSlug = $this->workspaceSlug($this->workspaceId);
+        $installations = new GitHubInstallationRepository($this->pdo);
+        $installations->add($this->workspaceId, 445566, 'fooway-se', $this->adminId);
+        $installations->add($otherWorkspace['workspace_id'], 445566, 'fooway-se', $otherWorkspace['user_id']);
+
+        $myfi = [
+            'id' => 7654321,
+            'owner' => 'fooway-se',
+            'name' => 'myfi',
+            'full_name' => 'fooway-se/myfi',
+            'html_url' => 'https://github.com/fooway-se/myfi',
+        ];
+        $allmeter = [
+            'id' => 7654322,
+            'owner' => 'fooway-se',
+            'name' => 'allmeter',
+            'full_name' => 'fooway-se/allmeter',
+            'html_url' => 'https://github.com/fooway-se/allmeter',
+        ];
+        $allowlist = [
+            $workspaceSlug => ['fooway-se/myfi'],
+            $otherWorkspace['slug'] => ['fooway-se/allmeter'],
+        ];
+        $client = new FakeGitHubApiClient($myfi, [], [$allmeter]);
+        $this->application = Application::create(
+            $this->pdo,
+            new AppConfig(
+                workspaceId: $this->workspaceId,
+                cookieSecure: false,
+                publicAppUrl: 'http://localhost:8080',
+                githubAppId: '123',
+                githubAppSlug: 'test-app',
+                githubPrivateKey: 'unused',
+                githubRepositoryAllowlist: $allowlist,
+            ),
+            $client,
+        );
+        $admin = $this->login($this->adminEmail);
+
+        $visibleA = $this->cookieRequest('GET', '/api/v1/github/repositories', $admin['cookie']);
+        self::assertSame(['fooway-se/myfi'], array_column($visibleA->body['repositories'], 'full_name'));
+        $hiddenA = $this->cookieRequest('POST', '/api/v1/projects', $admin['cookie'], [
+            'name' => 'Hidden repository project',
+            'github_installation_id' => 445566,
+            'github_repository_id' => $allmeter['id'],
+            'github_repository_owner' => $allmeter['owner'],
+            'github_repository_name' => $allmeter['name'],
+        ], $admin['csrf']);
+        self::assertSame(422, $hiddenA->status, json_encode($hiddenA->body));
+        $visibleProjectA = $this->cookieRequest('POST', '/api/v1/projects', $admin['cookie'], [
+            'name' => 'Allowed repository project',
+            'github_installation_id' => 445566,
+            'github_repository_id' => $myfi['id'],
+            'github_repository_owner' => $myfi['owner'],
+            'github_repository_name' => $myfi['name'],
+        ], $admin['csrf']);
+        self::assertSame(201, $visibleProjectA->status, json_encode($visibleProjectA->body));
+
+        $projectId = (int) $visibleProjectA->body['project']['id'];
+        $hideProjectRepository = $this->pdo->prepare(
+            'UPDATE projects
+             SET github_repository_id = :repository_id, github_repository_owner = :owner,
+                 github_repository_name = :repository_name, github_repository_full_name = :full_name,
+                 github_repository_url = :url
+             WHERE workspace_id = :workspace_id AND id = :project_id'
+        );
+        $hideProjectRepository->execute([
+            'repository_id' => $allmeter['id'],
+            'owner' => $allmeter['owner'],
+            'repository_name' => $allmeter['name'],
+            'full_name' => $allmeter['full_name'],
+            'url' => $allmeter['html_url'],
+            'workspace_id' => $this->workspaceId,
+            'project_id' => $projectId,
+        ]);
+        $projectList = $this->cookieRequest('GET', '/api/v1/projects', $admin['cookie']);
+        self::assertSame(200, $projectList->status);
+        $listedProject = array_values(array_filter(
+            $projectList->body['projects'],
+            static fn (array $project): bool => (int) $project['id'] === $projectId,
+        ))[0] ?? null;
+        self::assertNotNull($listedProject);
+        self::assertNull($listedProject['github_repository']);
+        $projectDetail = $this->cookieRequest('GET', "/api/v1/projects/{$projectId}", $admin['cookie']);
+        self::assertSame(200, $projectDetail->status);
+        self::assertNull($projectDetail->body['project']['github_repository']);
+
+        $createdIssue = $this->cookieRequest('POST', "/api/v1/projects/{$projectId}/issues", $admin['cookie'], [
+            'title' => 'Hidden repository issue',
+        ], $admin['csrf']);
+        self::assertSame(201, $createdIssue->status, json_encode($createdIssue->body));
+        $issueId = (int) $createdIssue->body['issue']['id'];
+        $hiddenPullRequest = $this->pdo->prepare(
+            'INSERT INTO issue_pull_requests
+                (workspace_id, project_id, issue_id, github_installation_id, github_repository_id,
+                 repository_owner, repository_name, repository_full_name, pull_number, title, html_url,
+                 state, is_draft, author_login, github_updated_at, linked_by)
+             VALUES
+                (:workspace_id, :project_id, :issue_id, 445566, :repository_id,
+                 :owner, :repository_name, :full_name, 4, "Hidden change", :url,
+                 "open", 0, "developer", "2026-11-23 10:00:00", :linked_by)'
+        );
+        $hiddenPullRequest->execute([
+            'workspace_id' => $this->workspaceId,
+            'project_id' => $projectId,
+            'issue_id' => $issueId,
+            'repository_id' => $allmeter['id'],
+            'owner' => $allmeter['owner'],
+            'repository_name' => $allmeter['name'],
+            'full_name' => $allmeter['full_name'],
+            'url' => $allmeter['html_url'] . '/pull/4',
+            'linked_by' => $this->adminId,
+        ]);
+        $hiddenPullRequests = $this->cookieRequest('GET', "/api/v1/issues/{$issueId}/pull-requests", $admin['cookie']);
+        self::assertSame(200, $hiddenPullRequests->status);
+        self::assertSame([], $hiddenPullRequests->body['pull_requests']);
+
+        $this->application = Application::create(
+            $this->pdo,
+            new AppConfig(
+                workspaceId: $otherWorkspace['workspace_id'],
+                cookieSecure: false,
+                publicAppUrl: 'http://localhost:8080',
+                githubAppId: '123',
+                githubAppSlug: 'test-app',
+                githubPrivateKey: 'unused',
+                githubRepositoryAllowlist: $allowlist,
+            ),
+            $client,
+        );
+        $otherAdmin = $this->login($otherWorkspace['email'], 'shared workspace admin password');
+        $visibleB = $this->cookieRequest('GET', '/api/v1/github/repositories', $otherAdmin['cookie']);
+        self::assertSame(['fooway-se/allmeter'], array_column($visibleB->body['repositories'], 'full_name'));
+        $hiddenB = $this->cookieRequest('POST', '/api/v1/projects', $otherAdmin['cookie'], [
+            'name' => 'Hidden repository project',
+            'github_installation_id' => 445566,
+            'github_repository_id' => $myfi['id'],
+            'github_repository_owner' => $myfi['owner'],
+            'github_repository_name' => $myfi['name'],
+        ], $otherAdmin['csrf']);
+        self::assertSame(422, $hiddenB->status, json_encode($hiddenB->body));
+        $visibleProjectB = $this->cookieRequest('POST', '/api/v1/projects', $otherAdmin['cookie'], [
+            'name' => 'Allowed repository project',
+            'github_installation_id' => 445566,
+            'github_repository_id' => $allmeter['id'],
+            'github_repository_owner' => $allmeter['owner'],
+            'github_repository_name' => $allmeter['name'],
+        ], $otherAdmin['csrf']);
+        self::assertSame(201, $visibleProjectB->status, json_encode($visibleProjectB->body));
+    }
+
+    public function testPullRequestWebhookUpdatesLinksInEveryWorkspaceSharingAnInstallation(): void
+    {
+        $secret = 'shared-installation-webhook-secret';
+        $installationId = 445566;
+        $repositoryId = 7654321;
+        $pullNumber = 17;
+        $otherWorkspace = $this->createWorkspaceAdmin('shared-webhook');
+        $installations = new GitHubInstallationRepository($this->pdo);
+        $installations->add($this->workspaceId, $installationId, 'company', $this->adminId);
+        $installations->add($otherWorkspace['workspace_id'], $installationId, 'company', $otherWorkspace['user_id']);
+
+        $targets = [
+            [$this->workspaceId, $this->adminId, 'team-one'],
+            [$otherWorkspace['workspace_id'], $otherWorkspace['user_id'], 'team-two'],
+        ];
+        foreach ($targets as [$workspaceId, $userId, $slug]) {
+            $project = $this->pdo->prepare(
+                'INSERT INTO projects
+                    (workspace_id, name, slug, description, status, created_by, github_installation_id,
+                     github_repository_id, github_repository_owner, github_repository_name,
+                     github_repository_full_name, github_repository_url)
+                 VALUES
+                    (:workspace_id, :name, :slug, "", "active", :user_id, :installation_id,
+                     :repository_id, "company", "shared-repo", "company/shared-repo", "https://github.com/company/shared-repo")'
+            );
+            $project->execute([
+                'workspace_id' => $workspaceId,
+                'name' => $slug,
+                'slug' => $slug,
+                'user_id' => $userId,
+                'installation_id' => $installationId,
+                'repository_id' => $repositoryId,
+            ]);
+            $projectId = (int) $this->pdo->lastInsertId();
+            $membership = $this->pdo->prepare(
+                'INSERT INTO project_memberships (workspace_id, project_id, user_id)
+                 VALUES (:workspace_id, :project_id, :user_id)'
+            );
+            $membership->execute(['workspace_id' => $workspaceId, 'project_id' => $projectId, 'user_id' => $userId]);
+
+            $issue = $this->pdo->prepare(
+                'INSERT INTO issues (workspace_id, project_id, title, description, created_by)
+                 VALUES (:workspace_id, :project_id, :title, "", :user_id)'
+            );
+            $issue->execute([
+                'workspace_id' => $workspaceId,
+                'project_id' => $projectId,
+                'title' => 'Track shared pull request in ' . $slug,
+                'user_id' => $userId,
+            ]);
+            $issueId = (int) $this->pdo->lastInsertId();
+
+            $pullRequest = $this->pdo->prepare(
+                'INSERT INTO issue_pull_requests
+                    (workspace_id, project_id, issue_id, github_installation_id, github_repository_id,
+                     repository_owner, repository_name, repository_full_name, pull_number, title, html_url,
+                     state, is_draft, author_login, github_updated_at, linked_by)
+                 VALUES
+                    (:workspace_id, :project_id, :issue_id, :installation_id, :repository_id,
+                     "company", "shared-repo", "company/shared-repo", :pull_number, "Shared change",
+                     "https://github.com/company/shared-repo/pull/17", "open", 0, "developer",
+                     "2026-11-23 10:00:00", NULL)'
+            );
+            $pullRequest->execute([
+                'workspace_id' => $workspaceId,
+                'project_id' => $projectId,
+                'issue_id' => $issueId,
+                'installation_id' => $installationId,
+                'repository_id' => $repositoryId,
+                'pull_number' => $pullNumber,
+            ]);
         }
+
+        $this->application = Application::create(
+            $this->pdo,
+            new AppConfig($this->workspaceId, false, 43200, 'http://localhost:8080', false, '123', 'test-app', 'unused', $secret),
+            new FakeGitHubApiClient([], []),
+        );
+        $payload = [
+            'action' => 'closed',
+            'installation' => ['id' => $installationId],
+            'repository' => ['id' => $repositoryId, 'full_name' => 'company/shared-repo'],
+            'pull_request' => [
+                'number' => $pullNumber,
+                'title' => 'Shared change',
+                'html_url' => 'https://github.com/company/shared-repo/pull/17',
+                'state' => 'closed',
+                'merged_at' => '2026-11-23T10:30:00Z',
+                'draft' => false,
+                'user' => ['login' => 'developer'],
+                'updated_at' => '2026-11-23T10:30:00Z',
+            ],
+        ];
+        $rawBody = json_encode($payload, JSON_THROW_ON_ERROR);
+        $response = $this->webhookRequest($rawBody, $payload, [
+            'X-Hub-Signature-256' => 'sha256=' . hash_hmac('sha256', $rawBody, $secret),
+            'X-GitHub-Delivery' => 'shared-installation-pr-closed',
+            'X-GitHub-Event' => 'pull_request',
+        ]);
+
+        self::assertSame(202, $response->status, json_encode($response->body));
+        $states = $this->pdo->prepare(
+            'SELECT workspace_id, state FROM issue_pull_requests WHERE github_repository_id = :repository_id AND pull_number = :pull_number'
+        );
+        $states->execute(['repository_id' => $repositoryId, 'pull_number' => $pullNumber]);
+        $rows = $states->fetchAll(\PDO::FETCH_KEY_PAIR);
+        self::assertCount(2, $rows);
+        self::assertSame('merged', $rows[$this->workspaceId]);
+        self::assertSame('merged', $rows[$otherWorkspace['workspace_id']]);
+
+        $events = $this->pdo->prepare("SELECT COUNT(*) FROM inbox_events WHERE workspace_id = :workspace_id AND event_type = 'pr'");
+        $events->execute(['workspace_id' => $this->workspaceId]);
+        self::assertSame(1, (int) $events->fetchColumn());
+        $events->execute(['workspace_id' => $otherWorkspace['workspace_id']]);
+        self::assertSame(1, (int) $events->fetchColumn());
+
+        $checkPayload = [
+            'action' => 'completed',
+            'installation' => ['id' => $installationId],
+            'repository' => ['id' => $repositoryId, 'full_name' => 'company/shared-repo'],
+            'check_run' => [
+                'id' => 778899,
+                'name' => 'CI',
+                'html_url' => 'https://github.com/company/shared-repo/runs/778899',
+                'status' => 'completed',
+                'conclusion' => 'success',
+                'started_at' => '2026-11-23T10:05:00Z',
+                'completed_at' => '2026-11-23T10:25:00Z',
+                'updated_at' => '2026-11-23T10:25:00Z',
+                'pull_requests' => [['number' => $pullNumber]],
+            ],
+        ];
+        $checkRawBody = json_encode($checkPayload, JSON_THROW_ON_ERROR);
+        $checkResponse = $this->webhookRequest($checkRawBody, $checkPayload, [
+            'X-Hub-Signature-256' => 'sha256=' . hash_hmac('sha256', $checkRawBody, $secret),
+            'X-GitHub-Delivery' => 'shared-installation-check-completed',
+            'X-GitHub-Event' => 'check_run',
+        ]);
+        self::assertSame(202, $checkResponse->status, json_encode($checkResponse->body));
+        $checkCount = $this->pdo->prepare(
+            'SELECT COUNT(*) FROM issue_pull_request_checks WHERE github_check_run_id = 778899'
+        );
+        $checkCount->execute();
+        self::assertSame(2, (int) $checkCount->fetchColumn());
     }
 
     public function testAdminCanConnectRepositoryLinkPullRequestAndReceiveSignedUpdates(): void
@@ -1023,6 +1255,45 @@ PHP;
         ));
     }
 
+    private function createWorkspaceAdmin(string $prefix): array
+    {
+        $slug = $prefix . '-' . bin2hex(random_bytes(4));
+        $workspace = $this->pdo->prepare('INSERT INTO workspaces (name, slug) VALUES (:name, :slug)');
+        $workspace->execute(['name' => $prefix, 'slug' => $slug]);
+        $workspaceId = (int) $this->pdo->lastInsertId();
+        $email = $slug . '@example.test';
+        $account = $this->pdo->prepare('INSERT INTO user_accounts (email, password_hash) VALUES (:email, :password_hash)');
+        $account->execute([
+            'email' => $email,
+            'password_hash' => password_hash('shared workspace admin password', PASSWORD_ARGON2ID),
+        ]);
+        $accountId = (int) $this->pdo->lastInsertId();
+        $user = $this->pdo->prepare(
+            "INSERT INTO users (workspace_id, account_id, name, email, role, is_active)
+             VALUES (:workspace_id, :account_id, :name, :email, 'admin', 1)"
+        );
+        $user->execute([
+            'workspace_id' => $workspaceId,
+            'account_id' => $accountId,
+            'name' => $prefix . ' admin',
+            'email' => $email,
+        ]);
+
+        return [
+            'workspace_id' => $workspaceId,
+            'user_id' => (int) $this->pdo->lastInsertId(),
+            'email' => $email,
+            'slug' => $slug,
+        ];
+    }
+
+    private function workspaceSlug(int $workspaceId): string
+    {
+        $statement = $this->pdo->prepare('SELECT slug FROM workspaces WHERE id = :workspace_id');
+        $statement->execute(['workspace_id' => $workspaceId]);
+        return (string) $statement->fetchColumn();
+    }
+
     private function installationCount(int $installationId): int
     {
         $query = $this->pdo->prepare('SELECT COUNT(*) FROM github_installations WHERE installation_id = :id');
@@ -1187,7 +1458,11 @@ final class FakeGitHubApiClient implements GitHubApiClient
     public bool $repositoryAvailable = true;
     public array $targetedRepositoryLookups = [];
 
-    public function __construct(private readonly array $repository, private readonly array $pullRequest)
+    public function __construct(
+        private readonly array $repository,
+        private readonly array $pullRequest,
+        private readonly array $additionalRepositories = [],
+    )
     {
     }
 
@@ -1224,18 +1499,29 @@ final class FakeGitHubApiClient implements GitHubApiClient
     public function repositories(int $installationId): array
     {
         $this->repositoryCatalogueCalls++;
-        return [array_merge($this->repository, ['installation_id' => $installationId])];
+        return array_map(
+            static fn (array $repository): array => array_merge($repository, ['installation_id' => $installationId]),
+            [$this->repository, ...$this->additionalRepositories],
+        );
     }
 
     public function repositoryById(int $installationId, int $repositoryId, string $owner, string $repositoryName): array
     {
         $this->targetedRepositoryCalls++;
         $this->targetedRepositoryLookups[] = [$installationId, $repositoryId, $owner, $repositoryName];
-        if (!$this->repositoryAvailable || (int) ($this->repository['id'] ?? 0) !== $repositoryId
-            || ($this->repository['owner'] ?? null) !== $owner || ($this->repository['name'] ?? null) !== $repositoryName) {
+        $repository = null;
+        foreach ([$this->repository, ...$this->additionalRepositories] as $candidate) {
+            if ((int) ($candidate['id'] ?? 0) === $repositoryId
+                && ($candidate['owner'] ?? null) === $owner
+                && ($candidate['name'] ?? null) === $repositoryName) {
+                $repository = $candidate;
+                break;
+            }
+        }
+        if (!$this->repositoryAvailable || $repository === null) {
             throw new ApiException(404, 'github_resource_not_found', 'The repository was not found.');
         }
-        return array_merge($this->repository, ['installation_id' => $installationId]);
+        return array_merge($repository, ['installation_id' => $installationId]);
     }
 
     public function pullRequest(int $installationId, int $repositoryId, string $owner, string $repository, int $number): array

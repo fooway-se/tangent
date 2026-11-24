@@ -48,6 +48,9 @@ final class ProjectService
             $isMember = $project['is_member'];
             unset($project['is_member']);
             if (Permissions::can($user, 'projects.view', ['is_member' => $isMember])) {
+                if (!$this->github->canWorkspaceViewRepository($user->workspaceId, $project['github_repository'] ?? null)) {
+                    $project['github_repository'] = null;
+                }
                 $visibleProjects[] = $project;
             }
         }
@@ -57,7 +60,10 @@ final class ProjectService
     public function get(AuthenticatedUser $user, int $projectId): array
     {
         $project = $this->findVisible($user, $projectId);
-        if ($user->role === 'guest') $project['github_repository'] = null;
+        if ($user->role === 'guest'
+            || !$this->github->canWorkspaceViewRepository($user->workspaceId, $project['github_repository'] ?? null)) {
+            $project['github_repository'] = null;
+        }
         return [
             'project' => $project,
             'members' => $this->projects->members($user->workspaceId, $projectId),

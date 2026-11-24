@@ -115,7 +115,7 @@ final class GitHubPullRequestRepository
         return array_map(self::normalize(...), $statement->fetchAll(PDO::FETCH_ASSOC));
     }
 
-    public function findForWebhook(int $repositoryId, int $pullNumber, int $installationId): ?array
+    public function findAllForWebhook(int $repositoryId, int $pullNumber, int $installationId): array
     {
         $statement = $this->pdo->prepare(
             'SELECT pr.*, p.github_repository_id AS connected_repository_id,
@@ -125,25 +125,24 @@ final class GitHubPullRequestRepository
              WHERE pr.github_repository_id = :repository_id AND pr.pull_number = :pull_number
                AND pr.github_installation_id = :installation_id
                AND p.github_repository_id = pr.github_repository_id
-               AND p.github_installation_id = pr.github_installation_id
-             LIMIT 1'
+               AND p.github_installation_id = pr.github_installation_id'
         );
         $statement->execute([
             'repository_id' => $repositoryId,
             'pull_number' => $pullNumber,
             'installation_id' => $installationId,
         ]);
-        $row = $statement->fetch(PDO::FETCH_ASSOC);
-        if ($row === false) return null;
-        $row = self::normalize($row);
-        $row['workspace_id'] = (int) $row['workspace_id'];
-        $row['project_id'] = (int) $row['project_id'];
-        $row['issue_id'] = (int) $row['issue_id'];
-        $row['github_installation_id'] = (int) $row['github_installation_id'];
-        $row['connected_repository_id'] = $row['connected_repository_id'] === null ? null : (int) $row['connected_repository_id'];
-        $row['connected_installation_id'] = $row['connected_installation_id'] === null ? null : (int) $row['connected_installation_id'];
-        $row['github_updated_at'] = (string) $row['github_updated_at'];
-        return $row;
+        return array_map(static function (array $row): array {
+            $row = self::normalize($row);
+            $row['workspace_id'] = (int) $row['workspace_id'];
+            $row['project_id'] = (int) $row['project_id'];
+            $row['issue_id'] = (int) $row['issue_id'];
+            $row['github_installation_id'] = (int) $row['github_installation_id'];
+            $row['connected_repository_id'] = $row['connected_repository_id'] === null ? null : (int) $row['connected_repository_id'];
+            $row['connected_installation_id'] = $row['connected_installation_id'] === null ? null : (int) $row['connected_installation_id'];
+            $row['github_updated_at'] = (string) $row['github_updated_at'];
+            return $row;
+        }, $statement->fetchAll(PDO::FETCH_ASSOC));
     }
 
     public function updateFromWebhook(int $id, array $pullRequest): bool

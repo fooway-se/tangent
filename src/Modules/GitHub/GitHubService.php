@@ -20,6 +20,9 @@ use Tangent\Modules\Projects\ProjectRepository;
 
 final class GitHubService
 {
+    /** @var array<int, string> */
+    private array $workspaceSlugs = [];
+
     public function __construct(
         private readonly GitHubApiClient $client,
         private readonly GitHubInstallationRepository $installations,
@@ -45,7 +48,9 @@ final class GitHubService
             foreach ($installations as $installation) {
                 try {
                     foreach ($this->client->repositories($installation['installation_id']) as $repository) {
-                        $repositories[] = $repository;
+                        if ($this->repositoryAllowed($user->workspaceId, (string) ($repository['full_name'] ?? ''))) {
+                            $repositories[] = $repository;
+                        }
                     }
                 } catch (ApiException $exception) {
                     if (!in_array($exception->status, [403, 404], true)) throw $exception;
@@ -138,7 +143,8 @@ final class GitHubService
         foreach ($this->installations->listForWorkspace($workspaceId) as $installation) {
             try {
                 foreach ($this->client->repositories($installation['installation_id']) as $repository) {
-                    if ((int) $repository['id'] === $repositoryId) return $repository;
+                    if ((int) $repository['id'] === $repositoryId
+                        && $this->repositoryAllowed($workspaceId, (string) ($repository['full_name'] ?? ''))) return $repository;
                 }
             } catch (ApiException $exception) {
                 if (!in_array($exception->status, [403, 404], true)) throw $exception;
@@ -160,6 +166,10 @@ final class GitHubService
             throw new ApiException(422, 'validation_failed', 'Choose a GitHub repository connected to this workspace.');
         }
 
+        if (!$this->repositoryAllowed($workspaceId, $owner . '/' . $repositoryName)) {
+            throw new ApiException(422, 'validation_failed', 'Choose a GitHub repository available to this workspace.');
+        }
+
         try {
             $repository = $this->client->repositoryById($installationId, $repositoryId, $owner, $repositoryName);
         } catch (ApiException $exception) {
@@ -176,6 +186,10 @@ final class GitHubService
             }
         }
 
+        if (!$this->repositoryAllowed($workspaceId, $repository['full_name'])) {
+            throw new ApiException(422, 'validation_failed', 'Choose a GitHub repository available to this workspace.');
+        }
+
         $repository['installation_id'] = $installationId;
         return $repository;
     }
@@ -183,15 +197,22 @@ final class GitHubService
     public function revalidateRepositoryConnection(int $workspaceId, array $repository): void
     {
         $installationId = (int) ($repository['installation_id'] ?? 0);
-        if ($installationId < 1 || !$this->installations->isConnectedForWorkspaceForUpdate($workspaceId, $installationId)) {
+        if ($installationId < 1 || !$this->installations->isConnectedForWorkspaceForUpdate($workspaceId, $installationId)
+            || !$this->repositoryAllowed($workspaceId, (string) ($repository['full_name'] ?? ''))) {
             throw new ApiException(422, 'validation_failed', 'Choose a GitHub repository connected to this workspace.');
         }
+    }
+
+    public function canWorkspaceViewRepository(int $workspaceId, ?array $repository): bool
+    {
+        return $repository === null || $this->repositoryAllowed($workspaceId, (string) ($repository['full_name'] ?? ''));
     }
 
     public function listPullRequests(AuthenticatedUser $user, int $issueId): array
     {
         $this->requireInternalUser($user);
-        $this->issueAndProject($user, $issueId, 'issues.read');
+        [, $project] = $this->issueAndProject($user, $issueId, 'issues.read');
+        if (!$this->canWorkspaceViewRepository($user->workspaceId, $project['github_repository'] ?? null)) return [];
         $pullRequests = $this->pullRequests->listForIssue($user->workspaceId, $issueId);
         $checkRuns = $this->checkRuns->listForPullRequests($pullRequests);
         foreach ($pullRequests as &$pullRequest) {
@@ -204,7 +225,8 @@ final class GitHubService
     public function listCommits(AuthenticatedUser $user, int $issueId): array
     {
         $this->requireInternalUser($user);
-        $this->issueAndProject($user, $issueId, 'issues.read');
+        [, $project] = $this->issueAndProject($user, $issueId, 'issues.read');
+        if (!$this->canWorkspaceViewRepository($user->workspaceId, $project['github_repository'] ?? null)) return [];
         return $this->commits->listForIssue($user->workspaceId, $issueId);
     }
 
@@ -216,6 +238,9 @@ final class GitHubService
         $repository = $project['github_repository'];
         if ($repository === null) {
             throw new ApiException(409, 'github_repository_not_connected', 'Connect a GitHub repository to this project first.');
+        }
+        if (!$this->repositoryAllowed($user->workspaceId, (string) ($repository['full_name'] ?? ''))) {
+            throw new ApiException(404, 'not_found', 'The issue was not found.');
         }
         $url = is_string($input['url'] ?? null) ? trim($input['url']) : '';
         $target = self::parsePullRequestUrl($url);
@@ -275,11 +300,13 @@ final class GitHubService
                 if ($ownsTransaction) $this->pdo->commit();
                 return ['accepted' => true, 'duplicate' => true];
             }
-            $changedWorkspaceId = null;
-            if ($eventType === 'pull_request') $changedWorkspaceId = $this->processPullRequestWebhook($request->body);
-            if ($eventType === 'push') $changedWorkspaceId = $this->processPushWebhook($request->body);
-            if ($eventType === 'check_run') $changedWorkspaceId = $this->processCheckRunWebhook($request->body);
-            if ($changedWorkspaceId !== null) $this->realtimeFeed?->notifyWorkspace($changedWorkspaceId);
+            $changedWorkspaceIds = [];
+            if ($eventType === 'pull_request') $changedWorkspaceIds = $this->processPullRequestWebhook($request->body);
+            if ($eventType === 'push') $changedWorkspaceIds = $this->processPushWebhook($request->body);
+            if ($eventType === 'check_run') $changedWorkspaceIds = $this->processCheckRunWebhook($request->body);
+            foreach (array_unique($changedWorkspaceIds) as $workspaceId) {
+                $this->realtimeFeed?->notifyWorkspace($workspaceId);
+            }
             if ($ownsTransaction) $this->pdo->commit();
         } catch (\Throwable $exception) {
             if ($ownsTransaction && $this->pdo->inTransaction()) $this->pdo->rollBack();
@@ -288,17 +315,18 @@ final class GitHubService
         return ['accepted' => true, 'duplicate' => false];
     }
 
-    private function processPushWebhook(array $payload): ?int
+    private function processPushWebhook(array $payload): array
     {
         $issueId = IssueBranchName::issueIdFromRef($payload['ref'] ?? null);
         $repository = $payload['repository'] ?? null;
         $installationId = is_array($payload['installation'] ?? null) ? (int) ($payload['installation']['id'] ?? 0) : 0;
         $repositoryId = is_array($repository) ? (int) ($repository['id'] ?? 0) : 0;
         $repositoryFullName = is_array($repository) ? ($repository['full_name'] ?? null) : null;
-        if ($issueId === null || $installationId < 1 || $repositoryId < 1 || !is_string($repositoryFullName)) return null;
+        if ($issueId === null || $installationId < 1 || $repositoryId < 1 || !is_string($repositoryFullName)) return [];
 
         $target = $this->commits->findTargetForPush($repositoryId, $installationId, $issueId);
-        if ($target === null || strcasecmp($repositoryFullName, (string) $target['github_repository_full_name']) !== 0) return null;
+        if ($target === null || strcasecmp($repositoryFullName, (string) $target['github_repository_full_name']) !== 0
+            || !$this->repositoryAllowed((int) $target['workspace_id'], $repositoryFullName)) return [];
 
         $commitRows = is_array($payload['commits'] ?? null) ? $payload['commits'] : [];
         $recordedCount = 0;
@@ -328,12 +356,12 @@ final class GitHubService
                 $recordedCount,
                 $branch,
             );
-            return (int) $target['workspace_id'];
+            return [(int) $target['workspace_id']];
         }
-        return null;
+        return [];
     }
 
-    private function processCheckRunWebhook(array $payload): ?int
+    private function processCheckRunWebhook(array $payload): array
     {
         $checkRunPayload = $payload['check_run'] ?? null;
         $repository = $payload['repository'] ?? null;
@@ -341,29 +369,31 @@ final class GitHubService
         $repositoryId = is_array($repository) ? (int) ($repository['id'] ?? 0) : 0;
         $repositoryFullName = is_array($repository) ? ($repository['full_name'] ?? null) : null;
         if (!is_array($checkRunPayload) || !is_array($repository) || $installationId < 1 || $repositoryId < 1
-            || !is_string($repositoryFullName)) return null;
+            || !is_string($repositoryFullName)) return [];
 
         $checkRun = GitHubCheckRun::normalize($checkRunPayload);
         $pullRequestRows = is_array($checkRunPayload['pull_requests'] ?? null) ? $checkRunPayload['pull_requests'] : [];
-        if ($checkRun === null || $pullRequestRows === []) return null;
+        if ($checkRun === null || $pullRequestRows === []) return [];
 
-        $changedWorkspaceId = null;
+        $changedWorkspaceIds = [];
         foreach ($pullRequestRows as $pullRequestRow) {
             $number = is_array($pullRequestRow) ? (int) ($pullRequestRow['number'] ?? 0) : 0;
             if ($number < 1) continue;
-            $linked = $this->pullRequests->findForWebhook($repositoryId, $number, $installationId);
-            if ($linked === null || $linked['connected_repository_id'] !== $repositoryId
-                || $linked['connected_installation_id'] !== $linked['github_installation_id']
-                || $installationId !== $linked['github_installation_id']
-                || strcasecmp($repositoryFullName, (string) $linked['repository_full_name']) !== 0) continue;
-            if ($this->checkRuns->record((int) $linked['id'], $checkRun)) {
-                $changedWorkspaceId = (int) $linked['workspace_id'];
+            foreach ($this->pullRequests->findAllForWebhook($repositoryId, $number, $installationId) as $linked) {
+                if ($linked['connected_repository_id'] !== $repositoryId
+                    || $linked['connected_installation_id'] !== $linked['github_installation_id']
+                    || $installationId !== $linked['github_installation_id']
+                    || strcasecmp($repositoryFullName, (string) $linked['repository_full_name']) !== 0
+                    || !$this->repositoryAllowed((int) $linked['workspace_id'], $repositoryFullName)) continue;
+                if ($this->checkRuns->record((int) $linked['id'], $checkRun)) {
+                    $changedWorkspaceIds[] = (int) $linked['workspace_id'];
+                }
             }
         }
-        return $changedWorkspaceId;
+        return array_values(array_unique($changedWorkspaceIds));
     }
 
-    private function processPullRequestWebhook(array $payload): ?int
+    private function processPullRequestWebhook(array $payload): array
     {
         $action = $payload['action'] ?? null;
         $repository = $payload['repository'] ?? null;
@@ -372,18 +402,18 @@ final class GitHubService
         $installationId = is_array($payload['installation'] ?? null) ? (int) ($payload['installation']['id'] ?? 0) : 0;
         $number = is_array($remotePullRequest) ? (int) ($remotePullRequest['number'] ?? $payload['number'] ?? 0) : 0;
         if (!is_string($action) || $repositoryId < 1 || $installationId < 1 || $number < 1
-            || !is_array($repository) || !is_array($remotePullRequest)) return null;
+            || !is_array($repository) || !is_array($remotePullRequest)) return [];
 
-        $linked = $this->pullRequests->findForWebhook($repositoryId, $number, $installationId);
-        $pullRequest = null;
-        if ($linked === null && $action === 'opened') {
+        $linkedPullRequests = $this->pullRequests->findAllForWebhook($repositoryId, $number, $installationId);
+        if ($linkedPullRequests === [] && $action === 'opened') {
             $head = $remotePullRequest['head'] ?? null;
             $issueId = IssueBranchName::issueIdFromBranch(is_array($head) ? ($head['ref'] ?? null) : null);
             if ($issueId !== null) {
                 $target = $this->pullRequests->findAutoLinkTarget($repositoryId, $installationId, $issueId);
                 if ($target !== null
                     && is_string($repository['full_name'] ?? null)
-                    && strcasecmp($repository['full_name'], (string) $target['full_name']) === 0) {
+                    && strcasecmp($repository['full_name'], (string) $target['full_name']) === 0
+                    && $this->repositoryAllowed((int) $target['workspace_id'], $repository['full_name'])) {
                     $pullRequest = self::normalizePullRequest($remotePullRequest, $number, (string) $target['full_name']);
                     $connectedRepository = [
                         'installation_id' => $target['github_installation_id'],
@@ -397,44 +427,51 @@ final class GitHubService
                         $target['project_id'],
                         $issueId,
                         $connectedRepository,
-                        $pullRequest,
+                        self::normalizePullRequest($remotePullRequest, $number, (string) $target['full_name']),
                     );
-                    $linked = $this->pullRequests->findForWebhook($repositoryId, $number, $installationId);
+                    $linkedPullRequests = $this->pullRequests->findAllForWebhook($repositoryId, $number, $installationId);
                 }
             }
         }
-        if ($linked === null || $linked['connected_repository_id'] !== $repositoryId
-            || $linked['connected_installation_id'] !== $linked['github_installation_id']) return null;
-        if ($installationId !== $linked['github_installation_id']) return null;
-        if (strcasecmp((string) ($repository['full_name'] ?? ''), (string) $linked['repository_full_name']) !== 0) return null;
+        if ($linkedPullRequests === []) return [];
 
-        $pullRequest ??= self::normalizePullRequest($remotePullRequest, $number, (string) $linked['repository_full_name']);
-        if (strtotime($pullRequest['updated_at']) < strtotime((string) $linked['github_updated_at'])) return null;
-        $oldState = $linked['state'];
-        $oldDraft = $linked['is_draft'];
-        if (!$this->pullRequests->updateFromWebhook((int) $linked['id'], $pullRequest)) return null;
-        if ($oldState === $pullRequest['state'] && $oldDraft === $pullRequest['is_draft']
-            && !in_array($action, ['opened', 'reopened', 'closed', 'ready_for_review', 'converted_to_draft', 'review_requested'], true)) return null;
+        $changedWorkspaceIds = [];
+        foreach ($linkedPullRequests as $linked) {
+            if ($linked['connected_repository_id'] !== $repositoryId
+                || $linked['connected_installation_id'] !== $linked['github_installation_id']
+                || $installationId !== $linked['github_installation_id']
+                || strcasecmp((string) ($repository['full_name'] ?? ''), (string) $linked['repository_full_name']) !== 0
+                || !$this->repositoryAllowed((int) $linked['workspace_id'], (string) $linked['repository_full_name'])) continue;
 
-        $actionText = match ($action) {
-            'opened' => 'opened',
-            'reopened' => 'reopened',
-            'closed' => $pullRequest['state'] === 'merged' ? 'merged' : 'closed',
-            'ready_for_review' => 'is ready for review',
-            'converted_to_draft' => 'was changed to draft',
-            'review_requested' => 'has a review requested',
-            default => 'was updated',
-        };
-        $title = 'GitHub pull request ' . $actionText;
-        $detail = $linked['repository_full_name'] . ' #' . $number . ' · ' . $pullRequest['title'];
-        $this->inboxEvents->recordGitHubPullRequest(
-            (int) $linked['workspace_id'],
-            (int) $linked['project_id'],
-            (int) $linked['issue_id'],
-            $title,
-            $detail,
-        );
-        return (int) $linked['workspace_id'];
+            $pullRequest = self::normalizePullRequest($remotePullRequest, $number, (string) $linked['repository_full_name']);
+            if (strtotime($pullRequest['updated_at']) < strtotime((string) $linked['github_updated_at'])) continue;
+            $oldState = $linked['state'];
+            $oldDraft = $linked['is_draft'];
+            if (!$this->pullRequests->updateFromWebhook((int) $linked['id'], $pullRequest)) continue;
+            if ($oldState === $pullRequest['state'] && $oldDraft === $pullRequest['is_draft']
+                && !in_array($action, ['opened', 'reopened', 'closed', 'ready_for_review', 'converted_to_draft', 'review_requested'], true)) continue;
+
+            $actionText = match ($action) {
+                'opened' => 'opened',
+                'reopened' => 'reopened',
+                'closed' => $pullRequest['state'] === 'merged' ? 'merged' : 'closed',
+                'ready_for_review' => 'is ready for review',
+                'converted_to_draft' => 'was changed to draft',
+                'review_requested' => 'has a review requested',
+                default => 'was updated',
+            };
+            $title = 'GitHub pull request ' . $actionText;
+            $detail = $linked['repository_full_name'] . ' #' . $number . ' · ' . $pullRequest['title'];
+            $this->inboxEvents->recordGitHubPullRequest(
+                (int) $linked['workspace_id'],
+                (int) $linked['project_id'],
+                (int) $linked['issue_id'],
+                $title,
+                $detail,
+            );
+            $changedWorkspaceIds[] = (int) $linked['workspace_id'];
+        }
+        return array_values(array_unique($changedWorkspaceIds));
     }
 
     private function issueAndProject(AuthenticatedUser $user, int $issueId, string $action): array
@@ -465,6 +502,32 @@ final class GitHubService
     private function requireInternalUser(AuthenticatedUser $user): void
     {
         if ($user->role === 'guest') throw new ApiException(404, 'not_found', 'The issue was not found.');
+    }
+
+    private function repositoryAllowed(int $workspaceId, string $fullName): bool
+    {
+        $allowlist = $this->config->githubRepositoryAllowlist;
+        if ($allowlist === null) return true;
+
+        $workspaceSlug = $this->workspaceSlug($workspaceId);
+        $allowedRepositories = $allowlist[$workspaceSlug] ?? null;
+        if (!is_array($allowedRepositories)) return false;
+        foreach ($allowedRepositories as $allowedRepository) {
+            if (is_string($allowedRepository) && trim($allowedRepository) !== ''
+                && strcasecmp(trim($allowedRepository), $fullName) === 0) return true;
+        }
+        return false;
+    }
+
+    private function workspaceSlug(int $workspaceId): string
+    {
+        if (!array_key_exists($workspaceId, $this->workspaceSlugs)) {
+            $statement = $this->pdo->prepare('SELECT slug FROM workspaces WHERE id = :workspace_id LIMIT 1');
+            $statement->execute(['workspace_id' => $workspaceId]);
+            $slug = $statement->fetchColumn();
+            $this->workspaceSlugs[$workspaceId] = is_string($slug) ? $slug : '';
+        }
+        return $this->workspaceSlugs[$workspaceId];
     }
 
     private static function parsePullRequestUrl(string $url): array

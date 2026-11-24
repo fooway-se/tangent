@@ -57,4 +57,23 @@ final class GitHubAppClientTest extends TestCase
             }
         }
     }
+
+    public function testGitHubRepositoryAllowlistLoadsFromPrivateConfig(): void
+    {
+        $allowlist = [
+            'team-alpha' => ['fooway-se/myfi'],
+            'team-beta' => ['fooway-se/allmeter'],
+        ];
+
+        $config = AppConfig::fromEnvironment(['github_repository_allowlist' => $allowlist]);
+
+        self::assertSame($allowlist, $config->githubRepositoryAllowlist);
+    }
+
+    public function testInvalidGitHubRepositoryAllowlistFailsClosed(): void
+    {
+        $config = AppConfig::fromEnvironment(['github_repository_allowlist' => 'not-an-array']);
+
+        self::assertSame([], $config->githubRepositoryAllowlist);
+    }
 }

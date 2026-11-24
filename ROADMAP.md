@@ -11,6 +11,7 @@ The project chat header has a privacy-preserving presence light: it shows whethe
 ## GitHub and other integrations
 
 - Keep GitHub as the current integration focus. Tangent tracks linked pull requests, commits, and CI check runs; two-way issue and comment sync is deferred.
+- Add admin-managed, per-workspace GitHub repository assignments. Admins decide which installed repositories each workspace can use; members see only approved repositories and their GitHub data. Replace the private `config.php` allowlist with persisted settings and an admin UI.
 
 ## AI and API
 

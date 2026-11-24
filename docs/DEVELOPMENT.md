@@ -60,12 +60,12 @@ Configure these values in the host environment or in `config.php` for production
 | `TANGENT_HIBP_ENABLED` | `hibp_enabled` | Enables the optional Have I Been Pwned Pwned Passwords range lookup. | `false` |
 | `TANGENT_SSE_ENABLED` | `realtime_stream_enabled` | Enables the SSE event stream. Leave disabled on hosts where long-running requests could consume too much of the PHP worker pool. | `false` |
 | `TANGENT_SSE_MAX_CONNECTIONS` | `realtime_max_connections` | Global maximum number of active SSE streams across workspaces. Set this below the worker capacity reserved for ordinary requests; only one active stream per workspace user is allowed. | `1` |
-| `TANGENT_GITHUB_APP_ID` | — | Numeric GitHub App ID for repository selection and pull-request, commit, and check-run tracking. | unset |
-| `TANGENT_GITHUB_APP_SLUG` | — | GitHub App URL slug. | unset |
-| `TANGENT_GITHUB_PRIVATE_KEY` | — | GitHub App PEM private key; environment values may use `\n` for newlines. | unset |
+| `TANGENT_GITHUB_APP_ID` | `github_app_id` | Numeric GitHub App ID for repository selection and pull-request, commit, and check-run tracking. | unset |
+| `TANGENT_GITHUB_APP_SLUG` | `github_app_slug` | GitHub App URL slug. | unset |
+| `TANGENT_GITHUB_PRIVATE_KEY` | `github_private_key` | GitHub App PEM private key; environment values and single-quoted PHP strings may use `\n` for newlines. | unset |
 | `TANGENT_GITHUB_OAUTH_CLIENT_ID` | `github_oauth_client_id` | OAuth client ID for the GitHub App user authorization step. | unset |
 | `TANGENT_GITHUB_OAUTH_CLIENT_SECRET` | `github_oauth_client_secret` | OAuth client secret for the GitHub App user authorization step. | unset |
-| `TANGENT_GITHUB_WEBHOOK_SECRET` | — | Secret used to verify GitHub webhook signatures. | unset |
+| `TANGENT_GITHUB_WEBHOOK_SECRET` | `github_webhook_secret` | Secret used to verify GitHub webhook signatures. | unset |
 
 Tangent sends plain-text invitation and recovery email through PHP's configured mail transport. Invites fail closed when delivery is unavailable, and no usable invite link is issued. Existing-account invite acceptance still requires the account password. The optional breach lookup sends only the first five hexadecimal characters of the password's SHA-1 hash to the service, verifies the full hash against the returned suffix list, and fails open when the network check is unavailable. Leave it disabled on hosts without outbound HTTPS access.
 
