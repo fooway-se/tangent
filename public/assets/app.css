@@ -471,10 +471,11 @@ select { padding-right: 28px; background: var(--screen-inset) url("data:image/sv
 /* Issue groups and rows */
 .issue-list { display: grid; gap: 12px; margin: 12px 0 0; padding: 0; list-style: none; }
 .deleted-issues-details { margin-top: 16px; border-top: 1px solid var(--screen-border); padding-top: 10px; color: var(--screen-muted); }
-.deleted-issues-details summary { display: flex; align-items: center; gap: 7px; cursor: pointer; list-style: none; }
-.deleted-issues-details summary::-webkit-details-marker { display: none; }
-.deleted-issues-details summary::before { content: "›"; color: var(--screen-muted); }
-.deleted-issues-details[open] summary::before { transform: rotate(90deg); }
+.disclosure-summary { display: flex; align-items: center; gap: 7px; cursor: pointer; list-style: none; }
+.disclosure-summary::-webkit-details-marker { display: none; }
+.disclosure-summary::marker { content: ""; }
+.disclosure-summary::before { display: inline-block; color: var(--screen-muted); content: "›"; }
+details[open] > .disclosure-summary::before { transform: rotate(90deg); }
 .deleted-issue-list { display: grid; gap: 6px; margin: 10px 0 0; padding: 0; list-style: none; }
 .deleted-issue-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid var(--screen-border); border-radius: var(--radius-panel); padding: 8px 10px; background: var(--screen-panel); }
 .deleted-issue-content { display: grid; min-width: 0; gap: 2px; }
@@ -613,21 +614,17 @@ select { padding-right: 28px; background: var(--screen-inset) url("data:image/sv
 .issue-detail-description { margin: 0 0 16px; color: var(--screen-ink); font-size: 13px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
 .issue-detail-description.is-empty { color: var(--screen-muted); font-style: italic; }
 .issue-detail-brief { margin: 0 0 12px; border-top: 1px solid var(--screen-border); padding-top: 10px; }
-.issue-detail-brief > summary { border: 1px solid transparent; border-radius: var(--radius-panel); padding: 5px 0; cursor: pointer; list-style: none; }
-.issue-detail-brief > summary::-webkit-details-marker { display: none; }
-.issue-detail-brief > summary::before { margin-right: 7px; color: var(--accent); content: '›'; }
-.issue-detail-brief[open] > summary::before { content: '⌄'; }
+.issue-detail-brief > summary { border: 1px solid transparent; border-radius: var(--radius-panel); padding: 5px 0; }
 .issue-detail-brief > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .issue-detail-brief-section { display: grid; gap: 4px; margin: 10px 0 0; }
 .issue-detail-brief-section p { margin: 0; color: var(--screen-ink); font-size: 12px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
 .issue-source-link { display: inline-block; margin: 0 0 4px; color: var(--accent); font-size: 12px; text-decoration: none; }
 .issue-source-link:hover { color: var(--screen-ink); text-decoration: underline; }
 .issue-status-history { margin-top: 16px; border-top: 1px solid var(--screen-border); padding-top: 10px; }
-.issue-status-history > summary { display: flex; align-items: center; justify-content: space-between; gap: 10px; border: 1px solid transparent; border-radius: var(--radius-panel); padding: 6px 0; cursor: pointer; }
+.issue-status-history > summary { justify-content: flex-start; gap: 10px; border: 1px solid transparent; border-radius: var(--radius-panel); padding: 6px 0; }
 .issue-status-history > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; color: var(--screen-ink); background: var(--screen-control-top); box-shadow: 0 0 0 4px var(--focus-ring); }
-.issue-status-history > summary::marker { color: var(--accent); content: '›'; }
-.issue-status-history[open] > summary::marker { content: '⌄'; }
 .issue-status-history-count, .issue-discussion-count { color: var(--screen-muted); font: 400 11px var(--font-mono); letter-spacing: 0; }
+.issue-status-history-count { margin-left: auto; }
 .issue-status-history-empty { margin: 10px 0 0; color: var(--screen-muted); font-size: 11px; }
 .issue-status-history-list { display: grid; gap: 9px; margin: 12px 0 0; padding: 0; list-style: none; }
 .issue-status-history-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 2px 12px; border-left: 2px solid var(--screen-border); padding-left: 9px; }
