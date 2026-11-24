@@ -303,67 +303,69 @@
   --signal-stripe: linear-gradient(to bottom, #b94431 0 25%, #e58648 25% 50%, #e7bd58 50% 75%, #718c62 75% 100%);
 }
 
-/* Cassette & Colour: soft grey plastic, a deep teal display and bright key signals. */
+/* Cassette & Colour: graphite CPC case, blue CRT, and green/red/blue key signals. */
 :root[data-theme="cassette"] {
-  --night: #0c1918;
-  --night-glow: #2c4d4d;
-  --night-muted: #dfe6dc;
+  --night: #0b1530;
+  --night-glow: #183b7b;
+  --night-muted: #dce5f5;
 
-  --case-top: #d0d0c8;
-  --case-mid: #b9b9b2;
-  --case-bottom: #aaa9a1;
-  --case-shade: #85877f;
-  --case-edge: #737873;
-  --case-light: #e7e8df;
-  --case-ink: #252923;
-  --case-muted: #3a3f39;
-  --case-error: #8d3025;
-  --vent-dark: #858780;
-  --vent-light: #e3e4dc;
-  --footer-top: #c4c5bd;
-  --footer-bottom: #aeafa7;
+  --case-top: #535d66;
+  --case-mid: #424b53;
+  --case-bottom: #333b43;
+  --case-shade: #252d33;
+  --case-edge: #1d252b;
+  --case-light: #68727a;
+  --case-ink: #edf1ed;
+  --case-muted: #cbd2d4;
+  --case-error: #ff9b90;
+  --vent-dark: #273138;
+  --vent-light: #64717a;
+  --footer-top: #3d474f;
+  --footer-bottom: #343d45;
 
-  --key-top: #deded6;
-  --key-bottom: #c3c4bc;
-  --key-highlight: #f5f5ed;
+  --key-top: #414c55;
+  --key-bottom: #2f3941;
+  --key-highlight: #5c6972;
+  --key-ink: #f2f5ef;
 
-  --cap-top: #383b3b;
-  --cap-bottom: #242727;
-  --cap-edge: #111414;
-  --plate: #272b2b;
-  --plate-ink: #eef0e7;
-  --plate-muted: #c8cec6;
+  --cap-top: #252c31;
+  --cap-bottom: #141a1e;
+  --cap-edge: #080d10;
+  --plate: #171d22;
+  --plate-ink: #edf1e7;
+  --plate-muted: #b8c5c8;
 
-  --screen: #123a3d;
-  --screen-rim: #102728;
-  --screen-glow: rgba(131, 219, 194, 0.1);
-  --screen-vignette: rgba(68, 166, 163, 0.11);
-  --screen-ink: #e7eee4;
-  --screen-muted: #b6d1c6;
-  --screen-header: rgba(255, 255, 255, 0.05);
-  --screen-highlight: rgba(255, 255, 255, 0.07);
-  --backdrop: rgba(12, 25, 24, 0.7);
-  --screen-panel: #1b4a4b;
-  --screen-control-top: #245556;
-  --screen-inset: #0b292b;
-  --screen-field: #092426;
-  --screen-border: #47716d;
-  --screen-line: #2d5b58;
-  --screen-hover: #245452;
-  --screen-track: #0b292b;
-  --screen-group: #205152;
-  --screen-group-top: #316361;
-  --screen-group-bottom: #285959;
+  --screen: #1a3f96;
+  --screen-rim: #0c1e4c;
+  --screen-glow: rgba(114, 161, 255, 0.16);
+  --screen-vignette: rgba(8, 20, 75, 0.2);
+  --screen-ink: #e8f28e;
+  --screen-muted: #c3d0f3;
+  --screen-header: rgba(255, 255, 255, 0.06);
+  --screen-highlight: rgba(255, 255, 255, 0.08);
+  --backdrop: rgba(7, 15, 38, 0.74);
+  --screen-panel: #204ba0;
+  --screen-control-top: #2a59ad;
+  --screen-inset: #102b67;
+  --screen-field: #0b2155;
+  --screen-border: #5372bd;
+  --screen-line: #2e5399;
+  --screen-hover: #2a56a5;
+  --screen-track: #0c2358;
+  --screen-group: #234e98;
+  --screen-group-top: #3b63a8;
+  --screen-group-bottom: #2b559d;
 
-  --accent: #ffae89;
-  --accent-edge: #a45137;
-  --accent-ink: #291810;
-  --accent-shine: rgba(255, 255, 255, 0.5);
-  --success: #9ce3a6;
-  --danger: #ffaca0;
-  --power-light: #ef5947;
-  --focus-ring: rgba(255, 174, 137, 0.5);
-  --signal-stripe: linear-gradient(to bottom, #e65f50 0 25%, #ebbd58 25% 50%, #7dc991 50% 75%, #72c8d0 75% 100%);
+  --accent: #72d28b;
+  --accent-edge: #347c50;
+  --accent-ink: #07170c;
+  --accent-shine: rgba(255, 255, 255, 0.42);
+  --success: #b6df75;
+  --danger: #ff988d;
+  --power-light: #ea5148;
+  --focus-ring: rgba(114, 210, 139, 0.52);
+  --signal-stripe: linear-gradient(to right, #e24b43 0 33.33%, #42b978 33.33% 66.66%, #4488e0 66.66% 100%);
+  --scanline: rgba(3, 10, 36, 0.13);
 }
 
 /* Mono & Membrane: the compact black Sinclair case and sharp monochrome display. */
