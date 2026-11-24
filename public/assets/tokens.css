@@ -807,67 +807,80 @@
   --signal-stripe: linear-gradient(to bottom, #2869d1 0 25%, #33b9b7 25% 50%, #f6bd48 50% 75%, #e96e51 75% 100%);
 }
 
-/* Nordic & Phosphor: pale Swedish casework and a deep green text screen. */
+/* Nordic & Phosphor: honey-tan ABC80 casework, black TV bezel, and soft CRT text. */
 :root[data-theme="nordic"] {
-  --night: #0b1b13;
-  --night-glow: #315b42;
-  --night-muted: #ceddc4;
+  --night: #10170f;
+  --night-glow: #384a32;
+  --night-muted: #e0d4b9;
 
-  --case-top: #d6d3c6;
-  --case-mid: #c8c4b7;
-  --case-bottom: #b9b5a8;
-  --case-shade: #999586;
-  --case-edge: #8b8878;
-  --case-light: #eeece2;
-  --case-ink: #2c2b27;
-  --case-muted: #45443d;
-  --case-error: #97392c;
-  --vent-dark: #a09c8d;
-  --vent-light: #e8e5d8;
-  --footer-top: #d0ccbe;
-  --footer-bottom: #bdb9ab;
+  --case-top: #e0ca9a;
+  --case-mid: #d2b984;
+  --case-bottom: #bea575;
+  --case-shade: #95805b;
+  --case-edge: #7c694b;
+  --case-light: #f2e4c4;
+  --case-ink: #2d281f;
+  --case-muted: #40372a;
+  --case-error: #943c2d;
+  --vent-dark: #26251f;
+  --vent-light: #e9dbb9;
+  --footer-top: #cdb687;
+  --footer-bottom: #b9a174;
 
-  --key-top: #e4e0d4;
-  --key-bottom: #cbc6b8;
-  --key-highlight: #f7f5ed;
+  --key-top: #eee2c7;
+  --key-bottom: #d1bf9c;
+  --key-highlight: #faf2df;
 
-  --cap-top: #43443b;
-  --cap-bottom: #2d312a;
-  --cap-edge: #1d211c;
-  --plate: #272d25;
-  --plate-ink: #e6eddc;
-  --plate-muted: #bbc6b1;
+  --cap-top: #373631;
+  --cap-bottom: #22221f;
+  --cap-edge: #0e100e;
+  --plate: #1d201c;
+  --plate-ink: #eee5cf;
+  --plate-muted: #c4b99e;
 
-  --screen: #10261d;
-  --screen-rim: #081710;
-  --screen-glow: rgba(158, 211, 105, 0.12);
-  --screen-vignette: rgba(111, 170, 89, 0.12);
-  --screen-ink: #c0e0ad;
-  --screen-muted: #a9c5a2;
-  --screen-header: rgba(255, 255, 255, 0.035);
-  --screen-highlight: rgba(255, 255, 255, 0.06);
-  --backdrop: rgba(11, 27, 19, 0.7);
-  --screen-panel: #1b3628;
-  --screen-control-top: #244231;
-  --screen-inset: #0c1c14;
-  --screen-field: #0d1e15;
-  --screen-border: #365444;
-  --screen-line: #2a4636;
-  --screen-hover: #244231;
-  --screen-track: #0c1c14;
-  --screen-group: #203d2c;
-  --screen-group-top: #365344;
-  --screen-group-bottom: #294535;
+  --screen: #0c1711;
+  --screen-rim: #070b08;
+  --screen-glow: rgba(180, 204, 147, 0.08);
+  --screen-vignette: rgba(99, 131, 76, 0.08);
+  --screen-ink: #c6d1ad;
+  --screen-muted: #a7b496;
+  --screen-header: rgba(231, 230, 207, 0.055);
+  --screen-highlight: rgba(231, 230, 207, 0.08);
+  --backdrop: rgba(12, 18, 13, 0.78);
+  --screen-panel: #1a2a1e;
+  --screen-control-top: #202e22;
+  --screen-inset: #090f0b;
+  --screen-field: #0b130e;
+  --screen-border: #4b5847;
+  --screen-line: #2b3c2e;
+  --screen-hover: #26352a;
+  --screen-track: #080e0a;
+  --screen-group: #17241a;
+  --screen-group-top: #344333;
+  --screen-group-bottom: #253228;
 
-  --accent: #b8d36b;
-  --accent-edge: #718637;
-  --accent-ink: #25301d;
-  --accent-shine: rgba(255, 255, 255, 0.46);
-  --success: #95d870;
-  --danger: #ff9c71;
-  --power-light: #e17c42;
-  --focus-ring: rgba(184, 211, 107, 0.48);
-  --signal-stripe: linear-gradient(to bottom, #b8d36b 0 25%, #83b86a 25% 50%, #d49a49 50% 75%, #6f9a70 75% 100%);
+  --accent: #ef8d2e;
+  --accent-edge: #a45118;
+  --accent-ink: #24170d;
+  --accent-shine: rgba(255, 255, 255, 0.42);
+  --success: #a6d18e;
+  --danger: #ffab96;
+  --power-light: #e36843;
+  --focus-ring: rgba(239, 141, 46, 0.55);
+  --signal-stripe: linear-gradient(to bottom, #b95335 0 25%, #d7c18f 25% 50%, #20211e 50% 75%, #a8b794 75% 100%);
+
+  --scanline: rgba(0, 0, 0, 0.15);
+  --inset-shade: rgba(0, 0, 0, 0.48);
+  --inset-shade-soft: rgba(0, 0, 0, 0.36);
+  --inset-wash: rgba(0, 0, 0, 0.18);
+  --inset-wash-strong: rgba(0, 0, 0, 0.26);
+
+  --radius-screen: 10px;
+  --radius-panel: 4px;
+  --radius-key: 5px;
+  --radius-cap: 2px;
+  --key-depth: 2px;
+  --key-depth-lg: 3px;
 }
 
 /* Icon & Mouse: warm compact-computer plastics and a crisp monochrome desktop. */
