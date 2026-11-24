@@ -618,36 +618,37 @@
   --signal-stripe: linear-gradient(to bottom, #c85640 0 25%, #dca64d 25% 50%, #a8c879 50% 75%, #6e9670 75% 100%);
 }
 
-/* Silver & Speech: pale metal, a dark keyboard bed and a cool blue display. */
+/* Silver & Speech: warm brushed metal, black chiclet keys, and a red status lamp. */
 :root[data-theme="silver"] {
   --night: #11161f;
-  --night-glow: #354d70;
-  --night-muted: #e1e6ef;
+  --night-glow: #364653;
+  --night-muted: #e5e2dc;
 
-  --case-top: #d4d4ce;
-  --case-mid: #b8b9b6;
-  --case-bottom: #a5a6a2;
-  --case-shade: #83847f;
-  --case-edge: #77766f;
-  --case-light: #eeeee8;
-  --case-ink: #292a28;
-  --case-muted: #343734;
-  --case-error: #963d32;
-  --vent-dark: #858680;
-  --vent-light: #e5e5df;
-  --footer-top: #c5c6c1;
-  --footer-bottom: #acadA8;
+  --case-top: #cbc7be;
+  --case-mid: #b5b1a8;
+  --case-bottom: #9b9891;
+  --case-shade: #74736e;
+  --case-edge: #60615e;
+  --case-light: #e1ded6;
+  --case-ink: #242729;
+  --case-muted: #2c3032;
+  --case-error: #8f302d;
+  --vent-dark: #222526;
+  --vent-light: #d7d4cb;
+  --footer-top: #b8b5ac;
+  --footer-bottom: #9e9b93;
 
-  --key-top: #d7d5ce;
-  --key-bottom: #b7b5ad;
-  --key-highlight: #f1efe7;
+  --key-top: #d3d3cf;
+  --key-bottom: #b0b1ae;
+  --key-highlight: #e8e7e2;
+  --key-ink: #25292b;
 
-  --cap-top: #514841;
-  --cap-bottom: #36302b;
-  --cap-edge: #201c19;
-  --plate: #403a35;
-  --plate-ink: #f1ede6;
-  --plate-muted: #d1c9c0;
+  --cap-top: #373a3c;
+  --cap-bottom: #1d2022;
+  --cap-edge: #0a0c0d;
+  --plate: #171a1b;
+  --plate-ink: #f0f0ed;
+  --plate-muted: #bdc0be;
 
   --screen: #10294d;
   --screen-rim: #0d1b31;
@@ -670,15 +671,22 @@
   --screen-group-top: #35578a;
   --screen-group-bottom: #2a4b7a;
 
-  --accent: #f0c65f;
-  --accent-edge: #967632;
-  --accent-ink: #29200b;
-  --accent-shine: rgba(255, 255, 255, 0.5);
+  --accent: #ff7c6a;
+  --accent-edge: #982f2d;
+  --accent-ink: #21100f;
+  --accent-shine: rgba(255, 255, 255, 0.34);
   --success: #9cdaa9;
   --danger: #ff9f91;
-  --power-light: #e96650;
-  --focus-ring: rgba(240, 198, 95, 0.48);
-  --signal-stripe: linear-gradient(to bottom, #d85242 0 25%, #e8bc56 25% 50%, #72b987 50% 75%, #7298d5 75% 100%);
+  --power-light: #f04c43;
+  --focus-ring: rgba(255, 124, 106, 0.52);
+  --signal-stripe: linear-gradient(to right, #222526 0 42%, #c9c6bd 42% 96%, #e64b43 96% 100%);
+
+  --radius-screen: 8px;
+  --radius-panel: 4px;
+  --radius-key: 3px;
+  --radius-cap: 2px;
+  --key-depth: 2px;
+  --key-depth-lg: 3px;
 }
 
 /* Blue & Byte: ivory VIC-20 case, black keybed, and cobalt display. */
