@@ -175,10 +175,10 @@ export const THEME_MACHINES: Record<ThemeId, ThemeMachineInfo> = {
     facts: ['Designed in Australia and released in 1982, first as a kit.', 'The Computer-in-a-Book package paired the keyboard computer with a separate disk and power unit.'],
   },
   'coleco-adam': {
-    model: 'Coleco ADAM Family Computer System', year: '1983', imageFile: 'Coleco Adam, with monitor, keyboard, printer, and software.jpg',
+    model: 'Coleco ADAM Family Computer System', year: '1983', imageFile: 'Coleco Adam (adjusted version).jpg',
     imageUrl: './assets/machines/coleco-adam.jpg',
-    imagePage: 'https://commons.wikimedia.org/wiki/File:Coleco_Adam,_with_monitor,_keyboard,_printer,_and_software.jpg',
-    photoCredit: 'Doontass / English Wikipedia', license: 'Public domain',
+    imagePage: 'https://commons.wikimedia.org/wiki/File:Coleco_Adam_(adjusted_version).jpg',
+    photoCredit: 'Andrew Lih; adjusted by Ubcule', license: 'CC BY-SA 2.0',
     historyUrl: 'https://www.colecovisionadam.com/Coleco/adam/Documents/Manual/Coleco_ADAM_Technical_Reference_Manual.pdf',
     facts: ['The complete system combined a computer, keyboard, digital data pack drives, and daisy-wheel printer.', 'The printer also housed the power supply for the computer.'],
   },
