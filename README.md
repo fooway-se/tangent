@@ -25,8 +25,6 @@ A keyboard-first, self-hosted workspace for small dev teams and freelancers: pro
 
 Aimed at freelancers, small remote teams and studios that coordinate client work.
 
-![Issue detail with discussion](assets/screenshots/issue-detail.webp)
-
 ![Client portal, guest view](assets/screenshots/guest-portal.webp)
 
 *Screenshots use fictional sample data.*
