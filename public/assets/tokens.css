@@ -997,65 +997,83 @@
 }
 
 :root[data-theme="altair"] {
-  --night: #101923;
-  --night-glow: #253b4b;
-  --night-muted: #c4d0d3;
+  --night: #12191f;
+  --night-glow: #28577d;
+  --night-muted: #dce3e7;
 
-  --case-top: #c8ced0;
-  --case-mid: #b8c0c4;
-  --case-bottom: #a8b0b6;
-  --case-shade: #848e97;
-  --case-edge: #707a84;
-  --case-light: #e2e6e8;
-  --case-ink: #1c252d;
-  --case-muted: #35414b;
-  --case-error: #932f25;
-  --vent-dark: #8a949b;
-  --vent-light: #d9dee0;
-  --footer-top: #bfc7cb;
-  --footer-bottom: #aeb7bc;
+  --case-top: #d3d7d8;
+  --case-mid: #bec4c6;
+  --case-bottom: #a5adb1;
+  --case-shade: #68737a;
+  --case-edge: #286ba4;
+  --case-light: #f0f2f1;
+  --case-ink: #20272b;
+  --case-muted: #3d484e;
+  --case-error: #a52d2d;
+  --vent-dark: #788389;
+  --vent-light: #e2e5e5;
+  --footer-top: #b6bdc0;
+  --footer-bottom: #969fa3;
 
-  --key-top: #dce1e3;
-  --key-bottom: #bec7cc;
-  --key-highlight: #f1f4f5;
+  --key-top: #e0e3e2;
+  --key-bottom: #aeb7bb;
+  --key-highlight: #f6f7f5;
 
-  --cap-top: #303b44;
-  --cap-bottom: #202930;
-  --cap-edge: #10171d;
-  --plate: #17212a;
-  --plate-ink: #edf2f2;
-  --plate-muted: #bac6ca;
+  --cap-top: #50585d;
+  --cap-bottom: #2c3338;
+  --cap-edge: #11171b;
+  --plate: #343c41;
+  --plate-ink: #edf0ef;
+  --plate-muted: #bdc5c8;
 
-  --screen: #0d1720;
-  --screen-rim: #090f14;
-  --screen-glow: rgba(88, 165, 192, 0.13);
-  --screen-vignette: rgba(34, 130, 167, 0.10);
-  --screen-ink: #edf1e8;
-  --screen-muted: #a9bdc2;
+  --screen: #11171b;
+  --screen-rim: #080d11;
+  --screen-glow: rgba(77, 139, 185, 0.09);
+  --screen-vignette: rgba(48, 112, 157, 0.07);
+  --screen-ink: #edf0ed;
+  --screen-muted: #b3bdc1;
   --screen-header: rgba(255, 255, 255, 0.04);
-  --screen-highlight: rgba(255, 255, 255, 0.07);
-  --backdrop: rgba(8, 14, 20, 0.74);
-  --screen-panel: #172732;
-  --screen-control-top: #223b48;
-  --screen-inset: #081116;
-  --screen-field: #0b1319;
-  --screen-border: #34505d;
-  --screen-line: #233b47;
-  --screen-hover: #233b46;
-  --screen-track: #081117;
-  --screen-group: #13242e;
-  --screen-group-top: #29404a;
-  --screen-group-bottom: #1d313b;
+  --screen-highlight: rgba(255, 255, 255, 0.08);
+  --backdrop: rgba(8, 13, 17, 0.78);
+  --screen-panel: #252d32;
+  --screen-control-top: #39444a;
+  --screen-inset: #0a1014;
+  --screen-field: #0c1216;
+  --screen-border: #53636b;
+  --screen-line: #37434a;
+  --screen-hover: #303a40;
+  --screen-track: #090f13;
+  --screen-group: #222a2f;
+  --screen-group-top: #4a5960;
+  --screen-group-bottom: #37434a;
 
-  --accent: #ff8a55;
-  --accent-edge: #a33f2a;
-  --accent-ink: #25140f;
+  --accent: #ff766e;
+  --accent-edge: #a52f32;
+  --accent-ink: #281011;
   --accent-shine: rgba(255, 255, 255, 0.48);
-  --success: #81c779;
-  --danger: #ff9784;
-  --power-light: #e34b36;
-  --focus-ring: rgba(255, 138, 85, 0.5);
-  --signal-stripe: linear-gradient(to bottom, #e34b36 0 25%, #ff9b38 25% 50%, #e8c34b 50% 75%, #67ad74 75% 100%);
+  --success: #8fd18b;
+  --danger: #ff9a84;
+  --power-light: #ff383f;
+  --focus-ring: rgba(255, 118, 110, 0.5);
+  --signal-stripe: linear-gradient(to bottom, #2269a5 0 25%, #aeb7bb 25% 50%, #414b51 50% 75%, #d94143 75% 100%);
+
+  --radius-screen: 5px;
+  --radius-panel: 2px;
+  --radius-key: 2px;
+  --radius-cap: 1px;
+  --key-depth: 2px;
+  --key-depth-lg: 3px;
+
+  --panel-blue-top: #4385b6;
+  --panel-blue-bottom: #205a88;
+  --panel-blue-edge: #174c77;
+  --switch-off-lamp: #702a2c;
+  --switch-off-lamp-edge: #461d20;
+  --switch-on-lamp-edge: #a22028;
+  --switch-face-shadow: rgba(28, 37, 42, 0.24);
+  --switch-active-shadow: rgba(8, 20, 29, 0.5);
+  --switch-lamp-shadow: rgba(0, 0, 0, 0.7);
+  --switch-lamp-glow: rgba(255, 56, 63, 0.62);
 }
 
 :root[data-theme="atari-st"] {
