@@ -560,24 +560,26 @@
                   </div>
                 </form>
                 <section id="issue-discussion" class="issue-discussion" aria-labelledby="issue-discussion-heading">
-                  <header class="issue-discussion-heading">
-                    <h3 id="issue-discussion-heading" tabindex="-1">Discussion</h3>
-                    <span id="issue-discussion-count" class="issue-discussion-count">0</span>
-                  </header>
-                  <p id="issue-discussion-status" class="issue-discussion-status" role="status" aria-live="polite"></p>
-                  <p id="issue-discussion-empty" class="issue-discussion-empty" hidden>No discussion yet.</p>
-                  <ol id="issue-discussion-list" class="issue-discussion-list" aria-live="polite"></ol>
-                  <form id="issue-discussion-form" class="issue-discussion-form">
-                    <p id="issue-discussion-reply-context" class="issue-discussion-reply-context" hidden>
-                      <span id="issue-discussion-reply-label"></span>
-                      <button id="issue-discussion-reply-cancel" class="button button-quiet" type="button">Cancel reply</button>
-                    </p>
-                    <label class="visually-hidden" for="issue-discussion-input">Add to discussion</label>
-                    <textarea id="issue-discussion-input" name="body" rows="3" maxlength="10000" placeholder="Add to the discussion…" required></textarea>
-                    <div class="form-actions">
-                      <button id="issue-discussion-submit" class="button button-primary" type="submit">Send</button>
-                    </div>
-                  </form>
+                  <div class="issue-discussion-content">
+                    <header class="issue-discussion-heading">
+                      <h3 id="issue-discussion-heading" tabindex="-1">Discussion</h3>
+                      <span id="issue-discussion-count" class="issue-discussion-count">0</span>
+                    </header>
+                    <p id="issue-discussion-status" class="issue-discussion-status" role="status" aria-live="polite"></p>
+                    <p id="issue-discussion-empty" class="issue-discussion-empty" hidden>No discussion yet.</p>
+                    <ol id="issue-discussion-list" class="issue-discussion-list" aria-live="polite"></ol>
+                    <form id="issue-discussion-form" class="issue-discussion-form">
+                      <p id="issue-discussion-reply-context" class="issue-discussion-reply-context" hidden>
+                        <span id="issue-discussion-reply-label"></span>
+                        <button id="issue-discussion-reply-cancel" class="button button-quiet" type="button">Cancel reply</button>
+                      </p>
+                      <label class="visually-hidden" for="issue-discussion-input">Add to discussion</label>
+                      <textarea id="issue-discussion-input" name="body" rows="3" maxlength="10000" placeholder="Add to the discussion…" required></textarea>
+                      <div class="form-actions">
+                        <button id="issue-discussion-submit" class="button button-primary" type="submit">Send</button>
+                      </div>
+                    </form>
+                  </div>
                 </section>
               </section>
             </section>

@@ -621,10 +621,9 @@ details[open] > .disclosure-summary::before { transform: rotate(90deg); }
 .issue-source-link { display: inline-block; margin: 0 0 4px; color: var(--accent); font-size: 12px; text-decoration: none; }
 .issue-source-link:hover { color: var(--screen-ink); text-decoration: underline; }
 .issue-status-history { margin-top: 16px; border-top: 1px solid var(--screen-border); padding-top: 10px; }
-.issue-status-history > summary { justify-content: flex-start; gap: 10px; border: 1px solid transparent; border-radius: var(--radius-panel); padding: 6px 0; }
+.issue-status-history > summary { justify-content: flex-start; gap: 10px; border: 1px solid transparent; border-radius: var(--radius-panel); padding: 5px 0; }
 .issue-status-history > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; color: var(--screen-ink); background: var(--screen-control-top); box-shadow: 0 0 0 4px var(--focus-ring); }
 .issue-status-history-count, .issue-discussion-count { color: var(--screen-muted); font: 400 11px var(--font-mono); letter-spacing: 0; }
-.issue-status-history-count { margin-left: auto; }
 .issue-status-history-empty { margin: 10px 0 0; color: var(--screen-muted); font-size: 11px; }
 .issue-status-history-list { display: grid; gap: 9px; margin: 12px 0 0; padding: 0; list-style: none; }
 .issue-status-history-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 2px 12px; border-left: 2px solid var(--screen-border); padding-left: 9px; }
@@ -1104,7 +1103,8 @@ dialog::backdrop { background: var(--backdrop); }
 .inbox-issue-card .issue-discussion-indicator { margin-right: 0; }
 
 /* Issue discussion: same message language as project chat. */
-.issue-discussion { max-width: 860px; margin-top: 24px; border-top: 1px solid var(--screen-border); padding-top: 14px; }
+.issue-discussion { margin-top: 16px; border-top: 1px solid var(--screen-border); padding-top: 14px; }
+.issue-discussion-content { max-width: 860px; }
 .issue-discussion-list { display: block; margin: 0; padding: 0; list-style: none; }
 .issue-discussion-message { display: grid; grid-template-columns: 30px minmax(0, 1fr); column-gap: 10px; border-bottom: 1px solid var(--screen-line); padding: 12px 0; }
 .issue-discussion-message > * { grid-column: 2; }
@@ -1142,6 +1142,14 @@ dialog::backdrop { background: var(--backdrop); }
 
 /* ZX81 red branding carries across the full Tangent logo. */
 :root[data-theme="mono"] .brand { color: var(--accent); }
+:root[data-theme="mono"] .workspace-nav {
+  gap: 5px;
+  border: 1px solid var(--case-shade);
+  border-radius: 4px;
+  padding: 5px;
+  background: linear-gradient(180deg, var(--case-bottom), var(--case-shade));
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.22), 0 1px 0 rgba(255, 255, 255, 0.06);
+}
 :root[data-theme="mono"] .workspace-content .button:not(.button-quiet) {
   border-color: var(--content-button-edge);
   color: var(--content-button-ink);
@@ -1154,10 +1162,26 @@ dialog::backdrop { background: var(--backdrop); }
 }
 
 /* Atari 800XL's power lamp is a flat red indicator on the dark controls. */
+:root[data-theme="stripe"] .workspace-nav {
+  gap: 5px;
+  border: 1px solid var(--case-shade);
+  border-radius: 4px;
+  padding: 5px;
+  background: linear-gradient(180deg, var(--case-mid), var(--case-bottom));
+  box-shadow: inset 0 1px 3px rgba(41, 42, 41, 0.18), 0 1px 0 rgba(255, 255, 255, 0.28);
+}
 :root[data-theme="stripe"] .login-power-light,
 :root[data-theme="stripe"] .chat-presence-light.is-on { box-shadow: none; }
 
 /* Apple IIe key faces are light stone; keep the dark drive face for branding. */
+:root[data-theme="paper"] .workspace-nav {
+  gap: 5px;
+  border: 1px solid var(--case-shade);
+  border-radius: 4px;
+  padding: 5px;
+  background: linear-gradient(180deg, var(--case-mid), var(--case-bottom));
+  box-shadow: inset 0 1px 3px rgba(41, 39, 31, 0.16), 0 1px 0 rgba(255, 255, 255, 0.3);
+}
 :root[data-theme="paper"] .workspace-sidebar .button,
 :root[data-theme="paper"] .login-keyboard-hints kbd,
 :root[data-theme="paper"] .keyboard-hints kbd,
@@ -1443,6 +1467,14 @@ dialog::backdrop { background: var(--backdrop); }
 }
 
 /* TI-99/4A: black chiclet controls, silver function keys, and one red status lamp. */
+:root[data-theme="silver"] .workspace-nav {
+  gap: 5px;
+  border: 1px solid var(--case-shade);
+  border-radius: 3px;
+  padding: 5px;
+  background: linear-gradient(180deg, var(--case-mid), var(--case-bottom));
+  box-shadow: inset 0 1px 3px rgba(36, 39, 41, 0.16), 0 1px 0 rgba(255, 255, 255, 0.24);
+}
 :root[data-theme="silver"] .workspace-nav-button,
 :root[data-theme="silver"] .project-sidebar-link {
   position: relative;
@@ -1618,6 +1650,14 @@ dialog::backdrop { background: var(--backdrop); }
 }
 
 /* C64 breadbin: dark individual keys on the warm shell and a cool blue screen. */
+:root[data-theme="breadbin"] .workspace-nav {
+  gap: 5px;
+  border: 1px solid var(--case-shade);
+  border-radius: 4px;
+  padding: 5px;
+  background: linear-gradient(180deg, var(--case-mid), var(--case-bottom));
+  box-shadow: inset 0 1px 3px rgba(42, 36, 27, 0.18), 0 1px 0 rgba(255, 255, 255, 0.28);
+}
 :root[data-theme="breadbin"] .workspace-nav-button,
 :root[data-theme="breadbin"] .project-sidebar-link {
   border-color: var(--cap-edge);
@@ -1674,6 +1714,14 @@ dialog::backdrop { background: var(--backdrop); }
 :root[data-theme="broadcast"] .chat-presence-light.is-on { box-shadow: none; }
 
 /* CPC 464: blue boot glow, quiet CRT lines, and a slim RGB badge stripe. */
+:root[data-theme="cassette"] .workspace-nav {
+  gap: 5px;
+  border: 1px solid var(--case-shade);
+  border-radius: 4px;
+  padding: 5px;
+  background: linear-gradient(180deg, var(--case-bottom), var(--case-shade));
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.22), 0 1px 0 rgba(255, 255, 255, 0.06);
+}
 :root[data-theme="cassette"] .login-shell {
   background-image: radial-gradient(ellipse at 50% 45%, var(--night-glow), transparent 72%);
 }
