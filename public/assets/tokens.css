@@ -492,29 +492,30 @@
   --signal-stripe: linear-gradient(to bottom, #d95145 0 25%, #e6b74b 25% 50%, #61a66e 50% 75%, #5d8fc2 75% 100%);
 }
 
-/* Paper & Rainbow: a warm expandable desktop with a tiny colour-badge accent. */
+/* Paper & Rainbow: parchment case, stone keys, a green CRT, and a restrained rainbow badge. */
 :root[data-theme="paper"] {
   --night: #171613;
   --night-glow: #4d493c;
   --night-muted: #e4dfd2;
 
-  --case-top: #e9e1d1;
-  --case-mid: #d6cdbb;
-  --case-bottom: #c4bba8;
-  --case-shade: #a99f8c;
-  --case-edge: #938a79;
-  --case-light: #f5eedf;
+  --case-top: #eee7d7;
+  --case-mid: #dcd4c3;
+  --case-bottom: #c9c0ad;
+  --case-shade: #a79e8b;
+  --case-edge: #918877;
+  --case-light: #f8f2e5;
   --case-ink: #29271f;
   --case-muted: #4a483f;
   --case-error: #96382c;
   --vent-dark: #a49b88;
   --vent-light: #eee7d8;
-  --footer-top: #d4cbb9;
-  --footer-bottom: #c3baa7;
+  --footer-top: #d8d0bf;
+  --footer-bottom: #c5bcaa;
 
-  --key-top: #d9d6ce;
-  --key-bottom: #b7b4ab;
-  --key-highlight: #f3f0e7;
+  --key-top: #e3e0d6;
+  --key-bottom: #c9c5bb;
+  --key-highlight: #f7f4ea;
+  --key-ink: #38362f;
 
   --cap-top: #73746e;
   --cap-bottom: #575852;
@@ -523,36 +524,36 @@
   --plate-ink: #f3eedf;
   --plate-muted: #d4cebe;
 
-  --screen: #172720;
-  --screen-rim: #211e19;
-  --screen-glow: rgba(171, 203, 155, 0.1);
-  --screen-vignette: rgba(240, 160, 74, 0.08);
-  --screen-ink: #f1eddf;
-  --screen-muted: #bdc8b8;
+  --screen: #16241e;
+  --screen-rim: #24241f;
+  --screen-glow: rgba(137, 202, 158, 0.07);
+  --screen-vignette: rgba(203, 177, 95, 0.045);
+  --screen-ink: #a6dec4;
+  --screen-muted: #9db9a8;
   --screen-header: rgba(255, 255, 255, 0.04);
   --screen-highlight: rgba(255, 255, 255, 0.06);
   --backdrop: rgba(23, 22, 19, 0.64);
-  --screen-panel: #22382e;
-  --screen-control-top: #2b4337;
-  --screen-inset: #101a14;
-  --screen-field: #0e1712;
-  --screen-border: #53645a;
-  --screen-line: #35463c;
-  --screen-hover: #2a3a30;
-  --screen-track: #0d1712;
-  --screen-group: #29372d;
-  --screen-group-top: #3c4b3c;
+  --screen-panel: #22362b;
+  --screen-control-top: #2a4436;
+  --screen-inset: #101a13;
+  --screen-field: #0e1711;
+  --screen-border: #536657;
+  --screen-line: #314539;
+  --screen-hover: #29392c;
+  --screen-track: #0d1710;
+  --screen-group: #29382d;
+  --screen-group-top: #3b4c3c;
   --screen-group-bottom: #303f34;
 
-  --accent: #f0a04a;
-  --accent-edge: #a35e20;
-  --accent-ink: #24170d;
-  --accent-shine: rgba(255, 255, 255, 0.48);
-  --success: #9ed889;
+  --accent: #c7a656;
+  --accent-edge: #877137;
+  --accent-ink: #251e0d;
+  --accent-shine: rgba(255, 255, 255, 0.42);
+  --success: #83b96e;
   --danger: #ff9985;
-  --power-light: #d44c37;
-  --focus-ring: rgba(240, 160, 74, 0.44);
-  --signal-stripe: linear-gradient(to bottom, #df5946 0 25%, #ef9b43 25% 50%, #e1c250 50% 75%, #658e67 75% 100%);
+  --power-light: #83b84c;
+  --focus-ring: rgba(199, 166, 86, 0.42);
+  --signal-stripe: linear-gradient(to bottom, #bd5a52 0 16.67%, #c98243 16.67% 33.33%, #d2b75f 33.33% 50%, #739663 50% 66.67%, #6c8ea4 66.67% 83.33%, #887b9b 83.33% 100%);
 }
 
 /* Desk & Phosphor: silver-gray Model III case, black keybed, and muted green CRT. */

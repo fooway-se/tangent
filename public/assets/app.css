@@ -1136,6 +1136,19 @@ dialog::backdrop { background: var(--backdrop); }
 .theme-about-button:active { transform: translateY(1px); }
 .theme-select:focus-visible, .theme-about-button:focus-visible { position: relative; outline: 2px solid var(--accent); outline-offset: 2px; }
 
+/* Apple IIe key faces are light stone; keep the dark drive face for branding. */
+:root[data-theme="paper"] .workspace-sidebar .button,
+:root[data-theme="paper"] .login-keyboard-hints kbd,
+:root[data-theme="paper"] .keyboard-hints kbd,
+:root[data-theme="paper"] .guest-cap {
+  border-color: var(--case-edge);
+  color: var(--key-ink);
+  background: linear-gradient(180deg, var(--key-top), var(--key-bottom));
+  box-shadow: inset 0 1px 0 var(--key-highlight);
+}
+:root[data-theme="paper"] .login-power-light,
+:root[data-theme="paper"] .chat-presence-light.is-on { box-shadow: none; }
+
 /* Microbee's black function keys sit above its ivory keyboard. */
 :root[data-theme="microbee"] .workspace-nav-button,
 :root[data-theme="microbee"] .workspace-nav-button.is-active {
