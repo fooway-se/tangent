@@ -1218,8 +1218,40 @@ dialog::backdrop { background: var(--backdrop); }
 .retro-computer-icon::before { position: absolute; bottom: -5px; left: 4px; width: 2px; height: 3px; background: currentColor; content: ""; }
 .retro-computer-icon::after { position: absolute; bottom: -7px; left: 1px; width: 8px; height: 2px; background: currentColor; content: ""; }
 
-/* Clean has no case vents: hide the striped vent above the brand plate. */
-:root[data-theme="clean"] .workspace-sidebar::before, :root[data-theme="clean-dark"] .workspace-sidebar::before { display: none; }
+/* Hide the vent detail on clean shells and machines without a distinctive grille. */
+:root[data-theme="clean"] .workspace-sidebar::before,
+:root[data-theme="clean-dark"] .workspace-sidebar::before,
+:root[data-theme="rainbow"] .workspace-sidebar::before,
+:root[data-theme="mono"] .workspace-sidebar::before,
+:root[data-theme="broadcast"] .workspace-sidebar::before,
+:root[data-theme="microbee"] .workspace-sidebar::before,
+:root[data-theme="oric-1"] .workspace-sidebar::before,
+:root[data-theme="jupiter-ace"] .workspace-sidebar::before,
+:root[data-theme="desktop"] .workspace-sidebar::before,
+:root[data-theme="desk"] .workspace-sidebar::before,
+:root[data-theme="pc88"] .workspace-sidebar::before,
+:root[data-theme="x68000"] .workspace-sidebar::before { display: none; }
+
+:root[data-theme="broadcast"] .workspace-brand { padding-top: 6px; }
+:root[data-theme="broadcast"] .workspace-brand::before {
+  display: block;
+  width: 46px;
+  height: 5px;
+  margin-bottom: 6px;
+  border-radius: 1px;
+  background: repeating-linear-gradient(90deg, rgba(205, 207, 198, 0.72) 0 2px, transparent 2px 5px);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.42);
+  content: "";
+}
+:root[data-theme="pc88"] .workspace-brand { padding-top: 6px; }
+:root[data-theme="pc88"] .workspace-brand::before {
+  display: block;
+  height: 6px;
+  margin: 0 -4px 8px;
+  background: repeating-linear-gradient(90deg, rgba(205, 198, 184, 0.58) 0 2px, transparent 2px 5px), linear-gradient(180deg, #211f1d, #302d2a);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), inset 0 -1px 1px rgba(0, 0, 0, 0.65);
+  content: "";
+}
 
 /* PC-8801 controls echo the ivory alphanumeric keys and charcoal function keys. */
 :root[data-theme="pc88"] .workspace-nav-button.is-active,
@@ -1691,4 +1723,13 @@ dialog::backdrop { background: var(--backdrop); }
   color: var(--accent-ink);
   background-color: var(--accent);
   background-image: none;
+}
+
+/* Luxor ABC 80: a broad black louvred fan grille above the keyboard. */
+:root[data-theme="nordic"] .workspace-sidebar::before {
+  flex-basis: 40px;
+  height: 40px;
+  border-radius: 2px;
+  background: repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.14) 0 1px, transparent 1px 4px), linear-gradient(180deg, #20211e, #080908);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), inset 0 -2px 3px rgba(0, 0, 0, 0.78), 0 1px 0 var(--case-light);
 }
