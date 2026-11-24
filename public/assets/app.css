@@ -105,6 +105,7 @@ kbd {
 
 /* Sidebar: the case */
 .workspace-sidebar {
+  --project-sidebar-top-vent-space: 46px;
   grid-column: 1;
   grid-row: 1;
   display: flex;
@@ -118,6 +119,8 @@ kbd {
   color: var(--case-ink);
 }
 .workspace-sidebar::before { display: block; flex: 0 0 30px; margin-bottom: 16px; border-radius: var(--radius-cap); background: repeating-linear-gradient(90deg, var(--vent-dark) 0 2px, var(--vent-light) 2px 6px); box-shadow: inset 0 2px 4px rgba(60, 50, 30, 0.35), 0 1px 0 var(--case-light); content: ""; }
+.workspace-sidebar.is-project-sidebar-space-constrained::before { display: none; }
+:root .workspace-sidebar.is-project-sidebar-space-constrained .workspace-brand::before { display: none; }
 .workspace-brand { display: block; margin: 0; padding: 10px 12px; border-radius: var(--radius-cap); background: var(--plate); color: var(--plate-ink); box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6), 0 1px 0 var(--case-light); }
 .workspace-brand .brand { color: var(--plate-ink); }
 .workspace-picker-trigger { display: flex; width: calc(100% - 36px); min-width: 0; align-items: center; justify-content: space-between; gap: 8px; margin: 6px 0 0 36px; border: 1px solid transparent; border-radius: var(--radius-cap); padding: 4px 5px; color: var(--plate-muted); background: transparent; box-shadow: none; font-size: 11px; text-align: left; cursor: pointer; }
@@ -1236,6 +1239,20 @@ dialog::backdrop { background: var(--backdrop); }
 :root[data-theme="pc88"] .workspace-sidebar::before,
 :root[data-theme="x68000"] .workspace-sidebar::before { display: none; }
 
+:root[data-theme="clean"] .workspace-sidebar,
+:root[data-theme="clean-dark"] .workspace-sidebar,
+:root[data-theme="rainbow"] .workspace-sidebar,
+:root[data-theme="mono"] .workspace-sidebar,
+:root[data-theme="broadcast"] .workspace-sidebar,
+:root[data-theme="microbee"] .workspace-sidebar,
+:root[data-theme="oric-1"] .workspace-sidebar,
+:root[data-theme="jupiter-ace"] .workspace-sidebar,
+:root[data-theme="desktop"] .workspace-sidebar,
+:root[data-theme="desk"] .workspace-sidebar,
+:root[data-theme="pc88"] .workspace-sidebar,
+:root[data-theme="x68000"] .workspace-sidebar { --project-sidebar-top-vent-space: 0px; }
+
+:root[data-theme="broadcast"] .workspace-sidebar { --project-sidebar-top-vent-space: 11px; }
 :root[data-theme="broadcast"] .workspace-brand { padding-top: 6px; }
 :root[data-theme="broadcast"] .workspace-brand::before {
   display: block;
@@ -1247,6 +1264,7 @@ dialog::backdrop { background: var(--backdrop); }
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.42);
   content: "";
 }
+:root[data-theme="pc88"] .workspace-sidebar { --project-sidebar-top-vent-space: 14px; }
 :root[data-theme="pc88"] .workspace-brand { padding-top: 6px; }
 :root[data-theme="pc88"] .workspace-brand::before {
   display: block;
@@ -1730,6 +1748,7 @@ dialog::backdrop { background: var(--backdrop); }
 }
 
 /* Luxor ABC 80: a broad black louvred fan grille above the keyboard. */
+:root[data-theme="nordic"] .workspace-sidebar { --project-sidebar-top-vent-space: 56px; }
 :root[data-theme="nordic"] .workspace-sidebar::before {
   flex-basis: 40px;
   height: 40px;

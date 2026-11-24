@@ -5,6 +5,7 @@ import { initGuestUi } from './guest-ui.js';
 import { initInboxUi } from './inbox-ui.js';
 import { createLogoutController } from './logout.js';
 import { ProjectNavigationOwner, runOwnedRequest } from './project-navigation.js';
+import { shouldHideProjectSidebarVent } from './project-sidebar-layout.js';
 import { createWorkspaceHistory } from './workspace-history.js';
 import { switchWorkspaceMembership } from './workspace-switch.js';
 import { initAuthUi } from './auth-ui.js';
@@ -121,6 +122,7 @@ const roadmapUi = initRoadmapUi({
     openProject: (projectId) => { void loadProjectDetail(projectId, 'issues'); },
 });
 const projectSidebarSection = projectSidebarList.closest('.sidebar-projects');
+const projectSidebar = projectSidebarList.closest('.workspace-sidebar');
 const projectSidebarMore = createScrollMoreIndicator();
 projectSidebarList.after(projectSidebarMore);
 const issueBulkAssignCount = issueBulkAssignToolbar.querySelector('.issue-bulk-assign-count');
@@ -1904,10 +1906,13 @@ document.addEventListener('focusout', () => {
 });
 projectsNavButton.addEventListener('click', goToProjects);
 projectSidebarList.addEventListener('scroll', updateProjectSidebarMoreCue, { passive: true });
-window.addEventListener('resize', updateProjectSidebarMoreCue);
+window.addEventListener('resize', scheduleProjectSidebarMoreCue);
+window.visualViewport?.addEventListener('resize', scheduleProjectSidebarMoreCue);
 window.addEventListener('resize', updateKeyboardHintsVisibility);
-const projectSidebarResizeObserver = new ResizeObserver(updateProjectSidebarMoreCue);
+const projectSidebarResizeObserver = new ResizeObserver(scheduleProjectSidebarMoreCue);
 projectSidebarResizeObserver.observe(projectSidebarList);
+if (projectSidebar)
+    projectSidebarResizeObserver.observe(projectSidebar);
 roadmapNavButton.addEventListener('click', goToRoadmap);
 inboxNavButton.addEventListener('click', goToInbox);
 loungeNavButton.addEventListener('click', goToLounge);
@@ -2111,15 +2116,36 @@ function updateProjectSidebarMoreCue() {
     const scrollSize = isHorizontal ? projectSidebarList.scrollWidth : projectSidebarList.scrollHeight;
     const visibleSize = isHorizontal ? projectSidebarList.clientWidth : projectSidebarList.clientHeight;
     const scrollOffset = isHorizontal ? projectSidebarList.scrollLeft : projectSidebarList.scrollTop;
-    const hasProjectOverflow = visibleSize > 0 && scrollSize > visibleSize + 1;
+    const hasProjectOverflow = shouldHideProjectSidebarVent(scrollSize, visibleSize);
     const hasMoreProjects = hasProjectOverflow && scrollOffset + visibleSize < scrollSize - 1;
+    const ventIsAlreadyHidden = projectSidebar?.classList.contains('is-project-sidebar-space-constrained') ?? false;
+    const ventSpaceValue = projectSidebar
+        ? window.getComputedStyle(projectSidebar).getPropertyValue('--project-sidebar-top-vent-space')
+        : '';
+    const ventSpace = ventSpaceValue === ''
+        ? 0
+        : Number.parseFloat(ventSpaceValue);
+    let shouldHideVent = false;
+    if (!isHorizontal && projectSidebar && ventSpace > 0) {
+        shouldHideVent = hasProjectOverflow;
+        if (ventIsAlreadyHidden && !hasProjectOverflow) {
+            projectSidebar.classList.remove('is-project-sidebar-space-constrained');
+            shouldHideVent = shouldHideProjectSidebarVent(projectSidebarList.scrollHeight, projectSidebarList.clientHeight);
+            if (shouldHideVent)
+                projectSidebar.classList.add('is-project-sidebar-space-constrained');
+        }
+    }
     projectSidebarMore.classList.toggle('is-horizontal', isHorizontal);
     projectSidebarMore.textContent = isHorizontal ? '▶' : '▼';
     projectSidebarMore.hidden = !hasMoreProjects;
     projectSidebarSection.classList.toggle('is-horizontal', isHorizontal);
     projectSidebarSection.classList.toggle('has-project-overflow', hasProjectOverflow);
     projectSidebarSection.classList.toggle('has-more-projects', hasMoreProjects);
+    projectSidebar?.classList.toggle('is-project-sidebar-space-constrained', shouldHideVent);
     accountBar.classList.toggle('has-project-overflow', hasProjectOverflow);
+}
+function scheduleProjectSidebarMoreCue() {
+    window.requestAnimationFrame(updateProjectSidebarMoreCue);
 }
 async function loadRoadmap() {
     roadmapUi.setLoading();
