@@ -555,67 +555,78 @@
   --signal-stripe: linear-gradient(to bottom, #df5946 0 25%, #ef9b43 25% 50%, #e1c250 50% 75%, #658e67 75% 100%);
 }
 
-/* Desk & Phosphor: a one-piece stone cabinet and calm green CRT light. */
+/* Desk & Phosphor: silver-gray Model III case, black keybed, and muted green CRT. */
 :root[data-theme="desk"] {
-  --night: #0c100d;
-  --night-glow: #304034;
-  --night-muted: #e0e4d8;
+  --night: #0b100d;
+  --night-glow: #2d4133;
+  --night-muted: #e2e4dc;
 
-  --case-top: #cbc5b8;
-  --case-mid: #b9b3a7;
-  --case-bottom: #a6a092;
-  --case-shade: #858074;
-  --case-edge: #777168;
-  --case-light: #e2ddcf;
-  --case-ink: #272721;
-  --case-muted: #37362f;
-  --case-error: #963b30;
-  --vent-dark: #817c70;
-  --vent-light: #ddd7c9;
-  --footer-top: #c0baad;
-  --footer-bottom: #aaa496;
+  --case-top: #cfcbc1;
+  --case-mid: #b9b5ab;
+  --case-bottom: #9f9b91;
+  --case-shade: #74726c;
+  --case-edge: #5d5d59;
+  --case-light: #e4e0d7;
+  --case-ink: #262724;
+  --case-muted: #303230;
+  --case-error: #933b30;
+  --vent-dark: #272927;
+  --vent-light: #d8d4ca;
+  --footer-top: #b9b5ab;
+  --footer-bottom: #a29e94;
 
-  --key-top: #d4cfc3;
-  --key-bottom: #b2ad9f;
-  --key-highlight: #eee9dc;
+  --key-top: #383a39;
+  --key-bottom: #202221;
+  --key-highlight: #555755;
+  --key-ink: #f0ecdf;
 
-  --cap-top: #484743;
-  --cap-bottom: #302f2c;
-  --cap-edge: #1b1c19;
-  --plate: #343532;
-  --plate-ink: #eee9db;
-  --plate-muted: #c9c6b9;
+  --cap-top: #333635;
+  --cap-bottom: #1b1d1c;
+  --cap-edge: #090b0a;
+  --plate: #171a19;
+  --plate-ink: #f0ecdf;
+  --plate-muted: #c4c5bb;
 
-  --screen: #101a13;
-  --screen-rim: #141611;
-  --screen-glow: rgba(168, 211, 126, 0.1);
-  --screen-vignette: rgba(143, 181, 99, 0.08);
-  --screen-ink: #e6edda;
-  --screen-muted: #bfceb0;
-  --screen-header: rgba(255, 255, 255, 0.04);
-  --screen-highlight: rgba(255, 255, 255, 0.06);
-  --backdrop: rgba(12, 16, 13, 0.7);
-  --screen-panel: #1d2c20;
-  --screen-control-top: #283a2a;
-  --screen-inset: #0a120c;
+  --screen: #0b1510;
+  --screen-rim: #060907;
+  --screen-glow: rgba(155, 194, 122, 0.07);
+  --screen-vignette: rgba(100, 140, 80, 0.06);
+  --screen-ink: #d3dfc6;
+  --screen-muted: #b0c39f;
+  --screen-header: rgba(238, 239, 225, 0.045);
+  --screen-highlight: rgba(238, 239, 225, 0.07);
+  --backdrop: rgba(10, 14, 11, 0.76);
+  --screen-panel: #17211a;
+  --screen-control-top: #202a22;
+  --screen-inset: #080f0b;
   --screen-field: #080e0a;
-  --screen-border: #465442;
-  --screen-line: #303f32;
-  --screen-hover: #263728;
-  --screen-track: #0a120c;
-  --screen-group: #273729;
-  --screen-group-top: #394a38;
-  --screen-group-bottom: #303f30;
+  --screen-border: #414d42;
+  --screen-line: #2b382d;
+  --screen-hover: #242f26;
+  --screen-track: #080e0a;
+  --screen-group: #19231b;
+  --screen-group-top: #333f34;
+  --screen-group-bottom: #252f27;
 
-  --accent: #e1bf6c;
-  --accent-edge: #90763c;
-  --accent-ink: #261e0d;
-  --accent-shine: rgba(255, 255, 255, 0.46);
-  --success: #a4db84;
-  --danger: #ff9985;
-  --power-light: #da6a4d;
-  --focus-ring: rgba(225, 191, 108, 0.46);
-  --signal-stripe: linear-gradient(to bottom, #c85640 0 25%, #dca64d 25% 50%, #a8c879 50% 75%, #6e9670 75% 100%);
+  --accent: #b8ce9d;
+  --accent-edge: #708253;
+  --accent-ink: #1d2617;
+  --accent-shine: rgba(255, 255, 255, 0.34);
+  --special-key: #f0942e;
+  --special-key-edge: #9d581a;
+  --special-key-ink: #21170c;
+  --success: #a4d98a;
+  --danger: #ff9d89;
+  --power-light: #d94e43;
+  --focus-ring: rgba(184, 206, 157, 0.48);
+  --signal-stripe: linear-gradient(to right, #232625 0 42%, #c9c5bb 42% 96%, #a8bd91 96% 100%);
+
+  --radius-screen: 8px;
+  --radius-panel: 3px;
+  --radius-key: 2px;
+  --radius-cap: 1px;
+  --key-depth: 3px;
+  --key-depth-lg: 4px;
 }
 
 /* Silver & Speech: warm brushed metal, black chiclet keys, and a red status lamp. */
