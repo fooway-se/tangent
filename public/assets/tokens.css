@@ -240,43 +240,44 @@
   --signal-stripe: linear-gradient(to bottom, #e0605a 0 25%, #f0b040 25% 50%, #7fdc70 50% 75%, #7f76e8 75% 100%);
 }
 
-/* Broadcast & Beige: the warm case, dark keyboard and orange function-key cue. */
+/* Broadcast & Beige: pale Acorn case, black keybed, and BBC red function keys. */
 :root[data-theme="broadcast"] {
   --night: #121611;
-  --night-glow: #364331;
+  --night-glow: #303d2e;
   --night-muted: #e3dfd2;
 
-  --case-top: #ded7c8;
-  --case-mid: #d1c9b8;
-  --case-bottom: #c1b8a4;
-  --case-shade: #a69c86;
-  --case-edge: #8e8574;
-  --case-light: #f1ebdd;
+  --case-top: #e5dfd0;
+  --case-mid: #d8d1c1;
+  --case-bottom: #c9c1af;
+  --case-shade: #a59b84;
+  --case-edge: #827966;
+  --case-light: #f4eedf;
   --case-ink: #282824;
-  --case-muted: #474940;
-  --case-error: #96392d;
-  --vent-dark: #9e957f;
-  --vent-light: #e9e2d3;
-  --footer-top: #cfc7b5;
-  --footer-bottom: #bfb6a3;
+  --case-muted: #4c4b43;
+  --case-error: #c94740;
+  --vent-dark: #8d846f;
+  --vent-light: #ece5d6;
+  --footer-top: #d1c9b8;
+  --footer-bottom: #c2b9a7;
 
-  --key-top: #eeeadc;
-  --key-bottom: #cfc5af;
-  --key-highlight: #fffaf0;
+  --key-top: #333532;
+  --key-bottom: #191b1a;
+  --key-highlight: #4a4d47;
+  --key-ink: #f2eee2;
 
-  --cap-top: #353735;
-  --cap-bottom: #1c1e1c;
-  --cap-edge: #101210;
-  --plate: #292b29;
-  --plate-ink: #efe8d8;
-  --plate-muted: #c9c2b4;
+  --cap-top: #30322f;
+  --cap-bottom: #171917;
+  --cap-edge: #080908;
+  --plate: #191b1a;
+  --plate-ink: #f1ecdd;
+  --plate-muted: #c5c1b5;
 
-  --screen: #17231f;
-  --screen-rim: #171917;
-  --screen-glow: rgba(176, 205, 163, 0.1);
-  --screen-vignette: rgba(195, 85, 56, 0.08);
-  --screen-ink: #f0ebdd;
-  --screen-muted: #bdc8b8;
+  --screen: #14221b;
+  --screen-rim: #101411;
+  --screen-glow: rgba(170, 206, 130, 0.12);
+  --screen-vignette: rgba(66, 93, 59, 0.12);
+  --screen-ink: #dceab9;
+  --screen-muted: #bfccb0;
   --screen-header: rgba(255, 255, 255, 0.04);
   --screen-highlight: rgba(255, 255, 255, 0.06);
   --backdrop: rgba(18, 22, 17, 0.66);
@@ -292,15 +293,15 @@
   --screen-group-top: #3a4a40;
   --screen-group-bottom: #303f36;
 
-  --accent: #ff9872;
-  --accent-edge: #9d4d35;
-  --accent-ink: #28160f;
-  --accent-shine: rgba(255, 255, 255, 0.5);
-  --success: #a8da86;
-  --danger: #ff9b86;
-  --power-light: #e8543d;
-  --focus-ring: rgba(255, 152, 114, 0.48);
-  --signal-stripe: linear-gradient(to bottom, #b94431 0 25%, #e58648 25% 50%, #e7bd58 50% 75%, #718c62 75% 100%);
+  --accent: #ff766e;
+  --accent-edge: #9d4039;
+  --accent-ink: #28100d;
+  --accent-shine: rgba(255, 255, 255, 0.42);
+  --success: #9bc66f;
+  --danger: #ff766e;
+  --power-light: #d7a449;
+  --focus-ring: rgba(255, 118, 110, 0.48);
+  --signal-stripe: linear-gradient(to right, #c8443f 0 14%, #242624 14% 100%);
 }
 
 /* Cassette & Colour: graphite CPC case, blue CRT, and green/red/blue key signals. */

@@ -1567,6 +1567,40 @@ dialog::backdrop { background: var(--backdrop); }
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.36);
 }
 
+/* BBC Micro Model B: a recessed black keybed, one red function key, and quiet LEDs. */
+:root[data-theme="broadcast"] .workspace-nav {
+  gap: 5px;
+  border: 1px solid var(--cap-edge);
+  border-radius: 3px;
+  padding: 6px;
+  background: var(--plate);
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.58);
+}
+:root[data-theme="broadcast"] .workspace-nav-button,
+:root[data-theme="broadcast"] .project-sidebar-link {
+  border-color: var(--cap-edge);
+  border-radius: 2px;
+  color: var(--plate-ink);
+  background: linear-gradient(180deg, var(--key-top), var(--key-bottom));
+  box-shadow: inset 0 1px 0 var(--key-highlight), 0 1px 0 rgba(0, 0, 0, 0.34);
+  font: 700 14px var(--font-display);
+}
+:root[data-theme="broadcast"] .workspace-nav-button.is-active {
+  border-color: var(--case-error);
+  color: var(--plate-ink);
+  background: var(--case-error);
+  box-shadow: inset 0 1px 0 var(--accent-shine), 0 1px 0 rgba(0, 0, 0, 0.34);
+}
+:root[data-theme="broadcast"] .project-sidebar-link.is-active {
+  border-color: var(--case-edge);
+  color: var(--case-ink);
+  background: linear-gradient(180deg, var(--case-light), var(--case-mid));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.36), 0 1px 0 rgba(0, 0, 0, 0.24);
+}
+:root[data-theme="broadcast"] .login-shell::after { height: 12px; }
+:root[data-theme="broadcast"] .login-power-light,
+:root[data-theme="broadcast"] .chat-presence-light.is-on { box-shadow: none; }
+
 /* CPC 464: blue boot glow, quiet CRT lines, and a slim RGB badge stripe. */
 :root[data-theme="cassette"] .login-shell {
   background-image: radial-gradient(ellipse at 50% 45%, var(--night-glow), transparent 72%);
