@@ -48,13 +48,22 @@ final class InstallService
             $workspaceId = $this->database->initialize($input);
             $this->configWriter->write($this->configPath, [
                 'database' => $input['database'],
-                'workspace_id' => $workspaceId,
-                'cookie_secure' => $input['cookie_secure'],
-                'app_url' => $input['app_url'],
-                'mail_from' => $input['mail_from'],
-                'hibp_enabled' => false,
-                'realtime_stream_enabled' => false,
-                'realtime_max_connections' => 1,
+                'app' => [
+                    'workspace_id' => $workspaceId,
+                    'url' => $input['app_url'],
+                ],
+                'security' => [
+                    'cookie_secure' => $input['cookie_secure'],
+                    'hibp_enabled' => false,
+                ],
+                'mail' => [
+                    'from' => $input['mail_from'],
+                ],
+                'realtime' => [
+                    'stream_enabled' => false,
+                    'max_connections' => 1,
+                ],
+                'github' => [],
             ]);
             if (!InstallerKey::consume($this->keyPath)) {
                 error_log('Tangent installed successfully, but .install-key could not be removed.');

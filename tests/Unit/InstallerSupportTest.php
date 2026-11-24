@@ -125,13 +125,22 @@ final class InstallerSupportTest extends TestCase
                 'user' => 'tangent_user',
                 'password' => 'private-db-password',
             ],
-            'workspace_id' => 12,
-            'cookie_secure' => true,
-            'app_url' => 'https://tangent.example.test',
-            'mail_from' => 'no-reply@tangent.example.test',
-            'hibp_enabled' => false,
-            'realtime_stream_enabled' => false,
-            'realtime_max_connections' => 1,
+            'app' => [
+                'workspace_id' => 12,
+                'url' => 'https://tangent.example.test',
+            ],
+            'security' => [
+                'cookie_secure' => true,
+                'hibp_enabled' => false,
+            ],
+            'mail' => [
+                'from' => 'no-reply@tangent.example.test',
+            ],
+            'realtime' => [
+                'stream_enabled' => false,
+                'max_connections' => 1,
+            ],
+            'github' => [],
         ], require $configPath);
     }
 

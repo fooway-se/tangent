@@ -22,23 +22,26 @@ Set these values in the PHP process environment. In Docker Compose, they can be 
 
 | Environment variable | `config.php` key | Value |
 |---|---|---|
-| `TANGENT_GITHUB_APP_ID` | `github_app_id` | The GitHub App's numeric ID. |
-| `TANGENT_GITHUB_APP_SLUG` | `github_app_slug` | The GitHub App URL slug used in `github.com/apps/{slug}`. |
-| `TANGENT_GITHUB_PRIVATE_KEY` | `github_private_key` | The complete PEM private key. For an environment variable or a single-quoted PHP string, encode line breaks as `\n`; Tangent converts those to newlines. |
-| `TANGENT_GITHUB_OAUTH_CLIENT_ID` | `github_oauth_client_id` | The GitHub App OAuth client ID. |
-| `TANGENT_GITHUB_OAUTH_CLIENT_SECRET` | `github_oauth_client_secret` | The GitHub App OAuth client secret. |
-| `TANGENT_GITHUB_WEBHOOK_SECRET` | `github_webhook_secret` | The same secret configured in GitHub App settings. |
+| `TANGENT_GITHUB_APP_ID` | `github.app_id` | The GitHub App's numeric ID. |
+| `TANGENT_GITHUB_APP_SLUG` | `github.app_slug` | The GitHub App URL slug used in `github.com/apps/{slug}`. |
+| `TANGENT_GITHUB_PRIVATE_KEY` | `github.private_key` | The complete PEM private key. For an environment variable or a single-quoted PHP string, encode line breaks as `\n`; Tangent converts those to newlines. |
+| `TANGENT_GITHUB_OAUTH_CLIENT_ID` | `github.oauth_client_id` | The GitHub App OAuth client ID. |
+| `TANGENT_GITHUB_OAUTH_CLIENT_SECRET` | `github.oauth_client_secret` | The GitHub App OAuth client secret. |
+| `TANGENT_GITHUB_WEBHOOK_SECRET` | `github.webhook_secret` | The same secret configured in GitHub App settings. |
 
-When entering the PEM in `config.php`, keep it private and preserve the full `BEGIN` and `END` lines. For example, encode its line breaks as `\n` in a single-quoted PHP string. Do not replace the rest of the installer-generated config array. Restart the PHP service after changing its environment; file-based config is read on the next request, though host OPcache settings may delay changes.
+When entering these values in `config.php`, put them in its `github` section. Keep the PEM private and preserve the full `BEGIN` and `END` lines. For example, encode its line breaks as `\n` in a single-quoted PHP string. Do not replace the rest of the installer-generated config array. Restart the PHP service after changing its environment; file-based config is read on the next request, though host OPcache settings may delay changes.
 
 ### Limit repositories by workspace
 
-By default, every repository granted to the GitHub App installation is available in every Tangent workspace connected to that installation. To show different repositories to different workspaces, add an optional `github_repository_allowlist` entry to the private `config.php`. Map each Tangent workspace slug to the canonical GitHub `owner/repository` names it may use:
+By default, every repository granted to the GitHub App installation is available in every Tangent workspace connected to that installation. To show different repositories to different workspaces, add an optional `repository_allowlist` entry to the `github` section in the private `config.php`. Map each Tangent workspace slug to the canonical GitHub `owner/repository` names it may use:
 
 ```php
-'github_repository_allowlist' => [
-    'team-alpha' => ['fooway-se/myfi'],
-    'team-beta' => ['fooway-se/allmeter'],
+'github' => [
+    // GitHub App settings can be added here as well.
+    'repository_allowlist' => [
+        'team-alpha' => ['fooway-se/myfi'],
+        'team-beta' => ['fooway-se/allmeter'],
+    ],
 ],
 ```
 

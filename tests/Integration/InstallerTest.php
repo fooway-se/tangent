@@ -64,10 +64,10 @@ final class InstallerTest extends ApiTestCase
             self::assertSame(0600, fileperms($configPath) & 0777);
             self::assertFileDoesNotExist($keyPath);
             $config = require $configPath;
-            self::assertSame($workspaceId, $config['workspace_id']);
-            self::assertSame('no-reply@install.example.test', $config['mail_from']);
-            self::assertFalse($config['realtime_stream_enabled']);
-            self::assertSame(1, $config['realtime_max_connections']);
+            self::assertSame($workspaceId, $config['app']['workspace_id']);
+            self::assertSame('no-reply@install.example.test', $config['mail']['from']);
+            self::assertFalse($config['realtime']['stream_enabled']);
+            self::assertSame(1, $config['realtime']['max_connections']);
 
             $workspace = $database->prepare('SELECT name, slug FROM workspaces WHERE id = :id');
             $workspace->execute(['id' => $workspaceId]);

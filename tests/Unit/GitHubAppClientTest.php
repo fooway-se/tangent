@@ -65,14 +65,14 @@ final class GitHubAppClientTest extends TestCase
             'team-beta' => ['fooway-se/allmeter'],
         ];
 
-        $config = AppConfig::fromEnvironment(['github_repository_allowlist' => $allowlist]);
+        $config = AppConfig::fromEnvironment(['github' => ['repository_allowlist' => $allowlist]]);
 
         self::assertSame($allowlist, $config->githubRepositoryAllowlist);
     }
 
     public function testInvalidGitHubRepositoryAllowlistFailsClosed(): void
     {
-        $config = AppConfig::fromEnvironment(['github_repository_allowlist' => 'not-an-array']);
+        $config = AppConfig::fromEnvironment(['github' => ['repository_allowlist' => 'not-an-array']]);
 
         self::assertSame([], $config->githubRepositoryAllowlist);
     }

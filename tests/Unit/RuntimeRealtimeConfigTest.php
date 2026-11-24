@@ -54,8 +54,10 @@ final class RuntimeRealtimeConfigTest extends TestCase
 
         try {
             $config = AppConfig::fromEnvironment([
-                'realtime_stream_enabled' => true,
-                'realtime_max_connections' => 4,
+                'realtime' => [
+                    'stream_enabled' => true,
+                    'max_connections' => 4,
+                ],
             ]);
 
             self::assertTrue($config->realtimeStreamEnabled);
@@ -80,8 +82,10 @@ final class RuntimeRealtimeConfigTest extends TestCase
 
         try {
             $config = AppConfig::fromEnvironment([
-                'realtime_stream_enabled' => true,
-                'realtime_max_connections' => 4,
+                'realtime' => [
+                    'stream_enabled' => true,
+                    'max_connections' => 4,
+                ],
             ]);
 
             self::assertFalse($config->realtimeStreamEnabled);

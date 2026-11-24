@@ -29,31 +29,40 @@ final class AppConfig
     {
         $maxConnections = getenv('TANGENT_SSE_MAX_CONNECTIONS');
         $streamEnabled = getenv('TANGENT_SSE_ENABLED');
+        $app = is_array($fileConfig['app'] ?? null) ? $fileConfig['app'] : [];
+        $security = is_array($fileConfig['security'] ?? null) ? $fileConfig['security'] : [];
+        $mail = is_array($fileConfig['mail'] ?? null) ? $fileConfig['mail'] : [];
+        $realtime = is_array($fileConfig['realtime'] ?? null) ? $fileConfig['realtime'] : [];
+        $github = is_array($fileConfig['github'] ?? null) ? $fileConfig['github'] : [];
+        $repositoryAllowlistConfigured = array_key_exists('repository_allowlist', $github);
+        $repositoryAllowlist = $repositoryAllowlistConfigured
+            ? $github['repository_allowlist']
+            : null;
 
         return new self(
-            max(1, (int) self::environmentValue('TANGENT_WORKSPACE_ID', $fileConfig['workspace_id'] ?? '1')),
-            filter_var(self::environmentValue('TANGENT_COOKIE_SECURE', $fileConfig['cookie_secure'] ?? 'true'), FILTER_VALIDATE_BOOL),
+            max(1, (int) self::environmentValue('TANGENT_WORKSPACE_ID', $app['workspace_id'] ?? '1')),
+            filter_var(self::environmentValue('TANGENT_COOKIE_SECURE', $security['cookie_secure'] ?? 'true'), FILTER_VALIDATE_BOOL),
             43200,
-            rtrim(self::environmentValue('TANGENT_APP_URL', $fileConfig['app_url'] ?? 'http://localhost:8080'), '/'),
-            filter_var(self::environmentValue('TANGENT_HIBP_ENABLED', $fileConfig['hibp_enabled'] ?? 'false'), FILTER_VALIDATE_BOOL),
-            self::environmentValue('TANGENT_GITHUB_APP_ID', $fileConfig['github_app_id'] ?? ''),
-            self::environmentValue('TANGENT_GITHUB_APP_SLUG', $fileConfig['github_app_slug'] ?? ''),
-            str_replace('\\n', "\n", self::environmentValue('TANGENT_GITHUB_PRIVATE_KEY', $fileConfig['github_private_key'] ?? '')),
-            self::environmentValue('TANGENT_GITHUB_WEBHOOK_SECRET', $fileConfig['github_webhook_secret'] ?? ''),
-            self::environmentValue('TANGENT_MAIL_FROM', $fileConfig['mail_from'] ?? ''),
-            self::environmentValue('TANGENT_GITHUB_OAUTH_CLIENT_ID', $fileConfig['github_oauth_client_id'] ?? ''),
-            self::environmentValue('TANGENT_GITHUB_OAUTH_CLIENT_SECRET', $fileConfig['github_oauth_client_secret'] ?? ''),
+            rtrim(self::environmentValue('TANGENT_APP_URL', $app['url'] ?? 'http://localhost:8080'), '/'),
+            filter_var(self::environmentValue('TANGENT_HIBP_ENABLED', $security['hibp_enabled'] ?? 'false'), FILTER_VALIDATE_BOOL),
+            self::environmentValue('TANGENT_GITHUB_APP_ID', $github['app_id'] ?? ''),
+            self::environmentValue('TANGENT_GITHUB_APP_SLUG', $github['app_slug'] ?? ''),
+            str_replace('\\n', "\n", self::environmentValue('TANGENT_GITHUB_PRIVATE_KEY', $github['private_key'] ?? '')),
+            self::environmentValue('TANGENT_GITHUB_WEBHOOK_SECRET', $github['webhook_secret'] ?? ''),
+            self::environmentValue('TANGENT_MAIL_FROM', $mail['from'] ?? ''),
+            self::environmentValue('TANGENT_GITHUB_OAUTH_CLIENT_ID', $github['oauth_client_id'] ?? ''),
+            self::environmentValue('TANGENT_GITHUB_OAUTH_CLIENT_SECRET', $github['oauth_client_secret'] ?? ''),
             filter_var(
                 $streamEnabled === false || $streamEnabled === ''
-                    ? (string) ($fileConfig['realtime_stream_enabled'] ?? 'false')
+                    ? (string) ($realtime['stream_enabled'] ?? 'false')
                     : $streamEnabled,
                 FILTER_VALIDATE_BOOL,
             ),
             max(0, (int) ($maxConnections === false || $maxConnections === ''
-                ? ($fileConfig['realtime_max_connections'] ?? 1)
+                ? ($realtime['max_connections'] ?? 1)
                 : $maxConnections)),
-            array_key_exists('github_repository_allowlist', $fileConfig)
-                ? (is_array($fileConfig['github_repository_allowlist']) ? $fileConfig['github_repository_allowlist'] : [])
+            $repositoryAllowlistConfigured
+                ? (is_array($repositoryAllowlist) ? $repositoryAllowlist : [])
                 : null,
         );
     }
