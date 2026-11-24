@@ -63,6 +63,9 @@ test('issue relations load, render and link a pull request', async (t) => {
       completed_at: '2026-11-22 10:12:00', github_updated_at: '2026-11-22 10:12:00',
     }],
   };
+  let pullRequestsResult = { pull_requests: [pullRequest] };
+  let pendingPullRequests = null;
+  let resolvePendingPullRequests = null;
   const transition = {
     id: 52, from_status: 'todo', to_status: 'doing', actor_name: 'Sam', created_at: '2026-11-22 09:00:00',
   };
@@ -92,7 +95,7 @@ test('issue relations load, render and link a pull request', async (t) => {
       if (init?.method === 'POST') return { pull_request: pullRequest };
       if (path.endsWith('/history')) return { transitions: [transition] };
       if (path.endsWith('/commits')) return { commits: [commit] };
-      return { pull_requests: [pullRequest] };
+      return pendingPullRequests ?? pullRequestsResult;
     },
     doc,
   });
@@ -148,4 +151,23 @@ test('issue relations load, render and link a pull request', async (t) => {
   assert.equal(elements.get('#copy-issue-branch-button').hidden, true);
   await ui.loadCommits(12);
   assert.equal(requests.filter(({ path }) => path.endsWith('/commits')).length, 1);
+
+  project.github_repository = { full_name: 'acme/app' };
+  pullRequestsResult = { pull_requests: [] };
+  ui.reset();
+  pendingPullRequests = new Promise((resolve) => { resolvePendingPullRequests = resolve; });
+  const firstEmptyLoad = ui.loadPullRequests(12);
+  assert.equal(elements.get('#issue-pull-requests-empty').hidden, true);
+  assert.equal(elements.get('#issue-pull-requests-empty').textContent, 'No pull requests linked yet.');
+  resolvePendingPullRequests(pullRequestsResult);
+  await firstEmptyLoad;
+  assert.equal(elements.get('#issue-pull-requests-empty').hidden, false);
+
+  pendingPullRequests = new Promise((resolve) => { resolvePendingPullRequests = resolve; });
+  const emptyRefresh = ui.loadPullRequests(12);
+  assert.equal(elements.get('#issue-pull-requests-empty').hidden, false);
+  assert.equal(elements.get('#issue-pull-requests-empty').textContent, 'No pull requests linked yet.');
+  resolvePendingPullRequests(pullRequestsResult);
+  await emptyRefresh;
+  pendingPullRequests = null;
 });

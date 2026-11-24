@@ -24,6 +24,7 @@ export function initIssueRelatedUi(options) {
     const issueStatusHistoryList = required('#issue-status-history-list');
     const listeners = new AbortController();
     let linkedPullRequests = [];
+    let pullRequestsLoaded = false;
     let linkedCommits = [];
     let pullRequestsRequestVersion = 0;
     let commitsRequestVersion = 0;
@@ -97,7 +98,7 @@ export function initIssueRelatedUi(options) {
         issueCommits.hidden = !hasIssue || project === null || project.github_repository === null;
         linkPullRequestButton.hidden = !canLink;
         copyIssueBranchButton.hidden = !canCopyBranch;
-        issuePullRequestsEmpty.hidden = linkedPullRequests.length > 0;
+        issuePullRequestsEmpty.hidden = linkedPullRequests.length > 0 || !pullRequestsLoaded;
         issuePullRequestsEmpty.textContent = message || 'No pull requests linked yet.';
     }
     function renderCommits(message = '') {
@@ -132,18 +133,19 @@ export function initIssueRelatedUi(options) {
     }
     async function loadPullRequests(issueId) {
         const requestVersion = ++pullRequestsRequestVersion;
-        renderPullRequests('Loading pull requests…');
         try {
             const result = await request(`/issues/${issueId}/pull-requests`);
             if (requestVersion !== pullRequestsRequestVersion || options.getIssue()?.id !== issueId)
                 return;
             linkedPullRequests = result.pull_requests;
+            pullRequestsLoaded = true;
             renderPullRequests();
         }
         catch (error) {
             if (requestVersion !== pullRequestsRequestVersion || options.getIssue()?.id !== issueId)
                 return;
             linkedPullRequests = [];
+            pullRequestsLoaded = true;
             renderPullRequests(error instanceof Error ? error.message : 'Could not load linked pull requests.');
         }
     }
@@ -311,6 +313,7 @@ export function initIssueRelatedUi(options) {
         },
         reset: () => {
             linkedPullRequests = [];
+            pullRequestsLoaded = false;
             linkedCommits = [];
             pullRequestsRequestVersion += 1;
             commitsRequestVersion += 1;
