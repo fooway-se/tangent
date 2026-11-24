@@ -1363,6 +1363,11 @@ dialog::backdrop { background: var(--backdrop); }
   content: "";
 }
 
+@media (max-width: 760px) {
+  :root[data-theme="broadcast"] .workspace-brand::before,
+  :root[data-theme="pc88"] .workspace-brand::before { display: none; }
+}
+
 /* PC-8801 controls echo the ivory alphanumeric keys and charcoal function keys. */
 :root[data-theme="pc88"] .workspace-nav {
   border: 1px solid var(--case-shade);
