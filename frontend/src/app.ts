@@ -101,7 +101,7 @@ const {
     loungeNavButton, loungeView, loungeHeading, loungeMessageList,
   },
   shortcuts: {
-    toggleProjectFormButton, keyboardHints, goPrefixHint, goPrefixWorkspaceOption, goPrefixProjectOptions,
+    toggleProjectFormButton, keyboardHints, goPrefixHint, goPrefixNavigationOptions, goPrefixWorkspaceOption, goPrefixProjectOptions,
   },
   chat: {
     chatView,
@@ -629,12 +629,14 @@ let issueQuickAddSourceProjectId: number | null = null;
 
 const goPrefixUi = initGoPrefixUi({
   hint: goPrefixHint,
+  navigationOptions: goPrefixNavigationOptions,
   workspaceOption: goPrefixWorkspaceOption,
   projectOptions: goPrefixProjectOptions,
   adminOption: adminGoPrefixOption,
   roadmapOption: roadmapGoPrefixOption,
   getContext: () => ({
     workspaceCount: activeWorkspaces.length,
+    canNavigateWorkspace: activeUser !== null && activeUser.role !== 'guest',
     hasProject: activeProject !== null,
     projectVisible: !projectView.hidden,
     isAdmin: activeUser?.role === 'admin',
@@ -1282,10 +1284,12 @@ function shortcutContext(target: EventTarget | null) {
     targetIsEditable: isEditableTarget(target),
     goPrefixPending: goPrefixUi.isPending(),
     hasWorkspace: activeUser !== null,
+    canNavigateWorkspace: activeUser !== null && activeUser.role !== 'guest',
+    canShowShortcutHelp: activeUser !== null && activeUser.role !== 'guest',
     canToggleKeyboardHints: activeUser !== null && activeUser.role !== 'guest' && !workspacePanel.hidden,
     canSwitchWorkspace: activeWorkspaces.length > 1,
     canAdmin: activeUser?.role === 'admin',
-    canRoadmap: activeUser?.role === 'admin' || activeUser?.role === 'developer',
+    canRoadmap: activeUser !== null && activeUser.role !== 'guest',
     hasProject: activeProject !== null && !projectView.hidden,
     projectListVisible: !workspacePanel.hidden && !projectsView.hidden,
     inboxListVisible: !workspacePanel.hidden && !inboxView.hidden,
@@ -1307,7 +1311,7 @@ function shortcutContext(target: EventTarget | null) {
     statusHistoryFocused: issueRelatedUi.isStatusHistoryFocused(document.activeElement),
     textInputFocused: shouldBlurOnEscape(target),
     modalOpen: commandPaletteUi.isPaletteOpen() || clientSummaryUi.dialog.open || commandPaletteUi.isShortcutHelpOpen() || issueAiPromptUi.isOpen() || issueStatusPickerUi.isOpen() || issueDeleteUi.isOpen() || themeUi.aboutDialog.open || projectEditDialog.open
-      || projectMembersUi.hasOpenDialog() || workspaceAdminUi.hasOpenDialog() || milestoneUi.deleteConfirmation.open || milestoneUi.managerDialog.open
+      || issueRelatedUi.isPullRequestDialogOpen() || projectMembersUi.hasOpenDialog() || workspaceAdminUi.hasOpenDialog() || milestoneUi.deleteConfirmation.open || milestoneUi.managerDialog.open
       || workspacePickerUi.isOpen(),
     canDismiss: commandPaletteUi.isPaletteOpen() || commandPaletteUi.isShortcutHelpOpen() || (!workspacePanel.hidden && (
       workspacePickerUi.hasPendingSwitch()
@@ -1561,6 +1565,7 @@ function openCommandPalette(): void {
   if (themeUi.aboutDialog.open) themeUi.aboutDialog.close();
   if (projectEditDialog.open) projectEditDialog.close();
   if (workspacePickerUi.isOpen()) workspacePickerUi.resetPendingSwitch();
+  if (issueRelatedUi.isPullRequestDialogOpen()) issueRelatedUi.closePullRequestDialog();
   if (clientSummaryUi.dialog.open) clientSummaryUi.close();
   if (issueAiPromptUi.isOpen()) issueAiPromptUi.close();
   if (milestoneUi.deleteConfirmation.open) milestoneUi.closeDeleteConfirmation();
@@ -1575,6 +1580,7 @@ function openCommandPalette(): void {
 function showShortcutHelp(): void {
   if (activeUser === null || milestoneUi.deleteConfirmButton.disabled) return;
   if (workspacePickerUi.isOpen()) workspacePickerUi.resetPendingSwitch();
+  if (issueRelatedUi.isPullRequestDialogOpen()) issueRelatedUi.closePullRequestDialog();
   if (clientSummaryUi.dialog.open) clientSummaryUi.close();
   if (issueAiPromptUi.isOpen()) issueAiPromptUi.close();
   if (milestoneUi.deleteConfirmation.open) milestoneUi.closeDeleteConfirmation();
@@ -1598,6 +1604,8 @@ function dismissCurrentView(): void {
     clientSummaryUi.close();
   } else if (issueAiPromptUi.isOpen()) {
     issueAiPromptUi.close();
+  } else if (issueRelatedUi.isPullRequestDialogOpen()) {
+    issueRelatedUi.closePullRequestDialog();
   } else if (milestoneUi.deleteConfirmation.open) {
     milestoneUi.closeDeleteConfirmation();
   } else if (milestoneUi.managerDialog.open) {
@@ -1848,7 +1856,7 @@ function handleKeyboardShortcut(event: KeyboardEvent): void {
     if (event.key === 'Escape') guestUi.closePreview();
     return;
   }
-  if ((commandPaletteUi.isPaletteOpen() || clientSummaryUi.dialog.open || commandPaletteUi.isShortcutHelpOpen() || issueAiPromptUi.isOpen() || issueStatusPickerUi.isOpen() || issueDeleteUi.isOpen() || projectMembersUi.hasOpenDialog() || workspaceAdminUi.hasOpenDialog() || milestoneUi.deleteConfirmation.open || milestoneUi.managerDialog.open || workspacePickerUi.isOpen() || themeUi.aboutDialog.open || projectEditDialog.open)
+  if ((commandPaletteUi.isPaletteOpen() || clientSummaryUi.dialog.open || commandPaletteUi.isShortcutHelpOpen() || issueAiPromptUi.isOpen() || issueStatusPickerUi.isOpen() || issueDeleteUi.isOpen() || issueRelatedUi.isPullRequestDialogOpen() || projectMembersUi.hasOpenDialog() || workspaceAdminUi.hasOpenDialog() || milestoneUi.deleteConfirmation.open || milestoneUi.managerDialog.open || workspacePickerUi.isOpen() || themeUi.aboutDialog.open || projectEditDialog.open)
     && event.key !== 'Escape'
     && !((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k')) return;
   const context = shortcutContext(event.target);

@@ -304,6 +304,11 @@ export function initIssueRelatedUi(options) {
         renderCommits,
         loadCommits,
         loadStatusHistory,
+        isPullRequestDialogOpen: () => issuePullRequestDialog.open,
+        closePullRequestDialog: () => {
+            if (issuePullRequestDialog.open)
+                issuePullRequestDialog.close();
+        },
         reset: () => {
             linkedPullRequests = [];
             linkedCommits = [];

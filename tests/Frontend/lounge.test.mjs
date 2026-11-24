@@ -28,7 +28,7 @@ test('Lounge is a fixed workspace destination between Inbox and workspace admin'
 });
 
 test('Lounge can be opened with the workspace g-l shortcut', () => {
-  assert.match(shortcuts, /key === 'l' && context\.hasWorkspace\) return 'lounge'/);
+  assert.match(shortcuts, /key === 'l' && context\.hasWorkspace && context\.canNavigateWorkspace !== false\) return 'lounge'/);
   assert.equal(resolveShortcut({
     key: 'l', ctrlKey: false, metaKey: false, altKey: false, shiftKey: false,
   }, {

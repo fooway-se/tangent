@@ -126,6 +126,12 @@ test('issue relations load, render and link a pull request', async (t) => {
 
   elements.get('#link-pull-request-button').click();
   assert.equal(elements.get('#issue-pull-request-dialog').open, true);
+  assert.equal(ui.isPullRequestDialogOpen(), true);
+  ui.closePullRequestDialog();
+  assert.equal(ui.isPullRequestDialogOpen(), false);
+  assert.equal(doc.activeElement, elements.get('#link-pull-request-button'));
+
+  elements.get('#link-pull-request-button').click();
   elements.get('#issue-pull-request-url').value = 'https://github.com/acme/app/pull/41';
   elements.get('#issue-pull-request-form').dispatchEvent(new Event('submit', { cancelable: true }));
   await new Promise((resolve) => setTimeout(resolve, 0));

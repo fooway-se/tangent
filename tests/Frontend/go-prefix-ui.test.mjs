@@ -10,6 +10,7 @@ class FakeElement {
 
 function createHarness(context = {}) {
   const hint = new FakeElement();
+  const navigationOptions = new FakeElement();
   const workspaceOption = new FakeElement();
   const projectOptions = new FakeElement();
   const adminOption = new FakeElement();
@@ -19,6 +20,7 @@ function createHarness(context = {}) {
   const clearedTimers = [];
   const current = {
     workspaceCount: 1,
+    canNavigateWorkspace: true,
     hasProject: false,
     projectVisible: false,
     isAdmin: false,
@@ -27,6 +29,7 @@ function createHarness(context = {}) {
   };
   const ui = initGoPrefixUi({
     hint,
+    navigationOptions,
     workspaceOption,
     projectOptions,
     adminOption,
@@ -42,7 +45,7 @@ function createHarness(context = {}) {
       timers.delete(id);
     },
   });
-  return { ui, hint, workspaceOption, projectOptions, adminOption, roadmapOption, timers, clearedTimers, current };
+  return { ui, hint, navigationOptions, workspaceOption, projectOptions, adminOption, roadmapOption, timers, clearedTimers, current };
 }
 
 test('starting the prefix shows only options available in the current workspace context', () => {
@@ -58,6 +61,7 @@ test('starting the prefix shows only options available in the current workspace 
 
   assert.equal(harness.ui.isPending(), true);
   assert.equal(harness.hint.hidden, false);
+  assert.equal(harness.navigationOptions.hidden, false);
   assert.equal(harness.workspaceOption.hidden, false);
   assert.equal(harness.projectOptions.hidden, false);
   assert.equal(harness.adminOption.hidden, false);
@@ -68,6 +72,7 @@ test('starting the prefix shows only options available in the current workspace 
 test('guest and single workspace contexts hide unavailable prefix options', () => {
   const harness = createHarness({
     workspaceCount: 1,
+    canNavigateWorkspace: false,
     hasProject: true,
     projectVisible: false,
     isAdmin: false,
@@ -77,6 +82,7 @@ test('guest and single workspace contexts hide unavailable prefix options', () =
   harness.ui.start();
 
   assert.equal(harness.workspaceOption.hidden, true);
+  assert.equal(harness.navigationOptions.hidden, true);
   assert.equal(harness.projectOptions.hidden, true);
   assert.equal(harness.adminOption.hidden, true);
   assert.equal(harness.roadmapOption.hidden, true);

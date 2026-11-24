@@ -12,6 +12,7 @@ export function initGoPrefixUi(options) {
         clear();
         pending = true;
         const context = options.getContext();
+        options.navigationOptions.hidden = context.canNavigateWorkspace === false;
         options.workspaceOption.hidden = context.workspaceCount < 2;
         options.projectOptions.hidden = !context.hasProject || !context.projectVisible;
         options.adminOption.hidden = !context.isAdmin;

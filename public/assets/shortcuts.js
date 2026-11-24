@@ -35,11 +35,11 @@ export function resolveShortcut(event, context) {
     if (key === 't')
         return 'theme-selector';
     if (context.goPrefixPending) {
-        if (key === 'p' && context.hasWorkspace)
+        if (key === 'p' && context.hasWorkspace && context.canNavigateWorkspace !== false)
             return 'projects';
-        if (key === 'n' && context.hasWorkspace)
+        if (key === 'n' && context.hasWorkspace && context.canNavigateWorkspace !== false)
             return 'inbox';
-        if (key === 'l' && context.hasWorkspace)
+        if (key === 'l' && context.hasWorkspace && context.canNavigateWorkspace !== false)
             return 'lounge';
         if (key === 'r' && context.canRoadmap)
             return 'roadmap';
@@ -57,9 +57,10 @@ export function resolveShortcut(event, context) {
     }
     if (key === 'h' && context.canToggleKeyboardHints === true)
         return 'toggle-keyboard-hints';
-    if (event.key === '?' && context.hasWorkspace)
+    if (event.key === '?' && context.hasWorkspace && context.canShowShortcutHelp !== false)
         return 'shortcut-help';
-    if (key === 'g' && context.hasWorkspace)
+    if (key === 'g' && context.hasWorkspace
+        && (context.canNavigateWorkspace !== false || context.canSwitchWorkspace))
         return 'await-projects-key';
     if (context.issueDiscussionMessagesFocused && context.hasSelectedIssueDiscussionMessage) {
         if (key === 'home')

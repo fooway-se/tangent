@@ -69,6 +69,7 @@ export const dom = {
     toggleProjectFormButton: document.querySelector<HTMLButtonElement>('#toggle-project-form')!,
     keyboardHints: document.querySelector<HTMLElement>('#keyboard-hints')!,
     goPrefixHint: document.querySelector<HTMLElement>('#go-prefix-hint')!,
+    goPrefixNavigationOptions: document.querySelector<HTMLElement>('#go-prefix-navigation-options')!,
     goPrefixWorkspaceOption: document.querySelector<HTMLElement>('#go-prefix-workspace-option')!,
     goPrefixProjectOptions: document.querySelector<HTMLElement>('#go-prefix-project-options')!,
   },

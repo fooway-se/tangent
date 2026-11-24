@@ -83,21 +83,34 @@ test('palette command builder applies role, workspace, and project context', () 
   ]);
 });
 
-test('guest palette keeps general navigation and theme while omitting member controls', () => {
+test('guest palette only offers actions available in the guest shell', () => {
   const commands = buildPaletteCommands(baseOptions({
     user: { id: 3, workspace_id: 1, name: 'Guest', email: 'guest@example.com', role: 'guest' },
+    activeWorkspaces: [
+      { id: 1, name: 'Current', role: 'guest' },
+      { id: 2, name: 'Next', role: 'guest' },
+    ],
     activeProject: { id: 8, name: 'Client project' },
   }));
   const labels = commands.map(({ label }) => label);
 
-  assert.ok(labels.includes('Go to Projects'));
-  assert.ok(labels.includes('Open My Work'));
-  assert.ok(labels.includes('Open Lounge'));
-  assert.ok(labels.includes('Project issues'));
-  assert.ok(labels.includes('Project chat'));
+  assert.ok(labels.includes('Switch workspace'));
   assert.ok(labels.includes('Switch theme'));
   assert.ok(labels.includes('Sign out'));
+  assert.ok(!labels.includes('Go to Projects'));
+  assert.ok(!labels.includes('Open My Work'));
+  assert.ok(!labels.includes('Open Lounge'));
+  assert.ok(!labels.includes('Show keyboard shortcuts'));
   assert.ok(!labels.includes('Show keyboard hints'));
   assert.ok(!labels.includes('Open Roadmap'));
   assert.ok(!labels.includes('Workspace admin'));
+});
+
+test('workspace members can open Roadmap from the command palette', () => {
+  const commands = buildPaletteCommands(baseOptions({
+    user: { id: 5, workspace_id: 1, name: 'Morgan', email: 'morgan@example.com', role: 'developer' },
+  }));
+  const roadmap = commands.find(({ label }) => label === 'Open Roadmap');
+
+  assert.equal(roadmap?.shortcut, 'g r');
 });

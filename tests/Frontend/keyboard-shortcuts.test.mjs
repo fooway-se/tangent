@@ -82,6 +82,20 @@ test('workspace shortcuts are unavailable on the sign-in screen', () => {
   assert.equal(resolve('?', { hasWorkspace: false }), null);
 });
 
+test('guest shortcuts stay within the guest shell while workspace switching remains available', () => {
+  const guest = { canNavigateWorkspace: false, canShowShortcutHelp: false, canSwitchWorkspace: true };
+  assert.equal(resolve('k', guest, { ctrlKey: true }), 'command-palette');
+  assert.equal(resolve('?', guest), null);
+  assert.equal(resolve('g', { ...guest, canSwitchWorkspace: false }), null);
+  assert.equal(resolve('g', guest), 'await-projects-key');
+  assert.equal(resolve('p', { ...guest, goPrefixPending: true }), null);
+  assert.equal(resolve('n', { ...guest, goPrefixPending: true }), null);
+  assert.equal(resolve('l', { ...guest, goPrefixPending: true }), null);
+  assert.equal(resolve('w', { ...guest, goPrefixPending: true }), 'workspace-switcher');
+  assert.match(app, /canNavigateWorkspace:[\s\S]*activeUser\.role !== 'guest'/);
+  assert.match(app, /canShowShortcutHelp:[\s\S]*activeUser\.role !== 'guest'/);
+});
+
 test('single-key actions stay inactive while typing', () => {
   assert.equal(resolve('c', { hasProject: true, issueListVisible: true, targetIsEditable: true }), null);
   assert.equal(resolve('?', { targetIsEditable: true, shiftKey: true }), null);
@@ -157,6 +171,8 @@ test('g sequences switch between available project features', () => {
   const project = { hasProject: true };
   assert.equal(resolve('r', { goPrefixPending: true, canRoadmap: true }), 'roadmap');
   assert.equal(resolve('r', { goPrefixPending: true, canRoadmap: false }), null);
+  assert.equal(resolve('r', { goPrefixPending: true, canRoadmap: true, hasWorkspace: true }), 'roadmap');
+  assert.match(app, /canRoadmap:[\s\S]*activeUser !== null && activeUser\.role !== 'guest'/);
   assert.equal(resolve('i', { ...project, goPrefixPending: true }), 'issues');
   assert.equal(resolve('c', { ...project, goPrefixPending: true }), 'chat');
   assert.equal(resolve('m', { ...project, goPrefixPending: true }), 'members');
@@ -176,6 +192,16 @@ test('the AI prompt dialog participates in modal keyboard handling', () => {
   assert.match(dismiss, /issueAiPromptUi\.isOpen\(\)[\s\S]*issueAiPromptUi\.close\(\)/);
   assert.match(issueAiPromptUi, /issueAiPromptDialog\.addEventListener\('close'/);
   assert.match(app, /commandPaletteUi\.isPaletteOpen\(\) \|\| clientSummaryUi\.dialog\.open \|\| commandPaletteUi\.isShortcutHelpOpen\(\) \|\| issueAiPromptUi\.isOpen\(\)/);
+});
+
+test('the pull request dialog participates in Escape and palette modal handling', () => {
+  const context = app.slice(app.indexOf('function shortcutContext'), app.indexOf('function clearGoPrefix'));
+  assert.match(context, /modalOpen:[\s\S]*issueRelatedUi\.isPullRequestDialogOpen\(\)/);
+  const dismiss = app.slice(app.indexOf('function dismissCurrentView'), app.indexOf('function focusIssueQuickAddReturnTarget'));
+  assert.match(dismiss, /issueRelatedUi\.isPullRequestDialogOpen\(\)[\s\S]*issueRelatedUi\.closePullRequestDialog\(\)/);
+  const modalGuard = app.slice(app.indexOf('function handleKeyboardShortcut'), app.indexOf("document.addEventListener('keydown'"));
+  assert.match(modalGuard, /issueRelatedUi\.isPullRequestDialogOpen\(\)/);
+  assert.match(app, /if \(issueRelatedUi\.isPullRequestDialogOpen\(\)\) issueRelatedUi\.closePullRequestDialog\(\)/);
 });
 
 test('the generated summary dialog participates in modal keyboard handling', () => {

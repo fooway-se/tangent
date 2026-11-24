@@ -8,6 +8,8 @@ export interface IssueRelatedUiController {
   renderCommits(message?: string): void;
   loadCommits(issueId: number): Promise<void>;
   loadStatusHistory(issueId: number): Promise<void>;
+  isPullRequestDialogOpen(): boolean;
+  closePullRequestDialog(): void;
   reset(): void;
   isStatusHistoryFocused(target: EventTarget | null): boolean;
   closeStatusHistory(): void;
@@ -324,6 +326,10 @@ export function initIssueRelatedUi(options: {
     renderCommits,
     loadCommits,
     loadStatusHistory,
+    isPullRequestDialogOpen: () => issuePullRequestDialog.open,
+    closePullRequestDialog: () => {
+      if (issuePullRequestDialog.open) issuePullRequestDialog.close();
+    },
     reset: () => {
       linkedPullRequests = [];
       linkedCommits = [];

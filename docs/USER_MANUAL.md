@@ -203,15 +203,16 @@ See [Coding agent access](AGENTS.md) for the available capabilities and REST API
 
 ## 10. Keyboard shortcuts
 
-Keyboard shortcuts vary by view and pause while you type. Press **?** for the full list. Use **Ctrl/Cmd+K** to open the command palette. On short desktop windows (560 px high or less), hints start hidden to leave room for project links; press **h** to show or hide the compact row for the current layout. In taller desktop layouts, press **h** or choose the hint command in the palette; that preference is saved in this browser. Hints remain hidden on narrow or touch layouts.
+Keyboard shortcuts vary by view and pause while you type. In a member workspace, press **?** for the full list. Use **Ctrl/Cmd+K** to open the command palette. On short desktop windows (560 px high or less), hints start hidden to leave room for project links; press **h** to show or hide the compact row for the current layout. In taller desktop layouts, press **h** or choose the hint command in the palette; that preference is saved in this browser. Hints remain hidden on narrow or touch layouts. Guests can use **t** for the theme selector and **g**, then **w** to switch between workspaces when they belong to more than one.
 
 | Shortcut | Action |
 | --- | --- |
 | Ctrl/Cmd+K | Open the command palette. |
 | ? | Open keyboard shortcut help. |
 | h | Show or hide keyboard hints. |
-| g, then p / r / n / l | Open Projects / Roadmap / My Work / Lounge. |
-| g, then i / c / m | Focus project Issues / Chat / Members. |
+| g, then p / r / n / l | In a member workspace, open Projects / Roadmap / My Work / Lounge. |
+| g, then w | When you belong to multiple workspaces, open the workspace picker. |
+| g, then i / c / m | In a project, focus Issues / Chat / Members. |
 | / | Focus the issue filter. |
 | c | Create an issue in the open project. |
 | e | Edit the selected issue. |

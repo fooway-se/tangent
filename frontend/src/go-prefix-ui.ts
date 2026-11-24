@@ -1,5 +1,6 @@
 export interface GoPrefixContext {
   workspaceCount: number;
+  canNavigateWorkspace?: boolean;
   hasProject: boolean;
   projectVisible: boolean;
   isAdmin: boolean;
@@ -8,6 +9,7 @@ export interface GoPrefixContext {
 
 export interface GoPrefixUiOptions {
   hint: HTMLElement;
+  navigationOptions: HTMLElement;
   workspaceOption: HTMLElement;
   projectOptions: HTMLElement;
   adminOption: HTMLElement;
@@ -36,6 +38,7 @@ export function initGoPrefixUi(options: GoPrefixUiOptions): {
     clear();
     pending = true;
     const context = options.getContext();
+    options.navigationOptions.hidden = context.canNavigateWorkspace === false;
     options.workspaceOption.hidden = context.workspaceCount < 2;
     options.projectOptions.hidden = !context.hasProject || !context.projectVisible;
     options.adminOption.hidden = !context.isAdmin;

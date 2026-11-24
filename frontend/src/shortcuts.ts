@@ -59,6 +59,8 @@ export interface ShortcutContext {
   targetIsEditable: boolean;
   goPrefixPending: boolean;
   hasWorkspace: boolean;
+  canNavigateWorkspace?: boolean;
+  canShowShortcutHelp?: boolean;
   canToggleKeyboardHints?: boolean;
   canSwitchWorkspace: boolean;
   canAdmin: boolean;
@@ -113,9 +115,9 @@ export function resolveShortcut(event: ShortcutEvent, context: ShortcutContext):
   if (key === 't') return 'theme-selector';
 
   if (context.goPrefixPending) {
-    if (key === 'p' && context.hasWorkspace) return 'projects';
-    if (key === 'n' && context.hasWorkspace) return 'inbox';
-    if (key === 'l' && context.hasWorkspace) return 'lounge';
+    if (key === 'p' && context.hasWorkspace && context.canNavigateWorkspace !== false) return 'projects';
+    if (key === 'n' && context.hasWorkspace && context.canNavigateWorkspace !== false) return 'inbox';
+    if (key === 'l' && context.hasWorkspace && context.canNavigateWorkspace !== false) return 'lounge';
     if (key === 'r' && context.canRoadmap) return 'roadmap';
     if (key === 'w' && context.canSwitchWorkspace) return 'workspace-switcher';
     if (key === 'i' && context.hasProject) return 'issues';
@@ -125,8 +127,9 @@ export function resolveShortcut(event: ShortcutEvent, context: ShortcutContext):
     return null;
   }
   if (key === 'h' && context.canToggleKeyboardHints === true) return 'toggle-keyboard-hints';
-  if (event.key === '?' && context.hasWorkspace) return 'shortcut-help';
-  if (key === 'g' && context.hasWorkspace) return 'await-projects-key';
+  if (event.key === '?' && context.hasWorkspace && context.canShowShortcutHelp !== false) return 'shortcut-help';
+  if (key === 'g' && context.hasWorkspace
+    && (context.canNavigateWorkspace !== false || context.canSwitchWorkspace)) return 'await-projects-key';
 
   if (context.issueDiscussionMessagesFocused && context.hasSelectedIssueDiscussionMessage) {
     if (key === 'home') return 'first-issue-discussion-message';

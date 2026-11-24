@@ -2,13 +2,36 @@ export function buildPaletteCommands(context) {
     const { user, actions } = context;
     if (user === null)
         return [];
+    if (user.role === 'guest') {
+        const guestCommands = [];
+        if (context.activeWorkspaces.length > 1) {
+            guestCommands.push({
+                label: 'Switch workspace',
+                detail: 'Choose a workspace; Enter switches, Escape cancels',
+                shortcut: 'g w',
+                run: () => actions.switchWorkspace(),
+            });
+        }
+        guestCommands.push({
+            label: 'Switch theme',
+            detail: `Now ${context.currentThemeLabel}; next ${context.nextThemeLabel}`,
+            shortcut: '',
+            run: actions.switchTheme,
+        }, {
+            label: 'Sign out',
+            detail: 'Sign out of Tangent',
+            shortcut: '',
+            run: actions.signOut,
+        });
+        return guestCommands;
+    }
     const commands = [
         { label: 'Go to Projects', detail: 'Open the project list', shortcut: 'g p', run: actions.goToProjects },
         { label: 'Open My Work', detail: 'Review inbox updates and tasks assigned to you', shortcut: 'g n', run: actions.goToInbox },
         { label: 'Open Lounge', detail: 'Open the workspace-wide Lounge chat', shortcut: 'g l', run: actions.goToLounge },
         { label: 'Show keyboard shortcuts', detail: 'View key bindings', shortcut: '?', run: actions.showShortcutHelp },
     ];
-    if (user.role !== 'guest' && context.workspaceVisible) {
+    if (context.workspaceVisible) {
         commands.push({
             label: context.keyboardHintsVisible ? 'Hide keyboard hints' : 'Show keyboard hints',
             detail: context.keyboardHintsVisible
@@ -18,14 +41,12 @@ export function buildPaletteCommands(context) {
             run: actions.toggleKeyboardHints,
         });
     }
-    if (user.role === 'admin' || user.role === 'developer') {
-        commands.splice(1, 0, {
-            label: 'Open Roadmap',
-            detail: 'Review milestones across your projects',
-            shortcut: 'g r',
-            run: actions.goToRoadmap,
-        });
-    }
+    commands.splice(1, 0, {
+        label: 'Open Roadmap',
+        detail: 'Review milestones across your projects',
+        shortcut: 'g r',
+        run: actions.goToRoadmap,
+    });
     if (context.activeWorkspaces.length > 1) {
         commands.splice(2, 0, {
             label: 'Switch workspace',
