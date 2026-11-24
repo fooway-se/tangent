@@ -143,10 +143,10 @@ export const THEME_MACHINES: Record<ThemeId, ThemeMachineInfo> = {
     facts: ['Popular Electronics featured it on its January 1975 cover.', 'Its switches let users enter machine code on the front panel.'],
   },
   'atari-st': {
-    model: 'Atari 520ST', year: '1985', imageFile: 'Atari_520ST_system.jpg',
+    model: 'Atari 520ST', year: '1985', imageFile: 'Atari 520 ST (54863064505).jpg',
     imageUrl: './assets/machines/atari-520st.jpg',
-    imagePage: 'https://commons.wikimedia.org/wiki/File:Atari_520ST_system.jpg',
-    photoCredit: 'Blake Patterson', license: 'CC BY 2.0',
+    imagePage: 'https://commons.wikimedia.org/wiki/File:Atari_520_ST_(54863064505).jpg',
+    photoCredit: 'Thomas Vogt', license: 'CC BY 4.0',
     historyUrl: 'https://www.si.edu/object/atari-520st-microcomputer%3Anmah_1330999',
     facts: ['The 520ST shipped with Atari’s GEM graphical desktop.', 'Built-in MIDI ports helped make the ST popular in music studios.'],
   },
