@@ -386,9 +386,16 @@
   --footer-top: #242527;
   --footer-bottom: #191a1b;
 
-  --key-top: #343638;
-  --key-bottom: #222426;
-  --key-highlight: #494b4d;
+  --key-top: #d8d9d7;
+  --key-bottom: #b9bcba;
+  --key-highlight: #f1f2ef;
+  --key-ink: #202122;
+  --key-depth: 1px;
+  --key-depth-lg: 1px;
+  --content-button-top: #111314;
+  --content-button-bottom: #050607;
+  --content-button-edge: #383b3c;
+  --content-button-ink: #e3e5e2;
 
   --cap-top: #151617;
   --cap-bottom: #08090a;
@@ -418,15 +425,15 @@
   --screen-group-top: #292c2d;
   --screen-group-bottom: #202223;
 
-  --accent: #d9dcda;
-  --accent-edge: #777c79;
-  --accent-ink: #141616;
-  --accent-shine: rgba(255, 255, 255, 0.5);
+  --accent: #c64032;
+  --accent-edge: #78251d;
+  --accent-ink: #fff4ef;
+  --accent-shine: rgba(255, 255, 255, 0.3);
   --success: #a4d7b1;
   --danger: #ffa99e;
   --power-light: #d9dcda;
-  --focus-ring: rgba(217, 220, 218, 0.48);
-  --signal-stripe: linear-gradient(to bottom, #eeeeeb 0 25%, #c7cac7 25% 50%, #858a87 50% 75%, #454a48 75% 100%);
+  --focus-ring: rgba(198, 64, 50, 0.5);
+  --signal-stripe: linear-gradient(to bottom, #c64032 0 20%, #d5d6d2 20% 40%, #a4a7a4 40% 60%, #696d6c 60% 80%, #292b2c 80% 100%);
 }
 
 /* Stripe & Signal: warm 800XL shell, dark keybed, silver controls, and a quiet Atari stripe. */
