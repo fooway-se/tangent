@@ -27,10 +27,6 @@ Aimed at freelancers, small remote teams and studios that coordinate client work
 
 ![Issue detail with discussion](assets/screenshots/issue-detail.webp)
 
-![My Work showing assigned tasks grouped by milestone](assets/screenshots/my-work.webp)
-
-![Team roadmap showing milestone progress and deadlines](assets/screenshots/roadmap.webp)
-
 ![Client portal, guest view](assets/screenshots/guest-portal.webp)
 
 *Screenshots use fictional sample data.*
