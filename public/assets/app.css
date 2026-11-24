@@ -203,7 +203,9 @@ kbd {
   .keyboard-hint-group-items #go-prefix-hint:not([hidden]) { flex-basis: auto; }
   .keyboard-hints kbd { padding: 1px 5px; }
   .workspace-sidebar { padding-block: 8px; }
-  .workspace-sidebar::before { display: none; }
+  .workspace-sidebar::before,
+  :root[data-theme="broadcast"] .workspace-brand::before,
+  :root[data-theme="pc88"] .workspace-brand::before { display: none; }
   .workspace-brand { display: flex; min-width: 0; align-items: center; gap: 6px; padding: 6px 8px; }
   .workspace-brand .brand { min-width: 0; flex: 1 1 auto; gap: 4px; font-size: 13px; letter-spacing: 1px; white-space: nowrap; }
   .workspace-brand .brand > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -762,7 +764,9 @@ dialog::backdrop { background: var(--backdrop); }
 @media (max-width: 760px) {
   .workspace-layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto; height: auto; min-height: 100vh; }
   .workspace-sidebar { grid-column: 1; grid-row: 1; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; width: 100%; overflow: visible; border-right: 0; border-bottom: 2px solid var(--case-shade); padding: 10px 12px; }
-  .workspace-sidebar::before, .workspace-nav::before { display: none; }
+  .workspace-sidebar::before, .workspace-nav::before,
+  :root[data-theme="broadcast"] .workspace-brand::before,
+  :root[data-theme="pc88"] .workspace-brand::before { display: none; }
   .workspace-brand { margin: 0; }
   .workspace-nav { flex-direction: row; flex-wrap: wrap; gap: 6px; }
   .workspace-nav-button { width: auto; white-space: nowrap; }
