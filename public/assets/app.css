@@ -768,7 +768,7 @@ dialog::backdrop { background: var(--backdrop); }
   :root[data-theme="broadcast"] .workspace-brand::before,
   :root[data-theme="pc88"] .workspace-brand::before { display: none; }
   .workspace-brand { margin: 0; }
-  .workspace-nav { grid-column: 1 / -1; grid-row: 2; flex-direction: row; flex-wrap: wrap; gap: 6px; }
+  .workspace-nav { grid-column: 1 / -1; grid-row: 2; display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 6px; }
   .workspace-nav-button { width: auto; white-space: nowrap; }
   .sidebar-projects { grid-column: 1 / -1; min-height: 0; }
   .sidebar-projects .section-title { margin: 4px 4px 6px; }
@@ -814,7 +814,7 @@ dialog::backdrop { background: var(--backdrop); }
   .login-panel.panel::before { margin: -24px -20px 20px; }
   .login-keyboard-hints { flex-wrap: wrap; gap: 10px; font-size: 11px; }
   .login-keyboard-actions { gap: 5px; }
-  .workspace-sidebar { grid-template-columns: minmax(0, 1fr) auto; }
+  .workspace-sidebar { grid-template-columns: minmax(0, 1fr); }
   .workspace-brand { grid-column: 1; grid-row: 1; }
   .workspace-nav { grid-column: 1 / -1; grid-row: 2; }
   .sidebar-projects { grid-column: 1 / -1; grid-row: 3; }
