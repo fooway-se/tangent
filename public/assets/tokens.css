@@ -112,70 +112,74 @@
  * first paint. Every colour token must be defined in every theme (a test
  * checks this, and checks text contrast).
  *
- * "Rubber & Rainbow": black rubber-key case, black screen, bright signal stripe.
+ * "Rubber & Rainbow": charcoal rubber keys, a graphite case, and the Spectrum
+ * colour stripe. The black display and inset keyboard bed keep the colours crisp.
  * "Breadbin": warm tan case, blue screen. Both are inspired by the look of
  * 1980s home computers, not copies of any brand's palette or artwork.
  */
 :root[data-theme="rainbow"] {
-  --night: #05060a;
-  --night-glow: #1c2f4f;
-  --night-muted: #d3d4dc;
+  --night: #090a0d;
+  --night-glow: #29343e;
+  --night-muted: #d8d8d3;
 
-  --case-top: #2f2f33;
-  --case-mid: #27272b;
-  --case-bottom: #1f1f23;
-  --case-shade: #141417;
-  --case-edge: #0b0b0d;
-  --case-light: #44444a;
-  --case-ink: #f3f3ee;
-  --case-muted: #b8b8b0;
-  --case-error: #ff8a73;
-  --vent-dark: #151518;
-  --vent-light: #3a3a40;
-  --footer-top: #26262a;
-  --footer-bottom: #1c1c20;
+  --case-top: #4a4a4d;
+  --case-mid: #363639;
+  --case-bottom: #29292c;
+  --case-shade: #1f2022;
+  --case-edge: #161719;
+  --case-light: #5b5b5e;
+  --case-ink: #f1f1ee;
+  --case-muted: #c2c2be;
+  --case-error: #ff8374;
+  --vent-dark: #222326;
+  --vent-light: #545457;
+  --footer-top: #343437;
+  --footer-bottom: #29292b;
 
-  --key-top: #4a4a50;
-  --key-bottom: #35353a;
-  --key-highlight: #66666e;
+  --key-top: #555557;
+  --key-bottom: #3a3a3c;
+  --key-highlight: #707073;
+  --key-ink: #f4f4f1;
 
-  --cap-top: #101012;
-  --cap-bottom: #000000;
+  --cap-top: #1b1b1e;
+  --cap-bottom: #09090b;
   --cap-edge: #000000;
-  --plate: #000000;
-  --plate-ink: #f3f3ee;
-  --plate-muted: #c3c3bb;
+  --plate: #141416;
+  --plate-ink: #f4f4f1;
+  --plate-muted: #c2c2c2;
 
-  --screen: #060608;
+  --screen: #050608;
   --screen-rim: #000000;
-  --screen-glow: rgba(255, 255, 255, 0.05);
-  --screen-vignette: rgba(20, 190, 210, 0.08);
-  --screen-ink: #f6f6f1;
-  --screen-muted: #a9a9b4;
-  --screen-header: rgba(255, 255, 255, 0.03);
-  --screen-highlight: rgba(255, 255, 255, 0.06);
-  --backdrop: rgba(0, 0, 0, 0.65);
-  --screen-panel: #111115;
-  --screen-control-top: #1c1c22;
-  --screen-inset: #030304;
-  --screen-field: #000000;
-  --screen-border: #3a3a44;
-  --screen-line: #2a2a32;
-  --screen-hover: #1c1c23;
-  --screen-track: #0c0c10;
-  --screen-group: #101014;
-  --screen-group-top: #26262e;
-  --screen-group-bottom: #1b1b22;
+  --screen-glow: rgba(167, 192, 205, 0.08);
+  --screen-vignette: rgba(48, 104, 135, 0.1);
+  --screen-ink: #f2f2ed;
+  --screen-muted: #b8c0c6;
+  --screen-header: rgba(255, 255, 255, 0.04);
+  --screen-highlight: rgba(255, 255, 255, 0.08);
+  --backdrop: rgba(0, 0, 0, 0.72);
+  --screen-panel: #111418;
+  --screen-control-top: #1b1f23;
+  --screen-inset: #040506;
+  --screen-field: #070809;
+  --screen-border: #37414b;
+  --screen-line: #242a30;
+  --screen-hover: #1b2027;
+  --screen-track: #0c0e11;
+  --screen-group: #101317;
+  --screen-group-top: #242a30;
+  --screen-group-bottom: #1a1e23;
 
-  --accent: #ffd60a;
-  --accent-edge: #9a7f00;
-  --accent-ink: #0b0b0c;
+  --accent: #f1d145;
+  --accent-edge: #8e7214;
+  --accent-ink: #171716;
   --accent-shine: rgba(255, 255, 255, 0.5);
-  --success: #38d94a;
-  --danger: #ff7b6b;
-  --power-light: #ff3b30;
-  --focus-ring: rgba(255, 214, 10, 0.45);
-  --signal-stripe: linear-gradient(to bottom, #e8271a 0 25%, #f7d417 25% 50%, #29c42f 50% 75%, #17c9d6 75% 100%);
+  --success: #64cf73;
+  --danger: #ff8374;
+  --power-light: #ff473f;
+  --focus-ring: rgba(241, 209, 69, 0.45);
+  --signal-stripe: linear-gradient(to right, #e34338 0 25%, #f2d43e 25% 50%, #53b65b 50% 75%, #3478c6 75% 100%);
+
+  --scanline: rgba(0, 0, 0, 0.18);
 }
 
 :root[data-theme="breadbin"] {

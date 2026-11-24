@@ -1629,3 +1629,22 @@ dialog::backdrop { background: var(--backdrop); }
 }
 :root[data-theme="cassette"] .login-shell::before { opacity: 0.55; }
 :root[data-theme="cassette"] .login-shell::after { height: 12px; }
+
+/* ZX Spectrum 48K: matte graphite shell, rubber-grey keys and full-width colour bars. */
+:root[data-theme="rainbow"] .workspace-sidebar {
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.065) 0.55px, transparent 0.85px), linear-gradient(155deg, var(--case-top), var(--case-mid) 58%, var(--case-bottom));
+  background-size: 4px 4px, auto;
+}
+:root[data-theme="rainbow"] .workspace-nav {
+  gap: 5px;
+  border: 1px solid var(--cap-edge);
+  border-radius: 5px;
+  padding: 6px;
+  background: var(--plate);
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.58);
+}
+:root[data-theme="rainbow"] .workspace-nav-button,
+:root[data-theme="rainbow"] .project-sidebar-link {
+  border-radius: 5px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 1px 0 rgba(0, 0, 0, 0.42);
+}
