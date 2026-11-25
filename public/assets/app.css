@@ -243,7 +243,7 @@ kbd {
   background: var(--screen-surface);
   box-shadow: var(--screen-frame-shadow);
 }
-.workspace-screen { flex: 999 1 480px; }
+.workspace-screen { flex: 999 1 480px; container-name: workspace-screen; container-type: inline-size; }
 .project-chat-column { flex: 0 1 var(--chat-width); min-width: 300px; }
 .workspace-topbar, .chat-heading { position: relative; display: flex; flex: 0 0 var(--header-height); align-items: center; height: var(--header-height); margin: 0 0 8px; background: var(--screen-header); font-family: var(--font-display); }
 .workspace-topbar::after, .chat-heading::after { position: absolute; right: 0; bottom: -8px; left: 0; height: 8px; background: var(--signal-stripe); content: ""; pointer-events: none; }
@@ -832,6 +832,11 @@ dialog::backdrop { background: var(--backdrop); }
   .lounge-chat-panel { min-height: 0; }
   .lounge-message-list { overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; }
   .project-main { overflow: visible; padding: 12px 14px 18px; }
+  .project-repository-clone-row { grid-template-columns: minmax(0, 1fr); }
+  .project-repository-clone-row .button { justify-self: start; }
+  .project-notes-heading { align-items: stretch; flex-direction: column; gap: 10px; }
+  .project-notes-heading > div:first-child { width: 100%; }
+  .project-notes-modes { justify-content: flex-end; }
   .projects-view, .inbox-view, .admin-view { padding: 12px 14px 18px; }
   .roadmap-view { overflow: visible; padding: 12px 14px 18px; }
   .workspace-admin-member-tools { align-items: flex-start; flex-direction: column; }
@@ -906,6 +911,39 @@ dialog::backdrop { background: var(--backdrop); }
   .issue-group-items > .issue-card > .issue-card-header { grid-column: 1; grid-row: 1; }
   .issue-group-items > .issue-card > .issue-status-button { grid-column: 1; grid-row: 2; align-self: end; justify-self: end; }
   .issue-key { width: 2.2rem; }
+}
+
+@container workspace-screen (max-width: 620px) {
+  .project-main { padding: 12px 14px 18px; }
+  .project-page-heading { align-items: flex-start; flex-direction: column; }
+  .project-page-actions { width: 100%; justify-content: flex-start; }
+  .project-tabs { overflow-x: auto; overscroll-behavior-x: contain; }
+  .project-tab { flex: 0 0 auto; padding-inline: 9px; }
+  .issue-progress-strip { grid-template-columns: minmax(0, 1fr); }
+  .issue-progress-status, .issue-progress-content { grid-column: 1; grid-row: auto; }
+  .issue-progress-content strong { text-align: left; }
+  .project-repository-clone-row { grid-template-columns: minmax(0, 1fr); }
+  .project-repository-clone-row .button { justify-self: start; }
+  .project-notes-heading { align-items: stretch; flex-direction: column; gap: 10px; }
+  .project-notes-heading > div:first-child { width: 100%; }
+  .project-notes-modes { justify-content: flex-end; }
+  .member-list li { align-items: flex-start; flex-direction: column; gap: 6px; }
+  .member-list li .button { align-self: flex-start; }
+  .issue-filter-control { flex: 1 1 100%; }
+  .issue-filter-control input { width: 100%; }
+  .issue-order-select { flex: 1; }
+  .issue-card { grid-template-columns: minmax(0, 1fr); }
+  .issue-card > .issue-status-button { justify-self: end; }
+  .issue-group-items > .issue-card { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto; row-gap: 8px; }
+  .issue-group-items > .issue-card > .issue-card-header { grid-column: 1; grid-row: 1; }
+  .issue-group-items > .issue-card > .issue-status-button { grid-column: 1; grid-row: 2; align-self: end; justify-self: end; }
+  .issue-quick-add-fields { grid-template-columns: 1fr; }
+  .issue-quick-add.is-active { grid-template-columns: auto minmax(0, 1fr); align-items: start; padding-block: 8px; }
+  .issue-quick-add.is-active .issue-description-details[open] { grid-column: 2 / -1; width: 100%; }
+  .issue-quick-add.is-active .issue-description-details[open] label,
+  .issue-quick-add.is-active .issue-description-details[open] textarea { width: 100%; }
+  .issue-quick-add.is-active .issue-description-details[open] textarea { display: block; }
+  .issue-quick-add.is-active .issue-quick-add-actions { grid-column: 2; justify-self: end; }
 }
 
 /* Inbox: event feed */
