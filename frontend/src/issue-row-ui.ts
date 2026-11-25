@@ -115,7 +115,15 @@ export function createIssueRowUi(options: IssueRowUiOptions): {
     title.type = 'button';
     title.textContent = issue.title;
     title.addEventListener('click', () => options.openIssue(issue));
-    mainline.append(statusColumn, key, title);
+    const copy = doc.createElement('div');
+    copy.className = 'issue-copy';
+    copy.append(title);
+    if (issue.description !== '') {
+      const description = doc.createElement('p');
+      description.className = 'issue-description';
+      description.textContent = issue.description;
+      copy.append(description);
+    }
     const discussionIndicator = createDiscussionIndicator(issue.discussion_count ?? 0);
     const metadata = doc.createElement('div');
     metadata.className = 'issue-metadata';
@@ -166,13 +174,9 @@ export function createIssueRowUi(options: IssueRowUiOptions): {
       source.textContent = 'From chat thread';
       metadata.append(source);
     }
-    content.append(mainline, metadata);
-    if (issue.description !== '') {
-      const description = doc.createElement('p');
-      description.className = 'issue-description';
-      description.textContent = issue.description;
-      content.append(description);
-    }
+    copy.append(metadata);
+    mainline.append(statusColumn, key, copy);
+    content.append(mainline);
 
     const hasReorderActions = reorder?.canMoveEarlier !== undefined || reorder?.canMoveLater !== undefined;
     const actions = doc.createElement('div');
