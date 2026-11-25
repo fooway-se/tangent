@@ -101,6 +101,13 @@ test('issue row renders metadata, accessibility labels, and shared state', () =>
   assert.ok(findByClass(row, 'issue-bulk-assign-checkbox'));
 });
 
+test('issue row displays the default task type', () => {
+  const { ui } = createHarness();
+  const row = ui.create({ ...issue, type: 'task' });
+
+  assert.equal(findByClass(row, 'issue-type-tag').textContent, 'Type: task');
+});
+
 test('issue row title and reorder controls call their feature handlers', () => {
   const { ui, opened, moved } = createHarness();
   const row = ui.create(issue, { canMoveEarlier: true, canMoveLater: false, showMilestoneTag: false }, false, false);

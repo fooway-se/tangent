@@ -493,12 +493,10 @@ export function initInboxUi(options) {
         status.className = `inbox-issue-status is-${issue.status}`;
         status.textContent = options.issueStatusLabel(issue.status);
         metadata.append(status);
-        if (issue.type !== 'task') {
-            const type = doc.createElement('span');
-            type.className = 'issue-type-tag';
-            type.textContent = options.issueTypeLabel(issue.type);
-            metadata.append(type);
-        }
+        const type = doc.createElement('span');
+        type.className = 'issue-type-tag';
+        type.textContent = options.issueTypeLabel(issue.type);
+        metadata.append(type);
         if (issue.priority !== 'medium') {
             const priority = doc.createElement('span');
             priority.className = `issue-priority-tag is-${issue.priority}`;

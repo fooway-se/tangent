@@ -89,12 +89,10 @@ export function createIssueRowUi(options) {
         const discussionIndicator = createDiscussionIndicator(issue.discussion_count ?? 0);
         const metadata = doc.createElement('div');
         metadata.className = 'issue-metadata';
-        if (issue.type !== 'task') {
-            const type = doc.createElement('span');
-            type.className = 'issue-type-tag';
-            type.textContent = options.issueTypeLabel(issue.type);
-            metadata.append(type);
-        }
+        const type = doc.createElement('span');
+        type.className = 'issue-type-tag';
+        type.textContent = options.issueTypeLabel(issue.type);
+        metadata.append(type);
         if (issue.priority !== 'medium') {
             const priority = doc.createElement('span');
             priority.className = `issue-priority-tag is-${issue.priority}`;
