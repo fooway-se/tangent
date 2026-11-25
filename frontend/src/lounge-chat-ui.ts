@@ -48,6 +48,7 @@ const smileyShapes: Readonly<Record<ChatSmileyIcon, readonly {
     { tag: 'circle', attributes: { cx: '8.3', cy: '9', r: '1.35', class: 'chat-smiley-dot' } },
     { tag: 'circle', attributes: { cx: '15.7', cy: '9', r: '1.35', class: 'chat-smiley-dot' } },
     { tag: 'path', attributes: { d: 'M7 14.5 Q12 19.5 17 14.5', class: 'chat-smiley-feature' } },
+    { tag: 'path', attributes: { d: 'M6.4 12.4v4.6', class: 'chat-smiley-glint' } },
   ],
   wink: [
     { tag: 'circle', attributes: { cx: '12', cy: '12', r: '10.5', class: 'chat-smiley-outline' } },
@@ -134,7 +135,6 @@ const smileyShapes: Readonly<Record<ChatSmileyIcon, readonly {
     { tag: 'path', attributes: { d: 'M5.3 9.2h10.4v2H5.3z', class: 'chat-smiley-coffee-surface' } },
     { tag: 'path', attributes: { d: 'M17 10h1.2a2.7 2.7 0 0 1 0 5.4H17', class: 'chat-smiley-icon-line' } },
     { tag: 'path', attributes: { d: 'M2.5 21h19', class: 'chat-smiley-icon-detail' } },
-    { tag: 'path', attributes: { d: 'M6.4 12.4v4.6', class: 'chat-smiley-glint' } },
   ],
   beer: [
     { tag: 'path', attributes: { d: 'M4 7.5h13.5v12A2.5 2.5 0 0 1 15 22H6.5A2.5 2.5 0 0 1 4 19.5z', class: 'chat-smiley-icon-line' } },

@@ -67,7 +67,8 @@ test('smiley artwork stays theme-colored and remains clear at chat size', () => 
   assert.match(css, /\.chat-smiley-icon \{[^}]*--smiley-face:\s*var\(--accent\)/);
   assert.match(css, /--smiley-face:\s*color-mix\(in srgb, var\(--accent\) 85%, white\)/);
   assert.match(css, /--smiley-line:\s*var\(--accent-ink\)/);
-  assert.match(css, /\.chat-smiley-outline \{[^}]*fill: var\(--smiley-face\); stroke: var\(--smiley-line\); stroke-width: 1\.5/);
+  assert.match(css, /\.chat-smiley-outline \{[^}]*fill: var\(--smiley-face\); stroke: none;/);
+  assert.match(css, /\.chat-smiley-icon:has\(\.chat-smiley-outline\) \{ filter: none;/);
   assert.match(css, /\.chat-smiley \{[^}]*width:\s*1\.85em;[^}]*height:\s*1\.85em/);
   assert.match(css, /\.chat-smiley-feature \{[^}]*stroke: var\(--smiley-line\);[^}]*stroke-width: 2/);
   assert.match(css, /\.chat-smiley-mouth \{[^}]*fill: var\(--smiley-line\); stroke: none/);

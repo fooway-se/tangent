@@ -691,9 +691,11 @@ details[open] > .disclosure-summary::before { transform: rotate(90deg); }
 .chat-message:hover .chat-message-actions, .chat-message:focus-within .chat-message-actions { opacity: 1; }
 .chat-message-body { grid-column: 2; grid-row: 2; margin: 4px 0 0; font-size: 13px; line-height: 1.4; overflow-wrap: anywhere; white-space: pre-wrap; }
 .chat-smiley { display: inline-block; width: 1.85em; height: 1.85em; margin: 0 0.08em; vertical-align: -0.4em; }
+.chat-smiley:has(.chat-smiley-outline) { width: 1.6em; height: 1.6em; vertical-align: -0.3em; }
 .chat-smiley-icon { display: block; width: 100%; height: 100%; overflow: visible; --smiley-face: var(--accent); --smiley-face: color-mix(in srgb, var(--accent) 85%, white); --smiley-line: var(--accent-ink); --smiley-foam: var(--screen-ink); --smiley-foam: color-mix(in srgb, var(--accent) 48%, var(--screen-ink)); --smiley-tongue: color-mix(in srgb, var(--accent) 45%, var(--screen-ink)); --smiley-layer: color-mix(in srgb, var(--accent) 58%, var(--screen-panel)); --smiley-crust: color-mix(in srgb, var(--accent) 58%, var(--accent-ink)); filter: drop-shadow(0 0 0.7px color-mix(in srgb, var(--screen-ink) 75%, transparent)); }
 :root:is([data-theme="mono"], [data-theme="jupiter-ace"]) .chat-smiley-icon { --smiley-face: color-mix(in srgb, var(--accent) 80%, black); }
-.chat-smiley-outline { fill: var(--smiley-face); stroke: var(--smiley-line); stroke-width: 1.5; }
+.chat-smiley-outline { fill: var(--smiley-face); stroke: none; }
+.chat-smiley-icon:has(.chat-smiley-outline) { filter: none; }
 .chat-smiley-feature { fill: none; stroke: var(--smiley-line); stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; }
 .chat-smiley-dot { fill: var(--smiley-line); stroke: none; }
 .chat-smiley-mouth { fill: var(--smiley-line); stroke: none; }
