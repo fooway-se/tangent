@@ -887,6 +887,12 @@ dialog::backdrop { background: var(--backdrop); }
   .issue-group-items > .issue-card { grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto; }
   .issue-key { width: 2.2rem; }
   .issue-quick-add-fields { grid-template-columns: 1fr; }
+  .issue-quick-add.is-active { grid-template-columns: auto minmax(0, 1fr); align-items: start; padding-block: 8px; }
+  .issue-quick-add.is-active .issue-description-details[open] { grid-column: 2 / -1; width: 100%; }
+  .issue-quick-add.is-active .issue-description-details[open] label,
+  .issue-quick-add.is-active .issue-description-details[open] textarea { width: 100%; }
+  .issue-quick-add.is-active .issue-description-details[open] textarea { display: block; }
+  .issue-quick-add.is-active .issue-quick-add-actions { grid-column: 2; justify-self: end; }
   .issue-quick-add-sharing { align-items: flex-start; flex-direction: column; }
   .deleted-issue-item { flex-wrap: wrap; }
   .shortcut-list > div { grid-template-columns: 1fr; gap: 2px; }
