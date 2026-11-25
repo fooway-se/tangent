@@ -111,7 +111,7 @@ export function initIssueBoardUi(options: {
         if (bulkSelectToggle === null) {
           bulkSelectToggle = doc.createElement('button');
           bulkSelectToggle.type = 'button';
-          bulkSelectToggle.className = 'button button-secondary issue-selection-button issue-bulk-select-toggle';
+          bulkSelectToggle.className = 'button button-secondary issue-bulk-select-toggle';
           bulkSelectToggle.addEventListener('click', (event) => {
             event.preventDefault();
             event.stopPropagation();

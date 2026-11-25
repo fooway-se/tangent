@@ -2036,7 +2036,6 @@
 }
 
 /* ---- Colors and images that used to be hard-coded in app.css ---- */
-:root[data-theme="mono"] { --content-button-danger-edge: #71332e; }
 :root[data-theme="pc88"] { --brand-slot-top: #211f1d; --brand-slot-bottom: #302d2a; }
 :root[data-theme="altair"] { --nav-presence-active-ink: #f2f4f2; }
 :root[data-theme="silver"] { --sidebar-link-dot: #555857; }
