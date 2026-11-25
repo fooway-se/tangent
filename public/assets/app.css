@@ -682,6 +682,7 @@ details[open] > .disclosure-summary::before { transform: rotate(90deg); }
 .chat-smiley-dot { fill: var(--smiley-line); stroke: none; }
 .chat-smiley-mouth { fill: var(--smiley-line); stroke: none; }
 .chat-smiley-tongue { fill: var(--smiley-tongue); stroke: var(--smiley-line); stroke-width: 1.25; stroke-linejoin: round; }
+.chat-smiley-tear { fill: var(--smiley-tongue); stroke: var(--smiley-line); stroke-width: 0.8; }
 .chat-smiley-icon-line { fill: var(--smiley-face); stroke: var(--smiley-line); stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.6; }
 .chat-smiley-icon-detail { fill: none; stroke: var(--smiley-line); stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
 .chat-smiley-foam { fill: var(--smiley-foam); stroke: var(--smiley-line); stroke-width: 1.25; stroke-linejoin: round; }

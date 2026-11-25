@@ -147,7 +147,7 @@ test('Lounge renders supported smilies as accessible icons and leaves unknown sh
     parent_id: null,
     author_id: 11,
     author_name: 'Alex',
-    body: 'Coffee :coffee and :beer: :pizza :burger :) :P :tea',
+    body: "Coffee :coffee and :beer: :pizza :burger :) :P :| :o :/ :'( >:( :tea",
     created_at: '2026-11-25 10:42:00',
   };
   const state = setup(t, (path) => path === '/lounge/messages'
@@ -161,7 +161,10 @@ test('Lounge renders supported smilies as accessible icons and leaves unknown sh
   const article = state.elements.get('#lounge-message-list').children.find((child) => child.className === 'chat-message');
   const body = article.children.find((child) => child.className === 'chat-message-body');
   const icons = body.children.filter((child) => child.className === 'chat-smiley');
-  assert.deepEqual(icons.map((icon) => icon.attributes.get('aria-label')), ['coffee', 'beer mug', 'pizza slice', 'burger', 'smile', 'tongue out']);
+  assert.deepEqual(icons.map((icon) => icon.attributes.get('aria-label')), [
+    'coffee', 'beer mug', 'pizza slice', 'burger', 'smile', 'tongue out',
+    'neutral face', 'surprised face', 'uncertain face', 'crying face', 'angry face',
+  ]);
   assert.equal(icons[0].children[0].attributes.get('viewBox'), '0 0 24 24');
   const smileShapes = icons[4].children[0].children;
   assert.deepEqual(smileShapes.filter((shape) => shape.attributes.get('class') === 'chat-smiley-dot').map((shape) => shape.attributes.get('r')), ['1.35', '1.35']);
@@ -175,6 +178,8 @@ test('Lounge renders supported smilies as accessible icons and leaves unknown sh
   assert.ok(shapeClasses(icons[2]).includes('chat-smiley-pizza-topping'));
   assert.ok(shapeClasses(icons[3]).includes('chat-smiley-lettuce'));
   assert.ok(shapeClasses(icons[3]).includes('chat-smiley-tomato'));
+  assert.ok(shapeClasses(icons[9]).includes('chat-smiley-tear'));
+  assert.equal(icons[10].attributes.get('aria-label'), 'angry face');
   assert.equal(body.children.at(-1).textContent, ' :tea');
   state.ui.dispose();
 });

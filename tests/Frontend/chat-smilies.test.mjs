@@ -29,6 +29,16 @@ test('Lounge emoticon shortcuts map to themed face types', () => {
   ]);
 });
 
+test('additional face shortcuts cover neutral, surprised, uncertain, crying, and angry expressions', () => {
+  const faces = splitChatSmilies(`:| :-| :o :-o :/ :-/ :'( :'-(' >:( >:-(`)
+    .filter((segment) => segment.icon !== null)
+    .map((segment) => segment.icon);
+  assert.deepEqual(faces, [
+    'neutral', 'neutral', 'surprised', 'surprised', 'uncertain', 'uncertain',
+    'crying', 'crying', 'angry', 'angry',
+  ]);
+});
+
 test('named shortcuts support the agreed food and drink tokens with or without a closing colon', () => {
   assert.deepEqual(splitChatSmilies('Coffee :coffee and :beer: :pizza :burger!'), [
     { text: 'Coffee ', icon: null },
@@ -44,8 +54,8 @@ test('named shortcuts support the agreed food and drink tokens with or without a
 });
 
 test('unsupported and embedded shortcut-like text remains unchanged', () => {
-  assert.deepEqual(splitChatSmilies('mail:coffeehouse :tea x:beer'), [
-    { text: 'mail:coffeehouse :tea x:beer', icon: null },
+  assert.deepEqual(splitChatSmilies('mail:coffeehouse :tea :orange x:beer'), [
+    { text: 'mail:coffeehouse :tea :orange x:beer', icon: null },
   ]);
 });
 
@@ -58,6 +68,7 @@ test('smiley artwork stays theme-colored and remains clear at chat size', () => 
   assert.match(css, /\.chat-smiley-feature \{[^}]*stroke: var\(--smiley-line\);[^}]*stroke-width: 2/);
   assert.match(css, /\.chat-smiley-mouth \{[^}]*fill: var\(--smiley-line\); stroke: none/);
   assert.match(css, /\.chat-smiley-tongue \{[^}]*fill: var\(--smiley-tongue\); stroke: var\(--smiley-line\); stroke-width: 1\.25/);
+  assert.match(css, /\.chat-smiley-tear \{[^}]*fill: var\(--smiley-tongue\); stroke: var\(--smiley-line\)/);
   assert.match(css, /--smiley-tongue:\s*color-mix\(in srgb, var\(--accent\) 45%, var\(--screen-ink\)\)/);
   assert.match(css, /\.chat-smiley-icon-line \{[^}]*fill: var\(--smiley-face\); stroke: var\(--smiley-line\);[^}]*stroke-width: 1\.6/);
   assert.match(css, /\.chat-smiley-icon-detail \{[^}]*stroke: var\(--smiley-line\);[^}]*stroke-width: 1\.8/);

@@ -1,4 +1,4 @@
-const shortcutPattern = /(?<![\p{L}\p{N}_])(?::coffee:?(?![\p{L}\p{N}_])|:beer:?(?![\p{L}\p{N}_])|:pizza:?(?![\p{L}\p{N}_])|:burger:?(?![\p{L}\p{N}_])|:-\)|:\)|;-\)|;\)|:-\(|:\(|:-d|:d|:-p|:p)/giu;
+const shortcutPattern = /(?<![\p{L}\p{N}_])(?::coffee:?(?![\p{L}\p{N}_])|:beer:?(?![\p{L}\p{N}_])|:pizza:?(?![\p{L}\p{N}_])|:burger:?(?![\p{L}\p{N}_])|:'-\(|:'\(|>:-\(|>:\(|:-\)(?![\p{L}\p{N}_])|:\)(?![\p{L}\p{N}_])|;-\)(?![\p{L}\p{N}_])|;\)(?![\p{L}\p{N}_])|:-\((?![\p{L}\p{N}_])|:\((?![\p{L}\p{N}_])|:-\|(?![\p{L}\p{N}_])|:\|(?![\p{L}\p{N}_])|:-o(?![\p{L}\p{N}_])|:o(?![\p{L}\p{N}_])|:-\/(?![\p{L}\p{N}_])|:\/(?![\p{L}\p{N}_])|:-d(?![\p{L}\p{N}_])|:d(?![\p{L}\p{N}_])|:-p(?![\p{L}\p{N}_])|:p(?![\p{L}\p{N}_]))/giu;
 const shortcutIcons = {
     ':)': 'smile',
     ':-)': 'smile',
@@ -10,6 +10,16 @@ const shortcutIcons = {
     ':-d': 'grin',
     ':p': 'tongue',
     ':-p': 'tongue',
+    ':|': 'neutral',
+    ':-|': 'neutral',
+    ':o': 'surprised',
+    ':-o': 'surprised',
+    ':/': 'uncertain',
+    ':-/': 'uncertain',
+    [":'("]: 'crying',
+    [":'-("]: 'crying',
+    ">:(": 'angry',
+    '>:-(': 'angry',
     ':coffee': 'coffee',
     ':coffee:': 'coffee',
     ':beer': 'beer',
