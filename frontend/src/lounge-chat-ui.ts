@@ -11,9 +11,101 @@ import {
   type MentionQuery,
 } from './chat-mentions.js';
 import { handleMentionKeydown as handleMentionKeydownUi } from './chat-mentions-ui.js';
+import { splitChatSmilies, type ChatSmileyIcon } from './chat-smilies.js';
 import { formatChatTimestamp } from './chat-time.js';
 import type { LoungePresenceController } from './lounge-presence.js';
 import type { ChatMessage, LoungeMentionMember } from './types.js';
+
+const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
+
+const smileyLabels: Readonly<Record<ChatSmileyIcon, string>> = {
+  smile: 'smile',
+  wink: 'wink',
+  frown: 'frown',
+  grin: 'grin',
+  tongue: 'tongue out',
+  coffee: 'coffee',
+  beer: 'beer mug',
+  pizza: 'pizza slice',
+  burger: 'burger',
+};
+
+const smileyShapes: Readonly<Record<ChatSmileyIcon, readonly {
+  tag: 'circle' | 'path';
+  attributes: Readonly<Record<string, string>>;
+}[]>> = {
+  smile: [
+    { tag: 'circle', attributes: { cx: '12', cy: '12', r: '10', class: 'chat-smiley-outline' } },
+    { tag: 'circle', attributes: { cx: '8.5', cy: '9', r: '0.8', class: 'chat-smiley-dot' } },
+    { tag: 'circle', attributes: { cx: '15.5', cy: '9', r: '0.8', class: 'chat-smiley-dot' } },
+    { tag: 'path', attributes: { d: 'M7.5 14.5 Q12 19 16.5 14.5', class: 'chat-smiley-feature' } },
+  ],
+  wink: [
+    { tag: 'circle', attributes: { cx: '12', cy: '12', r: '10', class: 'chat-smiley-outline' } },
+    { tag: 'path', attributes: { d: 'M7.2 9h2.6', class: 'chat-smiley-feature' } },
+    { tag: 'circle', attributes: { cx: '15.5', cy: '9', r: '0.8', class: 'chat-smiley-dot' } },
+    { tag: 'path', attributes: { d: 'M7.5 14.5 Q12 19 16.5 14.5', class: 'chat-smiley-feature' } },
+  ],
+  frown: [
+    { tag: 'circle', attributes: { cx: '12', cy: '12', r: '10', class: 'chat-smiley-outline' } },
+    { tag: 'circle', attributes: { cx: '8.5', cy: '9', r: '0.8', class: 'chat-smiley-dot' } },
+    { tag: 'circle', attributes: { cx: '15.5', cy: '9', r: '0.8', class: 'chat-smiley-dot' } },
+    { tag: 'path', attributes: { d: 'M7.5 17 Q12 12 16.5 17', class: 'chat-smiley-feature' } },
+  ],
+  grin: [
+    { tag: 'circle', attributes: { cx: '12', cy: '12', r: '10', class: 'chat-smiley-outline' } },
+    { tag: 'circle', attributes: { cx: '8.5', cy: '9', r: '0.8', class: 'chat-smiley-dot' } },
+    { tag: 'circle', attributes: { cx: '15.5', cy: '9', r: '0.8', class: 'chat-smiley-dot' } },
+    { tag: 'path', attributes: { d: 'M7 14h10v1.2a5 5 0 0 1-10 0z', class: 'chat-smiley-mouth' } },
+  ],
+  tongue: [
+    { tag: 'circle', attributes: { cx: '12', cy: '12', r: '10', class: 'chat-smiley-outline' } },
+    { tag: 'circle', attributes: { cx: '8.5', cy: '9', r: '0.8', class: 'chat-smiley-dot' } },
+    { tag: 'circle', attributes: { cx: '15.5', cy: '9', r: '0.8', class: 'chat-smiley-dot' } },
+    { tag: 'path', attributes: { d: 'M7 14h10v1a5 5 0 0 1-10 0z', class: 'chat-smiley-mouth' } },
+    { tag: 'path', attributes: { d: 'M12 17v2', class: 'chat-smiley-tongue' } },
+  ],
+  coffee: [
+    { tag: 'path', attributes: { d: 'M8 2.5c-2 2 2 2 0 4m6-4c-2 2 2 2 0 4', class: 'chat-smiley-icon-line' } },
+    { tag: 'path', attributes: { d: 'M5 9h11v9H5zM16 11h2a2 2 0 0 1 0 4h-2M3.5 20h15', class: 'chat-smiley-icon-line' } },
+  ],
+  beer: [
+    { tag: 'path', attributes: { d: 'M6 8h12l-1.2 12H7.2zM18 10h1.5a1.5 1.5 0 0 1 0 3H18', class: 'chat-smiley-icon-line' } },
+    { tag: 'path', attributes: { d: 'M7 8c-1.3-2 1.4-3.4 2.7-1.6 1.1-2.2 4.2-1.5 4.5.2 1.8-1.1 3.4.3 3 1.4', class: 'chat-smiley-icon-line' } },
+    { tag: 'path', attributes: { d: 'M9 12v5m4-5v5', class: 'chat-smiley-icon-detail' } },
+  ],
+  pizza: [
+    { tag: 'path', attributes: { d: 'M4 20 9 3l11 17z', class: 'chat-smiley-icon-line' } },
+    { tag: 'circle', attributes: { cx: '10', cy: '10', r: '1', class: 'chat-smiley-dot' } },
+    { tag: 'circle', attributes: { cx: '14', cy: '14', r: '1', class: 'chat-smiley-dot' } },
+    { tag: 'circle', attributes: { cx: '8', cy: '15', r: '0.8', class: 'chat-smiley-dot' } },
+  ],
+  burger: [
+    { tag: 'path', attributes: { d: 'M4 9a8 6 0 0 1 16 0zM4 11h16M5 13h14v3H5zM4 18h16a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z', class: 'chat-smiley-icon-line' } },
+    { tag: 'path', attributes: { d: 'M6 11h12', class: 'chat-smiley-icon-detail' } },
+  ],
+};
+
+function createChatSmiley(doc: Document, icon: ChatSmileyIcon, shortcut: string): HTMLSpanElement {
+  const wrapper = doc.createElement('span');
+  wrapper.className = 'chat-smiley';
+  wrapper.setAttribute('role', 'img');
+  wrapper.setAttribute('aria-label', smileyLabels[icon]);
+  wrapper.dataset.shortcut = shortcut;
+
+  const svg = doc.createElementNS(SVG_NAMESPACE, 'svg');
+  svg.classList.add('chat-smiley-icon');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('focusable', 'false');
+  for (const shape of smileyShapes[icon]) {
+    const element = doc.createElementNS(SVG_NAMESPACE, shape.tag);
+    for (const [name, value] of Object.entries(shape.attributes)) element.setAttribute(name, value);
+    svg.append(element);
+  }
+  wrapper.append(svg);
+  return wrapper;
+}
 
 export interface LoungeChatUiController {
   isActive(): boolean;
@@ -267,7 +359,10 @@ export function initLoungeChatUi(options: {
     body.className = 'chat-message-body';
     for (const segment of splitMentions(message.body, members)) {
       if (segment.memberId === null) {
-        body.append(doc.createTextNode(segment.text));
+        for (const textSegment of splitChatSmilies(segment.text)) {
+          if (textSegment.icon === null) body.append(doc.createTextNode(textSegment.text));
+          else body.append(createChatSmiley(doc, textSegment.icon, textSegment.text));
+        }
       } else {
         const mention = doc.createElement('mark');
         mention.className = 'chat-message-mention';

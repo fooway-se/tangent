@@ -13,6 +13,7 @@ const authUi = await readFile(new URL('../../frontend/src/auth-ui.ts', import.me
 const inboxUi = await readFile(new URL('../../frontend/src/inbox-ui.ts', import.meta.url), 'utf8');
 const issueDetailEditUi = await readFile(new URL('../../frontend/src/issue-detail-edit-ui.ts', import.meta.url), 'utf8');
 const css = await readFile(new URL('../../public/assets/app.css', import.meta.url), 'utf8');
+const tokens = await readFile(new URL('../../public/assets/tokens.css', import.meta.url), 'utf8');
 const guestSource = await readFile(new URL('../../frontend/src/guest-view.ts', import.meta.url), 'utf8');
 const guestUi = await readFile(new URL('../../frontend/src/guest-ui.ts', import.meta.url), 'utf8');
 
@@ -76,15 +77,20 @@ test('guest dashboard follows the customer mockup layout and remains responsive'
   }
   assert.match(css, /\.guest-planning-grid\s*\{[^}]*grid-template-columns/);
   assert.match(css, /@media \(max-width: 640px\)[\s\S]*\.guest-planning-grid\s*\{[^}]*grid-template-columns/);
-  assert.match(css, /\.guest-milestone-title strong\s*\{[^}]*font:[^;]*var\(--font-display\)/);
+  assert.match(css, /\.guest-milestone-title strong\s*\{[^}]*font:\s*var\(--font-key\)/);
+  assert.match(tokens, /--font-key:\s*700 14px var\(--font-display\)/);
   assert.match(css, /\.guest-item-title\s*\{[^}]*font:[^;]*var\(--font-display\)/);
 });
 
 test('project, guest, and roadmap progress bars share the segmented treatment', () => {
   assert.match(guestSource, /el\('progress', `guest-progress/);
   assert.match(css, /#issue-progress, \.guest-progress, \.roadmap-progress\s*\{/);
-  assert.match(css, /#issue-progress::-webkit-progress-bar, \.guest-progress::-webkit-progress-bar, \.roadmap-progress::-webkit-progress-bar\s*\{[^}]*repeating-linear-gradient/);
-  assert.match(css, /#issue-progress\.is-complete::-webkit-progress-value, \.guest-progress\.is-complete::-webkit-progress-value, \.roadmap-progress\.is-complete::-webkit-progress-value\s*\{[^}]*var\(--success\)/);
+  assert.match(css, /#issue-progress::-webkit-progress-bar, \.guest-progress::-webkit-progress-bar, \.roadmap-progress::-webkit-progress-bar\s*\{[^}]*background:\s*var\(--progress-track\)/);
+  assert.match(tokens, /--progress-track:\s*repeating-linear-gradient/);
+  assert.match(css, /#issue-progress::-webkit-progress-value, \.guest-progress::-webkit-progress-value, \.roadmap-progress::-webkit-progress-value\s*\{[^}]*background:\s*var\(--progress-fill\)/);
+  assert.match(tokens, /--progress-fill:\s*repeating-linear-gradient/);
+  assert.match(css, /#issue-progress\.is-complete::-webkit-progress-value, \.guest-progress\.is-complete::-webkit-progress-value, \.roadmap-progress\.is-complete::-webkit-progress-value\s*\{[^}]*background:\s*var\(--progress-fill-done\)/);
+  assert.match(tokens, /--progress-fill-done:\s*repeating-linear-gradient\([^;]*var\(--success\)/);
 });
 
 test('guest view renders its shared conversation alongside the composer', () => {

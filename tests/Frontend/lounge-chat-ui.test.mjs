@@ -42,6 +42,7 @@ function setup(t, requestOverride) {
     activeElement: null,
     hidden: false,
     createElement: () => new FakeElement(),
+    createElementNS: () => new FakeElement(),
     createTextNode: (text) => ({ textContent: text }),
     querySelector: (selector) => elements.get(selector) ?? null,
   };
@@ -136,6 +137,33 @@ test('Lounge shows loading feedback until its first message request settles', as
   finishMembers({ members: [] });
   await new Promise((resolve) => setImmediate(resolve));
   assert.equal(emptyState.textContent, 'No messages yet.');
+  state.ui.dispose();
+});
+
+test('Lounge renders supported smilies as accessible icons and leaves unknown shortcuts as text', async (t) => {
+  const message = {
+    id: 41,
+    channel_id: 0,
+    parent_id: null,
+    author_id: 11,
+    author_name: 'Alex',
+    body: 'Coffee :coffee and :beer: :pizza :burger :) :tea',
+    created_at: '2026-11-25 10:42:00',
+  };
+  const state = setup(t, (path) => path === '/lounge/messages'
+    ? { messages: [message] }
+    : { members: [] });
+
+  state.ui.load();
+  await new Promise((resolve) => setImmediate(resolve));
+  await new Promise((resolve) => setImmediate(resolve));
+
+  const article = state.elements.get('#lounge-message-list').children.find((child) => child.className === 'chat-message');
+  const body = article.children.find((child) => child.className === 'chat-message-body');
+  const icons = body.children.filter((child) => child.className === 'chat-smiley');
+  assert.deepEqual(icons.map((icon) => icon.attributes.get('aria-label')), ['coffee', 'beer mug', 'pizza slice', 'burger', 'smile']);
+  assert.equal(icons[0].children[0].attributes.get('viewBox'), '0 0 24 24');
+  assert.equal(body.children.at(-1).textContent, ' :tea');
   state.ui.dispose();
 });
 

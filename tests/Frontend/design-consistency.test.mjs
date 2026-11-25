@@ -37,7 +37,7 @@ test('tokens.css is linked before app.css so every view shares one palette', () 
 
 test('every CSS variable used by app.css is defined as a token', () => {
   const used = new Set([...css.matchAll(/var\((--[a-z0-9-]+)/g)].map((match) => match[1]));
-  const defined = new Set([...`${tokens}\n${css}`.matchAll(/^\s*(--[a-z0-9-]+)\s*:/gm)].map((match) => match[1]));
+  const defined = new Set([...`${tokens}\n${css}`.matchAll(/(?:^|[;{])\s*(--[a-z0-9-]+)\s*:/gm)].map((match) => match[1]));
   const missing = [...used].filter((name) => !defined.has(name));
   assert.deepEqual(missing, [], `undefined variables: ${missing.join(', ')}`);
 });
@@ -63,9 +63,10 @@ test('the palette is a beige case holding dark screens with an amber accent', ()
     assert.match(root, new RegExp(`${token}:\\s*#[0-9a-f]{6}`, 'i'), `${token} is a hex colour`);
   }
   assert.match(root, /--signal-stripe:\s*linear-gradient/);
+  assert.match(root, /--screen-surface:[^;]*var\(--screen\)/, 'the shared screen surface uses the screen colour');
   assert.match(rule(css, 'body'), /background:\s*linear-gradient\([^;]*var\(--case-top\)/, 'the page is the case');
   for (const selector of ['.workspace-screen, .project-chat-column']) {
-    assert.match(rule(css, selector), /var\(--screen\)/, `${selector} is a dark screen`);
+    assert.match(rule(css, selector), /var\(--screen-surface\)/, `${selector} uses the shared dark screen surface`);
   }
   assert.match(ruleContaining(css, '.keyboard-hints', 'background: linear-gradient'), /var\(--footer-top\)/, 'the keyboard strip is on the case');
 });

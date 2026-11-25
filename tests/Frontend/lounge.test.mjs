@@ -110,7 +110,7 @@ test('Lounge presence stays visible in navigation without adding the viewer to p
 });
 
 test('Lounge presence indicator matches the Lounge button label color', () => {
-  assert.match(css, /\.lounge-nav-presence \{[^}]*color: var\(--case-ink\)/);
+  assert.match(css, /\.lounge-nav-presence \{[^}]*color: var\(--key-ink, var\(--case-ink\)\)/);
   assert.match(css, /\.lounge-nav-presence::before \{[^}]*background: currentColor; box-shadow: none/);
   assert.match(css, /#lounge-nav\.is-active #lounge-nav-presence \{ color: var\(--accent-ink\); \}/);
 });

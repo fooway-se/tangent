@@ -98,6 +98,33 @@
   --radius-panel: 6px;
   --radius-key: 7px;
   --radius-cap: 4px;
+  --radius-nav: 5px;
+
+  /* Shared surfaces (used by app.css; themes inherit these automatically) */
+  --screen-surface: radial-gradient(ellipse at 15% 0%, var(--screen-glow), rgba(0, 0, 0, 0) 55%), var(--screen);
+  --screen-frame-shadow: 0 0 0 3px var(--screen-rim), 0 0 0 5px var(--vent-dark), 0 2px 0 5px var(--case-light), inset 0 0 70px var(--screen-vignette);
+  --panel-bevel: inset 0 1px 0 var(--screen-highlight), inset 0 -3px 8px var(--inset-wash-strong);
+  --control-surface: linear-gradient(180deg, var(--screen-control-top), var(--screen-panel));
+  --progress-track: repeating-linear-gradient(90deg, var(--screen-track) 0 9px, var(--screen-panel) 9px 11px);
+  --progress-fill: repeating-linear-gradient(90deg, var(--accent) 0 9px, transparent 9px 11px);
+  --progress-fill-done: repeating-linear-gradient(90deg, var(--success) 0 9px, transparent 9px 11px);
+  --font-key: 700 14px var(--font-display);
+  --lamp-shadow: 0 0 8px var(--power-light); /* login power lamp; themes with flat lamps set none */
+  --lamp-shadow-sm: 0 0 7px var(--power-light); /* chat presence lamp */
+
+  /* Navigation recess (the well around the nav keys). Default = dark keybed. */
+  --nav-border: var(--cap-edge);
+  --nav-radius: 4px;
+  --nav-padding: 6px;
+  --nav-bg: var(--plate);
+  --nav-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.58);
+  /* Building blocks for the case variants below */
+  --nav-shade: 0 0 0; /* rgb triplet of the inner shadow */
+  --nav-shade-alpha: 0.16;
+  --nav-hl-alpha: 0.28; /* alpha of the 1px white highlight under the recess */
+  --nav-bg-case: linear-gradient(180deg, var(--case-mid), var(--case-bottom));
+  --nav-bg-dark: linear-gradient(180deg, var(--case-bottom), var(--case-shade));
+  --nav-shadow-soft: inset 0 1px 3px rgb(var(--nav-shade) / var(--nav-shade-alpha)), 0 1px 0 rgb(255 255 255 / var(--nav-hl-alpha));
 
   /* Layout */
   --gutter: 16px;
@@ -1880,4 +1907,150 @@
   --radius-panel: 6px;
   --radius-key: 6px;
   --radius-cap: 4px;
+}
+
+/* ---- Navigation recess per theme (consumed by .workspace-nav in app.css) ---- */
+
+/* Light case: shallow recess in the case colour. Each theme sets only its shadow tint. */
+:root:is([data-theme="stripe"], [data-theme="paper"], [data-theme="microbee"], [data-theme="coleco-adam"], [data-theme="dragon-32"], [data-theme="acorn-atom"], [data-theme="desktop"], [data-theme="jupiter-ace"], [data-theme="pc88"], [data-theme="altair"], [data-theme="atari-st"], [data-theme="silver"], [data-theme="breadbin"], [data-theme="blue"], [data-theme="cartridge"], [data-theme="copper"], [data-theme="nordic"]) {
+  --nav-border: var(--case-shade);
+  --nav-padding: 5px;
+  --nav-bg: var(--nav-bg-case);
+  --nav-shadow: var(--nav-shadow-soft);
+}
+:root[data-theme="stripe"]       { --nav-shade: 41 42 41; --nav-shade-alpha: 0.18; }
+:root[data-theme="paper"]        { --nav-shade: 41 39 31; --nav-hl-alpha: 0.3; }
+:root[data-theme="microbee"]     { --nav-shade: 36 37 34; --nav-shade-alpha: 0.14; --nav-hl-alpha: 0.32; }
+:root[data-theme="coleco-adam"]  { --nav-shade: 42 38 40; --nav-shade-alpha: 0.14; --nav-hl-alpha: 0.3; }
+:root[data-theme="dragon-32"]    { --nav-shade: 41 39 37; }
+:root[data-theme="acorn-atom"]   { --nav-shade: 44 41 37; --nav-hl-alpha: 0.3; }
+:root[data-theme="desktop"]      { --nav-shade: 41 40 39; --nav-shade-alpha: 0.14; }
+:root[data-theme="jupiter-ace"]  { --nav-shade: 42 42 48; --nav-shade-alpha: 0.14; --nav-hl-alpha: 0.3; }
+:root[data-theme="pc88"]         { --nav-shade: 40 40 36; }
+:root[data-theme="altair"]       { --nav-shade: 32 39 43; --nav-radius: 2px; }
+:root[data-theme="atari-st"]     { --nav-shade: 43 41 36; }
+:root[data-theme="silver"]       { --nav-shade: 36 39 41; --nav-hl-alpha: 0.24; --nav-radius: 3px; }
+:root[data-theme="breadbin"]     { --nav-shade: 42 36 27; --nav-shade-alpha: 0.18; }
+:root[data-theme="blue"]         { --nav-shade: 41 38 31; --nav-hl-alpha: 0.3; }
+:root[data-theme="cartridge"]    { --nav-shade: 41 44 49; --nav-shade-alpha: 0.14; }
+:root[data-theme="copper"]       { --nav-shade: 39 40 39; }
+:root[data-theme="nordic"]       { --nav-shade: 45 40 31; --nav-shade-alpha: 0.18; }
+
+/* Dark case: recess is darker than the case. */
+:root:is([data-theme="mono"], [data-theme="x68000"], [data-theme="oric-1"], [data-theme="cassette"]) {
+  --nav-border: var(--case-shade);
+  --nav-padding: 5px;
+  --nav-bg: var(--nav-bg-dark);
+  --nav-shadow: var(--nav-shadow-soft);
+  --nav-hl-alpha: 0.06;
+}
+:root[data-theme="mono"]         { --nav-shade-alpha: 0.22; }
+:root[data-theme="x68000"]       { --nav-shade-alpha: 0.2; --nav-radius: 3px; }
+:root[data-theme="oric-1"]       { --nav-shade-alpha: 0.18; }
+:root[data-theme="cassette"]     { --nav-shade-alpha: 0.22; }
+
+/* Dark keybed (same as the default): only the radius differs. */
+:root[data-theme="desk"]      { --nav-radius: 3px; }
+:root[data-theme="broadcast"] { --nav-radius: 3px; }
+:root[data-theme="rainbow"]   { --nav-radius: 5px; }
+
+/* Clean: flat well, no shadow. */
+:root:is([data-theme="clean"], [data-theme="clean-dark"]) {
+  --nav-border: var(--case-edge);
+  --nav-radius: var(--radius-panel);
+  --nav-padding: 5px;
+  --nav-bg: var(--case-shade);
+  --nav-shadow: none;
+}
+
+/* Flat lamps (no glow) */
+:root:is([data-theme="stripe"], [data-theme="paper"], [data-theme="altair"], [data-theme="silver"], [data-theme="broadcast"]) {
+  --lamp-shadow: none;
+  --lamp-shadow-sm: none;
+}
+
+/* ---- Keycap button tokens (pc88, altair, silver; consumed by the shared rules in app.css) ---- */
+:root {
+  --face-key: linear-gradient(180deg, var(--key-top), var(--key-bottom));
+  --face-cap: linear-gradient(180deg, var(--cap-top), var(--cap-bottom));
+}
+:root[data-theme="pc88"] {
+  --btn-edge: var(--case-edge);
+  --btn-radius: var(--radius-key);
+  --btn-ink: var(--case-ink);
+  --btn-face: var(--face-key);
+  --btn-shadow: inset 0 1px 0 var(--key-highlight);
+  --btn-primary-edge: var(--cap-edge);
+  --btn-primary-ink: var(--plate-ink);
+  --btn-primary-face: var(--face-cap);
+  --btn-primary-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  --btn-pd-edge: var(--case-error);
+  --btn-pd-ink: var(--case-ink);
+  --btn-pd-face: linear-gradient(180deg, var(--danger), #e87869);
+  --btn-hover: 1.05;
+  --btn-active-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.16);
+  --btn-status-edge: var(--btn-primary-edge);
+  --btn-status-ink: var(--btn-primary-ink);
+  --btn-status-face: var(--btn-primary-face);
+  --btn-status-shadow: var(--btn-primary-shadow);
+}
+:root[data-theme="altair"] {
+  --btn-edge: var(--case-shade);
+  --btn-radius: 2px;
+  --btn-ink: var(--case-ink);
+  --btn-face: var(--face-key);
+  --btn-shadow: inset 0 1px 0 var(--key-highlight), 0 1px 0 rgba(28, 37, 42, 0.24);
+  --btn-primary-edge: var(--panel-blue-edge);
+  --btn-primary-ink: var(--plate-ink);
+  --btn-primary-face: linear-gradient(180deg, var(--panel-blue-top), var(--panel-blue-bottom));
+  --btn-primary-shadow: inset 0 1px 0 var(--accent-shine), 0 1px 0 var(--switch-active-shadow);
+  --btn-pd-edge: var(--case-error);
+  --btn-pd-ink: var(--plate-ink);
+  --btn-pd-face: linear-gradient(180deg, var(--danger), var(--case-error));
+  --btn-hover: 1.06;
+  --btn-active-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.18);
+  --btn-status-edge: var(--btn-primary-edge);
+  --btn-status-ink: var(--btn-primary-ink);
+  --btn-status-face: var(--btn-primary-face);
+  --btn-status-shadow: var(--btn-primary-shadow);
+}
+:root[data-theme="silver"] {
+  --btn-edge: var(--cap-edge);
+  --btn-radius: 2px;
+  --btn-ink: var(--plate-ink);
+  --btn-face: var(--face-cap);
+  --btn-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  --btn-primary-edge: var(--case-edge);
+  --btn-primary-ink: var(--key-ink);
+  --btn-primary-face: var(--face-key);
+  --btn-primary-shadow: inset 0 1px 0 var(--key-highlight), 0 1px 0 rgba(0, 0, 0, 0.18);
+  --btn-pd-edge: var(--case-error);
+  --btn-pd-ink: var(--case-ink);
+  --btn-pd-face: var(--danger);
+  --btn-hover: 1.06;
+  --btn-active-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+  --btn-status-edge: var(--btn-edge);
+  --btn-status-ink: var(--btn-ink);
+  --btn-status-face: var(--btn-face);
+  --btn-status-shadow: var(--btn-shadow);
+}
+
+/* ---- Colors and images that used to be hard-coded in app.css ---- */
+:root[data-theme="mono"] { --content-button-danger-edge: #71332e; }
+:root[data-theme="pc88"] { --brand-slot-top: #211f1d; --brand-slot-bottom: #302d2a; }
+:root[data-theme="altair"] { --nav-presence-active-ink: #f2f4f2; }
+:root[data-theme="silver"] { --sidebar-link-dot: #555857; }
+:root[data-theme="desk"] { --special-key-deep: #d97d21; }
+:root[data-theme="nordic"] { --grille-top: #20211e; --grille-bottom: #080908; }
+
+/* SVG backgrounds. Colors inside a data-URI cannot use var(), so each variant is a token.
+   --chevron-*: select arrows, one per ink color. --login-stars: star field behind the login screen. */
+:root {
+  --login-stars: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='480' height='480'%3E%3Crect x='77' y='202' width='3' height='3' fill='%23efe6cf' opacity='0.5'/%3E%3Crect x='24' y='37' width='3' height='3' fill='%23efe6cf' opacity='0.8'/%3E%3Crect x='48' y='187' width='3' height='3' fill='%23efe6cf' opacity='0.8'/%3E%3Crect x='29' y='465' width='3' height='3' fill='%23efe6cf' opacity='0.8'/%3E%3Crect x='109' y='19' width='3' height='3' fill='%23efe6cf' opacity='0.8'/%3E%3Crect x='222' y='214' width='3' height='3' fill='%23efe6cf' opacity='0.3'/%3E%3Crect x='123' y='46' width='3' height='3' fill='%23efe6cf' opacity='0.3'/%3E%3Crect x='217' y='30' width='3' height='3' fill='%23efe6cf' opacity='0.8'/%3E%3Crect x='63' y='114' width='3' height='3' fill='%23efe6cf' opacity='0.8'/%3E%3Crect x='321' y='298' width='3' height='3' fill='%23efe6cf' opacity='0.8'/%3E%3Crect x='295' y='299' width='3' height='3' fill='%23efe6cf' opacity='0.3'/%3E%3Crect x='25' y='113' width='3' height='3' fill='%23efe6cf' opacity='0.5'/%3E%3Crect x='285' y='439' width='3' height='3' fill='%23efe6cf' opacity='0.3'/%3E%3Crect x='148' y='214' width='3' height='3' fill='%23efe6cf' opacity='0.3'/%3E%3Crect x='276' y='60' width='3' height='3' fill='%23efe6cf' opacity='0.3'/%3E%3Crect x='157' y='286' width='3' height='3' fill='%23efe6cf' opacity='0.8'/%3E%3Crect x='92' y='52' width='3' height='3' fill='%23efe6cf' opacity='0.8'/%3E%3Crect x='292' y='327' width='3' height='3' fill='%23efe6cf' opacity='0.8'/%3E%3Crect x='190' y='49' width='3' height='3' fill='%23efe6cf' opacity='0.3'/%3E%3Crect x='364' y='32' width='3' height='3' fill='%23efe6cf' opacity='0.8'/%3E%3Crect x='30' y='316' width='3' height='3' fill='%23efe6cf' opacity='0.8'/%3E%3Crect x='254' y='348' width='3' height='3' fill='%23efe6cf' opacity='0.3'/%3E%3Crect x='218' y='397' width='3' height='3' fill='%23efe6cf' opacity='0.8'/%3E%3Crect x='238' y='299' width='3' height='3' fill='%23efe6cf' opacity='0.5'/%3E%3Crect x='185' y='153' width='3' height='3' fill='%23efe6cf' opacity='0.5'/%3E%3Crect x='406' y='92' width='3' height='3' fill='%23efe6cf' opacity='0.3'/%3E%3Crect x='399' y='124' width='2' height='2' fill='%23efe6cf' opacity='0.8'/%3E%3Crect x='294' y='153' width='2' height='2' fill='%23efe6cf' opacity='0.3'/%3E%3Crect x='253' y='448' width='2' height='2' fill='%23efe6cf' opacity='0.8'/%3E%3Crect x='373' y='229' width='2' height='2' fill='%23efe6cf' opacity='0.5'/%3E%3Crect x='311' y='37' width='2' height='2' fill='%23efe6cf' opacity='0.5'/%3E%3Crect x='262' y='214' width='2' height='2' fill='%23efe6cf' opacity='0.3'/%3E%3Crect x='387' y='175' width='2' height='2' fill='%23efe6cf' opacity='0.3'/%3E%3Crect x='477' y='250' width='2' height='2' fill='%23efe6cf' opacity='0.3'/%3E%3Crect x='20' y='342' width='2' height='2' fill='%23efe6cf' opacity='0.5'/%3E%3Crect x='391' y='285' width='2' height='2' fill='%23efe6cf' opacity='0.3'/%3E%3Crect x='404' y='448' width='2' height='2' fill='%23efe6cf' opacity='0.8'/%3E%3Crect x='174' y='355' width='2' height='2' fill='%23efe6cf' opacity='0.5'/%3E%3Crect x='304' y='254' width='2' height='2' fill='%23efe6cf' opacity='0.5'/%3E%3Crect x='408' y='233' width='2' height='2' fill='%23efe6cf' opacity='0.8'/%3E%3Crect x='430' y='47' width='2' height='2' fill='%23efe6cf' opacity='0.3'/%3E%3Crect x='242' y='356' width='2' height='2' fill='%23efe6cf' opacity='0.5'/%3E%3Crect x='33' y='31' width='2' height='2' fill='%23efe6cf' opacity='0.8'/%3E%3Crect x='359' y='158' width='2' height='2' fill='%23efe6cf' opacity='0.8'/%3E%3Crect x='295' y='348' width='2' height='2' fill='%23efe6cf' opacity='0.8'/%3E%3Crect x='145' y='366' width='2' height='2' fill='%23efe6cf' opacity='0.5'/%3E%3Crect x='454' y='342' width='2' height='2' fill='%23efe6cf' opacity='0.5'/%3E%3Crect x='11' y='236' width='2' height='2' fill='%23efe6cf' opacity='0.5'/%3E%3Crect x='86' y='312' width='2' height='2' fill='%23efe6cf' opacity='0.5'/%3E%3Crect x='252' y='30' width='2' height='2' fill='%23efe6cf' opacity='0.3'/%3E%3Crect x='393' y='147' width='2' height='2' fill='%23efe6cf' opacity='0.3'/%3E%3Crect x='378' y='126' width='2' height='2' fill='%23efe6cf' opacity='0.3'/%3E%3Crect x='200' y='469' width='2' height='2' fill='%23efe6cf' opacity='0.5'/%3E%3Crect x='41' y='85' width='2' height='2' fill='%23efe6cf' opacity='0.5'/%3E%3Crect x='205' y='281' width='2' height='2' fill='%23efe6cf' opacity='0.5'/%3E%3Crect x='452' y='70' width='2' height='2' fill='%23efe6cf' opacity='0.5'/%3E%3Crect x='442' y='281' width='2' height='2' fill='%23efe6cf' opacity='0.5'/%3E%3Crect x='361' y='212' width='2' height='2' fill='%23efe6cf' opacity='0.5'/%3E%3Crect x='349' y='452' width='2' height='2' fill='%23efe6cf' opacity='0.5'/%3E%3Crect x='118' y='77' width='2' height='2' fill='%23efe6cf' opacity='0.5'/%3E%3Crect x='90' y='77' width='2' height='2' fill='%23efe6cf' opacity='0.3'/%3E%3Crect x='337' y='119' width='2' height='2' fill='%23efe6cf' opacity='0.3'/%3E%3Crect x='248' y='425' width='2' height='2' fill='%23efe6cf' opacity='0.3'/%3E%3Crect x='93' y='134' width='2' height='2' fill='%23efe6cf' opacity='0.8'/%3E%3Crect x='2' y='74' width='2' height='2' fill='%23efe6cf' opacity='0.5'/%3E%3Crect x='273' y='189' width='2' height='2' fill='%23efe6cf' opacity='0.5'/%3E%3Crect x='289' y='163' width='2' height='2' fill='%23efe6cf' opacity='0.8'/%3E%3Crect x='353' y='439' width='2' height='2' fill='%23efe6cf' opacity='0.3'/%3E%3Crect x='316' y='335' width='2' height='2' fill='%23efe6cf' opacity='0.8'/%3E%3Crect x='378' y='27' width='2' height='2' fill='%23efe6cf' opacity='0.8'/%3E%3Crect x='460' y='445' width='2' height='2' fill='%23efe6cf' opacity='0.5'/%3E%3Crect x='408' y='286' width='2' height='2' fill='%23efe6cf' opacity='0.8'/%3E%3Crect x='203' y='204' width='2' height='2' fill='%23efe6cf' opacity='0.5'/%3E%3Crect x='53' y='246' width='2' height='2' fill='%23efe6cf' opacity='0.5'/%3E%3Crect x='205' y='31' width='2' height='2' fill='%23efe6cf' opacity='0.8'/%3E%3Crect x='34' y='106' width='2' height='2' fill='%23efe6cf' opacity='0.3'/%3E%3Crect x='83' y='56' width='2' height='2' fill='%23efe6cf' opacity='0.5'/%3E%3Crect x='307' y='26' width='2' height='2' fill='%23efe6cf' opacity='0.5'/%3E%3Crect x='0' y='290' width='2' height='2' fill='%23efe6cf' opacity='0.3'/%3E%3Crect x='274' y='51' width='2' height='2' fill='%23efe6cf' opacity='0.3'/%3E%3Crect x='314' y='13' width='2' height='2' fill='%23efe6cf' opacity='0.5'/%3E%3Crect x='447' y='106' width='2' height='2' fill='%23efe6cf' opacity='0.3'/%3E%3Crect x='192' y='76' width='2' height='2' fill='%23efe6cf' opacity='0.8'/%3E%3Crect x='129' y='177' width='2' height='2' fill='%23efe6cf' opacity='0.8'/%3E%3Crect x='186' y='242' width='2' height='2' fill='%23efe6cf' opacity='0.8'/%3E%3Crect x='59' y='434' width='2' height='2' fill='%23efe6cf' opacity='0.3'/%3E%3Crect x='238' y='245' width='2' height='2' fill='%23efe6cf' opacity='0.5'/%3E%3Crect x='159' y='43' width='2' height='2' fill='%23efe6cf' opacity='0.5'/%3E%3Crect x='52' y='383' width='2' height='2' fill='%23efe6cf' opacity='0.3'/%3E%3Crect x='379' y='135' width='2' height='2' fill='%23efe6cf' opacity='0.5'/%3E%3Crect x='424' y='354' width='2' height='2' fill='%23efe6cf' opacity='0.5'/%3E%3Crect x='264' y='11' width='2' height='2' fill='%23efe6cf' opacity='0.3'/%3E%3Crect x='270' y='185' width='2' height='2' fill='%23efe6cf' opacity='0.3'/%3E%3Crect x='353' y='278' width='2' height='2' fill='%23efe6cf' opacity='0.3'/%3E%3Crect x='388' y='270' width='2' height='2' fill='%23efe6cf' opacity='0.3'/%3E%3Crect x='329' y='442' width='2' height='2' fill='%23efe6cf' opacity='0.5'/%3E%3Crect x='356' y='432' width='2' height='2' fill='%23efe6cf' opacity='0.3'/%3E%3Crect x='265' y='187' width='2' height='2' fill='%23efe6cf' opacity='0.5'/%3E%3Crect x='182' y='395' width='2' height='2' fill='%23efe6cf' opacity='0.3'/%3E%3Crect x='272' y='277' width='2' height='2' fill='%23efe6cf' opacity='0.3'/%3E%3Crect x='168' y='325' width='2' height='2' fill='%23efe6cf' opacity='0.8'/%3E%3Crect x='313' y='415' width='2' height='2' fill='%23efe6cf' opacity='0.3'/%3E%3Crect x='412' y='122' width='2' height='2' fill='%23efe6cf' opacity='0.3'/%3E%3Crect x='378' y='411' width='2' height='2' fill='%23efe6cf' opacity='0.5'/%3E%3Crect x='102' y='265' width='2' height='2' fill='%23efe6cf' opacity='0.3'/%3E%3Crect x='182' y='374' width='2' height='2' fill='%23efe6cf' opacity='0.5'/%3E%3Crect x='14' y='404' width='2' height='2' fill='%23efe6cf' opacity='0.3'/%3E%3Crect x='241' y='132' width='2' height='2' fill='%23efe6cf' opacity='0.5'/%3E%3Crect x='354' y='309' width='2' height='2' fill='%23efe6cf' opacity='0.3'/%3E%3Crect x='228' y='413' width='2' height='2' fill='%23efe6cf' opacity='0.5'/%3E%3Crect x='178' y='186' width='2' height='2' fill='%23efe6cf' opacity='0.8'/%3E%3Crect x='112' y='52' width='2' height='2' fill='%23efe6cf' opacity='0.3'/%3E%3Crect x='240' y='100' width='2' height='2' fill='%23efe6cf' opacity='0.3'/%3E%3Crect x='104' y='247' width='2' height='2' fill='%23efe6cf' opacity='0.5'/%3E%3Crect x='460' y='312' width='2' height='2' fill='%23efe6cf' opacity='0.8'/%3E%3Crect x='245' y='465' width='2' height='2' fill='%23efe6cf' opacity='0.3'/%3E%3Crect x='176' y='409' width='2' height='2' fill='%23efe6cf' opacity='0.8'/%3E%3Crect x='43' y='427' width='2' height='2' fill='%23efe6cf' opacity='0.8'/%3E%3Crect x='61' y='465' width='2' height='2' fill='%23efe6cf' opacity='0.8'/%3E%3Crect x='400' y='364' width='2' height='2' fill='%23efe6cf' opacity='0.5'/%3E%3Crect x='244' y='455' width='2' height='2' fill='%23efe6cf' opacity='0.3'/%3E%3Crect x='222' y='404' width='2' height='2' fill='%23efe6cf' opacity='0.3'/%3E%3Crect x='170' y='44' width='2' height='2' fill='%23efe6cf' opacity='0.8'/%3E%3Crect x='202' y='237' width='2' height='2' fill='%23efe6cf' opacity='0.8'/%3E%3Crect x='380' y='43' width='2' height='2' fill='%23efe6cf' opacity='0.5'/%3E%3Crect x='81' y='87' width='2' height='2' fill='%23efe6cf' opacity='0.8'/%3E%3Crect x='14' y='77' width='2' height='2' fill='%23efe6cf' opacity='0.3'/%3E%3Crect x='463' y='238' width='2' height='2' fill='%23efe6cf' opacity='0.8'/%3E%3Crect x='74' y='313' width='2' height='2' fill='%23efe6cf' opacity='0.8'/%3E%3Crect x='242' y='336' width='2' height='2' fill='%23efe6cf' opacity='0.8'/%3E%3C/svg%3E");
+  --chevron-light: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath d='M2 3.5l3 3 3-3' fill='none' stroke='%23efe6cf' stroke-width='1.5'/%3E%3C/svg%3E");
+  --chevron-accent: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath d='M2 3.5l3 3 3-3' fill='none' stroke='%2326231e' stroke-width='1.8'/%3E%3C/svg%3E");
+  --chevron-dragon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath d='M2 3.5l3 3 3-3' fill='none' stroke='%23F1EADB' stroke-width='1.8'/%3E%3C/svg%3E");
+  --chevron-pc88: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath d='M2 3.5l3 3 3-3' fill='none' stroke='%23282624' stroke-width='1.8'/%3E%3C/svg%3E");
+  --chevron-silver: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath d='M2 3.5l3 3 3-3' fill='none' stroke='%2325292b' stroke-width='1.8'/%3E%3C/svg%3E");
+  --chevron-desk: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath d='M2 3.5l3 3 3-3' fill='none' stroke='%23262724' stroke-width='1.8'/%3E%3C/svg%3E");
 }

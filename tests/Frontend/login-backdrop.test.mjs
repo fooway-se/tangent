@@ -15,5 +15,6 @@ test('sign-in uses a cream header over a night-sky screen with no vent strip', (
 });
 
 test('the star field is a same-origin-safe data URI, not a remote asset', () => {
-  assert.match(css, /\.login-shell\s*\{[^}]*url\("data:image\/svg\+xml,/s);
+  assert.match(css, /\.login-shell\s*\{[^}]*var\(--login-stars\)/s);
+  assert.match(tokens, /--login-stars:\s*url\("data:image\/svg\+xml,/);
 });

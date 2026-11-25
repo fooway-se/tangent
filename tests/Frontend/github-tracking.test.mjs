@@ -52,8 +52,8 @@ test('GitHub API describes repository selection, manual PR links, and signed web
   assert.match(githubProjectUi, /connectCreateButton\.hidden = !result\.can_connect/);
   assert.match(compose, /TANGENT_GITHUB_OAUTH_CLIENT_ID/);
   assert.match(compose, /TANGENT_GITHUB_OAUTH_CLIENT_SECRET/);
-  assert.match(development, /github_oauth_client_id/);
-  assert.match(development, /github_oauth_client_secret/);
+  assert.match(development, /github\.oauth_client_id/);
+  assert.match(development, /github\.oauth_client_secret/);
   assert.match(githubDocs, /TANGENT_GITHUB_OAUTH_CLIENT_ID/);
   assert.match(githubDocs, /TANGENT_GITHUB_OAUTH_CLIENT_SECRET/);
   assert.match(githubDocs, /Contents: Read-only/);

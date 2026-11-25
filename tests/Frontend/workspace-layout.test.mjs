@@ -81,7 +81,8 @@ test('workspace UI uses the beige case, dark screens and shared rounded controls
   assert.match(tokens, /--screen:\s*#[0-9a-f]{6}/i);
   assert.match(tokens, /--screen-border:\s*#[0-9a-f]{6}/i);
   assert.match(tokens, /--signal-stripe:\s*linear-gradient/);
-  assert.match(css, /\.workspace-screen, \.project-chat-column\s*\{[^}]*var\(--screen\)/s);
+  assert.match(css, /\.workspace-screen, \.project-chat-column\s*\{[^}]*background: var\(--screen-surface\)/s);
+  assert.match(tokens, /--screen-surface:\s*[^;]*var\(--screen\)/);
   assert.match(css, /\.panel\s*\{[^}]*border-radius:\s*var\(--radius-panel\)/s);
 });
 
