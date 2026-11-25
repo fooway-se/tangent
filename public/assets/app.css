@@ -396,7 +396,6 @@ select { padding-right: 28px; background: var(--screen-inset) var(--chevron-ligh
 .project-repository-card[hidden], .project-repository-detail[hidden] { display: none; }
 .project-repository-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .project-repository-header .eyebrow { margin-bottom: 4px; }
-.project-repository-header h3 { margin: 0; font-size: 15px; }
 .project-repository-link { color: var(--accent); font: 700 13px var(--font-code); overflow-wrap: anywhere; }
 .project-repository-details { display: grid; gap: 10px; }
 .project-repository-detail { display: grid; gap: 5px; color: var(--screen-ink); font-size: 12px; }
@@ -406,6 +405,7 @@ select { padding-right: 28px; background: var(--screen-inset) var(--chevron-ligh
 .project-repository-clone-row > code { min-width: 0; overflow-wrap: anywhere; border: 1px solid var(--screen-border); border-radius: var(--radius-panel); padding: 8px 10px; color: var(--screen-ink); background: var(--screen-inset); font: 12px/1.45 var(--font-code); }
 .project-repository-clone-row .button { white-space: nowrap; }
 .project-repository-help, .project-repository-status { margin: 0; color: var(--screen-muted); font-size: 11px; }
+.project-repository-help { margin-top: 8px; }
 .project-repository-status:empty { display: none; }
 .project-notes-modes { display: flex; flex: 0 0 auto; gap: 4px; }
 .project-notes-modes .button { border-color: var(--screen-border); padding: 5px 10px; color: var(--screen-muted); }

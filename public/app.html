@@ -14,7 +14,7 @@
     <link rel="icon" href="./assets/icons/tangent-icon.svg" type="image/svg+xml">
     <link rel="icon" href="./assets/icons/tangent-32.png" sizes="32x32" type="image/png">
     <link rel="stylesheet" href="./assets/tokens.css">
-    <link rel="stylesheet" href="./assets/app.css?v=16a94642b872">
+    <link rel="stylesheet" href="./assets/app.css?v=ead2685334b9">
     <script type="module" src="./assets/app.js?v=5bd5373d2f7b"></script>
   </head>
   <body>
@@ -415,22 +415,10 @@
                 </form>
               </section>
               <section id="project-notes-view" class="project-tab-view project-notes-view" role="tabpanel" tabindex="-1" hidden aria-labelledby="notes-tab">
-                <header class="project-notes-heading">
-                  <div>
-                    <p class="eyebrow">Internal project notes</p>
-                    <h2>Notes</h2>
-                    <p class="panel-description">A shared Markdown page for project context. Only internal team members and workspace admins can access it.</p>
-                  </div>
-                  <div class="project-notes-modes" role="group" aria-label="Notes view">
-                    <button id="project-notes-write" class="button button-quiet" type="button" aria-pressed="false">Write</button>
-                    <button id="project-notes-preview-toggle" class="button button-quiet is-active" type="button" aria-pressed="true">Preview</button>
-                  </div>
-                </header>
                 <section id="project-repository-card" class="panel project-repository-card" aria-labelledby="project-repository-heading" hidden>
                   <div class="project-repository-header">
                     <div>
-                      <p class="eyebrow">Repository</p>
-                      <h3 id="project-repository-heading">Linked repository</h3>
+                      <p id="project-repository-heading" class="eyebrow">Repository</p>
                     </div>
                     <a id="project-repository-link" class="project-repository-link" target="_blank" rel="noopener noreferrer"></a>
                   </div>
@@ -450,6 +438,16 @@
                   <p class="project-repository-help">Cloning checks out the default branch. GitHub access uses your local credentials.</p>
                   <p id="project-repository-status" class="project-repository-status" role="status" aria-live="polite"></p>
                 </section>
+                <header class="project-notes-heading">
+                  <div>
+                    <p class="eyebrow">Internal project notes</p>
+                    <p class="panel-description">A shared Markdown page for project context. Only internal team members and workspace admins can access it.</p>
+                  </div>
+                  <div class="project-notes-modes" role="group" aria-label="Notes view">
+                    <button id="project-notes-write" class="button button-quiet" type="button" aria-pressed="false">Write</button>
+                    <button id="project-notes-preview-toggle" class="button button-quiet is-active" type="button" aria-pressed="true">Preview</button>
+                  </div>
+                </header>
                 <form id="project-notes-form" class="project-notes-form">
                   <label class="visually-hidden" for="project-notes-input">Project notes in Markdown</label>
                   <textarea id="project-notes-input" name="notes" rows="20" maxlength="50000" spellcheck="false" placeholder="# Project notes&#10;&#10;Add decisions, setup steps, or useful links…" hidden></textarea>
