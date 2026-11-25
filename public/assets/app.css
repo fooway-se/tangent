@@ -1618,11 +1618,20 @@ dialog::backdrop { background: var(--backdrop); }
 }
 :root:not([data-theme]) .workspace-nav-button:not(.is-active),
 :root:not([data-theme]) .project-sidebar-link:not(.is-active),
-:root:not([data-theme]) .workspace-content .button:not(.button-quiet):not(.button-primary):not(.button-danger) {
+:root:not([data-theme]) .workspace-content .button:not(.button-quiet):not(.button-primary) {
   border-color: var(--cap-edge);
   color: var(--plate-ink);
   background: linear-gradient(180deg, var(--cap-top), var(--cap-bottom));
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 1px 0 rgba(0, 0, 0, 0.38);
+}
+:root:not([data-theme]) .workspace-content .button-danger:not(.button-quiet):not(.button-primary) {
+  color: var(--danger);
+}
+:root:is([data-theme="rainbow"], [data-theme="breadbin"], [data-theme="broadcast"]) .workspace-content .button-danger:not(.button-quiet):not(.button-primary) {
+  border-color: var(--screen-border);
+}
+:root[data-theme="broadcast"] .issue-selection-button {
+  color: var(--screen-ink);
 }
 :root:not([data-theme]) .workspace-nav-button,
 :root:not([data-theme]) .project-sidebar-link { border-radius: var(--radius-cap); }

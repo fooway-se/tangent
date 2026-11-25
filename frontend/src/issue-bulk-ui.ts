@@ -176,7 +176,7 @@ export function initIssueBulkUi(options: IssueBulkUiOptions): {
 
     const selectAll = doc.createElement('button');
     selectAll.type = 'button';
-    selectAll.className = 'button button-secondary issue-bulk-select-all';
+    selectAll.className = 'button button-secondary issue-selection-button issue-bulk-select-all';
     selectAll.textContent = 'Select all';
     selectAll.addEventListener('click', () => {
       const state = options.getState();
