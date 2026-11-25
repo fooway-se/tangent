@@ -162,8 +162,11 @@ export function createIssueRowUi(options) {
                 actions.append(button);
             }
         }
-        actions.append(options.createStatusButton(issue));
-        item.append(content, actions);
+        const statusButton = options.createStatusButton(issue);
+        const header = doc.createElement('div');
+        header.className = 'issue-card-header';
+        header.append(content, actions);
+        item.append(header, statusButton);
         return item;
     }
     return { create, createDiscussionIndicator };
