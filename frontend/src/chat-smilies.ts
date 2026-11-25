@@ -12,14 +12,16 @@ export type ChatSmileyIcon =
   | 'coffee'
   | 'beer'
   | 'pizza'
-  | 'burger';
+  | 'burger'
+  | 'sushi'
+  | 'chinese';
 
 export interface ChatSmileySegment {
   text: string;
   icon: ChatSmileyIcon | null;
 }
 
-const shortcutPattern = /(?<![\p{L}\p{N}_])(?::coffee:?(?![\p{L}\p{N}_])|:beer:?(?![\p{L}\p{N}_])|:pizza:?(?![\p{L}\p{N}_])|:burger:?(?![\p{L}\p{N}_])|:'-\(|:'\(|>:-\(|>:\(|:-\)(?![\p{L}\p{N}_])|:\)(?![\p{L}\p{N}_])|;-\)(?![\p{L}\p{N}_])|;\)(?![\p{L}\p{N}_])|:-\((?![\p{L}\p{N}_])|:\((?![\p{L}\p{N}_])|:-\|(?![\p{L}\p{N}_])|:\|(?![\p{L}\p{N}_])|:-o(?![\p{L}\p{N}_])|:o(?![\p{L}\p{N}_])|:-\/(?![\p{L}\p{N}_])|:\/(?![\p{L}\p{N}_])|:-d(?![\p{L}\p{N}_])|:d(?![\p{L}\p{N}_])|:-p(?![\p{L}\p{N}_])|:p(?![\p{L}\p{N}_]))/giu;
+const shortcutPattern = /(?<![\p{L}\p{N}_])(?::coffee:?(?![\p{L}\p{N}_])|:beer:?(?![\p{L}\p{N}_])|:pizza:?(?![\p{L}\p{N}_])|:burger:?(?![\p{L}\p{N}_])|:sushi:?(?![\p{L}\p{N}_])|:chinese:?(?![\p{L}\p{N}_])|:'-\(|:'\(|>:-\(|>:\(|:-\)(?![\p{L}\p{N}_])|:\)(?![\p{L}\p{N}_])|;-\)(?![\p{L}\p{N}_])|;\)(?![\p{L}\p{N}_])|:-\((?![\p{L}\p{N}_])|:\((?![\p{L}\p{N}_])|:-\|(?![\p{L}\p{N}_])|:\|(?![\p{L}\p{N}_])|:-o(?![\p{L}\p{N}_])|:o(?![\p{L}\p{N}_])|:-\/(?![\p{L}\p{N}_])|:\/(?![\p{L}\p{N}_])|:-d(?![\p{L}\p{N}_])|:d(?![\p{L}\p{N}_])|:-p(?![\p{L}\p{N}_])|:p(?![\p{L}\p{N}_]))/giu;
 
 const shortcutIcons: Readonly<Record<string, ChatSmileyIcon>> = {
   ':)': 'smile',
@@ -50,6 +52,10 @@ const shortcutIcons: Readonly<Record<string, ChatSmileyIcon>> = {
   ':pizza:': 'pizza',
   ':burger': 'burger',
   ':burger:': 'burger',
+  ':sushi': 'sushi',
+  ':sushi:': 'sushi',
+  ':chinese': 'chinese',
+  ':chinese:': 'chinese',
 };
 
 export function splitChatSmilies(value: string): ChatSmileySegment[] {

@@ -40,7 +40,7 @@ test('additional face shortcuts cover neutral, surprised, uncertain, crying, and
 });
 
 test('named shortcuts support the agreed food and drink tokens with or without a closing colon', () => {
-  assert.deepEqual(splitChatSmilies('Coffee :coffee and :beer: :pizza :burger!'), [
+  assert.deepEqual(splitChatSmilies('Coffee :coffee and :beer: :pizza :burger :sushi :chinese:!'), [
     { text: 'Coffee ', icon: null },
     { text: ':coffee', icon: 'coffee' },
     { text: ' and ', icon: null },
@@ -49,13 +49,17 @@ test('named shortcuts support the agreed food and drink tokens with or without a
     { text: ':pizza', icon: 'pizza' },
     { text: ' ', icon: null },
     { text: ':burger', icon: 'burger' },
+    { text: ' ', icon: null },
+    { text: ':sushi', icon: 'sushi' },
+    { text: ' ', icon: null },
+    { text: ':chinese:', icon: 'chinese' },
     { text: '!', icon: null },
   ]);
 });
 
 test('unsupported and embedded shortcut-like text remains unchanged', () => {
-  assert.deepEqual(splitChatSmilies('mail:coffeehouse :tea :orange x:beer'), [
-    { text: 'mail:coffeehouse :tea :orange x:beer', icon: null },
+  assert.deepEqual(splitChatSmilies('mail:coffeehouse :tea :orange x:beer :sushimi :chinesefood'), [
+    { text: 'mail:coffeehouse :tea :orange x:beer :sushimi :chinesefood', icon: null },
   ]);
 });
 
