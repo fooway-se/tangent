@@ -914,6 +914,15 @@ dialog::backdrop { background: var(--backdrop); }
 }
 
 @container workspace-screen (max-width: 620px) {
+  .my-work-task-group .issue-card.inbox-issue-card {
+    grid-template-columns: 10px minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    align-items: start;
+    gap: 4px 12px;
+  }
+  .my-work-task-group .issue-card.inbox-issue-card > .inbox-marker { grid-column: 1; grid-row: 2; margin-top: 5px; }
+  .my-work-task-group .issue-card.inbox-issue-card > .issue-content { grid-column: 2; grid-row: 2; }
+  .my-work-task-group .issue-card.inbox-issue-card > .inbox-updated { grid-column: 2; grid-row: 1; justify-self: end; }
   .project-main { padding: 12px 14px 18px; }
   .project-page-heading { align-items: flex-start; flex-direction: column; }
   .project-page-actions { width: 100%; justify-content: flex-start; }
