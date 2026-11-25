@@ -87,3 +87,13 @@ test('smiley artwork stays theme-colored and remains clear at chat size', () => 
   assert.match(css, /\.chat-smiley-coffee-surface \{[^}]*fill: var\(--accent-edge\)/);
   assert.match(css, /\.chat-smiley-pizza-topping \{[^}]*fill: var\(--smiley-line\)/);
 });
+
+test('sick shortcut renders the nauseated face and stays word-bounded', () => {
+  assert.deepEqual(splitChatSmilies('Feeling :sick or :SICK: but not :sickness'), [
+    { text: 'Feeling ', icon: null },
+    { text: ':sick', icon: 'nauseated' },
+    { text: ' or ', icon: null },
+    { text: ':SICK:', icon: 'nauseated' },
+    { text: ' but not :sickness', icon: null },
+  ]);
+});

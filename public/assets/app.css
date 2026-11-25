@@ -721,6 +721,8 @@ details[open] > .disclosure-summary::before { transform: rotate(90deg); }
 .chat-smiley-filling { fill: var(--smiley-foam); stroke: none; }
 .chat-smiley-band { fill: var(--smiley-crust); stroke: none; }
 .chat-smiley-shade { fill: var(--smiley-line); fill-opacity: 0.14; stroke: none; }
+.chat-smiley-sick { fill: color-mix(in srgb, green 38%, transparent); stroke: none; }
+.chat-smiley-sick-cheek { fill: color-mix(in srgb, green 34%, transparent); stroke: none; }
 .chat-smiley-gloss { fill: white; fill-opacity: 0.4; stroke: none; }
 .chat-smiley-teeth { fill: var(--smiley-face); stroke: none; }
 .chat-smiley-brow { fill: none; stroke: var(--smiley-line); stroke-linecap: round; stroke-linejoin: round; stroke-width: 2.2; }

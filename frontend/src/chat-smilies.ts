@@ -9,6 +9,7 @@ export type ChatSmileyIcon =
   | 'uncertain'
   | 'crying'
   | 'angry'
+  | 'nauseated'
   | 'coffee'
   | 'beer'
   | 'pizza'
@@ -21,7 +22,7 @@ export interface ChatSmileySegment {
   icon: ChatSmileyIcon | null;
 }
 
-const shortcutPattern = /(?<![\p{L}\p{N}_])(?::coffee:?(?![\p{L}\p{N}_])|:beer:?(?![\p{L}\p{N}_])|:pizza:?(?![\p{L}\p{N}_])|:burger:?(?![\p{L}\p{N}_])|:sushi:?(?![\p{L}\p{N}_])|:chinese:?(?![\p{L}\p{N}_])|:'-\(|:'\(|>:-\(|>:\(|:-\)(?![\p{L}\p{N}_])|:\)(?![\p{L}\p{N}_])|;-\)(?![\p{L}\p{N}_])|;\)(?![\p{L}\p{N}_])|:-\((?![\p{L}\p{N}_])|:\((?![\p{L}\p{N}_])|:-\|(?![\p{L}\p{N}_])|:\|(?![\p{L}\p{N}_])|:-o(?![\p{L}\p{N}_])|:o(?![\p{L}\p{N}_])|:-\/(?![\p{L}\p{N}_])|:\/(?![\p{L}\p{N}_])|:-d(?![\p{L}\p{N}_])|:d(?![\p{L}\p{N}_])|:-p(?![\p{L}\p{N}_])|:p(?![\p{L}\p{N}_]))/giu;
+const shortcutPattern = /(?<![\p{L}\p{N}_])(?::coffee:?(?![\p{L}\p{N}_])|:beer:?(?![\p{L}\p{N}_])|:pizza:?(?![\p{L}\p{N}_])|:burger:?(?![\p{L}\p{N}_])|:sushi:?(?![\p{L}\p{N}_])|:chinese:?(?![\p{L}\p{N}_])|:sick:?(?![\p{L}\p{N}_])|:'-\(|:'\(|>:-\(|>:\(|:-\)(?![\p{L}\p{N}_])|:\)(?![\p{L}\p{N}_])|;-\)(?![\p{L}\p{N}_])|;\)(?![\p{L}\p{N}_])|:-\((?![\p{L}\p{N}_])|:\((?![\p{L}\p{N}_])|:-\|(?![\p{L}\p{N}_])|:\|(?![\p{L}\p{N}_])|:-o(?![\p{L}\p{N}_])|:o(?![\p{L}\p{N}_])|:-\/(?![\p{L}\p{N}_])|:\/(?![\p{L}\p{N}_])|:-d(?![\p{L}\p{N}_])|:d(?![\p{L}\p{N}_])|:-p(?![\p{L}\p{N}_])|:p(?![\p{L}\p{N}_]))/giu;
 
 const shortcutIcons: Readonly<Record<string, ChatSmileyIcon>> = {
   ':)': 'smile',
@@ -56,6 +57,8 @@ const shortcutIcons: Readonly<Record<string, ChatSmileyIcon>> = {
   ':sushi:': 'sushi',
   ':chinese': 'chinese',
   ':chinese:': 'chinese',
+  ':sick': 'nauseated',
+  ':sick:': 'nauseated',
 };
 
 export function splitChatSmilies(value: string): ChatSmileySegment[] {
