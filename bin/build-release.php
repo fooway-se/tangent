@@ -47,6 +47,13 @@ if (proc_close($git) !== 0) {
 $tracked = array_values(array_filter(explode("\0", (string) $trackedOutput), static fn (string $path): bool => $path !== ''));
 $trackedSet = array_fill_keys($tracked, true);
 
+foreach (glob($root . '/migrations/[0-9][0-9][0-9]_*.sql') ?: [] as $migrationPath) {
+    $relative = 'migrations/' . basename($migrationPath);
+    if (!isset($trackedSet[$relative])) {
+        $fail("Untracked migration would be omitted from the release: {$relative}. Add and commit it before building.");
+    }
+}
+
 foreach ($requiredFiles as $relative) {
     if (!isset($trackedSet[$relative]) || !is_file($root . '/' . $relative) || is_link($root . '/' . $relative)) {
         $fail("Required tracked release file is missing: {$relative}");

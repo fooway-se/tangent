@@ -43,6 +43,13 @@ final class ReleaseBuilderTest extends TestCase
             self::assertSame([], glob($temporaryRoot . '/dist/*.zip') ?: []);
 
             copy($root . '/public/assets/app.js', $temporaryRoot . '/public/assets/app.js');
+            file_put_contents($temporaryRoot . '/migrations/999_untracked_migration.sql', "ALTER TABLE projects ADD COLUMN test_column INT NULL;\n");
+            $untrackedMigrationBuild = $this->runCommand([PHP_BINARY, 'bin/build-release.php'], $temporaryRoot, false);
+            self::assertNotSame(0, $untrackedMigrationBuild['status'], 'The release builder silently omitted an untracked migration.');
+            self::assertStringContainsString('untracked migration', strtolower($untrackedMigrationBuild['stderr']));
+            self::assertSame([], glob($temporaryRoot . '/dist/*.zip') ?: []);
+
+            unlink($temporaryRoot . '/migrations/999_untracked_migration.sql');
             $build = $this->runCommand([PHP_BINARY, 'bin/build-release.php'], $temporaryRoot);
             self::assertSame(0, $build['status'], trim($build['stdout'] . "\n" . $build['stderr']));
             $archives = glob($temporaryRoot . '/dist/*.zip') ?: [];
@@ -63,6 +70,7 @@ final class ReleaseBuilderTest extends TestCase
             self::assertContains('tangent-release/public_html/assets/app.js', $entries);
             self::assertContains('tangent-release/tangent-app/bootstrap.php', $entries);
             self::assertContains('tangent-release/tangent-app/migrations/001_core.sql', $entries);
+            self::assertContains('tangent-release/tangent-app/migrations/047_project_github_default_branch.sql', $entries);
         } finally {
             $this->removeTree($temporaryRoot);
         }

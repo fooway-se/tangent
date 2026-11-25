@@ -59,6 +59,7 @@ export interface GitHubRepository {
   name: string;
   full_name: string;
   html_url: string;
+  default_branch?: string | null;
 }
 
 export type GitHubRepositoryOptionSelection = { installation_id: number; owner: string; name: string } & (

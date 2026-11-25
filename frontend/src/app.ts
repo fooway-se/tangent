@@ -1727,6 +1727,7 @@ function updateProjectReadOnlyNotice(status: Project['status']): void {
 
 function applyEditedProject(project: Project): void {
   activeProject = project;
+  projectNotesUi.refreshRepository();
   projectHeading.textContent = project.name;
   projectDescription.textContent = project.description;
   projectDescription.hidden = project.description.trim() === '';

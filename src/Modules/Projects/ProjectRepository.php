@@ -24,7 +24,8 @@ final class ProjectRepository
         $statement = $this->pdo->prepare(
             'SELECT p.id, p.workspace_id, p.name, p.slug, p.description, p.status, p.archived_from_status,
                     p.github_installation_id, p.github_repository_id, p.github_repository_owner, p.github_repository_name,
-                    p.github_repository_full_name, p.github_repository_url, p.created_by, p.created_at, p.updated_at'
+                    p.github_repository_full_name, p.github_repository_url, p.github_repository_default_branch,
+                    p.created_by, p.created_at, p.updated_at'
             . $membership . '
              FROM projects p' . $membershipJoin . '
              WHERE p.workspace_id = :workspace_id
@@ -44,7 +45,8 @@ final class ProjectRepository
         $statement = $this->pdo->prepare(
             'SELECT id, workspace_id, name, slug, description, status, archived_from_status,
                     github_installation_id, github_repository_id, github_repository_owner, github_repository_name,
-                    github_repository_full_name, github_repository_url, created_by, created_at, updated_at
+                    github_repository_full_name, github_repository_url, github_repository_default_branch,
+                    created_by, created_at, updated_at
              FROM projects
              WHERE workspace_id = :workspace_id AND id = :id
              LIMIT 1' . ($forUpdate ? ' FOR UPDATE' : '')
@@ -167,10 +169,12 @@ final class ProjectRepository
             $statement = $this->pdo->prepare(
                 'INSERT INTO projects
                     (workspace_id, name, slug, description, status, github_installation_id, github_repository_id,
-                     github_repository_owner, github_repository_name, github_repository_full_name, github_repository_url, created_by)
+                     github_repository_owner, github_repository_name, github_repository_full_name, github_repository_url,
+                     github_repository_default_branch, created_by)
                  VALUES
                     (:workspace_id, :name, :slug, :description, :status, :github_installation_id, :github_repository_id,
-                     :github_repository_owner, :github_repository_name, :github_repository_full_name, :github_repository_url, :created_by)'
+                     :github_repository_owner, :github_repository_name, :github_repository_full_name, :github_repository_url,
+                     :github_repository_default_branch, :created_by)'
             );
             $statement->execute([
                 'workspace_id' => $workspaceId,
@@ -184,6 +188,7 @@ final class ProjectRepository
                 'github_repository_name' => $githubRepository['name'] ?? null,
                 'github_repository_full_name' => $githubRepository['full_name'] ?? null,
                 'github_repository_url' => $githubRepository['html_url'] ?? null,
+                'github_repository_default_branch' => $githubRepository['default_branch'] ?? null,
                 'created_by' => $creatorId,
             ]);
             $projectId = (int) $this->pdo->lastInsertId();
@@ -217,7 +222,8 @@ final class ProjectRepository
                  archived_from_status = :archived_from_status,
                  github_installation_id = :github_installation_id, github_repository_id = :github_repository_id,
                  github_repository_owner = :github_repository_owner, github_repository_name = :github_repository_name,
-                 github_repository_full_name = :github_repository_full_name, github_repository_url = :github_repository_url
+                 github_repository_full_name = :github_repository_full_name, github_repository_url = :github_repository_url,
+                 github_repository_default_branch = :github_repository_default_branch
              WHERE workspace_id = :workspace_id AND id = :id'
         );
         $statement->execute([
@@ -233,6 +239,7 @@ final class ProjectRepository
             'github_repository_name' => $project['github_repository']['name'] ?? null,
             'github_repository_full_name' => $project['github_repository']['full_name'] ?? null,
             'github_repository_url' => $project['github_repository']['html_url'] ?? null,
+            'github_repository_default_branch' => $project['github_repository']['default_branch'] ?? null,
         ]);
 
         if ($statement->rowCount() > 0) return true;
@@ -336,6 +343,7 @@ final class ProjectRepository
                 'name' => $project['github_repository_name'],
                 'full_name' => $project['github_repository_full_name'],
                 'html_url' => $project['github_repository_url'],
+                'default_branch' => $project['github_repository_default_branch'],
             ];
         }
         unset(
@@ -345,6 +353,7 @@ final class ProjectRepository
             $project['github_repository_name'],
             $project['github_repository_full_name'],
             $project['github_repository_url'],
+            $project['github_repository_default_branch'],
         );
         return $project;
     }

@@ -30,8 +30,14 @@ function withPage(t) {
   const selectors = [
     '#project-notes-view', '#project-notes-form', '#project-notes-input', '#project-notes-preview',
     '#project-notes-status', '#project-notes-save', '#project-notes-write', '#project-notes-preview-toggle',
+    '#project-repository-card', '#project-repository-link', '#project-repository-branch-row',
+    '#project-repository-default-branch', '#project-repository-clone-command', '#project-repository-copy',
+    '#project-repository-status',
   ];
   const elements = new Map(selectors.map((selector) => [selector, new FakeElement()]));
+  elements.get('#project-repository-card').hidden = true;
+  elements.get('#project-repository-branch-row').hidden = true;
+  elements.get('#project-repository-copy').disabled = true;
   globalThis.document = {
     cookie: 'tangent_csrf=test-token',
     querySelector: (selector) => elements.get(selector) ?? null,
@@ -94,6 +100,94 @@ test('project notes load in Preview, track edits, and save with the CSRF header'
   assert.equal(save.disabled, true);
   assert.equal(elements.get('#project-notes-status').textContent, 'Saved. Notes are private to the internal team.');
 
+  ui.dispose();
+});
+
+test('project notes show repository details and copy the clone command', async (t) => {
+  const elements = withPage(t);
+  const project = {
+    id: 12,
+    status: 'active',
+    github_repository: {
+      id: 42,
+      installation_id: 5,
+      owner: 'acme',
+      name: 'client',
+      full_name: 'acme/client',
+      html_url: 'https://github.com/acme/client',
+      default_branch: 'trunk',
+    },
+  };
+  const copiedCommands = [];
+  globalThis.fetch = async () => response({ notes: '', updated_at: null });
+  const ui = initProjectNotesUi({
+    getProject: () => project,
+    onUnauthorized: () => assert.fail('session should remain signed in'),
+    copyToClipboard: async (command) => { copiedCommands.push(command); },
+  });
+
+  await ui.load(project.id);
+
+  assert.equal(elements.get('#project-repository-card').hidden, false);
+  assert.equal(elements.get('#project-repository-link').textContent, 'acme/client');
+  assert.equal(elements.get('#project-repository-link').href, 'https://github.com/acme/client');
+  assert.equal(elements.get('#project-repository-branch-row').hidden, false);
+  assert.equal(elements.get('#project-repository-default-branch').textContent, 'trunk');
+  assert.equal(elements.get('#project-repository-clone-command').textContent, 'git clone https://github.com/acme/client.git');
+
+  elements.get('#project-repository-copy').dispatchEvent(new Event('click'));
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(copiedCommands, ['git clone https://github.com/acme/client.git']);
+  assert.equal(elements.get('#project-repository-status').textContent, 'Clone command copied.');
+
+  ui.dispose();
+});
+
+test('project notes hide repository details when no repository is linked', async (t) => {
+  const elements = withPage(t);
+  const project = { id: 13, status: 'active', github_repository: null };
+  globalThis.fetch = async () => response({ notes: '', updated_at: null });
+  const ui = initProjectNotesUi({ getProject: () => project, onUnauthorized: () => assert.fail('session should remain signed in') });
+
+  await ui.load(project.id);
+
+  assert.equal(elements.get('#project-repository-card').hidden, true);
+  ui.dispose();
+});
+
+test('project repository details refresh after the linked repository changes', async (t) => {
+  const elements = withPage(t);
+  const project = {
+    id: 14,
+    status: 'active',
+    github_repository: {
+      id: 1,
+      installation_id: 5,
+      owner: 'acme',
+      name: 'old-repo',
+      full_name: 'acme/old-repo',
+      html_url: 'https://github.com/acme/old-repo',
+      default_branch: 'main',
+    },
+  };
+  globalThis.fetch = async () => response({ notes: '', updated_at: null });
+  const ui = initProjectNotesUi({ getProject: () => project, onUnauthorized: () => assert.fail('session should remain signed in') });
+
+  await ui.load(project.id);
+  project.github_repository = {
+    id: 2,
+    installation_id: 5,
+    owner: 'acme',
+    name: 'new-repo',
+    full_name: 'acme/new-repo',
+    html_url: 'https://github.com/acme/new-repo',
+    default_branch: 'trunk',
+  };
+  ui.refreshRepository();
+
+  assert.equal(elements.get('#project-repository-link').textContent, 'acme/new-repo');
+  assert.equal(elements.get('#project-repository-default-branch').textContent, 'trunk');
+  assert.equal(elements.get('#project-repository-clone-command').textContent, 'git clone https://github.com/acme/new-repo.git');
   ui.dispose();
 });
 

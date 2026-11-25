@@ -9,10 +9,61 @@ export function initProjectNotesUi(options) {
     const projectNotesSave = document.querySelector('#project-notes-save');
     const projectNotesWrite = document.querySelector('#project-notes-write');
     const projectNotesPreviewToggle = document.querySelector('#project-notes-preview-toggle');
+    const projectRepositoryCard = document.querySelector('#project-repository-card');
+    const projectRepositoryLink = document.querySelector('#project-repository-link');
+    const projectRepositoryBranchRow = document.querySelector('#project-repository-branch-row');
+    const projectRepositoryDefaultBranch = document.querySelector('#project-repository-default-branch');
+    const projectRepositoryCloneCommand = document.querySelector('#project-repository-clone-command');
+    const projectRepositoryCopy = document.querySelector('#project-repository-copy');
+    const projectRepositoryStatus = document.querySelector('#project-repository-status');
     const listeners = new AbortController();
     let loadedProjectNotesId = null;
     let savedProjectNotes = '';
+    let cloneCommand = '';
     let projectNotesMode = DEFAULT_PROJECT_NOTES_MODE;
+    function renderRepository(project) {
+        const repository = project?.github_repository ?? null;
+        projectRepositoryStatus.textContent = '';
+        if (repository === null) {
+            projectRepositoryCard.hidden = true;
+            projectRepositoryLink.href = '';
+            projectRepositoryLink.textContent = '';
+            projectRepositoryBranchRow.hidden = true;
+            projectRepositoryDefaultBranch.textContent = '';
+            projectRepositoryCloneCommand.textContent = '';
+            projectRepositoryCopy.disabled = true;
+            cloneCommand = '';
+            return;
+        }
+        projectRepositoryCard.hidden = false;
+        projectRepositoryLink.href = repository.html_url;
+        projectRepositoryLink.textContent = repository.full_name;
+        const defaultBranch = repository.default_branch?.trim() ?? '';
+        projectRepositoryBranchRow.hidden = defaultBranch === '';
+        projectRepositoryDefaultBranch.textContent = defaultBranch;
+        cloneCommand = `git clone ${repository.html_url.replace(/\/+$/, '')}.git`;
+        projectRepositoryCloneCommand.textContent = cloneCommand;
+        projectRepositoryCopy.disabled = false;
+    }
+    async function copyRepositoryCommand() {
+        if (cloneCommand === '')
+            return;
+        try {
+            if (options.copyToClipboard !== undefined) {
+                await options.copyToClipboard(cloneCommand);
+            }
+            else {
+                if (typeof navigator === 'undefined' || typeof navigator.clipboard?.writeText !== 'function') {
+                    throw new Error('Clipboard access is unavailable.');
+                }
+                await navigator.clipboard.writeText(cloneCommand);
+            }
+            projectRepositoryStatus.textContent = 'Clone command copied.';
+        }
+        catch {
+            projectRepositoryStatus.textContent = 'Could not copy the command. Select and copy it manually.';
+        }
+    }
     function setMode(mode) {
         projectNotesMode = mode;
         const isWriting = mode === 'write';
@@ -46,6 +97,7 @@ export function initProjectNotesUi(options) {
     function reset() {
         loadedProjectNotesId = null;
         savedProjectNotes = '';
+        renderRepository(null);
         projectNotesInput.value = '';
         projectNotesStatus.textContent = 'Notes are private to the internal team.';
         projectNotesSave.disabled = true;
@@ -59,6 +111,8 @@ export function initProjectNotesUi(options) {
             setMode('preview');
     }
     async function load(projectId) {
+        const project = options.getProject();
+        renderRepository(project?.id === projectId ? project : null);
         projectNotesStatus.textContent = 'Loading notes…';
         projectNotesInput.disabled = true;
         projectNotesSave.disabled = true;
@@ -128,11 +182,13 @@ export function initProjectNotesUi(options) {
     }
     projectNotesWrite.addEventListener('click', () => setMode('write'), { signal: listeners.signal });
     projectNotesPreviewToggle.addEventListener('click', () => setMode('preview'), { signal: listeners.signal });
+    projectRepositoryCopy.addEventListener('click', () => { void copyRepositoryCommand(); }, { signal: listeners.signal });
     projectNotesInput.addEventListener('input', updateDirtyState, { signal: listeners.signal });
     projectNotesForm.addEventListener('submit', (event) => { void save(event); }, { signal: listeners.signal });
     return {
         view: projectNotesView,
         reset,
+        refreshRepository: () => renderRepository(options.getProject()),
         setMode,
         setReadOnly,
         isLoadedFor: (projectId) => loadedProjectNotesId === projectId,

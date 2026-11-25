@@ -25,6 +25,7 @@ final class GitHubTrackingTest extends ApiTestCase
             'name' => 'test-repo',
             'full_name' => 'test-org/test-repo',
             'html_url' => 'https://github.com/test-org/test-repo',
+            'default_branch' => 'trunk',
         ];
         $client = new FakeGitHubApiClient($repository, []);
         $installation = $this->pdo->prepare(
@@ -54,6 +55,7 @@ final class GitHubTrackingTest extends ApiTestCase
         self::assertSame(0, $client->repositoryCatalogueCalls);
         self::assertSame(1, $client->targetedRepositoryCalls);
         self::assertSame([445566, 7654321, 'test-org', 'test-repo'], $client->targetedRepositoryLookups[0]);
+        self::assertSame('trunk', $created->body['project']['github_repository']['default_branch']);
 
         $projectId = (int) $created->body['project']['id'];
         $updated = $this->cookieRequest('PATCH', "/api/v1/projects/{$projectId}", $admin['cookie'], [

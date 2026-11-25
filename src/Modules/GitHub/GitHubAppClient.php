@@ -87,6 +87,7 @@ final class GitHubAppClient implements GitHubApiClient
                     'name' => (string) $repository['name'],
                     'full_name' => (string) ($repository['full_name'] ?? ''),
                     'html_url' => (string) ($repository['html_url'] ?? ''),
+                    'default_branch' => is_string($repository['default_branch'] ?? null) ? $repository['default_branch'] : null,
                     'private' => (bool) ($repository['private'] ?? true),
                 ];
             }
@@ -114,6 +115,7 @@ final class GitHubAppClient implements GitHubApiClient
             'name' => (string) $repository['name'],
             'full_name' => (string) ($repository['full_name'] ?? $owner . '/' . $repository['name']),
             'html_url' => (string) ($repository['html_url'] ?? ''),
+            'default_branch' => is_string($repository['default_branch'] ?? null) ? $repository['default_branch'] : null,
             'private' => (bool) ($repository['private'] ?? true),
         ];
     }

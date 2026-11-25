@@ -2241,7 +2241,7 @@ components:
         created_by: { type: integer }
     GitHubRepository:
       type: object
-      required: [id, installation_id, owner, name, full_name, html_url]
+      required: [id, installation_id, owner, name, full_name, html_url, default_branch]
       properties:
         id: { type: integer, minimum: 1 }
         installation_id: { type: integer, minimum: 1 }
@@ -2249,6 +2249,7 @@ components:
         name: { type: string }
         full_name: { type: string }
         html_url: { type: string, format: uri }
+        default_branch: { type: [string, 'null'], description: The repository default branch, when available. }
         private: { type: boolean, description: Present on repository-list responses; omitted from a project's saved repository reference. }
     LinkedPullRequest:
       type: object
