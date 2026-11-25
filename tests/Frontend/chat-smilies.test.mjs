@@ -97,3 +97,22 @@ test('sick shortcut renders the nauseated face and stays word-bounded', () => {
     { text: ' but not :sickness', icon: null },
   ]);
 });
+
+test('developer reaction shortcuts map to their icons and stay word-bounded', () => {
+  const expected = {
+    ':+1': 'thumbsup', ':+1:': 'thumbsup', ':thumbsup': 'thumbsup', ':heart': 'heart', '<3': 'heart',
+    ':lol': 'laughing', ':think': 'thinking', ':bug': 'bug', ':ship': 'rocket', ':rocket:': 'rocket',
+    ':tada': 'party', ':party:': 'party', ':cool': 'cool', ':zzz': 'sleeping', ':sleep': 'sleeping',
+    ':eyes': 'eyes', ':fire': 'fire', ':facepalm': 'facepalm',
+  };
+  for (const [shortcut, icon] of Object.entries(expected)) {
+    assert.deepEqual(splitChatSmilies(`a ${shortcut} b`), [
+      { text: 'a ', icon: null },
+      { text: shortcut, icon },
+      { text: ' b', icon: null },
+    ], shortcut);
+  }
+  assert.deepEqual(splitChatSmilies('x:+10 :bugs <33 :firefox a<3'), [
+    { text: 'x:+10 :bugs <33 :firefox a<3', icon: null },
+  ]);
+});

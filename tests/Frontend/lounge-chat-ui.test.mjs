@@ -147,7 +147,7 @@ test('Lounge renders supported smilies as accessible icons and leaves unknown sh
     parent_id: null,
     author_id: 11,
     author_name: 'Alex',
-    body: "Coffee :coffee and :beer: :pizza :burger :sushi :chinese :) :P :| :o :/ :'( >:( :sick :tea",
+    body: "Coffee :coffee and :beer: :pizza :burger :sushi :chinese :) :P :| :o :/ :'( >:( :sick :+1 <3 :lol :think :bug :ship :tada :cool :zzz :eyes :fire :facepalm :tea",
     created_at: '2026-11-25 10:42:00',
   };
   const state = setup(t, (path) => path === '/lounge/messages'
@@ -164,6 +164,8 @@ test('Lounge renders supported smilies as accessible icons and leaves unknown sh
   assert.deepEqual(icons.map((icon) => icon.attributes.get('aria-label')), [
     'coffee', 'beer mug', 'pizza slice', 'burger', 'sushi', 'Chinese takeout', 'smile', 'tongue out',
     'neutral face', 'surprised face', 'uncertain face', 'crying face', 'angry face', 'nauseated face',
+    'thumbs up', 'heart', 'laughing face', 'thinking face', 'bug', 'rocket', 'party popper',
+    'cool face', 'sleeping face', 'eyes', 'fire', 'facepalm',
   ]);
   assert.equal(icons[0].children[0].attributes.get('viewBox'), '0 0 24 24');
   const smileShapes = icons[6].children[0].children;
@@ -181,6 +183,9 @@ test('Lounge renders supported smilies as accessible icons and leaves unknown sh
   assert.ok(shapeClasses(icons[11]).includes('chat-smiley-tear'));
   assert.equal(icons[12].attributes.get('aria-label'), 'angry face');
   assert.ok(shapeClasses(icons[13]).includes('chat-smiley-sick'));
+  assert.ok(shapeClasses(icons[18]).includes('chat-smiley-nori'));
+  assert.ok(shapeClasses(icons[22]).includes('chat-smiley-zzz'));
+  assert.ok(shapeClasses(icons[23]).includes('chat-smiley-eyeball'));
   assert.ok(shapeClasses(icons[4]).includes('chat-smiley-fish'));
   assert.ok(shapeClasses(icons[4]).includes('chat-smiley-nori'));
   assert.ok(shapeClasses(icons[5]).includes('chat-smiley-icon-line'));

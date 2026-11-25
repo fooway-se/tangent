@@ -715,12 +715,18 @@ details[open] > .disclosure-summary::before { transform: rotate(90deg); }
 .chat-smiley-pizza-crust { fill: var(--smiley-crust); stroke: var(--smiley-line); stroke-width: 0.8; stroke-linejoin: round; }
 .chat-smiley-pizza-topping { fill: var(--smiley-line); stroke: var(--smiley-face); stroke-width: 0.7; }
 .chat-smiley-fish { fill: var(--accent-edge); stroke: none; }
-.chat-smiley-rice-face { fill: var(--smiley-face); stroke: none; }
+.chat-smiley-rice-face { fill: white; stroke: none; }
 .chat-smiley-rice { fill: color-mix(in srgb, var(--accent) 22%, black); fill-opacity: 0.45; stroke: none; }
 .chat-smiley-nori { fill: color-mix(in srgb, var(--accent) 28%, black); stroke: color-mix(in srgb, var(--accent) 55%, black); stroke-linejoin: round; stroke-width: 0.8; }
 .chat-smiley-filling { fill: var(--smiley-foam); stroke: none; }
 .chat-smiley-band { fill: var(--smiley-crust); stroke: none; }
 .chat-smiley-shade { fill: var(--smiley-line); fill-opacity: 0.14; stroke: none; }
+.chat-smiley-hand { fill: color-mix(in srgb, var(--smiley-face) 50%, white); stroke: var(--smiley-line); stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.5; }
+.chat-smiley-zzz { fill: none; stroke: var(--smiley-face); stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.6; }
+.chat-smiley-finger { fill: none; stroke: var(--smiley-line); stroke-linecap: round; stroke-opacity: 0.6; stroke-width: 1; }
+.chat-smiley-eyeball { fill: white; stroke: color-mix(in srgb, var(--accent) 22%, black); stroke-width: 1.4; }
+.chat-smiley-confetti { fill: var(--smiley-face); stroke: none; }
+.chat-smiley-confetti-line { fill: none; stroke: var(--smiley-face); stroke-linecap: round; stroke-width: 1.6; }
 .chat-smiley-sick { fill: color-mix(in srgb, green 38%, transparent); stroke: none; }
 .chat-smiley-sick-cheek { fill: color-mix(in srgb, green 34%, transparent); stroke: none; }
 .chat-smiley-gloss { fill: white; fill-opacity: 0.4; stroke: none; }
