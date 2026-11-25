@@ -49,11 +49,25 @@ test('unsupported and embedded shortcut-like text remains unchanged', () => {
   ]);
 });
 
-test('smiley artwork uses the active theme accent and its readable contrast color', () => {
-  assert.match(css, /\.chat-smiley-icon \{[^}]*color: var\(--accent\)/);
-  assert.match(css, /\.chat-smiley-outline \{[^}]*stroke: var\(--accent-ink\)/);
-  assert.match(css, /\.chat-smiley \{[^}]*width:\s*1\.6em;[^}]*height:\s*1\.6em/);
-  assert.match(css, /\.chat-smiley-outline \{[^}]*fill: var\(--accent\)/);
-  assert.match(css, /\.chat-smiley-feature \{[^}]*stroke: var\(--accent-ink\)/);
-  assert.match(css, /\.chat-smiley-icon-line \{[^}]*fill: var\(--accent\)/);
+test('smiley artwork stays theme-colored and remains clear at chat size', () => {
+  assert.match(css, /\.chat-smiley-icon \{[^}]*--smiley-face:\s*var\(--accent\)/);
+  assert.match(css, /--smiley-face:\s*color-mix\(in srgb, var\(--accent\) 85%, white\)/);
+  assert.match(css, /--smiley-line:\s*var\(--accent-ink\)/);
+  assert.match(css, /\.chat-smiley-outline \{[^}]*fill: var\(--smiley-face\); stroke: var\(--smiley-line\); stroke-width: 1\.5/);
+  assert.match(css, /\.chat-smiley \{[^}]*width:\s*1\.85em;[^}]*height:\s*1\.85em/);
+  assert.match(css, /\.chat-smiley-feature \{[^}]*stroke: var\(--smiley-line\);[^}]*stroke-width: 2/);
+  assert.match(css, /\.chat-smiley-mouth \{[^}]*fill: var\(--smiley-line\); stroke: none/);
+  assert.match(css, /\.chat-smiley-tongue \{[^}]*fill: var\(--smiley-tongue\); stroke: var\(--smiley-line\); stroke-width: 1\.25/);
+  assert.match(css, /--smiley-tongue:\s*color-mix\(in srgb, var\(--accent\) 45%, var\(--screen-ink\)\)/);
+  assert.match(css, /\.chat-smiley-icon-line \{[^}]*fill: var\(--smiley-face\); stroke: var\(--smiley-line\);[^}]*stroke-width: 1\.6/);
+  assert.match(css, /\.chat-smiley-icon-detail \{[^}]*stroke: var\(--smiley-line\);[^}]*stroke-width: 1\.8/);
+  assert.match(css, /\.chat-smiley-foam \{[^}]*fill: var\(--smiley-foam\);/);
+  assert.match(css, /--smiley-foam:\s*color-mix\(in srgb, var\(--accent\) 48%, var\(--screen-ink\)\)/);
+  assert.match(css, /\.chat-smiley-beer-fill \{[^}]*fill: var\(--accent\)/);
+  assert.match(css, /--smiley-layer:\s*color-mix\(in srgb, var\(--accent\) 58%, var\(--screen-panel\)\)/);
+  assert.match(css, /--smiley-crust:\s*color-mix\(in srgb, var\(--accent\) 58%, var\(--accent-ink\)\)/);
+  assert.match(css, /\.chat-smiley-lettuce \{[^}]*fill: var\(--smiley-layer\)/);
+  assert.match(css, /\.chat-smiley-tomato \{[^}]*fill: var\(--smiley-crust\)/);
+  assert.match(css, /\.chat-smiley-coffee-surface \{[^}]*fill: var\(--accent-edge\)/);
+  assert.match(css, /\.chat-smiley-pizza-topping \{[^}]*fill: var\(--smiley-line\)/);
 });

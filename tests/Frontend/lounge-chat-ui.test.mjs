@@ -147,7 +147,7 @@ test('Lounge renders supported smilies as accessible icons and leaves unknown sh
     parent_id: null,
     author_id: 11,
     author_name: 'Alex',
-    body: 'Coffee :coffee and :beer: :pizza :burger :) :tea',
+    body: 'Coffee :coffee and :beer: :pizza :burger :) :P :tea',
     created_at: '2026-11-25 10:42:00',
   };
   const state = setup(t, (path) => path === '/lounge/messages'
@@ -161,8 +161,20 @@ test('Lounge renders supported smilies as accessible icons and leaves unknown sh
   const article = state.elements.get('#lounge-message-list').children.find((child) => child.className === 'chat-message');
   const body = article.children.find((child) => child.className === 'chat-message-body');
   const icons = body.children.filter((child) => child.className === 'chat-smiley');
-  assert.deepEqual(icons.map((icon) => icon.attributes.get('aria-label')), ['coffee', 'beer mug', 'pizza slice', 'burger', 'smile']);
+  assert.deepEqual(icons.map((icon) => icon.attributes.get('aria-label')), ['coffee', 'beer mug', 'pizza slice', 'burger', 'smile', 'tongue out']);
   assert.equal(icons[0].children[0].attributes.get('viewBox'), '0 0 24 24');
+  const smileShapes = icons[4].children[0].children;
+  assert.deepEqual(smileShapes.filter((shape) => shape.attributes.get('class') === 'chat-smiley-dot').map((shape) => shape.attributes.get('r')), ['1.35', '1.35']);
+  const tongue = icons[5].children[0].children.find((shape) => shape.attributes.get('class') === 'chat-smiley-tongue');
+  assert.equal(tongue.attributes.get('d'), 'M10 15.4h4v3.6a2 2 0 0 1-4 0z');
+  const shapeClasses = (icon) => icon.children[0].children.map((shape) => shape.attributes.get('class'));
+  assert.ok(shapeClasses(icons[0]).includes('chat-smiley-coffee-surface'));
+  assert.ok(shapeClasses(icons[1]).includes('chat-smiley-foam'));
+  assert.ok(shapeClasses(icons[1]).includes('chat-smiley-beer-fill'));
+  assert.ok(shapeClasses(icons[2]).includes('chat-smiley-pizza-crust'));
+  assert.ok(shapeClasses(icons[2]).includes('chat-smiley-pizza-topping'));
+  assert.ok(shapeClasses(icons[3]).includes('chat-smiley-lettuce'));
+  assert.ok(shapeClasses(icons[3]).includes('chat-smiley-tomato'));
   assert.equal(body.children.at(-1).textContent, ' :tea');
   state.ui.dispose();
 });

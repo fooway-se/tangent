@@ -675,15 +675,22 @@ details[open] > .disclosure-summary::before { transform: rotate(90deg); }
 .chat-message-actions { grid-column: 2; grid-row: 1; display: flex; align-items: center; justify-self: end; gap: 2px; opacity: 0; }
 .chat-message:hover .chat-message-actions, .chat-message:focus-within .chat-message-actions { opacity: 1; }
 .chat-message-body { grid-column: 2; grid-row: 2; margin: 4px 0 0; font-size: 13px; line-height: 1.4; overflow-wrap: anywhere; white-space: pre-wrap; }
-.chat-smiley { display: inline-block; width: 1.6em; height: 1.6em; margin: 0 0.08em; vertical-align: -0.32em; }
-.chat-smiley-icon { display: block; width: 100%; height: 100%; overflow: visible; color: var(--accent); }
-.chat-smiley-outline { fill: var(--accent); stroke: var(--accent-ink); stroke-width: 1.5; }
-.chat-smiley-feature { fill: none; stroke: var(--accent-ink); stroke-linecap: round; stroke-linejoin: round; stroke-width: 2.1; }
-.chat-smiley-dot { fill: var(--accent-ink); stroke: none; }
-.chat-smiley-mouth { fill: var(--accent-ink); stroke: var(--accent-ink); stroke-width: 1; }
-.chat-smiley-tongue { fill: none; stroke: var(--accent); stroke-linecap: round; stroke-width: 2.1; }
-.chat-smiley-icon-line { fill: var(--accent); stroke: var(--accent); stroke-linecap: round; stroke-linejoin: round; stroke-width: 2.1; }
-.chat-smiley-icon-detail { fill: none; stroke: var(--accent-ink); stroke-linecap: round; stroke-width: 1.7; }
+.chat-smiley { display: inline-block; width: 1.85em; height: 1.85em; margin: 0 0.08em; vertical-align: -0.4em; }
+.chat-smiley-icon { display: block; width: 100%; height: 100%; overflow: visible; --smiley-face: var(--accent); --smiley-face: color-mix(in srgb, var(--accent) 85%, white); --smiley-line: var(--accent-ink); --smiley-foam: var(--screen-ink); --smiley-foam: color-mix(in srgb, var(--accent) 48%, var(--screen-ink)); --smiley-tongue: color-mix(in srgb, var(--accent) 45%, var(--screen-ink)); --smiley-layer: color-mix(in srgb, var(--accent) 58%, var(--screen-panel)); --smiley-crust: color-mix(in srgb, var(--accent) 58%, var(--accent-ink)); }
+.chat-smiley-outline { fill: var(--smiley-face); stroke: var(--smiley-line); stroke-width: 1.5; }
+.chat-smiley-feature { fill: none; stroke: var(--smiley-line); stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; }
+.chat-smiley-dot { fill: var(--smiley-line); stroke: none; }
+.chat-smiley-mouth { fill: var(--smiley-line); stroke: none; }
+.chat-smiley-tongue { fill: var(--smiley-tongue); stroke: var(--smiley-line); stroke-width: 1.25; stroke-linejoin: round; }
+.chat-smiley-icon-line { fill: var(--smiley-face); stroke: var(--smiley-line); stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.6; }
+.chat-smiley-icon-detail { fill: none; stroke: var(--smiley-line); stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
+.chat-smiley-foam { fill: var(--smiley-foam); stroke: var(--smiley-line); stroke-width: 1.25; stroke-linejoin: round; }
+.chat-smiley-beer-fill { fill: var(--accent); stroke: none; }
+.chat-smiley-coffee-surface { fill: var(--accent-edge); stroke: none; }
+.chat-smiley-lettuce { fill: var(--smiley-layer); stroke: var(--smiley-line); stroke-width: 1.4; stroke-linejoin: round; }
+.chat-smiley-tomato { fill: var(--smiley-crust); stroke: var(--smiley-line); stroke-width: 1.25; stroke-linejoin: round; }
+.chat-smiley-pizza-crust { fill: var(--smiley-crust); stroke: var(--smiley-line); stroke-width: 0.8; stroke-linejoin: round; }
+.chat-smiley-pizza-topping { fill: var(--smiley-line); stroke: var(--smiley-face); stroke-width: 0.7; }
 .chat-message-mention { border-radius: 3px; padding: 0 2px; color: var(--screen-ink); background: var(--screen-hover); box-shadow: inset 0 -1px 0 var(--accent); font-weight: 700; }
 .chat-reply-context { grid-column: 2; grid-row: 2; max-width: 100%; overflow: hidden; margin: 4px 0 0; border: 0; border-left: 1px solid var(--screen-border); padding: 2px 7px; color: var(--screen-muted); background: transparent; font: 400 11px var(--font-mono); text-align: left; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
 .chat-reply-context:hover, .chat-reply-context:focus-visible { border-left-color: var(--accent); color: var(--screen-ink); }
