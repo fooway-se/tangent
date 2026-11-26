@@ -99,6 +99,10 @@ test('Lounge messages can be replied to and the selected parent is sent with the
   assert.match(loungeChatUi, /JSON\.stringify\(messageBody\)/);
   assert.match(html, /id="lounge-reply-hint"/);
   assert.match(html, /id="lounge-cancel-reply"/);
+  assert.match(html, /id="lounge-smiley-toggle"[^>]*aria-expanded="false"[^>]*aria-controls="lounge-smiley-palette"/);
+  assert.match(html, /id="lounge-smiley-toggle"[^>]*aria-label="Smilies"/);
+  assert.match(html, /id="lounge-smiley-toggle"[\s\S]*?<svg class="chat-smiley-toggle-icon"[^>]*aria-hidden="true"[\s\S]*?<\/button>/);
+  assert.match(html, /id="lounge-smiley-palette"[^>]*role="group"[^>]*hidden/);
 });
 
 test('Lounge presence stays visible in navigation without adding the viewer to presence', () => {

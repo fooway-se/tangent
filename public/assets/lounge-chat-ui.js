@@ -2,7 +2,7 @@ import { ApiFailure, api, apiBaseUrl } from './api.js';
 import { bindRealtimePolling, shouldUsePolling } from './realtime-polling.js';
 import { filterMentionMembers, findMentionQuery, mentionEmptyMessage, replaceMentionQuery, splitMentions, } from './chat-mentions.js';
 import { handleMentionKeydown as handleMentionKeydownUi } from './chat-mentions-ui.js';
-import { splitChatSmilies } from './chat-smilies.js';
+import { chatSmileyGroups, splitChatSmilies } from './chat-smilies.js';
 import { formatChatTimestamp } from './chat-time.js';
 const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
 const smileyLabels = {
@@ -316,6 +316,8 @@ export function initLoungeChatUi(options) {
     const loungeMentionList = required('#lounge-mention-suggestions');
     const loungeReplyHint = required('#lounge-reply-hint');
     const loungeCancelReply = required('#lounge-cancel-reply');
+    const smileyToggle = required('#lounge-smiley-toggle');
+    const smileyPalette = required('#lounge-smiley-palette');
     const listeners = new AbortController();
     let active = false;
     let pollTimer = null;
@@ -330,6 +332,7 @@ export function initLoungeChatUi(options) {
     let mentionMatches = [];
     let mentionSelectedIndex = 0;
     let mentionDismissed = false;
+    let smileyPaletteBuilt = false;
     function required(selector) {
         const element = doc.querySelector(selector);
         if (element === null)
@@ -760,6 +763,78 @@ export function initLoungeChatUi(options) {
                 sendButton.disabled = false;
         }
     }
+    function buildSmileyPalette() {
+        const head = doc.createElement('div');
+        head.className = 'chat-smiley-palette-head';
+        const hint = doc.createElement('span');
+        hint.className = 'chat-smiley-palette-hint';
+        hint.textContent = 'Click a smiley to insert its code';
+        const close = doc.createElement('button');
+        close.type = 'button';
+        close.className = 'chat-smiley-close';
+        close.textContent = 'Esc';
+        close.setAttribute('aria-label', 'Close smilies');
+        close.setAttribute('aria-keyshortcuts', 'Escape');
+        close.addEventListener('click', () => {
+            setSmileyPaletteOpen(false);
+            smileyToggle.focus();
+        }, { signal: listeners.signal });
+        head.append(hint, close);
+        smileyPalette.append(head);
+        for (const group of chatSmileyGroups) {
+            const section = doc.createElement('div');
+            section.className = 'chat-smiley-palette-group';
+            const title = doc.createElement('p');
+            title.className = 'chat-smiley-palette-title';
+            title.textContent = group.label;
+            const grid = doc.createElement('div');
+            grid.className = 'chat-smiley-palette-grid';
+            for (const entry of group.entries) {
+                const code = entry.codes[0];
+                if (code === undefined)
+                    continue;
+                const option = doc.createElement('button');
+                option.type = 'button';
+                option.className = 'chat-smiley-option';
+                option.dataset.shortcut = code;
+                option.setAttribute('aria-label', `Insert ${smileyLabels[entry.icon]}, ${entry.codes.join(' or ')}`);
+                option.title = entry.codes.join('  ');
+                const codeLabel = doc.createElement('code');
+                codeLabel.textContent = entry.codes.join(' ');
+                option.append(createChatSmiley(doc, entry.icon, code), codeLabel);
+                option.addEventListener('click', () => insertSmiley(code), { signal: listeners.signal });
+                grid.append(option);
+            }
+            section.append(title, grid);
+            smileyPalette.append(section);
+        }
+        smileyPaletteBuilt = true;
+    }
+    function setSmileyPaletteOpen(open) {
+        if (open && !smileyPaletteBuilt)
+            buildSmileyPalette();
+        smileyPalette.hidden = !open;
+        smileyToggle.hidden = open;
+        smileyToggle.setAttribute('aria-expanded', String(open));
+        if (open)
+            smileyPalette.querySelector('.chat-smiley-option')?.focus();
+    }
+    function insertSmiley(code) {
+        const value = loungeInput.value;
+        const start = loungeInput.selectionStart ?? value.length;
+        const end = loungeInput.selectionEnd ?? start;
+        const before = value.slice(0, start);
+        const after = value.slice(end);
+        const lead = before !== '' && !/\s$/.test(before) ? ' ' : '';
+        const trail = /^\s/.test(after) ? '' : ' ';
+        const insertion = `${lead}${code}${trail}`;
+        if (loungeInput.maxLength > 0 && before.length + insertion.length + after.length > loungeInput.maxLength)
+            return;
+        loungeInput.value = `${before}${insertion}${after}`;
+        const cursor = before.length + insertion.length;
+        loungeInput.setSelectionRange(cursor, cursor);
+        loungeInput.focus();
+    }
     function resume() {
         if (!active)
             return;
@@ -776,6 +851,14 @@ export function initLoungeChatUi(options) {
     loungeLatestButton.addEventListener('click', scrollToLatest, { signal: listeners.signal });
     loungeForm.addEventListener('submit', (event) => void sendMessage(event), { signal: listeners.signal });
     loungeCancelReply.addEventListener('click', clearReplyParent, { signal: listeners.signal });
+    smileyToggle.addEventListener('click', () => setSmileyPaletteOpen(smileyPalette.hidden), { signal: listeners.signal });
+    loungeForm.addEventListener('keydown', (event) => {
+        if (event.key !== 'Escape' || smileyPalette.hidden || event.defaultPrevented)
+            return;
+        event.preventDefault();
+        setSmileyPaletteOpen(false);
+        (event.target === loungeInput ? loungeInput : smileyToggle).focus();
+    }, { signal: listeners.signal });
     loungeInput.addEventListener('input', () => {
         mentionDismissed = false;
         updateMentionSuggestions();

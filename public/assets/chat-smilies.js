@@ -68,6 +68,56 @@ const shortcutIcons = {
     ':facepalm': 'facepalm',
     ':facepalm:': 'facepalm',
 };
+export const chatSmileyShortcuts = shortcutIcons;
+export const chatSmileyGroups = [
+    {
+        id: 'faces',
+        label: 'Faces',
+        entries: [
+            { icon: 'smile', codes: [':)', ':-)'] },
+            { icon: 'wink', codes: [';)', ';-)'] },
+            { icon: 'frown', codes: [':(', ':-('] },
+            { icon: 'grin', codes: [':D', ':-D'] },
+            { icon: 'tongue', codes: [':P', ':-P'] },
+            { icon: 'neutral', codes: [':|', ':-|'] },
+            { icon: 'surprised', codes: [':o', ':-o'] },
+            { icon: 'uncertain', codes: [':/', ':-/'] },
+            { icon: 'crying', codes: [":'(", ":'-("] },
+            { icon: 'angry', codes: ['>:(', '>:-('] },
+            { icon: 'nauseated', codes: [':sick'] },
+            { icon: 'laughing', codes: [':lol'] },
+            { icon: 'thinking', codes: [':think'] },
+            { icon: 'cool', codes: [':cool'] },
+            { icon: 'sleeping', codes: [':zzz', ':sleep'] },
+            { icon: 'facepalm', codes: [':facepalm'] },
+        ],
+    },
+    {
+        id: 'reactions',
+        label: 'Reactions',
+        entries: [
+            { icon: 'thumbsup', codes: [':+1', ':thumbsup'] },
+            { icon: 'heart', codes: [':heart', '<3'] },
+            { icon: 'eyes', codes: [':eyes'] },
+            { icon: 'fire', codes: [':fire'] },
+            { icon: 'party', codes: [':tada', ':party'] },
+            { icon: 'rocket', codes: [':ship', ':rocket'] },
+            { icon: 'bug', codes: [':bug'] },
+        ],
+    },
+    {
+        id: 'food',
+        label: 'Food & drink',
+        entries: [
+            { icon: 'coffee', codes: [':coffee'] },
+            { icon: 'beer', codes: [':beer'] },
+            { icon: 'pizza', codes: [':pizza'] },
+            { icon: 'burger', codes: [':burger'] },
+            { icon: 'sushi', codes: [':sushi'] },
+            { icon: 'chinese', codes: [':chinese'] },
+        ],
+    },
+];
 export function splitChatSmilies(value) {
     const segments = [];
     let cursor = 0;

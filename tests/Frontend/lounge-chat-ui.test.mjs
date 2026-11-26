@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { chatSmileyGroups } from '../../public/assets/chat-smilies.js';
 import { initLoungeChatUi } from '../../public/assets/lounge-chat-ui.js';
 
 class FakeElement extends EventTarget {
@@ -36,6 +37,7 @@ function setup(t, requestOverride) {
   const ids = [
     '#lounge-view', '#lounge-message-list', '#lounge-empty-state', '#lounge-latest-button', '#lounge-form',
     '#lounge-input', '#lounge-mention-suggestions', '#lounge-reply-hint', '#lounge-cancel-reply',
+    '#lounge-smiley-toggle', '#lounge-smiley-palette',
   ];
   const elements = new Map(ids.map((id) => [id, new FakeElement()]));
   const document = {
@@ -213,5 +215,125 @@ test('Lounge exposes a latest-message control when the transcript is scrolled up
   latestButton.dispatchEvent(new Event('click'));
   assert.equal(messageList.scrollTop, 900);
   assert.equal(latestButton.hidden, true);
+  state.ui.dispose();
+});
+
+function findAll(element, predicate, found = []) {
+  for (const child of element.children ?? []) {
+    if (predicate(child)) found.push(child);
+    findAll(child, predicate, found);
+  }
+  return found;
+}
+
+test('Lounge smiley palette stays closed until opened, then lists every smiley with its code', (t) => {
+  const state = setup(t);
+  const toggle = state.elements.get('#lounge-smiley-toggle');
+  const palette = state.elements.get('#lounge-smiley-palette');
+  palette.hidden = true;
+
+  assert.equal(palette.children.length, 0);
+
+  toggle.dispatchEvent(new Event('click'));
+  assert.equal(palette.hidden, false);
+  assert.equal(toggle.attributes.get('aria-expanded'), 'true');
+
+  const options = findAll(palette, (el) => el.className === 'chat-smiley-option');
+  const expected = chatSmileyGroups.flatMap((group) => group.entries);
+  assert.equal(options.length, expected.length);
+  assert.deepEqual(options.map((o) => o.dataset.shortcut), expected.map((e) => e.codes[0]));
+  for (const [index, option] of options.entries()) {
+    assert.equal(option.type, 'button');
+    assert.match(option.attributes.get('aria-label'), /^Insert .+, /);
+    const code = findAll(option, (el) => el.textContent === expected[index].codes.join(' '));
+    assert.equal(code.length, 1);
+  }
+
+  assert.equal(toggle.hidden, true);
+  const [closeButton] = findAll(palette, (el) => el.className === 'chat-smiley-close');
+  assert.equal(closeButton.textContent, 'Esc');
+  assert.equal(closeButton.attributes.get('aria-label'), 'Close smilies');
+  closeButton.dispatchEvent(new Event('click'));
+  assert.equal(palette.hidden, true);
+  assert.equal(toggle.hidden, false);
+  assert.equal(toggle.attributes.get('aria-expanded'), 'false');
+  assert.equal(globalThis.document.activeElement, toggle);
+  toggle.dispatchEvent(new Event('click'));
+  assert.equal(findAll(palette, (el) => el.className === 'chat-smiley-option').length, expected.length);
+  assert.equal(findAll(palette, (el) => el.className === 'chat-smiley-close').length, 1);
+  state.ui.dispose();
+});
+
+test('Lounge smiley palette inserts the text code at the caret with sensible spacing', (t) => {
+  const state = setup(t);
+  const toggle = state.elements.get('#lounge-smiley-toggle');
+  const palette = state.elements.get('#lounge-smiley-palette');
+  const input = state.elements.get('#lounge-input');
+  let selection = null;
+  input.setSelectionRange = (start, end) => { selection = [start, end]; };
+  palette.hidden = true;
+  toggle.dispatchEvent(new Event('click'));
+  const option = (code) => findAll(palette, (el) => el.dataset?.shortcut === code)[0];
+
+  input.value = 'hej';
+  input.selectionStart = 3;
+  input.selectionEnd = 3;
+  option(':sushi').dispatchEvent(new Event('click'));
+  assert.equal(input.value, 'hej :sushi ');
+  assert.deepEqual(selection, [11, 11]);
+  assert.equal(globalThis.document.activeElement, input);
+
+  input.value = 'ab cd';
+  input.selectionStart = 3;
+  input.selectionEnd = 3;
+  option(':+1').dispatchEvent(new Event('click'));
+  assert.equal(input.value, 'ab :+1 cd');
+
+  input.value = 'replace me';
+  input.selectionStart = 0;
+  input.selectionEnd = 10;
+  option(':)').dispatchEvent(new Event('click'));
+  assert.equal(input.value, ':) ');
+
+  input.value = 'full';
+  input.maxLength = 6;
+  input.selectionStart = 4;
+  input.selectionEnd = 4;
+  option(':bug').dispatchEvent(new Event('click'));
+  assert.equal(input.value, 'full');
+  state.ui.dispose();
+});
+
+test('Lounge smiley palette closes on Escape from the form and restores the right focus', (t) => {
+  const state = setup(t);
+  const toggle = state.elements.get('#lounge-smiley-toggle');
+  const palette = state.elements.get('#lounge-smiley-palette');
+  const form = state.elements.get('#lounge-form');
+  const input = state.elements.get('#lounge-input');
+  palette.hidden = true;
+  const press = (target, key) => {
+    const event = new Event('keydown', { cancelable: true });
+    event.key = key;
+    Object.defineProperty(event, 'target', { value: target });
+    form.dispatchEvent(event);
+    return event;
+  };
+
+  toggle.dispatchEvent(new Event('click'));
+  press(input, 'a');
+  assert.equal(palette.hidden, false);
+
+  press(toggle, 'Escape');
+  assert.equal(palette.hidden, true);
+  assert.equal(toggle.hidden, false);
+  assert.equal(globalThis.document.activeElement, toggle);
+
+  toggle.dispatchEvent(new Event('click'));
+  press(input, 'Escape');
+  assert.equal(palette.hidden, true);
+  assert.equal(globalThis.document.activeElement, input);
+
+  press(input, 'Escape');
+  assert.equal(palette.hidden, true);
   state.ui.dispose();
 });

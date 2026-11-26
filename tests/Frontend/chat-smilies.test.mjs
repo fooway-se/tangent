@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
-import { splitChatSmilies } from '../../public/assets/chat-smilies.js';
+import { chatSmileyGroups, chatSmileyShortcuts, splitChatSmilies } from '../../public/assets/chat-smilies.js';
 
 const css = await readFile(new URL('../../public/assets/app.css', import.meta.url), 'utf8');
 
@@ -115,4 +115,21 @@ test('developer reaction shortcuts map to their icons and stay word-bounded', ()
   assert.deepEqual(splitChatSmilies('x:+10 :bugs <33 :firefox a<3'), [
     { text: 'x:+10 :bugs <33 :firefox a<3', icon: null },
   ]);
+});
+
+test('smiley catalog covers every supported icon once and every listed code renders that icon', () => {
+  const entries = chatSmileyGroups.flatMap((group) => group.entries);
+  const catalogIcons = entries.map((entry) => entry.icon);
+  assert.equal(new Set(catalogIcons).size, catalogIcons.length);
+  assert.deepEqual([...new Set(catalogIcons)].sort(), [...new Set(Object.values(chatSmileyShortcuts))].sort());
+  for (const { icon, codes } of entries) {
+    assert.ok(codes.length > 0, icon);
+    for (const code of codes) {
+      assert.deepEqual(splitChatSmilies(`a ${code} b`), [
+        { text: 'a ', icon: null },
+        { text: code, icon },
+        { text: ' b', icon: null },
+      ], `${icon}: ${code}`);
+    }
+  }
 });
