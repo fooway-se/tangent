@@ -2,6 +2,7 @@ import { ApiFailure, api, apiBaseUrl } from './api.js';
 import { ChatEventFeed, pollProjectChatEvents } from './chat-event-feed.js';
 import { bindRealtimePolling, shouldUsePolling } from './realtime-polling.js';
 import { formatChatTimestamp } from './chat-time.js';
+import { applyPresenceState } from './presence-indicator.js';
 import { filterMentionMembers, findMentionQuery, mentionEmptyMessage, replaceMentionQuery, } from './chat-mentions.js';
 import { handleMentionKeydown } from './chat-mentions-ui.js';
 const PROJECT_PRESENCE_INTERVAL_MS = 15_000;
@@ -144,18 +145,8 @@ export function initProjectChatUi(options) {
     function setPresenceState(state) {
         if (presenceIndicator === null)
             return;
-        const isActive = state === 'active';
-        const light = presenceIndicator.querySelector('.chat-presence-light');
-        presenceIndicator.className = state === 'active'
-            ? 'chat-presence is-active'
-            : state === 'unknown' ? 'chat-presence is-unknown' : 'chat-presence is-alone';
-        light?.classList.toggle('is-on', isActive);
-        light?.classList.toggle('is-off', !isActive);
-        const label = state === 'active'
-            ? 'Another person is viewing this project'
-            : state === 'unknown' ? 'Could not check whether anyone else is viewing this project' : 'No other active viewers';
-        presenceIndicator.setAttribute('aria-label', label);
-        presenceIndicator.title = label;
+        applyPresenceState(presenceIndicator, state);
+        options.onPresenceChange?.(state);
     }
     async function pollChat(projectId) {
         if (activeId !== projectId)
@@ -714,6 +705,7 @@ export function initProjectChatUi(options) {
         section.append(heading, nextMessageList, nextLatestButton, form);
         activeId = projectId;
         presenceIndicator = nextPresenceIndicator;
+        options.onPresenceChange?.('checking');
         eventFeed.reset();
         etag = null;
         pollDelay = 1000;

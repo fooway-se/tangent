@@ -3,6 +3,7 @@ import { ChatEventFeed, pollProjectChatEvents } from './chat-event-feed.js';
 import { bindRealtimePolling, shouldUsePolling } from './realtime-polling.js';
 import type { RealtimeUpdates } from './realtime-transport.js';
 import { formatChatTimestamp } from './chat-time.js';
+import { applyPresenceState, type PresenceState } from './presence-indicator.js';
 import {
   filterMentionMembers,
   findMentionQuery,
@@ -51,6 +52,7 @@ export function initProjectChatUi(options: {
   fetcher?: typeof fetch;
   pollEvents?: typeof pollProjectChatEvents;
   realtime?: RealtimeUpdates;
+  onPresenceChange?: (state: PresenceState) => void;
   doc?: Document;
 }): ProjectChatUiController {
   const doc = options.doc ?? document;
@@ -183,18 +185,8 @@ export function initProjectChatUi(options: {
 
   function setPresenceState(state: 'active' | 'alone' | 'unknown'): void {
     if (presenceIndicator === null) return;
-    const isActive = state === 'active';
-    const light = presenceIndicator.querySelector<HTMLElement>('.chat-presence-light');
-    presenceIndicator.className = state === 'active'
-      ? 'chat-presence is-active'
-      : state === 'unknown' ? 'chat-presence is-unknown' : 'chat-presence is-alone';
-    light?.classList.toggle('is-on', isActive);
-    light?.classList.toggle('is-off', !isActive);
-    const label = state === 'active'
-      ? 'Another person is viewing this project'
-      : state === 'unknown' ? 'Could not check whether anyone else is viewing this project' : 'No other active viewers';
-    presenceIndicator.setAttribute('aria-label', label);
-    presenceIndicator.title = label;
+    applyPresenceState(presenceIndicator, state);
+    options.onPresenceChange?.(state);
   }
 
   async function pollChat(projectId: number): Promise<void> {
@@ -749,6 +741,7 @@ export function initProjectChatUi(options: {
     section.append(heading, nextMessageList, nextLatestButton, form);
     activeId = projectId;
     presenceIndicator = nextPresenceIndicator;
+    options.onPresenceChange?.('checking');
     eventFeed.reset();
     etag = null;
     pollDelay = 1000;

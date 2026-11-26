@@ -669,6 +669,8 @@ details[open] > .disclosure-summary::before { transform: rotate(90deg); }
 .chat-heading { justify-content: space-between; gap: 10px; padding: 0 18px; color: var(--screen-ink); font-size: 15px; font-weight: 800; }
 .chat-heading-activity { display: inline-flex; align-items: center; gap: 9px; }
 .chat-presence { display: inline-flex; width: 14px; height: 18px; align-items: center; justify-content: center; }
+.chat-presence[hidden] { display: none; }
+#topbar-presence { flex: none; margin-left: auto; }
 .chat-presence-light { width: 7px; height: 7px; }
 .chat-presence-light.is-on { background: var(--power-light); box-shadow: var(--lamp-shadow-sm); }
 .chat-presence-light.is-off { background: var(--screen-border); box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.7); }

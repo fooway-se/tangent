@@ -180,3 +180,45 @@ test('project chat shows loading feedback until the first message request settle
   assert.equal(emptyState.textContent, 'No messages yet.');
   ui.dispose();
 });
+
+test('project chat reports presence changes so the top bar can mirror the indicator', async (t) => {
+  const previous = { document: globalThis.document, window: globalThis.window };
+  const document = {
+    activeElement: null,
+    hidden: false,
+    createElement: (tagName) => new FakeElement(tagName),
+    createElementNS: (_namespace, tagName) => new FakeElement(tagName),
+  };
+  globalThis.document = document;
+  globalThis.window = { setTimeout: () => 1, clearTimeout() {} };
+  t.after(() => {
+    for (const [key, value] of Object.entries(previous)) {
+      if (value === undefined) delete globalThis[key];
+      else globalThis[key] = value;
+    }
+  });
+
+  const states = [];
+  const ui = initProjectChatUi({
+    getProject: () => ({ id: 7, slug: 'tangent', status: 'active' }),
+    getMembers: () => [],
+    getUser: () => null,
+    isDocumentHidden: () => false,
+    selectMessage() {}, onClearSelection() {}, onCreateIssue() {}, onUnauthorized() {},
+    report(message) { assert.fail(message); },
+    avatarInitials: (name) => name.slice(0, 1), compactMessage: (body) => body,
+    submitFormOnEnter() {},
+    request: async (path) => path.endsWith('/presence') ? { someone_else_viewing: true } : { messages: [] },
+    pollEvents: async () => ({ notModified: true, status: 304, etag: null, nextDelay: 1500, events: [] }),
+    onPresenceChange: (state) => states.push(state),
+    doc: document,
+  });
+
+  ui.create(7);
+  assert.deepEqual(states, ['checking'], 'a new chat starts from the checking state');
+  await new Promise((resolve) => setImmediate(resolve));
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(states, ['checking', 'active'], 'the heartbeat result is reported while the chat keeps polling');
+  ui.stop();
+  ui.dispose();
+});

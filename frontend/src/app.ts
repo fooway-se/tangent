@@ -27,6 +27,7 @@ import { initMilestoneUi } from './milestone-ui.js';
 import { initLoungePresence } from './lounge-presence.js';
 import { initLoungeChatUi } from './lounge-chat-ui.js';
 import { initWorkspaceAdminUi } from './workspace-admin-ui.js';
+import { applyPresenceState } from './presence-indicator.js';
 import { initProjectChatUi } from './project-chat-ui.js';
 import { initCommandPaletteUi } from './command-palette-ui.js';
 import { buildPaletteCommands } from './command-palette-commands.js';
@@ -75,7 +76,7 @@ const {
     projectHeading, projectEditDialog, projectReadOnlyNotice, editProjectButton, projectsNavButton, projectsView, projectView,
     projectForm, projectList, projectFormPanel, projectDescription, projectState,
     projectChatColumn, projectSidebarList, projectMain, projectTabs,
-    projectKeyboardHints,
+    projectKeyboardHints, topbarPresence,
   },
   auth: {
     loginPanel, loginShell, accountBar, currentUserLabel, loginStatusMessage, logoutButton,
@@ -687,6 +688,7 @@ const projectChatUi = initProjectChatUi({
   compactMessage: compactChatMessage,
   submitFormOnEnter,
   realtime: realtimeTransport,
+  onPresenceChange: (state) => applyPresenceState(topbarPresence, state),
 });
 
 const chatMessageNavigationUi = initChatMessageNavigationUi({
@@ -941,6 +943,7 @@ function showWorkspaceView(view: 'projects' | 'roadmap' | 'inbox' | 'lounge' | '
   adminView.hidden = view !== 'admin';
   projectView.hidden = view !== 'project';
   projectChatColumn.hidden = view !== 'project' || !projectChatVisible;
+  syncTopbarPresence();
   moveWorkspaceStatusToCurrentHeading();
   workspaceNav.hidden = false;
   updateKeyboardHintsVisibility();
@@ -1222,10 +1225,17 @@ function focusProjectChat(): void {
   }
 }
 
+// The presence light lives in the chat heading; while the chat is hidden the
+// workspace top bar shows the same indicator in its place.
+function syncTopbarPresence(): void {
+  topbarPresence.hidden = projectView.hidden || projectChatVisible || projectChatUi.activeProjectId() === null;
+}
+
 function setProjectChatVisible(visible: boolean): void {
   if (projectChatVisible === visible) return;
   projectChatVisible = visible;
   projectChatColumn.hidden = projectView.hidden || !visible;
+  syncTopbarPresence();
   if (!visible && projectChatColumn.contains(document.activeElement)) projectHeading.focus();
 }
 
@@ -2266,6 +2276,7 @@ async function loadProjectDetail(
         renderProjectIssueBoard();
         showWorkspaceView('project');
         chatView.replaceChildren(projectChatUi.create(projectId));
+        syncTopbarPresence();
         switchProjectTab(tab);
         (tab === 'issues' ? issuesTabButton : tab === 'members' ? membersTabButton : notesTabButton).focus();
       },

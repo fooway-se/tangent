@@ -17,6 +17,7 @@ export const dom = {
         projectMain: document.querySelector('.project-main'),
         projectTabs: document.querySelector('.project-tabs'),
         projectKeyboardHints: document.querySelector('#project-keyboard-hints'),
+        topbarPresence: document.querySelector('#topbar-presence'),
     },
     auth: {
         loginPanel: document.querySelector('#login-panel'),
