@@ -6,6 +6,7 @@ const actions = Object.fromEntries([
   'goToProjects', 'goToInbox', 'goToLounge', 'showShortcutHelp', 'toggleKeyboardHints',
   'goToRoadmap', 'switchWorkspace', 'openWorkspaceAdmin', 'newProject', 'createWorkspace',
   'generateSummary', 'previewGuestView', 'goToProjectIssues', 'focusProjectChat',
+  'toggleProjectChat',
   'goToProjectMembers', 'goToProjectNotes', 'beginCreateIssue', 'editSelectedIssue',
   'focusSelectedIssueStatus', 'deleteIssue', 'createIssueFromSelectedChatMessage',
   'showDeletedIssues', 'switchTheme', 'signOut',
@@ -20,6 +21,7 @@ function baseOptions(overrides = {}) {
     activeWorkspaces: [],
     projectsViewVisible: false,
     projectViewVisible: false,
+    projectChatVisible: true,
     activeProject: null,
     hasSelectedIssueInVisibleView: false,
     selectedIssueInVisibleView: null,
@@ -68,6 +70,7 @@ test('palette command builder applies role, workspace, and project context', () 
   assert.ok(labels.includes('Edit selected issue'));
   assert.ok(labels.includes('Delete issue'));
   assert.ok(labels.includes('Create issue from selected chat message'));
+  assert.ok(labels.includes('Hide project chat'));
   assert.ok(labels.includes('Restore issue: Old work'));
   assert.match(command('Delete issue').detail, /Ship it.*doing/);
   assert.match(command('Switch theme').detail, /Now Light; next Dark/);
@@ -76,11 +79,31 @@ test('palette command builder applies role, workspace, and project context', () 
   command('Switch to Studio').run();
   command('Delete issue').run();
   command('Restore issue: Old work').run();
+  command('Hide project chat').run();
   assert.deepEqual(calls, [
     ['switchWorkspace', 2],
     ['deleteIssue', selectedIssue],
     ['showDeletedIssues', deletedIssue.id],
+    ['toggleProjectChat'],
   ]);
+});
+
+test('project chat palette command reflects whether the panel is visible', () => {
+  const project = { id: 7, name: 'Tangent', status: 'active' };
+  const shownCommands = buildPaletteCommands(baseOptions({
+    projectViewVisible: true,
+    activeProject: project,
+    projectChatVisible: true,
+  }));
+  const hiddenCommands = buildPaletteCommands(baseOptions({
+    projectViewVisible: true,
+    activeProject: project,
+    projectChatVisible: false,
+  }));
+  assert.equal(shownCommands.find(({ label }) => label === 'Hide project chat')?.shortcut, 'b');
+  assert.equal(hiddenCommands.find(({ label }) => label === 'Show project chat')?.shortcut, 'b');
+  assert.ok(!buildPaletteCommands(baseOptions({ activeProject: project }))
+    .some(({ label }) => label.includes('project chat')));
 });
 
 test('guest palette only offers actions available in the guest shell', () => {

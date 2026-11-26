@@ -101,6 +101,14 @@ export function buildPaletteCommands(context) {
         });
     }
     if (context.activeProject !== null) {
+        if (context.projectViewVisible) {
+            commands.splice(1, 0, {
+                label: context.projectChatVisible ? 'Hide project chat' : 'Show project chat',
+                detail: context.projectChatVisible ? 'Hide the project chat panel' : 'Show the project chat panel',
+                shortcut: 'b',
+                run: actions.toggleProjectChat,
+            });
+        }
         commands.splice(1, 0, {
             label: 'Project issues',
             detail: `Focus issues in ${context.activeProject.name}`,

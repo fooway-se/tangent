@@ -57,6 +57,8 @@ export function resolveShortcut(event, context) {
     }
     if (key === 'h' && context.canToggleKeyboardHints === true)
         return 'toggle-keyboard-hints';
+    if (key === 'b' && context.canToggleProjectChat === true)
+        return 'toggle-project-chat';
     if (event.key === '?' && context.hasWorkspace && context.canShowShortcutHelp !== false)
         return 'shortcut-help';
     if (key === 'g' && context.hasWorkspace

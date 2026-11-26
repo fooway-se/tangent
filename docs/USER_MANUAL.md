@@ -210,6 +210,7 @@ Keyboard shortcuts vary by view and pause while you type. In a member workspace,
 | Ctrl/Cmd+K | Open the command palette. |
 | ? | Open keyboard shortcut help. |
 | h | Show or hide keyboard hints. |
+| b | In a project, show or hide the project chat panel. |
 | g, then p / r / n / l | In a member workspace, open Projects / Roadmap / My Work / Lounge. |
 | g, then w | When you belong to multiple workspaces, open the workspace picker. |
 | g, then i / c / m | In a project, focus Issues / Chat / Members. |

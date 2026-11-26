@@ -2,6 +2,7 @@ export type ShortcutAction =
   | 'command-palette'
   | 'shortcut-help'
   | 'toggle-keyboard-hints'
+  | 'toggle-project-chat'
   | 'theme-selector'
   | 'await-projects-key'
   | 'projects'
@@ -62,6 +63,7 @@ export interface ShortcutContext {
   canNavigateWorkspace?: boolean;
   canShowShortcutHelp?: boolean;
   canToggleKeyboardHints?: boolean;
+  canToggleProjectChat?: boolean;
   canSwitchWorkspace: boolean;
   canAdmin: boolean;
   canRoadmap: boolean;
@@ -127,6 +129,7 @@ export function resolveShortcut(event: ShortcutEvent, context: ShortcutContext):
     return null;
   }
   if (key === 'h' && context.canToggleKeyboardHints === true) return 'toggle-keyboard-hints';
+  if (key === 'b' && context.canToggleProjectChat === true) return 'toggle-project-chat';
   if (event.key === '?' && context.hasWorkspace && context.canShowShortcutHelp !== false) return 'shortcut-help';
   if (key === 'g' && context.hasWorkspace
     && (context.canNavigateWorkspace !== false || context.canSwitchWorkspace)) return 'await-projects-key';

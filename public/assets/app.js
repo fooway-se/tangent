@@ -144,6 +144,7 @@ const keyboardHintsUi = initKeyboardHintsUi({
 });
 let activeWorkspaces = [];
 let activeProject = null;
+let projectChatVisible = true;
 let projectReturnFocusId = null;
 const workspaceHistory = createWorkspaceHistory();
 const projectNavigation = new ProjectNavigationOwner();
@@ -726,6 +727,7 @@ function showSignedOut() {
     if (clientSummaryUi.dialog.open)
         clientSummaryUi.close();
     activeUser = null;
+    projectChatVisible = true;
     githubProjectUi.reset();
     editProjectButton.hidden = true;
     if (projectEditDialog.open)
@@ -757,6 +759,7 @@ function showSignedIn(user) {
     workspaceHistory.clear();
     projectReturnFocusId = null;
     activeProject = null;
+    projectChatVisible = true;
     loungeChatUi.stop();
     loungePresenceUi.reset();
     activeUser = user;
@@ -846,7 +849,7 @@ function showWorkspaceView(view) {
     loungeView.hidden = view !== 'lounge';
     adminView.hidden = view !== 'admin';
     projectView.hidden = view !== 'project';
-    projectChatColumn.hidden = view !== 'project';
+    projectChatColumn.hidden = view !== 'project' || !projectChatVisible;
     moveWorkspaceStatusToCurrentHeading();
     workspaceNav.hidden = false;
     updateKeyboardHintsVisibility();
@@ -1102,6 +1105,7 @@ function moveChatMessageSelectionByPage(direction) {
     chatMessageNavigationUi.moveByPage(direction);
 }
 function focusProjectChat() {
+    setProjectChatVisible(true);
     const messages = chatMessageElements();
     const latest = messages.at(-1);
     if (latest !== undefined) {
@@ -1110,6 +1114,17 @@ function focusProjectChat() {
     else {
         projectChatUi.focusComposer();
     }
+}
+function setProjectChatVisible(visible) {
+    if (projectChatVisible === visible)
+        return;
+    projectChatVisible = visible;
+    projectChatColumn.hidden = projectView.hidden || !visible;
+    if (!visible && projectChatColumn.contains(document.activeElement))
+        projectHeading.focus();
+}
+function toggleProjectChat() {
+    setProjectChatVisible(!projectChatVisible);
 }
 function replyToSelectedChatMessage() {
     if (selectedChatMessageId === null || selectedChatMessageId <= 0)
@@ -1184,6 +1199,8 @@ function shortcutContext(target) {
         canNavigateWorkspace: activeUser !== null && activeUser.role !== 'guest',
         canShowShortcutHelp: activeUser !== null && activeUser.role !== 'guest',
         canToggleKeyboardHints: activeUser !== null && activeUser.role !== 'guest' && !workspacePanel.hidden,
+        canToggleProjectChat: activeUser !== null && activeUser.role !== 'guest'
+            && !workspacePanel.hidden && !projectView.hidden && activeProject !== null,
         canSwitchWorkspace: activeWorkspaces.length > 1,
         canAdmin: activeUser?.role === 'admin',
         canRoadmap: activeUser !== null && activeUser.role !== 'guest',
@@ -1392,6 +1409,7 @@ function getPaletteCommands() {
         activeWorkspaces,
         projectsViewVisible: !projectsView.hidden,
         projectViewVisible: !projectView.hidden,
+        projectChatVisible,
         activeProject,
         hasSelectedIssueInVisibleView: hasSelectedIssue,
         selectedIssueInVisibleView: hasSelectedIssue ? issueSelectedInVisibleView() : null,
@@ -1406,6 +1424,7 @@ function getPaletteCommands() {
             goToLounge,
             showShortcutHelp,
             toggleKeyboardHints,
+            toggleProjectChat,
             goToRoadmap,
             switchWorkspace: (workspaceId) => workspacePickerUi.open(workspaceId),
             openWorkspaceAdmin,
@@ -1726,6 +1745,9 @@ function executeShortcut(action) {
             break;
         case 'toggle-keyboard-hints':
             toggleKeyboardHints();
+            break;
+        case 'toggle-project-chat':
+            toggleProjectChat();
             break;
         case 'theme-selector':
             themeUi.focusSelector();

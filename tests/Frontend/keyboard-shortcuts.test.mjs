@@ -77,6 +77,20 @@ test('keyboard hint toggling does not announce redundant status text', () => {
   assert.doesNotMatch(toggle, /report\(/);
 });
 
+test('b toggles the project chat and g then c restores and focuses it', () => {
+  assert.equal(resolve('b', { canToggleProjectChat: true }), 'toggle-project-chat');
+  assert.equal(resolve('B', { canToggleProjectChat: true }), 'toggle-project-chat');
+  assert.equal(resolve('b', { canToggleProjectChat: false }), null);
+  assert.equal(resolve('b', { canToggleProjectChat: true, targetIsEditable: true }), null);
+  assert.equal(resolve('b', { canToggleProjectChat: true }, { ctrlKey: true }), null);
+  assert.equal(resolve('c', { goPrefixPending: true, hasProject: true }), 'chat');
+  assert.match(app, /function toggleProjectChat\(\)[\s\S]*setProjectChatVisible\(!projectChatVisible\)/);
+  assert.match(app, /case 'toggle-project-chat': toggleProjectChat\(\);/);
+  assert.match(app, /function focusProjectChat\(\)[\s\S]*setProjectChatVisible\(true\)/);
+  assert.match(html, /<kbd>b<\/kbd> Toggle chat/);
+  assert.match(html, /<dt><kbd>b<\/kbd><\/dt><dd>Show or hide project chat/);
+});
+
 test('workspace shortcuts are unavailable on the sign-in screen', () => {
   assert.equal(resolve('k', { hasWorkspace: false }, { ctrlKey: true }), null);
   assert.equal(resolve('?', { hasWorkspace: false }), null);
