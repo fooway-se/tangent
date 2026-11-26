@@ -202,9 +202,8 @@ kbd {
   .keyboard-hints { display: flex; min-width: 0; align-items: center; gap: 12px; overflow-x: auto; padding: 4px 12px; }
   .keyboard-hint-group { flex: 0 0 auto; flex-direction: row; align-items: center; gap: 8px; padding-right: 10px; }
   .keyboard-hint-group-label { display: none; }
-  .keyboard-hint-group-items { flex-wrap: nowrap; gap: 8px; }
+  .keyboard-hint-group-items { flex-direction: row; flex-wrap: nowrap; align-items: center; gap: 8px; }
   .keyboard-hint-group-items #go-prefix-hint { white-space: nowrap; }
-  .keyboard-hint-group-items #go-prefix-hint:not([hidden]) { flex-basis: auto; }
   .keyboard-hints kbd { padding: 1px 5px; }
   .workspace-sidebar { padding-block: 8px; }
   .workspace-sidebar::before,
@@ -722,10 +721,9 @@ details[open] > .disclosure-summary::before { transform: rotate(90deg); }
 .keyboard-hint-group:last-child { border-right: 0; padding-right: 0; }
 .keyboard-hint-group[hidden] { display: none; }
 .keyboard-hint-group-label { color: var(--case-ink); font: 700 11px/1.2 var(--font-display); letter-spacing: 1px; text-transform: uppercase; }
-.keyboard-hint-group-items { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 12px; }
+.keyboard-hint-group-items { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; }
 .keyboard-hint-group-items > span { white-space: nowrap; }
 .keyboard-hint-group-items #go-prefix-hint { white-space: normal; }
-.keyboard-hint-group-items #go-prefix-hint:not([hidden]) { flex-basis: 100%; }
 .keyboard-hints kbd { margin: 0 1px; padding: 2px 7px; border-color: var(--cap-edge); border-bottom-width: var(--key-depth); color: var(--plate-ink); background: linear-gradient(180deg, var(--cap-top), var(--cap-bottom)); }
 
 /* Dialogs */
