@@ -694,46 +694,6 @@ details[open] > .disclosure-summary::before { transform: rotate(90deg); }
 .chat-message-actions { grid-column: 2; grid-row: 1; display: flex; align-items: center; justify-self: end; gap: 2px; opacity: 0; }
 .chat-message:hover .chat-message-actions, .chat-message:focus-within .chat-message-actions { opacity: 1; }
 .chat-message-body { grid-column: 2; grid-row: 2; margin: 4px 0 0; font-size: 13px; line-height: 1.4; overflow-wrap: anywhere; white-space: pre-wrap; }
-.chat-smiley { display: inline-block; width: 1.85em; height: 1.85em; margin: 0 0.08em; vertical-align: -0.4em; }
-.chat-smiley:has(.chat-smiley-outline) { width: 1.6em; height: 1.6em; vertical-align: -0.3em; }
-.chat-smiley-icon { display: block; width: 100%; height: 100%; overflow: visible; --smiley-face: var(--accent); --smiley-face: color-mix(in srgb, var(--accent) 85%, white); --smiley-line: var(--accent-ink); --smiley-foam: var(--screen-ink); --smiley-foam: color-mix(in srgb, var(--accent) 48%, var(--screen-ink)); --smiley-tongue: color-mix(in srgb, var(--accent) 45%, var(--screen-ink)); --smiley-layer: color-mix(in srgb, var(--accent) 58%, var(--screen-panel)); --smiley-crust: color-mix(in srgb, var(--accent) 58%, var(--accent-ink)); filter: drop-shadow(0 0 0.7px color-mix(in srgb, var(--screen-ink) 75%, transparent)); }
-:root:is([data-theme="mono"], [data-theme="jupiter-ace"]) .chat-smiley-icon { --smiley-face: color-mix(in srgb, var(--accent) 80%, black); }
-.chat-smiley-outline { fill: var(--smiley-face); stroke: none; }
-.chat-smiley-icon:has(.chat-smiley-outline) { filter: none; }
-.chat-smiley-feature { fill: none; stroke: var(--smiley-line); stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; }
-.chat-smiley-dot { fill: var(--smiley-line); stroke: none; }
-.chat-smiley-mouth { fill: var(--smiley-line); stroke: none; }
-.chat-smiley-tongue { fill: var(--smiley-tongue); stroke: var(--smiley-line); stroke-width: 1.25; stroke-linejoin: round; }
-.chat-smiley-tear { fill: var(--smiley-tongue); stroke: var(--smiley-line); stroke-width: 0.8; }
-.chat-smiley-icon-line { fill: var(--smiley-face); stroke: var(--smiley-line); stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.6; }
-.chat-smiley-icon-detail { fill: none; stroke: var(--smiley-line); stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
-.chat-smiley-foam { fill: var(--smiley-foam); stroke: var(--smiley-line); stroke-width: 1.25; stroke-linejoin: round; }
-.chat-smiley-beer-fill { fill: var(--accent); stroke: none; }
-.chat-smiley-coffee-surface { fill: var(--accent-edge); stroke: none; }
-.chat-smiley-lettuce { fill: var(--smiley-layer); stroke: var(--smiley-line); stroke-width: 1.4; stroke-linejoin: round; }
-.chat-smiley-tomato { fill: var(--smiley-crust); stroke: var(--smiley-line); stroke-width: 1.25; stroke-linejoin: round; }
-.chat-smiley-pizza-crust { fill: var(--smiley-crust); stroke: var(--smiley-line); stroke-width: 0.8; stroke-linejoin: round; }
-.chat-smiley-pizza-topping { fill: var(--smiley-line); stroke: var(--smiley-face); stroke-width: 0.7; }
-.chat-smiley-fish { fill: var(--accent-edge); stroke: none; }
-.chat-smiley-rice-face { fill: white; stroke: none; }
-.chat-smiley-rice { fill: color-mix(in srgb, var(--accent) 22%, black); fill-opacity: 0.45; stroke: none; }
-.chat-smiley-nori { fill: color-mix(in srgb, var(--accent) 28%, black); stroke: color-mix(in srgb, var(--accent) 55%, black); stroke-linejoin: round; stroke-width: 0.8; }
-.chat-smiley-filling { fill: var(--smiley-foam); stroke: none; }
-.chat-smiley-band { fill: var(--smiley-crust); stroke: none; }
-.chat-smiley-shade { fill: var(--smiley-line); fill-opacity: 0.14; stroke: none; }
-.chat-smiley-hand { fill: color-mix(in srgb, var(--smiley-face) 50%, white); stroke: var(--smiley-line); stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.5; }
-.chat-smiley-zzz { fill: none; stroke: var(--smiley-face); stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.6; }
-.chat-smiley-finger { fill: none; stroke: var(--smiley-line); stroke-linecap: round; stroke-opacity: 0.6; stroke-width: 1; }
-.chat-smiley-eyeball { fill: white; stroke: color-mix(in srgb, var(--accent) 22%, black); stroke-width: 1.4; }
-.chat-smiley-confetti { fill: var(--smiley-face); stroke: none; }
-.chat-smiley-confetti-line { fill: none; stroke: var(--smiley-face); stroke-linecap: round; stroke-width: 1.6; }
-.chat-smiley-sick { fill: color-mix(in srgb, green 38%, transparent); stroke: none; }
-.chat-smiley-sick-cheek { fill: color-mix(in srgb, green 34%, transparent); stroke: none; }
-.chat-smiley-gloss { fill: white; fill-opacity: 0.4; stroke: none; }
-.chat-smiley-teeth { fill: var(--smiley-face); stroke: none; }
-.chat-smiley-brow { fill: none; stroke: var(--smiley-line); stroke-linecap: round; stroke-linejoin: round; stroke-width: 2.2; }
-.chat-smiley-tear-trail { fill: none; stroke: var(--smiley-tongue); stroke-linecap: round; stroke-width: 1.3; }
-.chat-smiley-glint { fill: none; stroke: white; stroke-opacity: 0.45; stroke-linecap: round; stroke-width: 1.4; }
 .chat-message-mention { border-radius: 3px; padding: 0 2px; color: var(--screen-ink); background: var(--screen-hover); box-shadow: inset 0 -1px 0 var(--accent); font-weight: 700; }
 .chat-reply-context { grid-column: 2; grid-row: 2; max-width: 100%; overflow: hidden; margin: 4px 0 0; border: 0; border-left: 1px solid var(--screen-border); padding: 2px 7px; color: var(--screen-muted); background: transparent; font: 400 11px var(--font-mono); text-align: left; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
 .chat-reply-context:hover, .chat-reply-context:focus-visible { border-left-color: var(--accent); color: var(--screen-ink); }
@@ -747,27 +707,6 @@ details[open] > .disclosure-summary::before { transform: rotate(90deg); }
 .chat-composer label { font-size: 0; }
 .chat-composer textarea { resize: none; font-size: 12px; }
 .chat-composer-actions { display: flex; align-items: flex-start; justify-content: flex-end; gap: 8px; margin-top: -4px; }
-.chat-smiley-toggle { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 34px; height: 34px; margin-right: auto; border: 1px solid transparent; border-radius: var(--radius-panel); padding: 0; color: var(--screen-muted); background: transparent; cursor: pointer; }
-.chat-smiley-toggle-icon { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
-.chat-smiley-toggle-eye { fill: currentColor; stroke: none; }
-.chat-smiley-toggle[hidden] { display: none; }
-.chat-smiley-toggle:hover { border-color: var(--screen-border); color: var(--accent); background: var(--screen-hover); }
-.chat-smiley-toggle:focus-visible, .chat-smiley-option:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.chat-smiley-palette { flex: 1 1 0; display: grid; gap: 12px; min-width: 0; max-height: min(300px, 42vh); overflow-y: auto; border: 1px solid var(--screen-border); border-radius: var(--radius-panel); background: var(--screen-panel); }
-.chat-smiley-palette[hidden] { display: none; }
-.chat-smiley-palette-head { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 8px; border-bottom: 1px solid var(--screen-border); padding: 6px 10px; background: var(--screen-panel); }
-.chat-smiley-palette-hint { overflow: hidden; color: var(--screen-muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
-.chat-smiley-close { flex: none; border: 1px solid var(--screen-border); border-radius: var(--radius-panel); padding: 2px 8px; color: var(--screen-muted); background: transparent; font: 700 11px var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer; }
-.chat-smiley-close:hover { border-color: var(--accent-edge); color: var(--accent); }
-.chat-smiley-close:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.chat-smiley-palette-group { padding: 0 10px; }
-.chat-smiley-palette-group:last-child { padding-bottom: 10px; }
-.chat-smiley-palette-title { margin: 0 0 6px; color: var(--screen-muted); font: 700 11px var(--font-display); letter-spacing: 0.06em; text-transform: uppercase; }
-.chat-smiley-palette-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(116px, 1fr)); gap: 4px; }
-.chat-smiley-option { display: flex; align-items: center; gap: 8px; min-width: 0; border: 1px solid transparent; border-radius: var(--radius-panel); padding: 6px 8px; color: var(--screen-ink); background: transparent; font: inherit; text-align: left; cursor: pointer; }
-.chat-smiley-option:hover { border-color: var(--accent-edge); background: var(--screen-hover); }
-.chat-smiley-option .chat-smiley { flex: none; margin: 0; }
-.chat-smiley-option code { overflow: hidden; color: var(--screen-muted); font: 400 11px var(--font-mono); text-overflow: ellipsis; white-space: nowrap; }
 .chat-reply-hint { margin: 0; color: var(--accent); font-size: 12px; }
 .chat-mention-suggestions { position: absolute; z-index: 20; right: 18px; bottom: calc(100% - 4px); left: 18px; display: grid; max-height: min(260px, 40vh); gap: 3px; overflow-y: auto; border: 1px solid var(--screen-border); border-radius: var(--radius-panel); padding: 5px; background: var(--screen-panel); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35); }
 .chat-mention-suggestions[hidden] { display: none; }

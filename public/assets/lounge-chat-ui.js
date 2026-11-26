@@ -2,307 +2,7 @@ import { ApiFailure, api, apiBaseUrl } from './api.js';
 import { bindRealtimePolling, shouldUsePolling } from './realtime-polling.js';
 import { filterMentionMembers, findMentionQuery, mentionEmptyMessage, replaceMentionQuery, splitMentions, } from './chat-mentions.js';
 import { handleMentionKeydown as handleMentionKeydownUi } from './chat-mentions-ui.js';
-import { chatSmileyGroups, splitChatSmilies } from './chat-smilies.js';
 import { formatChatTimestamp } from './chat-time.js';
-const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
-const smileyLabels = {
-    smile: 'smile',
-    wink: 'wink',
-    frown: 'frown',
-    grin: 'grin',
-    tongue: 'tongue out',
-    neutral: 'neutral face',
-    surprised: 'surprised face',
-    uncertain: 'uncertain face',
-    crying: 'crying face',
-    angry: 'angry face',
-    nauseated: 'nauseated face',
-    thumbsup: 'thumbs up',
-    heart: 'heart',
-    laughing: 'laughing face',
-    thinking: 'thinking face',
-    bug: 'bug',
-    rocket: 'rocket',
-    party: 'party popper',
-    cool: 'cool face',
-    sleeping: 'sleeping face',
-    eyes: 'eyes',
-    fire: 'fire',
-    facepalm: 'facepalm',
-    coffee: 'coffee',
-    beer: 'beer mug',
-    pizza: 'pizza slice',
-    burger: 'burger',
-    sushi: 'sushi',
-    chinese: 'Chinese takeout',
-};
-const smileyShapes = {
-    smile: [
-        { tag: 'circle', attributes: { cx: '12', cy: '12', r: '10.5', class: 'chat-smiley-outline' } },
-        { tag: 'path', attributes: { d: 'M1.7 14A10.5 10.5 0 0 0 22.3 14A12 12 0 0 1 1.7 14z', class: 'chat-smiley-shade' } },
-        { tag: 'path', attributes: { d: 'M5.6 7.4C6.6 4.9 9 3.7 11.2 3.6c-2.6.8-4.3 2.2-5 4.3z', class: 'chat-smiley-gloss' } },
-        { tag: 'circle', attributes: { cx: '8.3', cy: '9', r: '1.35', class: 'chat-smiley-dot' } },
-        { tag: 'circle', attributes: { cx: '15.7', cy: '9', r: '1.35', class: 'chat-smiley-dot' } },
-        { tag: 'path', attributes: { d: 'M7 14.5 Q12 19.5 17 14.5', class: 'chat-smiley-feature' } },
-        { tag: 'path', attributes: { d: 'M6.4 12.4v4.6', class: 'chat-smiley-glint' } },
-    ],
-    wink: [
-        { tag: 'circle', attributes: { cx: '12', cy: '12', r: '10.5', class: 'chat-smiley-outline' } },
-        { tag: 'path', attributes: { d: 'M1.7 14A10.5 10.5 0 0 0 22.3 14A12 12 0 0 1 1.7 14z', class: 'chat-smiley-shade' } },
-        { tag: 'path', attributes: { d: 'M5.6 7.4C6.6 4.9 9 3.7 11.2 3.6c-2.6.8-4.3 2.2-5 4.3z', class: 'chat-smiley-gloss' } },
-        { tag: 'path', attributes: { d: 'M6.6 9.7Q8.3 7.3 10 9.7', class: 'chat-smiley-feature' } },
-        { tag: 'circle', attributes: { cx: '15.7', cy: '9', r: '1.35', class: 'chat-smiley-dot' } },
-        { tag: 'path', attributes: { d: 'M7 14.5 Q12 19.5 17 14.5', class: 'chat-smiley-feature' } },
-    ],
-    frown: [
-        { tag: 'circle', attributes: { cx: '12', cy: '12', r: '10.5', class: 'chat-smiley-outline' } },
-        { tag: 'path', attributes: { d: 'M1.7 14A10.5 10.5 0 0 0 22.3 14A12 12 0 0 1 1.7 14z', class: 'chat-smiley-shade' } },
-        { tag: 'path', attributes: { d: 'M5.6 7.4C6.6 4.9 9 3.7 11.2 3.6c-2.6.8-4.3 2.2-5 4.3z', class: 'chat-smiley-gloss' } },
-        { tag: 'circle', attributes: { cx: '8.3', cy: '9', r: '1.35', class: 'chat-smiley-dot' } },
-        { tag: 'circle', attributes: { cx: '15.7', cy: '9', r: '1.35', class: 'chat-smiley-dot' } },
-        { tag: 'path', attributes: { d: 'M7 17.5 Q12 12.5 17 17.5', class: 'chat-smiley-feature' } },
-    ],
-    grin: [
-        { tag: 'circle', attributes: { cx: '12', cy: '12', r: '10.5', class: 'chat-smiley-outline' } },
-        { tag: 'path', attributes: { d: 'M1.7 14A10.5 10.5 0 0 0 22.3 14A12 12 0 0 1 1.7 14z', class: 'chat-smiley-shade' } },
-        { tag: 'path', attributes: { d: 'M5.6 7.4C6.6 4.9 9 3.7 11.2 3.6c-2.6.8-4.3 2.2-5 4.3z', class: 'chat-smiley-gloss' } },
-        { tag: 'circle', attributes: { cx: '8.3', cy: '9', r: '1.35', class: 'chat-smiley-dot' } },
-        { tag: 'circle', attributes: { cx: '15.7', cy: '9', r: '1.35', class: 'chat-smiley-dot' } },
-        { tag: 'path', attributes: { d: 'M6.5 13.8h11v1.7a5.5 5.5 0 0 1-11 0z', class: 'chat-smiley-mouth' } },
-        { tag: 'path', attributes: { d: 'M7.6 13.8h8.8v1.5H7.6z', class: 'chat-smiley-teeth' } },
-    ],
-    tongue: [
-        { tag: 'circle', attributes: { cx: '12', cy: '12', r: '10.5', class: 'chat-smiley-outline' } },
-        { tag: 'path', attributes: { d: 'M1.7 14A10.5 10.5 0 0 0 22.3 14A12 12 0 0 1 1.7 14z', class: 'chat-smiley-shade' } },
-        { tag: 'path', attributes: { d: 'M5.6 7.4C6.6 4.9 9 3.7 11.2 3.6c-2.6.8-4.3 2.2-5 4.3z', class: 'chat-smiley-gloss' } },
-        { tag: 'circle', attributes: { cx: '8.3', cy: '9', r: '1.35', class: 'chat-smiley-dot' } },
-        { tag: 'circle', attributes: { cx: '15.7', cy: '9', r: '1.35', class: 'chat-smiley-dot' } },
-        { tag: 'path', attributes: { d: 'M6.5 13.8h11v1.6a5.5 5.5 0 0 1-11 0z', class: 'chat-smiley-mouth' } },
-        { tag: 'path', attributes: { d: 'M9.3 15.4h5.4v3.7a2.7 2.7 0 0 1-5.4 0z', class: 'chat-smiley-tongue' } },
-    ],
-    neutral: [
-        { tag: 'circle', attributes: { cx: '12', cy: '12', r: '10.5', class: 'chat-smiley-outline' } },
-        { tag: 'path', attributes: { d: 'M1.7 14A10.5 10.5 0 0 0 22.3 14A12 12 0 0 1 1.7 14z', class: 'chat-smiley-shade' } },
-        { tag: 'path', attributes: { d: 'M5.6 7.4C6.6 4.9 9 3.7 11.2 3.6c-2.6.8-4.3 2.2-5 4.3z', class: 'chat-smiley-gloss' } },
-        { tag: 'circle', attributes: { cx: '8.3', cy: '9', r: '1.35', class: 'chat-smiley-dot' } },
-        { tag: 'circle', attributes: { cx: '15.7', cy: '9', r: '1.35', class: 'chat-smiley-dot' } },
-        { tag: 'path', attributes: { d: 'M7.5 15.5h9', class: 'chat-smiley-feature' } },
-    ],
-    surprised: [
-        { tag: 'circle', attributes: { cx: '12', cy: '12', r: '10.5', class: 'chat-smiley-outline' } },
-        { tag: 'path', attributes: { d: 'M1.7 14A10.5 10.5 0 0 0 22.3 14A12 12 0 0 1 1.7 14z', class: 'chat-smiley-shade' } },
-        { tag: 'path', attributes: { d: 'M5.6 7.4C6.6 4.9 9 3.7 11.2 3.6c-2.6.8-4.3 2.2-5 4.3z', class: 'chat-smiley-gloss' } },
-        { tag: 'path', attributes: { d: 'M6.6 5.7Q8.3 4.5 10 5.7m4 0Q15.7 4.5 17.4 5.7', class: 'chat-smiley-brow' } },
-        { tag: 'circle', attributes: { cx: '8.3', cy: '9.3', r: '1.45', class: 'chat-smiley-dot' } },
-        { tag: 'circle', attributes: { cx: '15.7', cy: '9.3', r: '1.45', class: 'chat-smiley-dot' } },
-        { tag: 'path', attributes: { d: 'M12 13.1a1.9 2.6 0 1 0 0 5.2a1.9 2.6 0 1 0 0-5.2z', class: 'chat-smiley-mouth' } },
-    ],
-    uncertain: [
-        { tag: 'circle', attributes: { cx: '12', cy: '12', r: '10.5', class: 'chat-smiley-outline' } },
-        { tag: 'path', attributes: { d: 'M1.7 14A10.5 10.5 0 0 0 22.3 14A12 12 0 0 1 1.7 14z', class: 'chat-smiley-shade' } },
-        { tag: 'path', attributes: { d: 'M5.6 7.4C6.6 4.9 9 3.7 11.2 3.6c-2.6.8-4.3 2.2-5 4.3z', class: 'chat-smiley-gloss' } },
-        { tag: 'path', attributes: { d: 'M13.4 6.1Q15.5 4.9 17.7 6.3', class: 'chat-smiley-brow' } },
-        { tag: 'circle', attributes: { cx: '8.3', cy: '9', r: '1.35', class: 'chat-smiley-dot' } },
-        { tag: 'circle', attributes: { cx: '15.7', cy: '9', r: '1.35', class: 'chat-smiley-dot' } },
-        { tag: 'path', attributes: { d: 'M6.8 15.8c1.7-2 3.4-2 5.2 0s3.5 2 5.2 0', class: 'chat-smiley-feature' } },
-    ],
-    crying: [
-        { tag: 'circle', attributes: { cx: '12', cy: '12', r: '10.5', class: 'chat-smiley-outline' } },
-        { tag: 'path', attributes: { d: 'M1.7 14A10.5 10.5 0 0 0 22.3 14A12 12 0 0 1 1.7 14z', class: 'chat-smiley-shade' } },
-        { tag: 'path', attributes: { d: 'M5.6 7.4C6.6 4.9 9 3.7 11.2 3.6c-2.6.8-4.3 2.2-5 4.3z', class: 'chat-smiley-gloss' } },
-        { tag: 'circle', attributes: { cx: '8.3', cy: '9', r: '1.35', class: 'chat-smiley-dot' } },
-        { tag: 'circle', attributes: { cx: '15.7', cy: '9', r: '1.35', class: 'chat-smiley-dot' } },
-        { tag: 'path', attributes: { d: 'M7 17.5 Q12 12.5 17 17.5', class: 'chat-smiley-feature' } },
-        { tag: 'path', attributes: { d: 'M15.9 10.9c-1.2 1.7-2 2.5-2 3.7a2 2 0 0 0 4 0c0-1.2-.8-2-2-3.7z', class: 'chat-smiley-tear' } },
-        { tag: 'path', attributes: { d: 'M8.1 10.7v3', class: 'chat-smiley-tear-trail' } },
-    ],
-    angry: [
-        { tag: 'circle', attributes: { cx: '12', cy: '12', r: '10.5', class: 'chat-smiley-outline' } },
-        { tag: 'path', attributes: { d: 'M1.7 14A10.5 10.5 0 0 0 22.3 14A12 12 0 0 1 1.7 14z', class: 'chat-smiley-shade' } },
-        { tag: 'path', attributes: { d: 'M5.6 7.4C6.6 4.9 9 3.7 11.2 3.6c-2.6.8-4.3 2.2-5 4.3z', class: 'chat-smiley-gloss' } },
-        { tag: 'path', attributes: { d: 'M6.4 6.9 10.4 9.2m7.2-2.3L13.6 9.2', class: 'chat-smiley-brow' } },
-        { tag: 'circle', attributes: { cx: '8.6', cy: '10.8', r: '1.3', class: 'chat-smiley-dot' } },
-        { tag: 'circle', attributes: { cx: '15.4', cy: '10.8', r: '1.3', class: 'chat-smiley-dot' } },
-        { tag: 'path', attributes: { d: 'M7 17.5 Q12 13 17 17.5', class: 'chat-smiley-feature' } },
-    ],
-    nauseated: [
-        { tag: 'circle', attributes: { cx: '12', cy: '12', r: '10.5', class: 'chat-smiley-outline' } },
-        { tag: 'path', attributes: { d: 'M1.7 14A10.5 10.5 0 0 0 22.3 14A12 12 0 0 1 1.7 14z', class: 'chat-smiley-shade' } },
-        { tag: 'circle', attributes: { cx: '12', cy: '12', r: '10.5', class: 'chat-smiley-sick' } },
-        { tag: 'circle', attributes: { cx: '6.8', cy: '15.4', r: '2.9', class: 'chat-smiley-sick-cheek' } },
-        { tag: 'circle', attributes: { cx: '17.2', cy: '15.4', r: '2.9', class: 'chat-smiley-sick-cheek' } },
-        { tag: 'path', attributes: { d: 'M5.6 7.4C6.6 4.9 9 3.7 11.2 3.6c-2.6.8-4.3 2.2-5 4.3z', class: 'chat-smiley-gloss' } },
-        { tag: 'path', attributes: { d: 'M6.6 7.8 10 9.4 6.6 11m10.8-3.2L14 9.4l3.4 1.6', class: 'chat-smiley-feature' } },
-        { tag: 'path', attributes: { d: 'M8.8 16.6c1-1.6 2-1.6 3.2 0s2.2 1.6 3.2 0', class: 'chat-smiley-feature' } },
-        { tag: 'path', attributes: { d: 'M18.9 4.2c-.8 1.2-1.3 1.8-1.3 2.4a1.3 1.3 0 0 0 2.6 0c0-.6-.5-1.2-1.3-2.4z', class: 'chat-smiley-tear' } },
-    ],
-    laughing: [
-        { tag: 'circle', attributes: { cx: '12', cy: '12', r: '10.5', class: 'chat-smiley-outline' } },
-        { tag: 'path', attributes: { d: 'M1.7 14A10.5 10.5 0 0 0 22.3 14A12 12 0 0 1 1.7 14z', class: 'chat-smiley-shade' } },
-        { tag: 'path', attributes: { d: 'M5.6 7.4C6.6 4.9 9 3.7 11.2 3.6c-2.6.8-4.3 2.2-5 4.3z', class: 'chat-smiley-gloss' } },
-        { tag: 'path', attributes: { d: 'M6.2 10.2Q8.3 7.2 10.4 10.2m3.2 0Q15.7 7.2 17.8 10.2', class: 'chat-smiley-feature' } },
-        { tag: 'path', attributes: { d: 'M6 13.2h12a6 6 0 0 1-12 0z', class: 'chat-smiley-mouth' } },
-        { tag: 'path', attributes: { d: 'M7.2 13.2h9.6v1.5H7.2z', class: 'chat-smiley-teeth' } },
-        { tag: 'path', attributes: { d: 'M3.9 10.6c-.8 1.2-1.3 1.8-1.3 2.4a1.3 1.3 0 0 0 2.6 0c0-.6-.5-1.2-1.3-2.4z', class: 'chat-smiley-tear' } },
-        { tag: 'path', attributes: { d: 'M20.1 10.6c-.8 1.2-1.3 1.8-1.3 2.4a1.3 1.3 0 0 0 2.6 0c0-.6-.5-1.2-1.3-2.4z', class: 'chat-smiley-tear' } },
-    ],
-    thinking: [
-        { tag: 'circle', attributes: { cx: '12', cy: '12', r: '10.5', class: 'chat-smiley-outline' } },
-        { tag: 'path', attributes: { d: 'M1.7 14A10.5 10.5 0 0 0 22.3 14A12 12 0 0 1 1.7 14z', class: 'chat-smiley-shade' } },
-        { tag: 'path', attributes: { d: 'M5.6 7.4C6.6 4.9 9 3.7 11.2 3.6c-2.6.8-4.3 2.2-5 4.3z', class: 'chat-smiley-gloss' } },
-        { tag: 'path', attributes: { d: 'M6.2 6.6h3.8', class: 'chat-smiley-brow' } },
-        { tag: 'path', attributes: { d: 'M13.6 5.8Q15.7 4.4 17.8 5.8', class: 'chat-smiley-brow' } },
-        { tag: 'circle', attributes: { cx: '9', cy: '9.6', r: '1.4', class: 'chat-smiley-dot' } },
-        { tag: 'circle', attributes: { cx: '16', cy: '9.6', r: '1.4', class: 'chat-smiley-dot' } },
-        { tag: 'path', attributes: { d: 'M8.4 16.4h5.2', class: 'chat-smiley-feature' } },
-        { tag: 'circle', attributes: { cx: '19.2', cy: '16.4', r: '0.8', class: 'chat-smiley-confetti' } },
-        { tag: 'circle', attributes: { cx: '21.2', cy: '18.6', r: '1.1', class: 'chat-smiley-confetti' } },
-        { tag: 'circle', attributes: { cx: '21.6', cy: '21.4', r: '1.4', class: 'chat-smiley-confetti' } },
-    ],
-    cool: [
-        { tag: 'circle', attributes: { cx: '12', cy: '12', r: '10.5', class: 'chat-smiley-outline' } },
-        { tag: 'path', attributes: { d: 'M1.7 14A10.5 10.5 0 0 0 22.3 14A12 12 0 0 1 1.7 14z', class: 'chat-smiley-shade' } },
-        { tag: 'path', attributes: { d: 'M5.6 7.4C6.6 4.9 9 3.7 11.2 3.6c-2.6.8-4.3 2.2-5 4.3z', class: 'chat-smiley-gloss' } },
-        { tag: 'path', attributes: { d: 'M4.2 8h6.6v2.8a3 3 0 0 1-3 3H7.2a3 3 0 0 1-3-3z', class: 'chat-smiley-nori' } },
-        { tag: 'path', attributes: { d: 'M13.2 8h6.6v2.8a3 3 0 0 1-3 3h-.6a3 3 0 0 1-3-3z', class: 'chat-smiley-nori' } },
-        { tag: 'path', attributes: { d: 'M10.8 9.2h2.4', class: 'chat-smiley-feature' } },
-        { tag: 'path', attributes: { d: 'M5.8 9.6h1.8m8 0h1.8', class: 'chat-smiley-glint' } },
-        { tag: 'path', attributes: { d: 'M8 16.4Q12 19.6 16 16.4', class: 'chat-smiley-feature' } },
-    ],
-    sleeping: [
-        { tag: 'circle', attributes: { cx: '12', cy: '12', r: '10.5', class: 'chat-smiley-outline' } },
-        { tag: 'path', attributes: { d: 'M1.7 14A10.5 10.5 0 0 0 22.3 14A12 12 0 0 1 1.7 14z', class: 'chat-smiley-shade' } },
-        { tag: 'path', attributes: { d: 'M5.6 7.4C6.6 4.9 9 3.7 11.2 3.6c-2.6.8-4.3 2.2-5 4.3z', class: 'chat-smiley-gloss' } },
-        { tag: 'path', attributes: { d: 'M6.4 9.2Q8.3 11 10.2 9.2m3.6 0Q15.7 11 17.6 9.2', class: 'chat-smiley-feature' } },
-        { tag: 'path', attributes: { d: 'M12 15.2a1.7 2 0 1 0 0 4a1.7 2 0 1 0 0-4z', class: 'chat-smiley-mouth' } },
-        { tag: 'path', attributes: { d: 'M16.2 1.6h3.6l-3.6 3.8h3.6m1.4-4.8h2.2L20.8 3h2.2', class: 'chat-smiley-zzz' } },
-    ],
-    facepalm: [
-        { tag: 'circle', attributes: { cx: '12', cy: '12', r: '10.5', class: 'chat-smiley-outline' } },
-        { tag: 'path', attributes: { d: 'M1.7 14A10.5 10.5 0 0 0 22.3 14A12 12 0 0 1 1.7 14z', class: 'chat-smiley-shade' } },
-        { tag: 'path', attributes: { d: 'M5.6 7.4C6.6 4.9 9 3.7 11.2 3.6c-2.6.8-4.3 2.2-5 4.3z', class: 'chat-smiley-gloss' } },
-        { tag: 'path', attributes: { d: 'M7.4 19Q12 16.4 16.6 19', class: 'chat-smiley-feature' } },
-        { tag: 'path', attributes: { d: 'M7 13.6 2.6 10.2a1.6 1.6 0 0 1 2.1-2.4L8.4 10z', class: 'chat-smiley-hand' } },
-        { tag: 'path', attributes: { d: 'M6.5 10.4V6.0a1.2 1.2 0 0 1 2.4 0V10.4', class: 'chat-smiley-hand' } },
-        { tag: 'path', attributes: { d: 'M9.6 10.4V4.4a1.2 1.2 0 0 1 2.4 0V10.4', class: 'chat-smiley-hand' } },
-        { tag: 'path', attributes: { d: 'M12.7 10.4V4.0a1.2 1.2 0 0 1 2.4 0V10.4', class: 'chat-smiley-hand' } },
-        { tag: 'path', attributes: { d: 'M15.8 10.4V5.2a1.2 1.2 0 0 1 2.4 0V10.4', class: 'chat-smiley-hand' } },
-        { tag: 'path', attributes: { d: 'M5.8 9h12.8v3.2a3 3 0 0 1-3 3H8.8a3 3 0 0 1-3-3z', class: 'chat-smiley-hand' } },
-    ],
-    thumbsup: [
-        { tag: 'path', attributes: { d: 'M2.6 11h4.6v10H2.6z', class: 'chat-smiley-icon-line' } },
-        { tag: 'path', attributes: { d: 'M8.4 11.2 12 3.6c1.7 0 2.8 1.2 2.4 2.9L13.7 9.4h5.1a2 2 0 0 1 2 2.4l-1.3 7.2a2.4 2.4 0 0 1-2.4 2H8.4z', class: 'chat-smiley-icon-line' } },
-        { tag: 'path', attributes: { d: 'M10.8 14h7.6m-7.6 2.8h7m-7 2.8h6.4', class: 'chat-smiley-finger' } },
-    ],
-    heart: [
-        { tag: 'path', attributes: { d: 'M12 21C5.2 15.8 2.4 12.4 2.4 8.6A5 5 0 0 1 12 6.8 5 5 0 0 1 21.6 8.6c0 3.8-2.8 7.2-9.6 12.4z', class: 'chat-smiley-icon-line' } },
-        { tag: 'path', attributes: { d: 'M5.6 8.4c.2-1.4 1.2-2.4 2.6-2.4', class: 'chat-smiley-glint' } },
-    ],
-    bug: [
-        { tag: 'path', attributes: { d: 'M7 11 3.4 9.4M7 14.2H3m4.2 3-3.4 2m13.2-8 3.6-1.6m-3.6 4.8h4m-4.2 3 3.4 2M10.4 3.4 9 1.6m4.6 1.8L15 1.6', class: 'chat-smiley-icon-detail' } },
-        { tag: 'path', attributes: { d: 'M12 7.8c-3.2 0-5 2.4-5 5.6 0 3.4 2.2 6.4 5 6.4s5-3 5-6.4c0-3.2-1.8-5.6-5-5.6z', class: 'chat-smiley-icon-line' } },
-        { tag: 'circle', attributes: { cx: '12', cy: '5.6', r: '2.8', class: 'chat-smiley-icon-line' } },
-        { tag: 'path', attributes: { d: 'M12 9.8v9.4', class: 'chat-smiley-finger' } },
-        { tag: 'circle', attributes: { cx: '9.6', cy: '13.4', r: '1', class: 'chat-smiley-nori' } },
-        { tag: 'circle', attributes: { cx: '14.4', cy: '13.4', r: '1', class: 'chat-smiley-nori' } },
-        { tag: 'circle', attributes: { cx: '9.8', cy: '16.6', r: '0.9', class: 'chat-smiley-nori' } },
-        { tag: 'circle', attributes: { cx: '14.2', cy: '16.6', r: '0.9', class: 'chat-smiley-nori' } },
-    ],
-    rocket: [
-        { tag: 'path', attributes: { d: 'M6.8 12.4 3.4 16.6v2.8l3.4-1.6zm10.4 0 3.4 4.2v2.8l-3.4-1.6z', class: 'chat-smiley-fish' } },
-        { tag: 'path', attributes: { d: 'M9.6 17.6c0 2 1 3.6 2.4 4.6 1.4-1 2.4-2.6 2.4-4.6z', class: 'chat-smiley-filling' } },
-        { tag: 'path', attributes: { d: 'M12 1.8c3.6 2.2 5.2 6 5.2 10.2v4.6H6.8V12C6.8 7.8 8.4 4 12 1.8z', class: 'chat-smiley-icon-line' } },
-        { tag: 'circle', attributes: { cx: '12', cy: '9.4', r: '2.1', class: 'chat-smiley-foam' } },
-    ],
-    party: [
-        { tag: 'path', attributes: { d: 'M2.8 21.2 7.4 8.4l8.2 8.2z', class: 'chat-smiley-icon-line' } },
-        { tag: 'path', attributes: { d: 'M5.8 14.6 9.4 18.2m-2.2-6.4 5 5', class: 'chat-smiley-finger' } },
-        { tag: 'circle', attributes: { cx: '15.4', cy: '4.8', r: '1.2', class: 'chat-smiley-confetti' } },
-        { tag: 'circle', attributes: { cx: '20', cy: '9.6', r: '1.1', class: 'chat-smiley-confetti' } },
-        { tag: 'circle', attributes: { cx: '19.2', cy: '3.2', r: '0.9', class: 'chat-smiley-confetti' } },
-        { tag: 'circle', attributes: { cx: '21.2', cy: '15.2', r: '1', class: 'chat-smiley-confetti' } },
-        { tag: 'path', attributes: { d: 'M11.2 3.6 12.8 2m5.2 12 2.4-.8M10.4 7.8l4-3.6', class: 'chat-smiley-confetti-line' } },
-    ],
-    eyes: [
-        { tag: 'path', attributes: { d: 'M8.4 5a3.9 5.2 0 1 0 0 10.4A3.9 5.2 0 1 0 8.4 5z', class: 'chat-smiley-eyeball' } },
-        { tag: 'path', attributes: { d: 'M15.6 5a3.9 5.2 0 1 0 0 10.4A3.9 5.2 0 1 0 15.6 5z', class: 'chat-smiley-eyeball' } },
-        { tag: 'circle', attributes: { cx: '9.6', cy: '11.4', r: '2', class: 'chat-smiley-nori' } },
-        { tag: 'circle', attributes: { cx: '16.8', cy: '11.4', r: '2', class: 'chat-smiley-nori' } },
-    ],
-    fire: [
-        { tag: 'path', attributes: { d: 'M12.4 1.6c.4 3.4 4.8 5.6 4.8 11.2a5.2 5.2 0 0 1-10.4 0c0-2.4 1.2-4 2.4-5.2.2 1.6.8 2.4 1.6 2.8.4-3 .2-5.8 1.6-8.8z', class: 'chat-smiley-icon-line' } },
-        { tag: 'path', attributes: { d: 'M12 12c1.6 1.6 2.6 2.8 2.6 4.4a2.6 2.6 0 0 1-5.2 0c0-1.2.6-2.2 1.2-3 .4.6.8.8 1.4.6z', class: 'chat-smiley-filling' } },
-    ],
-    coffee: [
-        { tag: 'path', attributes: { d: 'M7 2.5c-1.7 1.6 1.7 2.2 0 4m5-4c-1.7 1.6 1.7 2.2 0 4m5-4c-1.7 1.6 1.7 2.2 0 4', class: 'chat-smiley-icon-detail' } },
-        { tag: 'path', attributes: { d: 'M4 8h13v9.5a2.5 2.5 0 0 1-2.5 2.5h-8A2.5 2.5 0 0 1 4 17.5z', class: 'chat-smiley-icon-line' } },
-        { tag: 'path', attributes: { d: 'M5.3 9.2h10.4v2H5.3z', class: 'chat-smiley-coffee-surface' } },
-        { tag: 'path', attributes: { d: 'M17 10h1.2a2.7 2.7 0 0 1 0 5.4H17', class: 'chat-smiley-icon-line' } },
-        { tag: 'path', attributes: { d: 'M2.5 21h19', class: 'chat-smiley-icon-detail' } },
-    ],
-    beer: [
-        { tag: 'path', attributes: { d: 'M4 7.5h13.5v12A2.5 2.5 0 0 1 15 22H6.5A2.5 2.5 0 0 1 4 19.5z', class: 'chat-smiley-icon-line' } },
-        { tag: 'path', attributes: { d: 'M5.4 12h10.7v7.2H5.4z', class: 'chat-smiley-beer-fill' } },
-        { tag: 'path', attributes: { d: 'M4 8c-1.5-.4-1.4-2.3.1-2.6.5-2.5 3.8-2.9 5.1-.7 1.2-2 4.2-1.8 5.1.4 2-1.6 4.2-.5 4.2 1.4 1.5.4 1.2 2.3-.2 2.6H5.2C4.6 9.1 4.2 8.7 4 8z', class: 'chat-smiley-foam' } },
-        { tag: 'path', attributes: { d: 'M17.5 10h1.2a2.8 2.8 0 0 1 0 5.6h-1.2', class: 'chat-smiley-icon-line' } },
-        { tag: 'path', attributes: { d: 'M7 13v5m4-5v5', class: 'chat-smiley-icon-detail' } },
-    ],
-    pizza: [
-        { tag: 'path', attributes: { d: 'M3 21 9 2.5 21 21z', class: 'chat-smiley-icon-line' } },
-        { tag: 'path', attributes: { d: 'M4.2 17.4 6.2 18.5 19.1 18.5 20.1 17.3 21 21H3z', class: 'chat-smiley-pizza-crust' } },
-        { tag: 'circle', attributes: { cx: '10.2', cy: '9.4', r: '1.8', class: 'chat-smiley-pizza-topping' } },
-        { tag: 'circle', attributes: { cx: '14.7', cy: '14.8', r: '1.8', class: 'chat-smiley-pizza-topping' } },
-        { tag: 'circle', attributes: { cx: '8', cy: '14.3', r: '1.5', class: 'chat-smiley-pizza-topping' } },
-    ],
-    burger: [
-        { tag: 'path', attributes: { d: 'M3 10a9 7 0 0 1 18 0v1H3z', class: 'chat-smiley-icon-line' } },
-        { tag: 'path', attributes: { d: 'M7.4 6.4l1 .6m2.7-2 .2 1.3m3.1-.5.9.8', class: 'chat-smiley-icon-detail' } },
-        { tag: 'path', attributes: { d: 'M3 11.5h18l-1.2 1.4 1.2 1.5-1.3 1.4H4.3L3 14.4l1.2-1.5z', class: 'chat-smiley-lettuce' } },
-        { tag: 'path', attributes: { d: 'M4 15.4h16v2H4z', class: 'chat-smiley-tomato' } },
-        { tag: 'path', attributes: { d: 'M4 17.3h16v.6a3.2 3.2 0 0 1-3.2 3.2H7.2A3.2 3.2 0 0 1 4 17.9z', class: 'chat-smiley-icon-line' } },
-        { tag: 'path', attributes: { d: 'M5.6 8.2c.7-2.1 2.3-3 4-3.2', class: 'chat-smiley-glint' } },
-    ],
-    sushi: [
-        { tag: 'path', attributes: { d: 'M6.68 5.94 12.68 3.54A7.6 7.6 0 0 1 18.32 17.66L12.32 20.06z', class: 'chat-smiley-nori' } },
-        { tag: 'circle', attributes: { cx: '15.5', cy: '10.6', r: '7.6', class: 'chat-smiley-nori' } },
-        { tag: 'circle', attributes: { cx: '9.5', cy: '13', r: '7.6', class: 'chat-smiley-nori' } },
-        { tag: 'path', attributes: { d: 'M15.8 8.1 19.6 6.6m-3.4 8.4 4.7-1.9', class: 'chat-smiley-glint' } },
-        { tag: 'circle', attributes: { cx: '9.5', cy: '13', r: '6.8', class: 'chat-smiley-rice-face' } },
-        { tag: 'circle', attributes: { cx: '5.4', cy: '10.4', r: '0.5', class: 'chat-smiley-rice' } },
-        { tag: 'circle', attributes: { cx: '6', cy: '16.4', r: '0.5', class: 'chat-smiley-rice' } },
-        { tag: 'circle', attributes: { cx: '13.6', cy: '9.6', r: '0.5', class: 'chat-smiley-rice' } },
-        { tag: 'circle', attributes: { cx: '13.8', cy: '16.8', r: '0.5', class: 'chat-smiley-rice' } },
-        { tag: 'circle', attributes: { cx: '9.4', cy: '7.9', r: '0.5', class: 'chat-smiley-rice' } },
-        { tag: 'circle', attributes: { cx: '9.6', cy: '18.5', r: '0.5', class: 'chat-smiley-rice' } },
-        { tag: 'circle', attributes: { cx: '9.5', cy: '13', r: '3.2', class: 'chat-smiley-fish' } },
-        { tag: 'circle', attributes: { cx: '10.9', cy: '14.4', r: '1.4', class: 'chat-smiley-filling' } },
-    ],
-    chinese: [
-        { tag: 'path', attributes: { d: 'M4.6 9.2h14.8l-2.1 11.7a1.6 1.6 0 0 1-1.6 1.3H8.3a1.6 1.6 0 0 1-1.6-1.3z', class: 'chat-smiley-icon-line' } },
-        { tag: 'path', attributes: { d: 'M4.6 9.2 6 4.9l6 2.6 6-2.6 1.4 4.3z', class: 'chat-smiley-icon-line' } },
-        { tag: 'path', attributes: { d: 'M12 11.8 15 15.2 12 18.6 9 15.2z', class: 'chat-smiley-band' } },
-    ],
-};
-function createChatSmiley(doc, icon, shortcut) {
-    const wrapper = doc.createElement('span');
-    wrapper.className = 'chat-smiley';
-    wrapper.setAttribute('role', 'img');
-    wrapper.setAttribute('aria-label', smileyLabels[icon]);
-    wrapper.dataset.shortcut = shortcut;
-    const svg = doc.createElementNS(SVG_NAMESPACE, 'svg');
-    svg.classList.add('chat-smiley-icon');
-    svg.setAttribute('viewBox', '0 0 24 24');
-    svg.setAttribute('aria-hidden', 'true');
-    svg.setAttribute('focusable', 'false');
-    for (const shape of smileyShapes[icon]) {
-        const element = doc.createElementNS(SVG_NAMESPACE, shape.tag);
-        for (const [name, value] of Object.entries(shape.attributes))
-            element.setAttribute(name, value);
-        svg.append(element);
-    }
-    wrapper.append(svg);
-    return wrapper;
-}
 export function initLoungeChatUi(options) {
     const doc = options.doc ?? document;
     const request = options.request ?? api;
@@ -316,8 +16,6 @@ export function initLoungeChatUi(options) {
     const loungeMentionList = required('#lounge-mention-suggestions');
     const loungeReplyHint = required('#lounge-reply-hint');
     const loungeCancelReply = required('#lounge-cancel-reply');
-    const smileyToggle = required('#lounge-smiley-toggle');
-    const smileyPalette = required('#lounge-smiley-palette');
     const listeners = new AbortController();
     let active = false;
     let pollTimer = null;
@@ -332,7 +30,6 @@ export function initLoungeChatUi(options) {
     let mentionMatches = [];
     let mentionSelectedIndex = 0;
     let mentionDismissed = false;
-    let smileyPaletteBuilt = false;
     function required(selector) {
         const element = doc.querySelector(selector);
         if (element === null)
@@ -510,12 +207,7 @@ export function initLoungeChatUi(options) {
         body.className = 'chat-message-body';
         for (const segment of splitMentions(message.body, members)) {
             if (segment.memberId === null) {
-                for (const textSegment of splitChatSmilies(segment.text)) {
-                    if (textSegment.icon === null)
-                        body.append(doc.createTextNode(textSegment.text));
-                    else
-                        body.append(createChatSmiley(doc, textSegment.icon, textSegment.text));
-                }
+                body.append(doc.createTextNode(segment.text));
             }
             else {
                 const mention = doc.createElement('mark');
@@ -763,78 +455,6 @@ export function initLoungeChatUi(options) {
                 sendButton.disabled = false;
         }
     }
-    function buildSmileyPalette() {
-        const head = doc.createElement('div');
-        head.className = 'chat-smiley-palette-head';
-        const hint = doc.createElement('span');
-        hint.className = 'chat-smiley-palette-hint';
-        hint.textContent = 'Click a smiley to insert its code';
-        const close = doc.createElement('button');
-        close.type = 'button';
-        close.className = 'chat-smiley-close';
-        close.textContent = 'Esc';
-        close.setAttribute('aria-label', 'Close smilies');
-        close.setAttribute('aria-keyshortcuts', 'Escape');
-        close.addEventListener('click', () => {
-            setSmileyPaletteOpen(false);
-            smileyToggle.focus();
-        }, { signal: listeners.signal });
-        head.append(hint, close);
-        smileyPalette.append(head);
-        for (const group of chatSmileyGroups) {
-            const section = doc.createElement('div');
-            section.className = 'chat-smiley-palette-group';
-            const title = doc.createElement('p');
-            title.className = 'chat-smiley-palette-title';
-            title.textContent = group.label;
-            const grid = doc.createElement('div');
-            grid.className = 'chat-smiley-palette-grid';
-            for (const entry of group.entries) {
-                const code = entry.codes[0];
-                if (code === undefined)
-                    continue;
-                const option = doc.createElement('button');
-                option.type = 'button';
-                option.className = 'chat-smiley-option';
-                option.dataset.shortcut = code;
-                option.setAttribute('aria-label', `Insert ${smileyLabels[entry.icon]}, ${entry.codes.join(' or ')}`);
-                option.title = entry.codes.join('  ');
-                const codeLabel = doc.createElement('code');
-                codeLabel.textContent = entry.codes.join(' ');
-                option.append(createChatSmiley(doc, entry.icon, code), codeLabel);
-                option.addEventListener('click', () => insertSmiley(code), { signal: listeners.signal });
-                grid.append(option);
-            }
-            section.append(title, grid);
-            smileyPalette.append(section);
-        }
-        smileyPaletteBuilt = true;
-    }
-    function setSmileyPaletteOpen(open) {
-        if (open && !smileyPaletteBuilt)
-            buildSmileyPalette();
-        smileyPalette.hidden = !open;
-        smileyToggle.hidden = open;
-        smileyToggle.setAttribute('aria-expanded', String(open));
-        if (open)
-            smileyPalette.querySelector('.chat-smiley-option')?.focus();
-    }
-    function insertSmiley(code) {
-        const value = loungeInput.value;
-        const start = loungeInput.selectionStart ?? value.length;
-        const end = loungeInput.selectionEnd ?? start;
-        const before = value.slice(0, start);
-        const after = value.slice(end);
-        const lead = before !== '' && !/\s$/.test(before) ? ' ' : '';
-        const trail = /^\s/.test(after) ? '' : ' ';
-        const insertion = `${lead}${code}${trail}`;
-        if (loungeInput.maxLength > 0 && before.length + insertion.length + after.length > loungeInput.maxLength)
-            return;
-        loungeInput.value = `${before}${insertion}${after}`;
-        const cursor = before.length + insertion.length;
-        loungeInput.setSelectionRange(cursor, cursor);
-        loungeInput.focus();
-    }
     function resume() {
         if (!active)
             return;
@@ -851,14 +471,6 @@ export function initLoungeChatUi(options) {
     loungeLatestButton.addEventListener('click', scrollToLatest, { signal: listeners.signal });
     loungeForm.addEventListener('submit', (event) => void sendMessage(event), { signal: listeners.signal });
     loungeCancelReply.addEventListener('click', clearReplyParent, { signal: listeners.signal });
-    smileyToggle.addEventListener('click', () => setSmileyPaletteOpen(smileyPalette.hidden), { signal: listeners.signal });
-    loungeForm.addEventListener('keydown', (event) => {
-        if (event.key !== 'Escape' || smileyPalette.hidden || event.defaultPrevented)
-            return;
-        event.preventDefault();
-        setSmileyPaletteOpen(false);
-        (event.target === loungeInput ? loungeInput : smileyToggle).focus();
-    }, { signal: listeners.signal });
     loungeInput.addEventListener('input', () => {
         mentionDismissed = false;
         updateMentionSuggestions();
