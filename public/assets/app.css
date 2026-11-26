@@ -204,6 +204,8 @@ kbd {
   .keyboard-hint-group-label { display: none; }
   .keyboard-hint-group-items { flex-direction: row; flex-wrap: nowrap; align-items: center; gap: 8px; }
   .keyboard-hint-group-items #go-prefix-hint { white-space: nowrap; }
+  .keyboard-hint-sublabel { width: auto; margin-right: 6px; }
+  .keyboard-hint-continued { padding-left: 0; }
   .keyboard-hints kbd { padding: 1px 5px; }
   .workspace-sidebar { padding-block: 8px; }
   .workspace-sidebar::before,
@@ -724,6 +726,8 @@ details[open] > .disclosure-summary::before { transform: rotate(90deg); }
 .keyboard-hint-group-items { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; }
 .keyboard-hint-group-items > span { white-space: nowrap; }
 .keyboard-hint-group-items #go-prefix-hint { white-space: normal; }
+.keyboard-hint-sublabel { display: inline-block; box-sizing: border-box; width: 50px; color: var(--case-ink); font: 700 11px/1.2 var(--font-display); font-style: normal; letter-spacing: 1px; text-transform: uppercase; opacity: 0.7; }
+.keyboard-hint-continued { padding-left: 50px; }
 .keyboard-hints kbd { margin: 0 1px; padding: 2px 7px; border-color: var(--cap-edge); border-bottom-width: var(--key-depth); color: var(--plate-ink); background: linear-gradient(180deg, var(--cap-top), var(--cap-bottom)); }
 
 /* Dialogs */
