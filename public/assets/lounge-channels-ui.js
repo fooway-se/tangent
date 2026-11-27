@@ -88,7 +88,7 @@ export function initLoungeChannelsUi(options) {
         title.className = 'lounge-channel-link-title';
         const prefix = doc.createElement('span');
         prefix.setAttribute('aria-hidden', 'true');
-        prefix.textContent = '#';
+        prefix.textContent = '# ';
         const label = doc.createElement('span');
         label.className = 'lounge-channel-link-label';
         label.textContent = project.name;

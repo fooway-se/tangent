@@ -30,7 +30,7 @@ test('Lounge is a fixed workspace destination between Inbox and workspace admin'
 
 test('Lounge presents General and project chats as simple channel links', () => {
   assert.match(html, /<nav id="lounge-channel-links"[^>]*aria-label="Lounge channels"/);
-  assert.match(html, /id="lounge-general-channel-link"[^>]*href="#lounge-general-channel-panel"[^>]*aria-current="page"[^>]*><span class="lounge-channel-link-title"><span aria-hidden="true">#<\/span>General<\/span><\/a>/);
+  assert.match(html, /id="lounge-general-channel-link"[^>]*href="#lounge-general-channel-panel"[^>]*aria-current="page"[^>]*><span class="lounge-channel-link-title"><span aria-hidden="true"># <\/span>General<\/span><\/a>/);
   assert.match(css, /\.lounge-channel-link-title\s*\{\s*display:\s*inline\s*;/);
   assert.doesNotMatch(html, /class="lounge-channel-prefix"/);
   assert.doesNotMatch(loungeChannelsUi, /lounge-channel-prefix/);
