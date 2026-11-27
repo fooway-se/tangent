@@ -47,6 +47,7 @@ final class PermissionsTest extends TestCase
             'workspaces.create', 'projects.view',
             'chat.read', 'chat.send', 'issues.read', 'issues.create', 'issues.update',
             'issues.share', 'milestones.manage', 'tokens.create', 'tokens.list', 'inbox.read',
+            'scratchpad.read', 'scratchpad.update',
         ];
 
         foreach ($internalActions as $action) {
@@ -120,6 +121,36 @@ final class PermissionsTest extends TestCase
         self::assertFalse(Permissions::can($agent, 'issues.read', ['is_member' => true]));
         self::assertFalse(Permissions::can($agent, 'users.list'));
         self::assertFalse(Permissions::can($agent, 'tokens.create'));
+    }
+
+    public function testScratchpadPermissionsAllowOnlyAdminsAndDevelopers(): void
+    {
+        $actions = ['scratchpad.read', 'scratchpad.update'];
+        $admin = $this->user('admin', 1);
+        $developer = $this->user('developer', 2);
+        $guest = $this->user('guest', 3);
+        $agent = new AuthenticatedUser(
+            7,
+            1,
+            'Developer',
+            'developer@example.test',
+            'developer',
+            'bearer',
+            44,
+            null,
+            12,
+            5,
+            'Build agent',
+            [3],
+            ['issues.read', 'issues.comment'],
+        );
+
+        foreach ($actions as $action) {
+            self::assertTrue(Permissions::can($admin, $action), $action);
+            self::assertTrue(Permissions::can($developer, $action), $action);
+            self::assertFalse(Permissions::can($guest, $action), $action);
+            self::assertFalse(Permissions::can($agent, $action), $action);
+        }
     }
 
     private function user(string $role, int $id): AuthenticatedUser

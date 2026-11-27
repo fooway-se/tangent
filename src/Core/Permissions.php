@@ -57,6 +57,8 @@ final class Permissions
                 => in_array($user->role, ['admin', 'developer'], true),
             'inbox.read'
                 => in_array($user->role, ['admin', 'developer'], true),
+            'scratchpad.read', 'scratchpad.update'
+                => in_array($user->role, ['admin', 'developer'], true),
             'client_view.read'
                 => $user->role === 'admin' || (($user->role === 'developer') && ($resource['is_member'] ?? false) === true),
             'client_comments.create'

@@ -14,8 +14,8 @@
     <link rel="icon" href="./assets/icons/tangent-icon.svg" type="image/svg+xml">
     <link rel="icon" href="./assets/icons/tangent-32.png" sizes="32x32" type="image/png">
     <link rel="stylesheet" href="./assets/tokens.css">
-    <link rel="stylesheet" href="./assets/app.css?v=cbd616d4e971">
-    <script type="module" src="./assets/app.js?v=86d4ea78978c"></script>
+    <link rel="stylesheet" href="./assets/app.css?v=718a3e5909bc">
+    <script type="module" src="./assets/app.js?v=da3b8b4f8ec0"></script>
   </head>
   <body>
     <section id="login-shell" class="login-shell">
@@ -112,6 +112,7 @@
           <button id="projects-nav" class="workspace-nav-button is-active" type="button" aria-current="page">Projects</button>
           <button id="roadmap-nav" class="workspace-nav-button" type="button">Roadmap</button>
           <button id="inbox-nav" class="workspace-nav-button" type="button">My Work</button>
+          <button id="scratchpad-nav" class="workspace-nav-button" type="button" aria-haspopup="dialog">Scratchpad</button>
           <button id="lounge-nav" class="workspace-nav-button" type="button"><span>Lounge</span><span id="lounge-nav-presence" class="lounge-nav-presence" hidden></span></button>
           <button id="admin-nav" class="workspace-nav-button" type="button" hidden>Workspace admin</button>
         </nav>
@@ -801,7 +802,7 @@
           <div class="keyboard-hint-group" role="group" aria-labelledby="keyboard-hints-workspace-label">
             <strong id="keyboard-hints-workspace-label" class="keyboard-hint-group-label">Workspace</strong>
             <div class="keyboard-hint-group-items">
-              <span><kbd>Ctrl/Cmd</kbd>+<kbd>K</kbd> Commands · <kbd>t</kbd> Theme</span>
+              <span><kbd>Ctrl/Cmd</kbd>+<kbd>K</kbd> Commands · <kbd>t</kbd> Theme · <kbd>g</kbd> then <kbd>q</kbd> Scratchpad</span>
               <span><kbd>?</kbd> Shortcuts · <kbd>h</kbd> Toggle hints</span>
             </div>
           </div>
@@ -819,6 +820,33 @@
         </label>
         <ul id="command-results" class="command-results" role="listbox" aria-label="Commands"></ul>
         <p class="command-palette-help"><kbd>↑</kbd>/<kbd>↓</kbd> Move · <kbd>Enter</kbd> Run · <kbd>Esc</kbd> Close</p>
+      </section>
+    </dialog>
+
+    <dialog id="scratchpad-dialog" class="scratchpad-dialog" aria-labelledby="scratchpad-heading" aria-describedby="scratchpad-intro">
+      <section class="scratchpad-content">
+        <header class="dialog-heading">
+          <h2 id="scratchpad-heading">Scratchpad</h2>
+          <button id="scratchpad-close" class="button button-quiet" type="button" aria-label="Close scratchpad">Esc</button>
+        </header>
+        <p id="scratchpad-intro" class="scratchpad-intro">One private note for thoughts you may want to track later.</p>
+        <label class="scratchpad-editor-label" for="scratchpad-body">Your note</label>
+        <textarea id="scratchpad-body" class="scratchpad-body" name="body" maxlength="10000" rows="12" placeholder="Jot something down…" aria-describedby="scratchpad-status"></textarea>
+        <div class="scratchpad-footer">
+          <span id="scratchpad-status" role="status" aria-live="polite">Saved automatically.</span>
+          <button id="scratchpad-convert-button" class="button button-primary" type="button">Turn into issue</button>
+        </div>
+        <form id="scratchpad-convert-form" class="scratchpad-convert-form" hidden>
+          <label for="scratchpad-project">Create issue in
+            <select id="scratchpad-project" required>
+              <option value="">Choose a project</option>
+            </select>
+          </label>
+          <div class="scratchpad-convert-actions">
+            <button id="scratchpad-convert-cancel" class="button button-quiet" type="button">Cancel</button>
+            <button id="scratchpad-convert-submit" class="button button-primary" type="submit">Create issue</button>
+          </div>
+        </form>
       </section>
     </dialog>
 
@@ -1101,6 +1129,7 @@
           <div><dt><kbd>g</kbd>, <kbd>p</kbd></dt><dd>Go to projects</dd></div>
           <div><dt><kbd>g</kbd>, <kbd>r</kbd></dt><dd>Open the team roadmap</dd></div>
           <div><dt><kbd>g</kbd>, <kbd>n</kbd></dt><dd>Open My Work</dd></div>
+          <div><dt><kbd>g</kbd>, <kbd>q</kbd></dt><dd>Open the private scratchpad</dd></div>
           <div><dt><kbd>g</kbd>, <kbd>l</kbd></dt><dd>Open the workspace Lounge</dd></div>
           <div><dt><kbd>g</kbd>, <kbd>w</kbd></dt><dd>When you belong to multiple workspaces, open the picker; arrows choose, Enter switches, Escape cancels</dd></div>
           <div><dt><kbd>g</kbd>, <kbd>i</kbd></dt><dd>Focus project issues</dd></div>

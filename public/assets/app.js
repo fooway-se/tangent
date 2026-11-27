@@ -14,6 +14,7 @@ import { resolveShortcut, shouldSubmitOnEnter } from './shortcuts.js';
 import { nextTheme, themeLabel } from './theme.js';
 import { initThemeUi } from './theme-ui.js';
 import { initProjectNotesUi } from './project-notes-ui.js';
+import { initScratchpadUi } from './scratchpad-ui.js';
 import { initMilestoneUi } from './milestone-ui.js';
 import { initLoungePresence } from './lounge-presence.js';
 import { initLoungeChatUi } from './lounge-chat-ui.js';
@@ -51,7 +52,7 @@ import { parseQuickIssueInput } from './quick-issue.js';
 import { initRoadmapUi } from './roadmap-ui.js';
 import { loadIssueCollections, refreshDeletedIssuesOnOpen, shouldDeferIssueUpdates, } from './issue-polling.js';
 import { dom } from './dom.js';
-const { project: { projectHeading, projectEditDialog, projectReadOnlyNotice, editProjectButton, projectsNavButton, projectsView, projectView, projectForm, projectList, projectFormPanel, projectDescription, projectState, projectChatColumn, projectSidebarList, projectMain, projectTabs, projectKeyboardHints, topbarPresence, }, auth: { loginPanel, loginShell, accountBar, currentUserLabel, loginStatusMessage, logoutButton, }, workspace: { workspacePanel, workspaceNav, adminNavButton, adminView, adminHeading, membersView, adminGoPrefixOption, membersTabButton, }, shell: { createWorkspaceForm, breadcrumbProjectsButton, breadcrumbDivider, breadcrumbCurrent, notesTabButton, emptyIssues, statusMessage, }, roadmap: { roadmapNavButton, roadmapView, roadmapHeading, roadmapSummary, roadmapMilestoneList, roadmapEmptyState, roadmapGoPrefixOption, }, inbox: { inboxNavButton, inboxView, inboxHeading, }, lounge: { loungeNavButton, loungeView, loungeHeading, loungeMessageList, loungeChannelLinks, loungeGeneralChannelLink, loungeGeneralChannelPanel, loungeProjectChannelPanel, }, shortcuts: { toggleProjectFormButton, keyboardHints, goPrefixHint, goPrefixNavigationOptions, goPrefixWorkspaceOption, goPrefixProjectOptions, }, chat: { chatView, }, issues: { issuesView, issueDetailView, issueDetailDisplay, issueDetailTitle, issueDetailPriority, issueDetailDueDate, issueDetailDescription, issueDetailBrief, issueDetailContextSection, issueDetailContext, issueDetailExpectedOutcomeSection, issueDetailExpectedOutcome, issueDetailAcceptanceCriteriaSection, issueDetailAcceptanceCriteria, issueDetailStatus, issueDetailStatusLabel, issueSourceLink, issueDetailEditForm, issueDetailEditButton, issueDetailDeleteButton, issuesTabButton, issueBackButton, issueForm, issueQuickAddTitle, issueQuickAddPriority, issueQuickAddDueDate, issueQuickAddAssignee, issueQuickAddMilestone, issueQuickAddOngoing, issueQuickAddShared, issueQuickAddApproval, issueQuickAddCancelButton, issueDetailType, issueDetailAssignee, issueDetailMilestone, issueDetailOngoingRow, issueDetailSharing, issueDetailApproval, issueDescriptionDetails, issueProgress, issueProgressLabel, issueFilter, issueGrouping, issueOrder, issueScope, issueCountSummary, issueBulkAssignToggle, issueBulkAssignToolbar, issueList, deletedIssuesDetails, deletedIssueCount, deletedIssueList, }, guest: { guestLogoutButton, }, } = dom;
+const { project: { projectHeading, projectEditDialog, projectReadOnlyNotice, editProjectButton, projectsNavButton, projectsView, projectView, projectForm, projectList, projectFormPanel, projectDescription, projectState, projectChatColumn, projectSidebarList, projectMain, projectTabs, projectKeyboardHints, topbarPresence, }, auth: { loginPanel, loginShell, accountBar, currentUserLabel, loginStatusMessage, logoutButton, }, workspace: { workspacePanel, workspaceNav, adminNavButton, adminView, adminHeading, membersView, adminGoPrefixOption, membersTabButton, }, shell: { createWorkspaceForm, breadcrumbProjectsButton, breadcrumbDivider, breadcrumbCurrent, notesTabButton, emptyIssues, statusMessage, }, roadmap: { roadmapNavButton, roadmapView, roadmapHeading, roadmapSummary, roadmapMilestoneList, roadmapEmptyState, roadmapGoPrefixOption, }, inbox: { inboxNavButton, inboxView, inboxHeading, scratchpadNavButton, }, lounge: { loungeNavButton, loungeView, loungeHeading, loungeMessageList, loungeChannelLinks, loungeGeneralChannelLink, loungeGeneralChannelPanel, loungeProjectChannelPanel, }, shortcuts: { toggleProjectFormButton, keyboardHints, goPrefixHint, goPrefixNavigationOptions, goPrefixWorkspaceOption, goPrefixProjectOptions, }, chat: { chatView, }, issues: { issuesView, issueDetailView, issueDetailDisplay, issueDetailTitle, issueDetailPriority, issueDetailDueDate, issueDetailDescription, issueDetailBrief, issueDetailContextSection, issueDetailContext, issueDetailExpectedOutcomeSection, issueDetailExpectedOutcome, issueDetailAcceptanceCriteriaSection, issueDetailAcceptanceCriteria, issueDetailStatus, issueDetailStatusLabel, issueSourceLink, issueDetailEditForm, issueDetailEditButton, issueDetailDeleteButton, issuesTabButton, issueBackButton, issueForm, issueQuickAddTitle, issueQuickAddPriority, issueQuickAddDueDate, issueQuickAddAssignee, issueQuickAddMilestone, issueQuickAddOngoing, issueQuickAddShared, issueQuickAddApproval, issueQuickAddCancelButton, issueDetailType, issueDetailAssignee, issueDetailMilestone, issueDetailOngoingRow, issueDetailSharing, issueDetailApproval, issueDescriptionDetails, issueProgress, issueProgressLabel, issueFilter, issueGrouping, issueOrder, issueScope, issueCountSummary, issueBulkAssignToggle, issueBulkAssignToolbar, issueList, deletedIssuesDetails, deletedIssueCount, deletedIssueList, }, guest: { guestLogoutButton, }, } = dom;
 function issueStatusLabel(status) {
     return ISSUE_STATUS_OPTIONS.find((option) => option.value === status)?.label ?? status;
 }
@@ -169,6 +170,11 @@ const clientSummaryUi = initClientSummaryUi({
 const projectNotesUi = initProjectNotesUi({
     getProject: () => activeProject,
     onUnauthorized: () => showSignedOut(),
+});
+const scratchpadUi = initScratchpadUi({
+    doc: document,
+    onUnauthorized: () => showSignedOut(),
+    onIssueCreated: (issue) => { void loadProjectDetail(issue.project_id, 'issues'); },
 });
 let activeProjectMembers = [];
 const projectListUi = initProjectListUi({
@@ -781,10 +787,13 @@ function showSignedOut() {
     loungePresenceUi.reset();
     if (clientSummaryUi.dialog.open)
         clientSummaryUi.close();
+    if (scratchpadUi.isOpen())
+        scratchpadUi.close(false);
     activeUser = null;
     projectChatVisible = true;
     githubProjectUi.reset();
     editProjectButton.hidden = true;
+    scratchpadNavButton.hidden = true;
     if (projectEditDialog.open)
         projectEditDialog.close();
     activeProject = null;
@@ -819,6 +828,7 @@ function showSignedIn(user) {
     loungeChannelsUi.stop();
     loungePresenceUi.reset();
     activeUser = user;
+    scratchpadNavButton.hidden = user.role === 'guest';
     workspacePickerUi.setGuestVisible(user.role === 'guest');
     editProjectButton.hidden = user.role !== 'admin';
     roadmapNavButton.hidden = user.role === 'guest';
@@ -1296,8 +1306,8 @@ function shortcutContext(target) {
         textInputFocused: shouldBlurOnEscape(target),
         modalOpen: commandPaletteUi.isPaletteOpen() || clientSummaryUi.dialog.open || commandPaletteUi.isShortcutHelpOpen() || issueAiPromptUi.isOpen() || issueStatusPickerUi.isOpen() || issueDeleteUi.isOpen() || themeUi.aboutDialog.open || projectEditDialog.open
             || issueRelatedUi.isPullRequestDialogOpen() || projectMembersUi.hasOpenDialog() || workspaceAdminUi.hasOpenDialog() || milestoneUi.deleteConfirmation.open || milestoneUi.managerDialog.open
-            || workspacePickerUi.isOpen(),
-        canDismiss: commandPaletteUi.isPaletteOpen() || commandPaletteUi.isShortcutHelpOpen() || (!workspacePanel.hidden && (workspacePickerUi.hasPendingSwitch()
+            || workspacePickerUi.isOpen() || scratchpadUi.isOpen(),
+        canDismiss: commandPaletteUi.isPaletteOpen() || commandPaletteUi.isShortcutHelpOpen() || scratchpadUi.isOpen() || (!workspacePanel.hidden && (workspacePickerUi.hasPendingSwitch()
             || (!projectView.hidden && (!issueDetailView.hidden || !issueDetailEditForm.hidden
                 || issueQuickAddEscapePending || projectChatUi.hasReplyParent()))
             || (isProjectChatActive() && projectChatUi.hasReplyParent())
@@ -1492,6 +1502,7 @@ function getPaletteCommands() {
         actions: {
             goToProjects,
             goToInbox,
+            openScratchpad,
             goToLounge,
             showShortcutHelp,
             toggleKeyboardHints,
@@ -1530,6 +1541,8 @@ function getPaletteCommands() {
 function openCommandPalette() {
     if (activeUser === null || milestoneUi.deleteConfirmButton.disabled)
         return;
+    if (scratchpadUi.isOpen())
+        scratchpadUi.close();
     if (themeUi.aboutDialog.open)
         themeUi.aboutDialog.close();
     if (projectEditDialog.open)
@@ -1555,9 +1568,16 @@ function openCommandPalette() {
     workspaceAdminUi.closeOpenDialogs();
     commandPaletteUi.togglePalette(getPaletteCommands);
 }
+function openScratchpad() {
+    if (activeUser === null || activeUser.role === 'guest' || workspacePanel.hidden)
+        return;
+    void scratchpadUi.open();
+}
 function showShortcutHelp() {
     if (activeUser === null || milestoneUi.deleteConfirmButton.disabled)
         return;
+    if (scratchpadUi.isOpen())
+        scratchpadUi.close();
     if (workspacePickerUi.isOpen())
         workspacePickerUi.resetPendingSwitch();
     if (issueRelatedUi.isPullRequestDialogOpen())
@@ -1584,6 +1604,9 @@ function dismissCurrentView() {
         return;
     if (themeUi.aboutDialog.open) {
         themeUi.aboutDialog.close();
+    }
+    else if (scratchpadUi.isOpen()) {
+        scratchpadUi.close();
     }
     else if (projectEditDialog.open) {
         projectEditDialog.close();
@@ -1840,6 +1863,9 @@ function executeShortcut(action) {
         case 'inbox':
             goToInbox();
             break;
+        case 'scratchpad':
+            openScratchpad();
+            break;
         case 'lounge':
             goToLounge();
             break;
@@ -1968,7 +1994,7 @@ function handleKeyboardShortcut(event) {
             guestUi.closePreview();
         return;
     }
-    if ((commandPaletteUi.isPaletteOpen() || clientSummaryUi.dialog.open || commandPaletteUi.isShortcutHelpOpen() || issueAiPromptUi.isOpen() || issueStatusPickerUi.isOpen() || issueDeleteUi.isOpen() || issueRelatedUi.isPullRequestDialogOpen() || projectMembersUi.hasOpenDialog() || workspaceAdminUi.hasOpenDialog() || milestoneUi.deleteConfirmation.open || milestoneUi.managerDialog.open || workspacePickerUi.isOpen() || themeUi.aboutDialog.open || projectEditDialog.open)
+    if ((commandPaletteUi.isPaletteOpen() || scratchpadUi.isOpen() || clientSummaryUi.dialog.open || commandPaletteUi.isShortcutHelpOpen() || issueAiPromptUi.isOpen() || issueStatusPickerUi.isOpen() || issueDeleteUi.isOpen() || issueRelatedUi.isPullRequestDialogOpen() || projectMembersUi.hasOpenDialog() || workspaceAdminUi.hasOpenDialog() || milestoneUi.deleteConfirmation.open || milestoneUi.managerDialog.open || workspacePickerUi.isOpen() || themeUi.aboutDialog.open || projectEditDialog.open)
         && event.key !== 'Escape'
         && !((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k'))
         return;
@@ -2013,6 +2039,7 @@ document.addEventListener('focusout', () => {
     window.setTimeout(() => inboxUi.resumeDeferredUpdates(), 0);
 });
 projectsNavButton.addEventListener('click', goToProjects);
+scratchpadNavButton.addEventListener('click', openScratchpad);
 projectSidebarList.addEventListener('scroll', updateProjectSidebarMoreCue, { passive: true });
 window.addEventListener('resize', scheduleProjectSidebarMoreCue);
 window.visualViewport?.addEventListener('resize', scheduleProjectSidebarMoreCue);

@@ -39,6 +39,8 @@ export function resolveShortcut(event, context) {
             return 'projects';
         if (key === 'n' && context.hasWorkspace && context.canNavigateWorkspace !== false)
             return 'inbox';
+        if (key === 'q' && context.hasWorkspace && context.canNavigateWorkspace !== false)
+            return 'scratchpad';
         if (key === 'l' && context.hasWorkspace && context.canNavigateWorkspace !== false)
             return 'lounge';
         if (key === 'r' && context.canRoadmap)

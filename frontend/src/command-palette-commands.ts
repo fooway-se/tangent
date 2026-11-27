@@ -4,6 +4,7 @@ import type { Issue, Project, User, Workspace } from './types.js';
 export interface PaletteCommandActions {
   goToProjects: () => void;
   goToInbox: () => void;
+  openScratchpad: () => void;
   goToLounge: () => void;
   showShortcutHelp: () => void;
   toggleKeyboardHints: () => void;
@@ -82,6 +83,7 @@ export function buildPaletteCommands(context: PaletteCommandContext): PaletteCom
   const commands: PaletteCommand[] = [
     { label: 'Go to Projects', detail: 'Open the project list', shortcut: 'g p', run: actions.goToProjects },
     { label: 'Open My Work', detail: 'Review inbox updates and tasks assigned to you', shortcut: 'g n', run: actions.goToInbox },
+    { label: 'Open Scratchpad', detail: 'Catch a thought and turn it into an issue later', shortcut: 'g q', run: actions.openScratchpad },
     { label: 'Open Lounge', detail: 'Open the workspace-wide Lounge chat', shortcut: 'g l', run: actions.goToLounge },
     { label: 'Show keyboard shortcuts', detail: 'View key bindings', shortcut: '?', run: actions.showShortcutHelp },
   ];

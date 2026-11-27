@@ -7,6 +7,7 @@ export type ShortcutAction =
   | 'await-projects-key'
   | 'projects'
   | 'inbox'
+  | 'scratchpad'
   | 'lounge'
   | 'roadmap'
   | 'workspace-switcher'
@@ -119,6 +120,7 @@ export function resolveShortcut(event: ShortcutEvent, context: ShortcutContext):
   if (context.goPrefixPending) {
     if (key === 'p' && context.hasWorkspace && context.canNavigateWorkspace !== false) return 'projects';
     if (key === 'n' && context.hasWorkspace && context.canNavigateWorkspace !== false) return 'inbox';
+    if (key === 'q' && context.hasWorkspace && context.canNavigateWorkspace !== false) return 'scratchpad';
     if (key === 'l' && context.hasWorkspace && context.canNavigateWorkspace !== false) return 'lounge';
     if (key === 'r' && context.canRoadmap) return 'roadmap';
     if (key === 'w' && context.canSwitchWorkspace) return 'workspace-switcher';

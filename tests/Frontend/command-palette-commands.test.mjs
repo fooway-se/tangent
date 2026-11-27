@@ -3,7 +3,7 @@ import test from 'node:test';
 import { buildPaletteCommands } from '../../public/assets/command-palette-commands.js';
 
 const actions = Object.fromEntries([
-  'goToProjects', 'goToInbox', 'goToLounge', 'showShortcutHelp', 'toggleKeyboardHints',
+  'goToProjects', 'goToInbox', 'openScratchpad', 'goToLounge', 'showShortcutHelp', 'toggleKeyboardHints',
   'goToRoadmap', 'switchWorkspace', 'openWorkspaceAdmin', 'newProject', 'createWorkspace',
   'generateSummary', 'previewGuestView', 'goToProjectIssues', 'focusProjectChat',
   'toggleProjectChat',

@@ -51,8 +51,11 @@ The workspace sidebar is the main way to move between areas.
 | Projects | Project list, project issues, chat, members, and Notes. |
 | Roadmap | Milestones across accessible projects with progress and deadline signals. Internal team only. |
 | My Work | Inbox updates and open issues assigned to you. |
+| Scratchpad | One private quick note you can turn into an issue later. |
 | Lounge | Workspace-wide off-topic conversation for internal team members. |
 | Workspace admin | For admins: members, invitations, coding agents, and workspaces. |
+
+Open **Scratchpad** from workspace navigation, choose **Open Scratchpad** in the command palette, or press **g**, then **q**. Type a thought; the single note saves automatically after a short pause and stays private to you in the current workspace. Select **Turn into issue** and choose a project when you are ready to track the note as work.
 
 Within a project, use the **Issues**, **Members**, and **Notes** tabs. Project chat is shown with project work on wide screens; on smaller screens, use the project navigation controls to focus Chat.
 
@@ -211,7 +214,7 @@ Keyboard shortcuts vary by view and pause while you type. In a member workspace,
 | ? | Open keyboard shortcut help. |
 | h | Show or hide keyboard hints. |
 | b | In a project, show or hide the project chat panel. |
-| g, then p / r / n / l | In a member workspace, open Projects / Roadmap / My Work / Lounge. |
+| g, then p / r / n / q / l | In a member workspace, open Projects / Roadmap / My Work / Scratchpad / Lounge. |
 | g, then w | When you belong to multiple workspaces, open the workspace picker. |
 | g, then i / c / m | In a project, focus Issues / Chat / Members. |
 | / | Focus the issue filter. |

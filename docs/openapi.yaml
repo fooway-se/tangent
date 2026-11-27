@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: Tangent API
   version: 1.0.0
-  description: Authentication, workspace membership and switching, internal project work, scoped coding-agent identities and issue tools, event inbox, and a permission-filtered guest client view.
+  description: Authentication, workspace membership and switching, a private scratchpad note, internal project work, scoped coding-agent identities and issue tools, event inbox, and a permission-filtered guest client view.
 servers:
   - url: /api/v1
 security:
@@ -1870,6 +1870,90 @@ paths:
         '200': { description: The saved Markdown source and update time. }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+  /scratchpad:
+    get:
+      summary: Read the current user's private scratchpad note
+      description: The single note is scoped to the active workspace and authenticated user. Admins and developers can access their own note; guests and agent principals cannot.
+      parameters:
+        - name: If-None-Match
+          in: header
+          required: false
+          schema: { type: string }
+      responses:
+        '200':
+          description: The user's scratchpad note. An empty note has a null update time until first saved.
+          headers:
+            ETag: { schema: { type: string } }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [body, updated_at]
+                properties:
+                  body: { type: string, maxLength: 10000 }
+                  updated_at: { type: [string, 'null'], format: date-time }
+        '304':
+          description: The note has not changed since the supplied ETag.
+          headers:
+            ETag: { schema: { type: string } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    put:
+      summary: Replace the current user's private scratchpad note
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [body]
+              properties:
+                body: { type: string, maxLength: 10000 }
+      responses:
+        '200':
+          description: The saved note.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [body, updated_at]
+                properties:
+                  body: { type: string, maxLength: 10000 }
+                  updated_at: { type: string, format: date-time }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+  /scratchpad/issue:
+    post:
+      summary: Turn the current scratchpad note into a project issue
+      description: The first line becomes the issue title and the remaining lines become the description. The note is cleared only after issue creation succeeds. Normal project visibility and issue creation permissions apply.
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [project_id]
+              properties:
+                project_id: { type: integer, minimum: 1 }
+      responses:
+        '201':
+          description: Created issue; the scratchpad note was cleared.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [issue]
+                properties:
+                  issue: { $ref: '#/components/schemas/Issue' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
         '422': { $ref: '#/components/responses/ValidationFailed' }
   /projects/{id}/members:
     get:

@@ -48,6 +48,9 @@ use Tangent\Modules\Projects\ClientViewRoutes;
 use Tangent\Modules\Projects\RoadmapRepository;
 use Tangent\Modules\Projects\RoadmapRoutes;
 use Tangent\Modules\Projects\RoadmapService;
+use Tangent\Modules\Scratchpad\ScratchpadRepository;
+use Tangent\Modules\Scratchpad\ScratchpadRoutes;
+use Tangent\Modules\Scratchpad\ScratchpadService;
 use Tangent\Modules\Workspaces\WorkspaceRepository;
 use Tangent\Modules\Workspaces\WorkspaceRoutes;
 use Tangent\Modules\Workspaces\WorkspaceService;
@@ -160,6 +163,7 @@ final class Application
             $config->realtimeMaxConnections,
         ))->register($router);
         (new IssuesRoutes($issues))->register($router);
+        (new ScratchpadRoutes(new ScratchpadService(new ScratchpadRepository($pdo), $issues, $pdo)))->register($router);
         (new AgentsRoutes($agents))->register($router);
         (new InboxRoutes($inbox, $inboxEvents))->register($router);
         (new GitHubRoutes($github, $config))->register($router);

@@ -23,6 +23,7 @@ import { resolveShortcut, shouldSubmitOnEnter, type ShortcutAction } from './sho
 import { nextTheme, themeLabel } from './theme.js';
 import { initThemeUi } from './theme-ui.js';
 import { initProjectNotesUi } from './project-notes-ui.js';
+import { initScratchpadUi } from './scratchpad-ui.js';
 import { initMilestoneUi } from './milestone-ui.js';
 import { initLoungePresence } from './lounge-presence.js';
 import { initLoungeChatUi } from './lounge-chat-ui.js';
@@ -97,7 +98,7 @@ const {
     roadmapGoPrefixOption,
   },
   inbox: {
-    inboxNavButton, inboxView, inboxHeading,
+    inboxNavButton, inboxView, inboxHeading, scratchpadNavButton,
   },
   lounge: {
     loungeNavButton, loungeView, loungeHeading, loungeMessageList,
@@ -255,6 +256,11 @@ const clientSummaryUi = initClientSummaryUi({
 const projectNotesUi = initProjectNotesUi({
   getProject: () => activeProject,
   onUnauthorized: () => showSignedOut(),
+});
+const scratchpadUi = initScratchpadUi({
+  doc: document,
+  onUnauthorized: () => showSignedOut(),
+  onIssueCreated: (issue) => { void loadProjectDetail(issue.project_id, 'issues'); },
 });
 let activeProjectMembers: Member[] = [];
 const projectListUi = initProjectListUi({
@@ -867,10 +873,12 @@ function showSignedOut(): void {
   loungeChannelsUi.stop();
   loungePresenceUi.reset();
   if (clientSummaryUi.dialog.open) clientSummaryUi.close();
+  if (scratchpadUi.isOpen()) scratchpadUi.close(false);
   activeUser = null;
   projectChatVisible = true;
   githubProjectUi.reset();
   editProjectButton.hidden = true;
+  scratchpadNavButton.hidden = true;
   if (projectEditDialog.open) projectEditDialog.close();
   activeProject = null;
   activeProjectMembers = [];
@@ -905,6 +913,7 @@ function showSignedIn(user: User): void {
   loungeChannelsUi.stop();
   loungePresenceUi.reset();
   activeUser = user;
+  scratchpadNavButton.hidden = user.role === 'guest';
   workspacePickerUi.setGuestVisible(user.role === 'guest');
   editProjectButton.hidden = user.role !== 'admin';
   roadmapNavButton.hidden = user.role === 'guest';
@@ -1398,8 +1407,8 @@ function shortcutContext(target: EventTarget | null) {
     textInputFocused: shouldBlurOnEscape(target),
     modalOpen: commandPaletteUi.isPaletteOpen() || clientSummaryUi.dialog.open || commandPaletteUi.isShortcutHelpOpen() || issueAiPromptUi.isOpen() || issueStatusPickerUi.isOpen() || issueDeleteUi.isOpen() || themeUi.aboutDialog.open || projectEditDialog.open
       || issueRelatedUi.isPullRequestDialogOpen() || projectMembersUi.hasOpenDialog() || workspaceAdminUi.hasOpenDialog() || milestoneUi.deleteConfirmation.open || milestoneUi.managerDialog.open
-      || workspacePickerUi.isOpen(),
-    canDismiss: commandPaletteUi.isPaletteOpen() || commandPaletteUi.isShortcutHelpOpen() || (!workspacePanel.hidden && (
+      || workspacePickerUi.isOpen() || scratchpadUi.isOpen(),
+    canDismiss: commandPaletteUi.isPaletteOpen() || commandPaletteUi.isShortcutHelpOpen() || scratchpadUi.isOpen() || (!workspacePanel.hidden && (
       workspacePickerUi.hasPendingSwitch()
       || (!projectView.hidden && (!issueDetailView.hidden || !issueDetailEditForm.hidden
         || issueQuickAddEscapePending || projectChatUi.hasReplyParent()))
@@ -1615,6 +1624,7 @@ function getPaletteCommands() {
     actions: {
       goToProjects,
       goToInbox,
+      openScratchpad,
       goToLounge,
       showShortcutHelp,
       toggleKeyboardHints,
@@ -1651,6 +1661,7 @@ function getPaletteCommands() {
 
 function openCommandPalette(): void {
   if (activeUser === null || milestoneUi.deleteConfirmButton.disabled) return;
+  if (scratchpadUi.isOpen()) scratchpadUi.close();
   if (themeUi.aboutDialog.open) themeUi.aboutDialog.close();
   if (projectEditDialog.open) projectEditDialog.close();
   if (workspacePickerUi.isOpen()) workspacePickerUi.resetPendingSwitch();
@@ -1666,8 +1677,14 @@ function openCommandPalette(): void {
   commandPaletteUi.togglePalette(getPaletteCommands);
 }
 
+function openScratchpad(): void {
+  if (activeUser === null || activeUser.role === 'guest' || workspacePanel.hidden) return;
+  void scratchpadUi.open();
+}
+
 function showShortcutHelp(): void {
   if (activeUser === null || milestoneUi.deleteConfirmButton.disabled) return;
+  if (scratchpadUi.isOpen()) scratchpadUi.close();
   if (workspacePickerUi.isOpen()) workspacePickerUi.resetPendingSwitch();
   if (issueRelatedUi.isPullRequestDialogOpen()) issueRelatedUi.closePullRequestDialog();
   if (clientSummaryUi.dialog.open) clientSummaryUi.close();
@@ -1685,6 +1702,8 @@ function dismissCurrentView(): void {
   if (milestoneUi.deleteConfirmButton.disabled) return;
   if (themeUi.aboutDialog.open) {
     themeUi.aboutDialog.close();
+  } else if (scratchpadUi.isOpen()) {
+    scratchpadUi.close();
   } else if (projectEditDialog.open) {
     projectEditDialog.close();
   } else if (workspacePickerUi.isOpen()) {
@@ -1900,6 +1919,7 @@ function executeShortcut(action: ShortcutAction): void {
     case 'projects': clearGoPrefix(); goToProjects(); break;
     case 'roadmap': clearGoPrefix(); goToRoadmap(); break;
     case 'inbox': goToInbox(); break;
+    case 'scratchpad': openScratchpad(); break;
     case 'lounge': goToLounge(); break;
     case 'workspace-switcher': workspacePickerUi.open(); break;
     case 'issues': goToProjectIssues(); break;
@@ -1950,7 +1970,7 @@ function handleKeyboardShortcut(event: KeyboardEvent): void {
     if (event.key === 'Escape') guestUi.closePreview();
     return;
   }
-  if ((commandPaletteUi.isPaletteOpen() || clientSummaryUi.dialog.open || commandPaletteUi.isShortcutHelpOpen() || issueAiPromptUi.isOpen() || issueStatusPickerUi.isOpen() || issueDeleteUi.isOpen() || issueRelatedUi.isPullRequestDialogOpen() || projectMembersUi.hasOpenDialog() || workspaceAdminUi.hasOpenDialog() || milestoneUi.deleteConfirmation.open || milestoneUi.managerDialog.open || workspacePickerUi.isOpen() || themeUi.aboutDialog.open || projectEditDialog.open)
+  if ((commandPaletteUi.isPaletteOpen() || scratchpadUi.isOpen() || clientSummaryUi.dialog.open || commandPaletteUi.isShortcutHelpOpen() || issueAiPromptUi.isOpen() || issueStatusPickerUi.isOpen() || issueDeleteUi.isOpen() || issueRelatedUi.isPullRequestDialogOpen() || projectMembersUi.hasOpenDialog() || workspaceAdminUi.hasOpenDialog() || milestoneUi.deleteConfirmation.open || milestoneUi.managerDialog.open || workspacePickerUi.isOpen() || themeUi.aboutDialog.open || projectEditDialog.open)
     && event.key !== 'Escape'
     && !((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k')) return;
   const context = shortcutContext(event.target);
@@ -1990,6 +2010,7 @@ document.addEventListener('focusout', () => {
 });
 
 projectsNavButton.addEventListener('click', goToProjects);
+scratchpadNavButton.addEventListener('click', openScratchpad);
 projectSidebarList.addEventListener('scroll', updateProjectSidebarMoreCue, { passive: true });
 window.addEventListener('resize', scheduleProjectSidebarMoreCue);
 window.visualViewport?.addEventListener('resize', scheduleProjectSidebarMoreCue);
