@@ -14,6 +14,7 @@ export type ShortcutAction =
   | 'issues'
   | 'chat'
   | 'members'
+  | 'project-notes'
   | 'workspace-admin'
   | 'next-project'
   | 'previous-project'
@@ -125,8 +126,9 @@ export function resolveShortcut(event: ShortcutEvent, context: ShortcutContext):
     if (key === 'r' && context.canRoadmap) return 'roadmap';
     if (key === 'w' && context.canSwitchWorkspace) return 'workspace-switcher';
     if (key === 'i' && context.hasProject) return 'issues';
-    if (key === 'c' && context.hasProject) return 'chat';
     if (key === 'm' && context.hasProject) return 'members';
+    if (key === 'o' && context.hasProject) return 'project-notes';
+    if (key === 'c' && context.hasProject) return 'chat';
     if (key === 'a' && context.canAdmin) return 'workspace-admin';
     return null;
   }

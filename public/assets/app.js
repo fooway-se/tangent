@@ -1861,6 +1861,9 @@ function executeShortcut(action) {
         case 'issues':
             goToProjectIssues();
             break;
+        case 'project-notes':
+            goToProjectNotes();
+            break;
         case 'chat':
             focusProjectChat();
             break;

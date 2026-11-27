@@ -188,10 +188,18 @@ test('g sequences switch between available project features', () => {
   assert.equal(resolve('r', { goPrefixPending: true, canRoadmap: true, hasWorkspace: true }), 'roadmap');
   assert.match(app, /canRoadmap:[\s\S]*activeUser !== null && activeUser\.role !== 'guest'/);
   assert.equal(resolve('i', { ...project, goPrefixPending: true }), 'issues');
+  assert.equal(resolve('o', { ...project, goPrefixPending: true }), 'project-notes');
+  assert.equal(resolve('o', { goPrefixPending: true }), null);
   assert.equal(resolve('c', { ...project, goPrefixPending: true }), 'chat');
   assert.equal(resolve('m', { ...project, goPrefixPending: true }), 'members');
   assert.equal(resolve('a', { goPrefixPending: true, canAdmin: true }), 'workspace-admin');
   assert.equal(resolve('a', { goPrefixPending: true, canAdmin: false }), null);
+  assert.match(app, /case 'project-notes': goToProjectNotes\(\); break;/);
+});
+
+test('project tab hints include Notes in the requested tab order', () => {
+  assert.match(html, /<em class="keyboard-hint-sublabel">Tabs<\/em><kbd>g<\/kbd> then: <kbd>i<\/kbd> Issues · <kbd>m<\/kbd> Members · <kbd>o<\/kbd> Notes · <kbd>c<\/kbd> Chat/);
+  assert.match(html, /<dt><kbd>g<\/kbd>, <kbd>o<\/kbd><\/dt><dd>Focus project notes<\/dd>/);
 });
 
 test('g then w focuses the workspace switcher', () => {

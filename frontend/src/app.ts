@@ -1908,6 +1908,7 @@ function executeShortcut(action: ShortcutAction): void {
     case 'lounge': goToLounge(); break;
     case 'workspace-switcher': workspacePickerUi.open(); break;
     case 'issues': goToProjectIssues(); break;
+    case 'project-notes': goToProjectNotes(); break;
     case 'chat': focusProjectChat(); break;
     case 'members': goToProjectMembers(); break;
     case 'workspace-admin': openWorkspaceAdmin(); break;
