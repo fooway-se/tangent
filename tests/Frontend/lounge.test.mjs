@@ -135,4 +135,5 @@ test('Lounge presence indicator matches the Lounge button label color', () => {
   assert.match(css, /\.lounge-nav-presence \{[^}]*color: var\(--key-ink, var\(--case-ink\)\)/);
   assert.match(css, /\.lounge-nav-presence::before \{[^}]*background: currentColor; box-shadow: none/);
   assert.match(css, /#lounge-nav\.is-active #lounge-nav-presence \{ color: var\(--accent-ink\); \}/);
+  assert.match(css, /:root\[data-theme="coco-2"\] #lounge-nav\.is-active #lounge-nav-presence\s*\{\s*color:\s*var\(--special-key-ink\);\s*\}/);
 });
