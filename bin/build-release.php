@@ -60,6 +60,159 @@ foreach ($requiredFiles as $relative) {
     }
 }
 
+$appHtml = file_get_contents($root . '/public/app.html');
+$assetManifestPath = 'public/assets/asset-manifest.json';
+$assetManifestJson = file_get_contents($root . '/' . $assetManifestPath);
+$assetManifest = is_string($assetManifestJson) ? json_decode($assetManifestJson, true) : null;
+$versionedAssets = is_array($assetManifest) ? ($assetManifest['assets'] ?? null) : null;
+$versionedStyles = is_array($assetManifest) ? ($assetManifest['styles'] ?? null) : null;
+if (!is_string($appHtml)
+    || !isset($trackedSet[$assetManifestPath])
+    || !is_array($versionedAssets)
+    || !is_array($versionedStyles)
+    || preg_match('/<script src="\.\/assets\/([^\"]+)"><\/script>/', $appHtml, $themeEntrypointMatch) !== 1
+    || preg_match('/<script type="module" src="\.\/assets\/([^\"]+)"><\/script>/', $appHtml, $appEntrypointMatch) !== 1
+    || preg_match('/<link rel="stylesheet" href="\.\/assets\/([^\"]+)"\s*\/?>/', $appHtml, $tokensStylesheetMatch) !== 1
+    || preg_match_all('/<link rel="stylesheet" href="\.\/assets\/([^\"]+)"\s*\/?>/', $appHtml, $stylesheetMatches) !== 2
+    || !isset($versionedAssets['theme-init.js']['file'], $versionedAssets['app.js']['file'])
+    || !isset($versionedStyles['tokens.css']['file'], $versionedStyles['app.css']['file'])
+    || $themeEntrypointMatch[1] !== $versionedAssets['theme-init.js']['file']
+    || $appEntrypointMatch[1] !== $versionedAssets['app.js']['file']
+    || $tokensStylesheetMatch[1] !== $versionedStyles['tokens.css']['file']
+    || ($stylesheetMatches[1][1] ?? null) !== $versionedStyles['app.css']['file']
+) {
+    $fail('The application HTML and content-hashed asset manifest are missing or out of sync. Run npm run build.');
+}
+
+$canonicalAssets = [];
+foreach (glob($root . '/public/assets/*.{js,mjs}', GLOB_BRACE) ?: [] as $assetPath) {
+    $name = basename($assetPath);
+    if (preg_match('/-[a-f0-9]{12}\.(?:js|mjs)$/', $name) !== 1) {
+        $canonicalAssets[] = $name;
+    }
+}
+sort($canonicalAssets, SORT_STRING);
+$manifestSourceNames = array_keys($versionedAssets);
+sort($manifestSourceNames, SORT_STRING);
+if ($canonicalAssets !== $manifestSourceNames) {
+    $fail('The content-hashed asset manifest is stale. Run npm run build.');
+}
+
+$rewriteImport = static function (array $matches) use ($versionedAssets, $fail): string {
+    $specifier = $matches[2];
+    if (!str_starts_with($specifier, './') || str_contains(substr($specifier, 2), '/')) {
+        $fail("Unsupported frontend import path: {$specifier}");
+    }
+    $dependencyName = substr($specifier, 2);
+    if (!isset($versionedAssets[$dependencyName]['file'])) {
+        $fail("The content-hashed asset manifest omits imported module {$dependencyName}.");
+    }
+    return $matches[1] . './' . $versionedAssets[$dependencyName]['file'] . $matches[3];
+};
+
+foreach ($versionedAssets as $sourceName => $asset) {
+    if (!is_string($sourceName)
+        || basename($sourceName) !== $sourceName
+        || !preg_match('/^[A-Za-z0-9._-]+\.m?js$/', $sourceName)
+        || !is_array($asset)
+        || !is_string($asset['file'] ?? null)
+        || !is_string($asset['sha256'] ?? null)
+    ) {
+        $fail('The content-hashed asset manifest contains an invalid entry. Run npm run build.');
+    }
+
+    $sourcePath = 'public/assets/' . $sourceName;
+    $versionedName = $asset['file'];
+    $versionedPath = 'public/assets/' . $versionedName;
+    if (!isset($trackedSet[$sourcePath], $trackedSet[$versionedPath])
+        || !is_file($root . '/' . $sourcePath)
+        || !is_file($root . '/' . $versionedPath)
+        || is_link($root . '/' . $sourcePath)
+        || is_link($root . '/' . $versionedPath)
+        || basename($versionedName) !== $versionedName
+    ) {
+        $fail("A content-hashed frontend asset is missing from the tracked release: {$versionedPath}.");
+    }
+
+    $sourceContents = file_get_contents($root . '/' . $sourcePath);
+    $versionedContents = file_get_contents($root . '/' . $versionedPath);
+    if (!is_string($sourceContents) || !is_string($versionedContents)) {
+        $fail("Unable to read the versioned frontend asset: {$versionedPath}.");
+    }
+    $rewrittenContents = preg_replace_callback(
+        '~((?:\bfrom\s*|\bimport\s*(?:\(\s*)?)["\'])(\.\.?/[^"\']+\.m?js)(["\'])~',
+        $rewriteImport,
+        $sourceContents,
+    );
+    if (!is_string($rewrittenContents)) {
+        $fail("Unable to rewrite imports for frontend asset: {$sourcePath}.");
+    }
+
+    $digest = hash('sha256', $rewrittenContents);
+    $extension = str_ends_with($sourceName, '.mjs') ? '.mjs' : '.js';
+    $expectedName = substr($sourceName, 0, -strlen($extension)) . '-' . substr($digest, 0, 12) . $extension;
+    if ($versionedName !== $expectedName
+        || !hash_equals($digest, $asset['sha256'])
+        || !hash_equals(hash('sha256', $versionedContents), $digest)
+    ) {
+        $fail("The versioned frontend asset is stale: {$versionedPath}. Run npm run build.");
+    }
+}
+
+$canonicalStyles = [];
+foreach (glob($root . '/public/assets/*.css') ?: [] as $stylePath) {
+    $name = basename($stylePath);
+    if (preg_match('/-[a-f0-9]{12}\.css$/', $name) !== 1) {
+        $canonicalStyles[] = $name;
+    }
+}
+sort($canonicalStyles, SORT_STRING);
+$manifestStyleNames = array_keys($versionedStyles);
+sort($manifestStyleNames, SORT_STRING);
+if ($canonicalStyles !== $manifestStyleNames) {
+    $fail('The content-hashed stylesheet manifest is stale. Run npm run build.');
+}
+
+foreach ($versionedStyles as $sourceName => $style) {
+    if (!is_string($sourceName)
+        || basename($sourceName) !== $sourceName
+        || !preg_match('/^[A-Za-z0-9._-]+\.css$/', $sourceName)
+        || !is_array($style)
+        || !is_string($style['file'] ?? null)
+        || !is_string($style['sha256'] ?? null)
+    ) {
+        $fail('The content-hashed stylesheet manifest contains an invalid entry. Run npm run build.');
+    }
+
+    $sourcePath = 'public/assets/' . $sourceName;
+    $versionedName = $style['file'];
+    $versionedPath = 'public/assets/' . $versionedName;
+    if (!isset($trackedSet[$sourcePath], $trackedSet[$versionedPath])
+        || !is_file($root . '/' . $sourcePath)
+        || !is_file($root . '/' . $versionedPath)
+        || is_link($root . '/' . $sourcePath)
+        || is_link($root . '/' . $versionedPath)
+        || basename($versionedName) !== $versionedName
+    ) {
+        $fail("A content-hashed frontend stylesheet is missing from the tracked release: {$versionedPath}.");
+    }
+
+    $contents = file_get_contents($root . '/' . $sourcePath);
+    $versionedContents = file_get_contents($root . '/' . $versionedPath);
+    if (!is_string($contents) || !is_string($versionedContents)) {
+        $fail("Unable to read the versioned frontend stylesheet: {$versionedPath}.");
+    }
+
+    $digest = hash('sha256', $contents);
+    $expectedName = substr($sourceName, 0, -4) . '-' . substr($digest, 0, 12) . '.css';
+    if ($versionedName !== $expectedName
+        || !hash_equals($digest, $style['sha256'])
+        || !hash_equals(hash('sha256', $versionedContents), $digest)
+    ) {
+        $fail("The versioned frontend stylesheet is stale: {$versionedPath}. Run npm run build.");
+    }
+}
+
 $manifest = [];
 foreach ($tracked as $relative) {
     if (in_array($relative, $releaseFiles, true)) {

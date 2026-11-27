@@ -57,7 +57,6 @@ export const dom = {
     inboxNavButton: document.querySelector<HTMLButtonElement>('#inbox-nav')!,
     inboxView: document.querySelector<HTMLElement>('#inbox-view')!,
     inboxHeading: document.querySelector<HTMLHeadingElement>('#inbox-heading')!,
-    scratchpadNavButton: document.querySelector<HTMLButtonElement>('#scratchpad-nav')!,
   },
   lounge: {
     loungeNavButton: document.querySelector<HTMLButtonElement>('#lounge-nav')!,

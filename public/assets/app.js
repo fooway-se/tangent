@@ -52,7 +52,7 @@ import { parseQuickIssueInput } from './quick-issue.js';
 import { initRoadmapUi } from './roadmap-ui.js';
 import { loadIssueCollections, refreshDeletedIssuesOnOpen, shouldDeferIssueUpdates, } from './issue-polling.js';
 import { dom } from './dom.js';
-const { project: { projectHeading, projectEditDialog, projectReadOnlyNotice, editProjectButton, projectsNavButton, projectsView, projectView, projectForm, projectList, projectFormPanel, projectDescription, projectState, projectChatColumn, projectSidebarList, projectMain, projectTabs, projectKeyboardHints, topbarPresence, }, auth: { loginPanel, loginShell, accountBar, currentUserLabel, loginStatusMessage, logoutButton, }, workspace: { workspacePanel, workspaceNav, adminNavButton, adminView, adminHeading, membersView, membersTabButton, }, shell: { createWorkspaceForm, breadcrumbProjectsButton, breadcrumbDivider, breadcrumbCurrent, notesTabButton, emptyIssues, statusMessage, }, roadmap: { roadmapNavButton, roadmapView, roadmapHeading, roadmapSummary, roadmapMilestoneList, roadmapEmptyState, }, inbox: { inboxNavButton, inboxView, inboxHeading, scratchpadNavButton, }, lounge: { loungeNavButton, loungeView, loungeHeading, loungeMessageList, loungeChannelLinks, loungeGeneralChannelLink, loungeGeneralChannelPanel, loungeProjectChannelPanel, }, shortcuts: { toggleProjectFormButton, keyboardHints, }, chat: { chatView, }, issues: { issuesView, issueDetailView, issueDetailDisplay, issueDetailTitle, issueDetailPriority, issueDetailDueDate, issueDetailDescription, issueDetailBrief, issueDetailContextSection, issueDetailContext, issueDetailExpectedOutcomeSection, issueDetailExpectedOutcome, issueDetailAcceptanceCriteriaSection, issueDetailAcceptanceCriteria, issueDetailStatus, issueDetailStatusLabel, issueSourceLink, issueDetailEditForm, issueDetailEditButton, issueDetailDeleteButton, issuesTabButton, issueBackButton, issueForm, issueQuickAddTitle, issueQuickAddPriority, issueQuickAddDueDate, issueQuickAddAssignee, issueQuickAddMilestone, issueQuickAddOngoing, issueQuickAddShared, issueQuickAddApproval, issueQuickAddCancelButton, issueDetailType, issueDetailAssignee, issueDetailMilestone, issueDetailOngoingRow, issueDetailSharing, issueDetailApproval, issueDescriptionDetails, issueProgress, issueProgressLabel, issueFilter, issueGrouping, issueOrder, issueScope, issueCountSummary, issueBulkAssignToggle, issueBulkAssignToolbar, issueList, deletedIssuesDetails, deletedIssueCount, deletedIssueList, }, guest: { guestLogoutButton, }, } = dom;
+const { project: { projectHeading, projectEditDialog, projectReadOnlyNotice, editProjectButton, projectsNavButton, projectsView, projectView, projectForm, projectList, projectFormPanel, projectDescription, projectState, projectChatColumn, projectSidebarList, projectMain, projectTabs, projectKeyboardHints, topbarPresence, }, auth: { loginPanel, loginShell, accountBar, currentUserLabel, loginStatusMessage, logoutButton, }, workspace: { workspacePanel, workspaceNav, adminNavButton, adminView, adminHeading, membersView, membersTabButton, }, shell: { createWorkspaceForm, breadcrumbProjectsButton, breadcrumbDivider, breadcrumbCurrent, notesTabButton, emptyIssues, statusMessage, }, roadmap: { roadmapNavButton, roadmapView, roadmapHeading, roadmapSummary, roadmapMilestoneList, roadmapEmptyState, }, inbox: { inboxNavButton, inboxView, inboxHeading, }, lounge: { loungeNavButton, loungeView, loungeHeading, loungeMessageList, loungeChannelLinks, loungeGeneralChannelLink, loungeGeneralChannelPanel, loungeProjectChannelPanel, }, shortcuts: { toggleProjectFormButton, keyboardHints, }, chat: { chatView, }, issues: { issuesView, issueDetailView, issueDetailDisplay, issueDetailTitle, issueDetailPriority, issueDetailDueDate, issueDetailDescription, issueDetailBrief, issueDetailContextSection, issueDetailContext, issueDetailExpectedOutcomeSection, issueDetailExpectedOutcome, issueDetailAcceptanceCriteriaSection, issueDetailAcceptanceCriteria, issueDetailStatus, issueDetailStatusLabel, issueSourceLink, issueDetailEditForm, issueDetailEditButton, issueDetailDeleteButton, issuesTabButton, issueBackButton, issueForm, issueQuickAddTitle, issueQuickAddPriority, issueQuickAddDueDate, issueQuickAddAssignee, issueQuickAddMilestone, issueQuickAddOngoing, issueQuickAddShared, issueQuickAddApproval, issueQuickAddCancelButton, issueDetailType, issueDetailAssignee, issueDetailMilestone, issueDetailOngoingRow, issueDetailSharing, issueDetailApproval, issueDescriptionDetails, issueProgress, issueProgressLabel, issueFilter, issueGrouping, issueOrder, issueScope, issueCountSummary, issueBulkAssignToggle, issueBulkAssignToolbar, issueList, deletedIssuesDetails, deletedIssueCount, deletedIssueList, }, guest: { guestLogoutButton, }, } = dom;
 function issueStatusLabel(status) {
     return ISSUE_STATUS_OPTIONS.find((option) => option.value === status)?.label ?? status;
 }
@@ -778,7 +778,6 @@ function showSignedOut() {
     projectChatVisible = true;
     githubProjectUi.reset();
     editProjectButton.hidden = true;
-    scratchpadNavButton.hidden = true;
     if (projectEditDialog.open)
         projectEditDialog.close();
     activeProject = null;
@@ -813,7 +812,6 @@ function showSignedIn(user) {
     loungeChannelsUi.stop();
     loungePresenceUi.reset();
     activeUser = user;
-    scratchpadNavButton.hidden = user.role === 'guest';
     workspacePickerUi.setGuestVisible(user.role === 'guest');
     editProjectButton.hidden = user.role !== 'admin';
     roadmapNavButton.hidden = user.role === 'guest';
@@ -2037,7 +2035,6 @@ document.addEventListener('focusout', () => {
     window.setTimeout(() => inboxUi.resumeDeferredUpdates(), 0);
 });
 projectsNavButton.addEventListener('click', goToProjects);
-scratchpadNavButton.addEventListener('click', openScratchpad);
 projectSidebarList.addEventListener('scroll', updateProjectSidebarMoreCue, { passive: true });
 window.addEventListener('resize', scheduleProjectSidebarMoreCue);
 window.visualViewport?.addEventListener('resize', scheduleProjectSidebarMoreCue);

@@ -153,7 +153,7 @@ test('Lounge loads project links, marks new chat unread, and clears that count w
   assert.equal(projectLink.querySelector('.lounge-channel-unread'), null);
   assert.equal(unread.parentElement, entry);
   assert.equal(title.className, 'lounge-channel-link-title');
-  assert.equal(title.children[0].textContent, '# ');
+  assert.equal(title.children[0].textContent, '#');
   assert.equal(title.children[0].getAttribute('aria-hidden'), 'true');
   assert.equal(title.children[1].textContent, 'Tangent');
   assert.equal(title.children[1].className, 'lounge-channel-link-label');

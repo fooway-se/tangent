@@ -25,7 +25,7 @@ test('connects the space check to the sidebar vent decoration', () => {
   assert.match(app, /classList\.toggle\('is-project-sidebar-space-constrained', shouldHideVent\)/);
   assert.match(app, /projectSidebarResizeObserver\.observe\(projectSidebar\)/);
   assert.match(app, /window\.requestAnimationFrame\(updateProjectSidebarMoreCue\)/);
-  assert.match(html, /assets\/app\.js\?v=[a-f0-9]{12}/);
+  assert.match(html, /assets\/app-[a-f0-9]{12}\.js/);
   assert.match(css, /\.workspace-sidebar\.is-project-sidebar-space-constrained::before\s*\{\s*display:\s*none;/);
   assert.match(css, /:root \.workspace-sidebar\.is-project-sidebar-space-constrained \.workspace-brand::before\s*\{\s*display:\s*none;/);
   assert.match(css, /:root\[data-theme="nordic"\] \.workspace-sidebar\s*\{\s*--project-sidebar-top-vent-space:\s*56px;/);

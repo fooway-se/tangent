@@ -101,7 +101,7 @@ test('every theme defines every colour token of the default theme', () => {
 
 test('early theme script and the picker cover all themes', () => {
   for (const id of themeIds) assert.ok(init.includes(`'${id}'`), `theme-init knows ${id}`);
-  assert.match(html, /<script src="\.\/assets\/theme-init\.js"><\/script>/);
+  assert.match(html, /<script src="\.\/assets\/theme-init-[a-f0-9]{12}\.js"><\/script>/);
   assert.ok((html.match(/class="theme-select"/g) ?? []).length >= 3);
 });
 

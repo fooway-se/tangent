@@ -97,7 +97,7 @@ const {
     roadmapNavButton, roadmapView, roadmapHeading, roadmapSummary, roadmapMilestoneList, roadmapEmptyState,
   },
   inbox: {
-    inboxNavButton, inboxView, inboxHeading, scratchpadNavButton,
+    inboxNavButton, inboxView, inboxHeading,
   },
   lounge: {
     loungeNavButton, loungeView, loungeHeading, loungeMessageList,
@@ -862,7 +862,6 @@ function showSignedOut(): void {
   projectChatVisible = true;
   githubProjectUi.reset();
   editProjectButton.hidden = true;
-  scratchpadNavButton.hidden = true;
   if (projectEditDialog.open) projectEditDialog.close();
   activeProject = null;
   activeProjectMembers = [];
@@ -897,7 +896,6 @@ function showSignedIn(user: User): void {
   loungeChannelsUi.stop();
   loungePresenceUi.reset();
   activeUser = user;
-  scratchpadNavButton.hidden = user.role === 'guest';
   workspacePickerUi.setGuestVisible(user.role === 'guest');
   editProjectButton.hidden = user.role !== 'admin';
   roadmapNavButton.hidden = user.role === 'guest';
@@ -2005,7 +2003,6 @@ document.addEventListener('focusout', () => {
 });
 
 projectsNavButton.addEventListener('click', goToProjects);
-scratchpadNavButton.addEventListener('click', openScratchpad);
 projectSidebarList.addEventListener('scroll', updateProjectSidebarMoreCue, { passive: true });
 window.addEventListener('resize', scheduleProjectSidebarMoreCue);
 window.visualViewport?.addEventListener('resize', scheduleProjectSidebarMoreCue);

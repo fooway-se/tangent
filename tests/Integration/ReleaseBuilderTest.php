@@ -68,6 +68,27 @@ final class ReleaseBuilderTest extends TestCase
             self::assertContains('tangent-release/public_html/.htaccess', $entries);
             self::assertContains('tangent-release/public_html/index.php', $entries);
             self::assertContains('tangent-release/public_html/assets/app.js', $entries);
+            self::assertContains('tangent-release/public_html/assets/asset-manifest.json', $entries);
+            $assetManifest = json_decode(
+                (string) file_get_contents($temporaryRoot . '/public/assets/asset-manifest.json'),
+                true,
+            );
+            self::assertIsArray($assetManifest);
+            self::assertIsString($assetManifest['assets']['app.js']['file'] ?? null);
+            self::assertIsString($assetManifest['styles']['app.css']['file'] ?? null);
+            self::assertIsString($assetManifest['styles']['tokens.css']['file'] ?? null);
+            self::assertContains(
+                'tangent-release/public_html/assets/' . $assetManifest['assets']['app.js']['file'],
+                $entries,
+            );
+            self::assertContains(
+                'tangent-release/public_html/assets/' . $assetManifest['styles']['app.css']['file'],
+                $entries,
+            );
+            self::assertContains(
+                'tangent-release/public_html/assets/' . $assetManifest['styles']['tokens.css']['file'],
+                $entries,
+            );
             self::assertContains('tangent-release/tangent-app/bootstrap.php', $entries);
             self::assertContains('tangent-release/tangent-app/migrations/001_core.sql', $entries);
             self::assertContains('tangent-release/tangent-app/migrations/047_project_github_default_branch.sql', $entries);

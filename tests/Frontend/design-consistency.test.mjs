@@ -29,8 +29,8 @@ function ruleContaining(source, selector, value) {
 }
 
 test('tokens.css is linked before app.css so every view shares one palette', () => {
-  const tokenLink = html.indexOf('href="./assets/tokens.css"');
-  const appLink = html.search(/href="\.\/assets\/app\.css(?:\?[^"]*)?"/);
+  const tokenLink = html.search(/href="\.\/assets\/tokens-[a-f0-9]{12}\.css"/);
+  const appLink = html.search(/href="\.\/assets\/app-[a-f0-9]{12}\.css"/);
   assert.notEqual(tokenLink, -1, 'tokens.css is linked');
   assert.ok(tokenLink < appLink, 'tokens.css comes first');
 });

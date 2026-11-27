@@ -1,0 +1,318 @@
+{
+  "assets": {
+    "api.js": {
+      "file": "api-c96a28d6bb6c.js",
+      "sha256": "c96a28d6bb6cda30b57b7c5aa1030a7453cec11b91a2d199c247e9ba5986ec60"
+    },
+    "app.js": {
+      "file": "app-0e4cbbdf87e6.js",
+      "sha256": "0e4cbbdf87e6a74c6ae2261a22fcccdd1325f4cbe9e92ca1f53fc744503cde4e"
+    },
+    "auth-ui.js": {
+      "file": "auth-ui-35a933e6bcd0.js",
+      "sha256": "35a933e6bcd09a0a807d89495e323f2b02025ed1c8af138bbddafef1a5e67353"
+    },
+    "chat-event-feed.js": {
+      "file": "chat-event-feed-9e7072b64597.js",
+      "sha256": "9e7072b64597202ebfc055c98dd6178614e863e144002fd195e1c1925fd127eb"
+    },
+    "chat-mentions-ui.js": {
+      "file": "chat-mentions-ui-9633c71badb4.js",
+      "sha256": "9633c71badb497b1c9acd43ca87a1025937d0f3bc227a5a28fc3f236640e418d"
+    },
+    "chat-mentions.js": {
+      "file": "chat-mentions-ccd8a795416a.js",
+      "sha256": "ccd8a795416a5f5ed6c4f8133ab82523c3a7f06109d6146c8df371cbfc734d7f"
+    },
+    "chat-message-navigation-ui.js": {
+      "file": "chat-message-navigation-ui-083d4d1b065c.js",
+      "sha256": "083d4d1b065c2f019c64cbb32be3e66b9ba949f928eacfc0ea559532367e2224"
+    },
+    "chat-time.js": {
+      "file": "chat-time-257fc92db8bc.js",
+      "sha256": "257fc92db8bc4a4c18db0ac5a0bee658ce643ae3b305a725a75a8d8309cff2bf"
+    },
+    "client-summary-ui.js": {
+      "file": "client-summary-ui-66b5dd62c65d.js",
+      "sha256": "66b5dd62c65db1d66377cd1f829bb9bcbcbb0ce3075ec780ce24f88d2b33cb3e"
+    },
+    "client-summary.js": {
+      "file": "client-summary-f05c99b58442.js",
+      "sha256": "f05c99b5844229f55a95e7e83a211fa6df504322494ca8abf92334aceb42365d"
+    },
+    "command-palette-commands.js": {
+      "file": "command-palette-commands-1256322b4657.js",
+      "sha256": "1256322b4657ac8ab0809b86d93bec2206d45d641452cdda3622ba64efa93304"
+    },
+    "command-palette-ui.js": {
+      "file": "command-palette-ui-5440f11b3881.js",
+      "sha256": "5440f11b38816c8ee7c1ba898f7e259d2d19b9b2d3f5b8592d8cdf58833cfd9c"
+    },
+    "credential-flow.js": {
+      "file": "credential-flow-661f78fcb263.js",
+      "sha256": "661f78fcb26324f4e659766425e1d6b893fd7c103396281a9d771c720cf699f1"
+    },
+    "dom.js": {
+      "file": "dom-ee2c07647f5c.js",
+      "sha256": "ee2c07647f5c7be35e5c73c454d6f257255d840772d27da315381acfaa15e3b7"
+    },
+    "github-project-ui.js": {
+      "file": "github-project-ui-48af5ccd7b83.js",
+      "sha256": "48af5ccd7b83a1edba54356b7f74aef265aa3dcad418a05469a06c28a500e36a"
+    },
+    "github-repository-selection.js": {
+      "file": "github-repository-selection-0e4af8a24b46.js",
+      "sha256": "0e4af8a24b468b44c6f4b91175d8a46901803025f5df5572d5f45b9bc50becc1"
+    },
+    "go-prefix-ui.js": {
+      "file": "go-prefix-ui-8978f61acea1.js",
+      "sha256": "8978f61acea133c7a2afedd81dcb81a9a4f9f5d926f157c304566454a73d86b0"
+    },
+    "guest-ui.js": {
+      "file": "guest-ui-5c3fb73a8839.js",
+      "sha256": "5c3fb73a88393aaec1adb6fbeb2d5a4de41431e1060ea6c6d75c34df390217ea"
+    },
+    "guest-view.js": {
+      "file": "guest-view-1d8325045c89.js",
+      "sha256": "1d8325045c890015c59e8196fbeef87b67c2ed57cf21a73708a63d807912e460"
+    },
+    "inbox-events.js": {
+      "file": "inbox-events-d0354c057c5f.js",
+      "sha256": "d0354c057c5fe33ffafbf93426fbd59d3cc0cfcdfa0fea70eba58acb4ebf2d7a"
+    },
+    "inbox-polling.js": {
+      "file": "inbox-polling-2a7f7d34cf89.js",
+      "sha256": "2a7f7d34cf89cbed674e267039dc65b0e6e43b23bdf9095ae5bf1967acb49ed1"
+    },
+    "inbox-ui.js": {
+      "file": "inbox-ui-37af720a4dc0.js",
+      "sha256": "37af720a4dc01eb4b28ac8935bdeae69bf7c63f1e6b3e788b985d497e84b02f3"
+    },
+    "issue-actions.js": {
+      "file": "issue-actions-d3bc42fa2a22.js",
+      "sha256": "d3bc42fa2a22d39a03f9ba8c2a4968f6902b2bcf401d5af08f07c77e64553cfc"
+    },
+    "issue-ai-prompt-ui.js": {
+      "file": "issue-ai-prompt-ui-e571e2003f3e.js",
+      "sha256": "e571e2003f3ef71ed66d31c40381e1bd10d6d54fe16e49ea71d062d0ce911599"
+    },
+    "issue-board-ui.js": {
+      "file": "issue-board-ui-2db43fd6dcd6.js",
+      "sha256": "2db43fd6dcd6dc7b004140895ce51329b065a35e6ea677938a42f3015915a8c1"
+    },
+    "issue-board-view.js": {
+      "file": "issue-board-view-929e915206fe.js",
+      "sha256": "929e915206febeb52e5cbd173f18db39df4623cee4c91428bb83863c35f76d2e"
+    },
+    "issue-board.js": {
+      "file": "issue-board-a1810f6000a9.js",
+      "sha256": "a1810f6000a9e07a17f431be7d041139d89183586f62adbed022621544a48132"
+    },
+    "issue-branch-name.js": {
+      "file": "issue-branch-name-73707e7b4174.js",
+      "sha256": "73707e7b4174aacb5b8d0df846a645ba5b92a6ec40bcd36204bee4aacc0eba99"
+    },
+    "issue-bulk-actions.js": {
+      "file": "issue-bulk-actions-3887151afeb0.js",
+      "sha256": "3887151afeb0cd3649793cfb41f6631f8274523188c6406b8947bbe47b53f686"
+    },
+    "issue-bulk-ui.js": {
+      "file": "issue-bulk-ui-6576fb4f32ad.js",
+      "sha256": "6576fb4f32ad29e458100a594973bfc69a4ec8438f541d3bc2c91475f95121e8"
+    },
+    "issue-delete-ui.js": {
+      "file": "issue-delete-ui-f91c26319d43.js",
+      "sha256": "f91c26319d4311e763f42d4ec5b536583541dd2da3122f7db839500a75c4156b"
+    },
+    "issue-detail-edit-ui.js": {
+      "file": "issue-detail-edit-ui-1337312a16b6.js",
+      "sha256": "1337312a16b66ea44819f66e4aa1f1fb46fff763e071e4862614dd562e6fec62"
+    },
+    "issue-detail-view.js": {
+      "file": "issue-detail-view-40290ac4f86f.js",
+      "sha256": "40290ac4f86f76fa24f650651b416267ff125aec28e351b1db4ed89035807f55"
+    },
+    "issue-discussion-ui.js": {
+      "file": "issue-discussion-ui-835ee16f0fa5.js",
+      "sha256": "835ee16f0fa53f54fc7be8152bca47d471f45e10d0caac5f674953048f37d5b5"
+    },
+    "issue-export.js": {
+      "file": "issue-export-a772ea268388.js",
+      "sha256": "a772ea268388921cf402de8844c7eaf94721c3e634b84706076515ed83ca8fbc"
+    },
+    "issue-polling-controller.js": {
+      "file": "issue-polling-controller-1676820c28c4.js",
+      "sha256": "1676820c28c46f124ac8399089e80db02e76a6e76b6ac425ef26f866c22fbfab"
+    },
+    "issue-polling.js": {
+      "file": "issue-polling-83fefe215877.js",
+      "sha256": "83fefe2158779673ea5e68d5959de4e19b65ceb2db93d8922204cacaa343f140"
+    },
+    "issue-prompt.mjs": {
+      "file": "issue-prompt-99ae0f60437c.mjs",
+      "sha256": "99ae0f60437c1003c7c4f9f4de1c2b49a789a367591b94dcb12c0bc33cb3306f"
+    },
+    "issue-related-ui.js": {
+      "file": "issue-related-ui-90b97bdbad55.js",
+      "sha256": "90b97bdbad55a90133d22dfaf9d089c9bcae01886f456a01fbddc6c8dfb40849"
+    },
+    "issue-row-ui.js": {
+      "file": "issue-row-ui-ad784dfe1a85.js",
+      "sha256": "ad784dfe1a8585c7da79b5dff3f05624d41986aa6af9812459ef237511a7b8a4"
+    },
+    "issue-status-picker-ui.js": {
+      "file": "issue-status-picker-ui-46dd1c20883a.js",
+      "sha256": "46dd1c20883ad5cbd207b6d9c350aaff808488e257e06fd7cf23a5a214cb78ab"
+    },
+    "keyboard-hints-ui.js": {
+      "file": "keyboard-hints-ui-8faab6813c20.js",
+      "sha256": "8faab6813c20e7b86e79902bbd7131fb7133f5a9d877f7724524fd4dace52d18"
+    },
+    "list-keyboard-ui.js": {
+      "file": "list-keyboard-ui-11874f8c2290.js",
+      "sha256": "11874f8c22905d5b557a3dd6a4f136af52aff30a250531c61df7831fa28423dc"
+    },
+    "logout.js": {
+      "file": "logout-4072b7f528ea.js",
+      "sha256": "4072b7f528ea23c775545389644322e659ce08e12a46b21ac024f82fae339c18"
+    },
+    "lounge-channel-state.js": {
+      "file": "lounge-channel-state-2ca99ba6ba86.js",
+      "sha256": "2ca99ba6ba860ab852f610021eddda639fda5182ff27ffc72281063ceba68380"
+    },
+    "lounge-channels-ui.js": {
+      "file": "lounge-channels-ui-e54cc47e2700.js",
+      "sha256": "e54cc47e270044630a43aa4bf10e5740b0e1136ea3ace7ff18fd8ff8affbb2ec"
+    },
+    "lounge-chat-ui.js": {
+      "file": "lounge-chat-ui-b416cde07d46.js",
+      "sha256": "b416cde07d46e4d849eb90146962a0d889b77e7355d30c95f60e9f2746f37aa8"
+    },
+    "lounge-presence.js": {
+      "file": "lounge-presence-d038552d25b4.js",
+      "sha256": "d038552d25b4ec21c8546b04b07b4eb9a4f63631f21ad72858ce34461c14a650"
+    },
+    "milestone-ui.js": {
+      "file": "milestone-ui-e57eec3c5764.js",
+      "sha256": "e57eec3c576495b6a0b6cd6aa40b3beaddf738a606390f8c78dfa7a11a3b1ee7"
+    },
+    "my-work.js": {
+      "file": "my-work-199f3888abbd.js",
+      "sha256": "199f3888abbd78d7570a0a7e389ed67b4b9b0b5ac53f5193e8033ce79d3ea5fa"
+    },
+    "presence-indicator.js": {
+      "file": "presence-indicator-5e1c76e720b6.js",
+      "sha256": "5e1c76e720b6522099811d954175ceb853e42d400fd6f78a8edf5ef69a28e994"
+    },
+    "project-chat-ui.js": {
+      "file": "project-chat-ui-75b2bd010328.js",
+      "sha256": "75b2bd010328f9fce56f02fe4e3501ba2ff851ac2df9c0e09d8b79b992878930"
+    },
+    "project-edit-ui.js": {
+      "file": "project-edit-ui-41636b66dc74.js",
+      "sha256": "41636b66dc74f2c9a8125c34c7d401f46c0b4c1ded35d2d114af520e9bd22c36"
+    },
+    "project-list-ui.js": {
+      "file": "project-list-ui-491393d38f54.js",
+      "sha256": "491393d38f5440c3e56c76ca7c3bbb15980cc4e739df689cb7f70a4ba4cdb722"
+    },
+    "project-members-ui.js": {
+      "file": "project-members-ui-5490e385c1b1.js",
+      "sha256": "5490e385c1b10415dd8bfff02eb2dffd31a1aedc9588066088f9c3b1ec3bb4a9"
+    },
+    "project-navigation.js": {
+      "file": "project-navigation-772a89398689.js",
+      "sha256": "772a893986897d52a7488f2a6e894a87f64a779d81ab153b47cb0e9ef931db7b"
+    },
+    "project-notes-ui.js": {
+      "file": "project-notes-ui-601fe0768253.js",
+      "sha256": "601fe0768253b75f14cc6afa187da5e7e0b48bc6de1ff311cc80eebe27913623"
+    },
+    "project-notes.js": {
+      "file": "project-notes-7b5e291ec841.js",
+      "sha256": "7b5e291ec84197b6aad1f6fef8086cba7ad788ff52cdff6bc0a96ba369acb1e7"
+    },
+    "project-sidebar-layout.js": {
+      "file": "project-sidebar-layout-c67f096f6f8c.js",
+      "sha256": "c67f096f6f8ce7f8e7e502632ca97bdce270325f69df503eb49e5441891bdd23"
+    },
+    "quick-issue.js": {
+      "file": "quick-issue-99551ec7544c.js",
+      "sha256": "99551ec7544ce26d59d09040f5b246f9c1bd29097d66ae7a093cf3df3b7579f1"
+    },
+    "realtime-polling.js": {
+      "file": "realtime-polling-9539ddcb4474.js",
+      "sha256": "9539ddcb44747ce9bb172d665121c65206a3c8817f92d9a658f158f85adc30cf"
+    },
+    "realtime-transport.js": {
+      "file": "realtime-transport-cb190b49db06.js",
+      "sha256": "cb190b49db06c93c510ffe52432ef6e7e50c2bf9c771f6cf9df242db65bc7261"
+    },
+    "roadmap-ui.js": {
+      "file": "roadmap-ui-937d4face352.js",
+      "sha256": "937d4face35293e5593990f66665529dea07b62965b7db73257bdaa45ef1c1d5"
+    },
+    "roadmap.js": {
+      "file": "roadmap-e5ce56ce2ce6.js",
+      "sha256": "e5ce56ce2ce6c1f56e34af525fd7fd0c8394248351e5624ef0dd349ff5ef6b84"
+    },
+    "scratchpad-ui.js": {
+      "file": "scratchpad-ui-2decead809cc.js",
+      "sha256": "2decead809ccaa38d45600808c2861326667f81d8f8358bdf3a7821fe0c29551"
+    },
+    "shortcuts.js": {
+      "file": "shortcuts-96ace9c0d72d.js",
+      "sha256": "96ace9c0d72d80793d0b4268f41c4959acdc4613504ee300a3e99c43a937421a"
+    },
+    "status-message-ui.js": {
+      "file": "status-message-ui-973e24af9d55.js",
+      "sha256": "973e24af9d551f6b6eaca0eaa91b32facfc17c7c16f208314df3eb5d7b598f30"
+    },
+    "theme-init.js": {
+      "file": "theme-init-37d25fe374ec.js",
+      "sha256": "37d25fe374ecc5e66031d5a3e8957b7c829330f108c0720a8c828ef023158e06"
+    },
+    "theme-machines.js": {
+      "file": "theme-machines-ef28bf237eb7.js",
+      "sha256": "ef28bf237eb76013e0c039b5774305aade3e69631356e6714851b919155d4ea6"
+    },
+    "theme-ui.js": {
+      "file": "theme-ui-7f98175b7204.js",
+      "sha256": "7f98175b72048c885e89a606d03f83a9fcf11f7013da52eaa24e5f2b290d5571"
+    },
+    "theme.js": {
+      "file": "theme-c70c750df030.js",
+      "sha256": "c70c750df0302d07c4e8cfcf80facf5d42696099ba9b3f5060a5c194512f139a"
+    },
+    "types.js": {
+      "file": "types-679ae1beb269.js",
+      "sha256": "679ae1beb269d29987fef3a40816aa7a7e0fcdb4eda9b972a68eac10338e5a51"
+    },
+    "workspace-admin-ui.js": {
+      "file": "workspace-admin-ui-c15012163294.js",
+      "sha256": "c150121632947b2d994745287348217911b1a174b5f6b2ea138917f4d7897be4"
+    },
+    "workspace-history.js": {
+      "file": "workspace-history-2cf0c9525b05.js",
+      "sha256": "2cf0c9525b05c4187804ada535fc3b98a91a2acb90911327e409ffededf97b45"
+    },
+    "workspace-picker-ui.js": {
+      "file": "workspace-picker-ui-263faa637db8.js",
+      "sha256": "263faa637db8653e8474d6c85e656313f6c57afa90fb8365c124a7092f16ed0f"
+    },
+    "workspace-switch.js": {
+      "file": "workspace-switch-a3833053ddd9.js",
+      "sha256": "a3833053ddd986d7f53c3a796a30104f04a7858ff094ad2b89d9a71eede2649d"
+    }
+  },
+  "styles": {
+    "app.css": {
+      "file": "app-99228dee2dca.css",
+      "sha256": "99228dee2dca829d578e584dc40d39b2fd2460e4d9dbefa4fafd918b93f38c76"
+    },
+    "tokens.css": {
+      "file": "tokens-c18ae8eb4e3a.css",
+      "sha256": "c18ae8eb4e3a23a0f41853df6a2732eda7691d288546f40f06d4d4bdd95f056e"
+    }
+  }
+}

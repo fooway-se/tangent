@@ -299,9 +299,9 @@ test('scratchpad no longer includes issue conversion UI or API code', async () =
   assert.doesNotMatch(ui, /scratchpad\/issue|convertToIssue|onIssueCreated/);
 });
 
-test('workspace navigation exposes one scratchpad field and no note collection', async () => {
+test('scratchpad remains available without a sidebar link', async () => {
   const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
-  assert.match(html, /id="scratchpad-nav"[^>]*>Scratchpad<\/button>/);
+  assert.doesNotMatch(html, /id="scratchpad-nav"/);
   assert.match(html, /<dialog id="scratchpad-dialog"/);
   assert.match(html, /<textarea id="scratchpad-body"[^>]*maxlength="10000"/);
   assert.match(html, /id="scratchpad-status"[^>]*role="status"/);
