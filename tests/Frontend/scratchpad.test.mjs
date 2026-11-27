@@ -30,8 +30,6 @@ function withPage(t) {
   const previous = { document: globalThis.document, fetch: globalThis.fetch };
   const selectors = [
     '#scratchpad-dialog', '#scratchpad-close', '#scratchpad-body', '#scratchpad-status',
-    '#scratchpad-convert-button', '#scratchpad-convert-form', '#scratchpad-project',
-    '#scratchpad-convert-submit', '#scratchpad-convert-cancel',
   ];
   const elements = new Map();
   const doc = {
@@ -131,11 +129,10 @@ test('g then q opens the scratchpad and stays inactive while typing', () => {
   assert.equal(resolveShortcut(event('q'), { ...context, goPrefixPending: true, targetIsEditable: true }), null);
 });
 
-test('scratchpad opens on its single saved note and autosaves text in place', async (t) => {
+test('scratchpad stays quiet while editing and saves only when closed', async (t) => {
   const { doc, elements } = withPage(t);
   const requests = [];
   let noteBody = '<img src=x onerror=alert(1)>';
-  let runScheduledSave = null;
   globalThis.fetch = async (url, init) => {
     requests.push({ url, init });
     if (init.method === 'GET') return response({ body: noteBody, updated_at: '2026-11-27T12:00:00Z' });
@@ -145,8 +142,6 @@ test('scratchpad opens on its single saved note and autosaves text in place', as
   const ui = initScratchpadUi({
     doc,
     onUnauthorized: () => assert.fail('session should remain signed in'),
-    setTimeout: (callback) => { runScheduledSave = callback; return 1; },
-    clearTimeout: () => {},
   });
 
   await ui.open();
@@ -158,14 +153,17 @@ test('scratchpad opens on its single saved note and autosaves text in place', as
 
   input.value = 'One thought, kept here';
   input.dispatchEvent(new Event('input'));
-  runScheduledSave();
-  await new Promise((resolve) => setImmediate(resolve));
+  await new Promise((resolve) => setTimeout(resolve, 700));
+  assert.equal(requests.length, 1);
+  assert.equal(elements.get('#scratchpad-status').textContent, 'Unsaved changes');
+
+  await ui.close();
   assert.equal(requests[1].init.method, 'PUT');
   assert.equal(requests[1].url.endsWith('/scratchpad'), true);
   assert.equal(requests[1].init.headers.get('X-CSRF-Token'), 'test-token');
   assert.deepEqual(JSON.parse(requests[1].init.body), { body: 'One thought, kept here' });
   assert.equal(input.value, 'One thought, kept here');
-  assert.equal(elements.get('#scratchpad-status').textContent, 'Saved.');
+  assert.equal(elements.get('#scratchpad-dialog').open, false);
   ui.dispose();
 });
 
@@ -180,15 +178,12 @@ test('closing the scratchpad immediately saves the pending single note', async (
   };
   const ui = initScratchpadUi({
     onUnauthorized: () => assert.fail('session should remain signed in'),
-    setTimeout: () => 2,
-    clearTimeout: () => {},
   });
   await ui.open();
   const input = elements.get('#scratchpad-body');
   input.value = 'Keep this thought';
   input.dispatchEvent(new Event('input'));
-  ui.close();
-  await new Promise((resolve) => setImmediate(resolve));
+  await ui.close();
 
   assert.equal(elements.get('#scratchpad-dialog').open, false);
   assert.equal(requests[1].init.method, 'PUT');
@@ -196,47 +191,112 @@ test('closing the scratchpad immediately saves the pending single note', async (
   ui.dispose();
 });
 
-test('the single scratchpad note can be turned into an issue in a writable project', async (t) => {
+test('reopening preserves the note while its close save is in flight', async (t) => {
   const { elements } = withPage(t);
   const requests = [];
-  const createdIssue = { id: 91, project_id: 12, title: 'Idea to track' };
-  let openedIssue = null;
+  let storedBody = '';
+  let finishSave;
   globalThis.fetch = async (url, init) => {
     requests.push({ url, init });
-    if (init.method === 'GET' && url.endsWith('/scratchpad')) {
-      return response({ body: 'Idea to track\nAdd an API endpoint.', updated_at: '2026-11-27T12:00:00Z' });
+    if (init.method === 'GET') {
+      return response({ body: storedBody, updated_at: null });
     }
-    if (url.endsWith('/projects')) {
-      return response({ projects: [
-        { id: 12, name: 'Active project', status: 'active' },
-        { id: 13, name: 'Archived project', status: 'archived' },
-      ] });
-    }
-    return response({ issue: createdIssue }, 201);
+    return new Promise((resolve) => {
+      finishSave = () => {
+        storedBody = JSON.parse(init.body).body;
+        resolve(response({ body: storedBody, updated_at: '2026-11-27T12:01:00Z' }));
+      };
+    });
   };
   const ui = initScratchpadUi({
+    doc: elements.get('#scratchpad-body').ownerDocument,
     onUnauthorized: () => assert.fail('session should remain signed in'),
-    onIssueCreated: (issue) => { openedIssue = issue; },
   });
 
   await ui.open();
-  elements.get('#scratchpad-convert-button').dispatchEvent(new Event('click'));
-  await new Promise((resolve) => setImmediate(resolve));
-  assert.equal(elements.get('#scratchpad-convert-form').hidden, false);
-  elements.get('#scratchpad-project').value = '12';
-  const submit = new Event('submit', { cancelable: true });
-  elements.get('#scratchpad-convert-form').dispatchEvent(submit);
-  await new Promise((resolve) => setImmediate(resolve));
+  const input = elements.get('#scratchpad-body');
+  input.value = 'Keep the latest edit';
+  input.dispatchEvent(new Event('input'));
 
-  assert.equal(submit.defaultPrevented, true);
-  assert.equal(requests[1].url.endsWith('/projects'), true);
-  assert.equal(requests[2].url.endsWith('/scratchpad/issue'), true);
-  assert.equal(requests[2].init.method, 'POST');
-  assert.deepEqual(JSON.parse(requests[2].init.body), { project_id: 12 });
-  assert.deepEqual(openedIssue, createdIssue);
-  assert.equal(elements.get('#scratchpad-body').value, '');
+  const closing = ui.close();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(requests[1].init.method, 'PUT');
   assert.equal(elements.get('#scratchpad-dialog').open, false);
+
+  const reopening = ui.open();
+  await new Promise((resolve) => setImmediate(resolve));
+  const loadedBeforeSaveFinished = requests.slice(2).some(({ init }) => init.method === 'GET');
+  assert.equal(loadedBeforeSaveFinished, true);
+  assert.equal(input.value, 'Keep the latest edit');
+  finishSave();
+  await Promise.all([closing, reopening]);
+
+  assert.equal(input.value, 'Keep the latest edit');
+  assert.equal(storedBody, 'Keep the latest edit');
+  assert.equal(elements.get('#scratchpad-dialog').open, true);
   ui.dispose();
+});
+
+test('scratchpad keeps a failed close save as a draft for the next open', async (t) => {
+  const { elements } = withPage(t);
+  globalThis.fetch = async (_url, init) => init.method === 'GET'
+    ? response({ body: '', updated_at: null })
+    : response({ error: { message: 'Could not save the note.' } }, 500);
+  const ui = initScratchpadUi({
+    onUnauthorized: () => assert.fail('session should remain signed in'),
+  });
+
+  await ui.open();
+  const input = elements.get('#scratchpad-body');
+  input.value = 'Keep this if saving fails';
+  input.dispatchEvent(new Event('input'));
+  const saved = await ui.close();
+
+  assert.equal(saved, false);
+  assert.equal(elements.get('#scratchpad-dialog').open, false);
+  assert.equal(input.value, 'Keep this if saving fails');
+  assert.equal(elements.get('#scratchpad-status').textContent, 'Could not save the note.');
+  await ui.open();
+  assert.equal(input.value, 'Keep this if saving fails');
+  assert.equal(elements.get('#scratchpad-dialog').open, true);
+  ui.dispose();
+});
+
+test('closing makes only one save request when the server returns different text', async (t) => {
+  const { elements } = withPage(t);
+  const requests = [];
+  let putCount = 0;
+  globalThis.fetch = async (_url, init) => {
+    requests.push(init);
+    if (init.method === 'GET') return response({ body: '', updated_at: null });
+    putCount += 1;
+    return putCount === 1
+      ? response({ body: 'server normalized this note', updated_at: '2026-11-27T12:01:00Z' })
+      : response({ error: { message: 'Duplicate save should not happen.' } }, 500);
+  };
+  const ui = initScratchpadUi({
+    onUnauthorized: () => assert.fail('session should remain signed in'),
+  });
+
+  await ui.open();
+  const input = elements.get('#scratchpad-body');
+  input.value = 'The original draft';
+  input.dispatchEvent(new Event('input'));
+  await ui.close();
+  await new Promise((resolve) => setTimeout(resolve, 20));
+
+  assert.equal(requests.filter(({ method }) => method === 'PUT').length, 1);
+  assert.equal(elements.get('#scratchpad-dialog').open, false);
+  assert.equal(input.value, 'The original draft');
+  ui.dispose();
+});
+
+test('scratchpad no longer includes issue conversion UI or API code', async () => {
+  const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
+  const ui = await readFile(new URL('../../public/assets/scratchpad-ui.js', import.meta.url), 'utf8');
+
+  assert.doesNotMatch(html, /scratchpad-convert|Turn into issue/i);
+  assert.doesNotMatch(ui, /scratchpad\/issue|convertToIssue|onIssueCreated/);
 });
 
 test('workspace navigation exposes one scratchpad field and no note collection', async () => {
@@ -248,10 +308,10 @@ test('workspace navigation exposes one scratchpad field and no note collection',
   assert.doesNotMatch(html, /scratchpad-note-list|scratchpad-new-note/);
 });
 
-test('scratchpad note text uses the regular 16px interface font', async () => {
+test('scratchpad note text uses a smaller 14px interface font', async () => {
   const css = await readFile(new URL('../../public/assets/app.css', import.meta.url), 'utf8');
   const scratchpadRule = css.match(/\.scratchpad-body\s*\{([^}]*)\}/)?.[1] ?? '';
 
-  assert.match(scratchpadRule, /font:\s*400 16px\/1\.6 var\(--font-display\)/);
+  assert.match(scratchpadRule, /font:\s*400 14px\/1\.6 var\(--font-display\)/);
   assert.doesNotMatch(scratchpadRule, /font-mono/);
 });

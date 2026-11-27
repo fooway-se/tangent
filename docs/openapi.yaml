@@ -1926,35 +1926,6 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '422': { $ref: '#/components/responses/ValidationFailed' }
-  /scratchpad/issue:
-    post:
-      summary: Turn the current scratchpad note into a project issue
-      description: The first line becomes the issue title and the remaining lines become the description. The note is cleared only after issue creation succeeds. Normal project visibility and issue creation permissions apply.
-      parameters:
-        - $ref: '#/components/parameters/CsrfToken'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [project_id]
-              properties:
-                project_id: { type: integer, minimum: 1 }
-      responses:
-        '201':
-          description: Created issue; the scratchpad note was cleared.
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [issue]
-                properties:
-                  issue: { $ref: '#/components/schemas/Issue' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '422': { $ref: '#/components/responses/ValidationFailed' }
   /projects/{id}/members:
     get:
       summary: List project members

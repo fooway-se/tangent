@@ -153,50 +153,31 @@ final class ScratchpadTest extends ApiTestCase
         self::assertSame(304, $unchanged->status);
     }
 
-    public function testSingleScratchpadNoteCanBecomeAnIssueAndIsClearedAfterConversion(): void
+    public function testScratchpadNoLongerExposesIssueConversionEndpoint(): void
     {
         $admin = $this->login($this->adminEmail);
         $project = $this->cookieRequest('POST', '/api/v1/projects', $admin['cookie'], [
-            'name' => 'Scratchpad conversion',
+            'name' => 'Scratchpad endpoint removal',
         ], $admin['csrf']);
         self::assertSame(201, $project->status, json_encode($project->body));
         $projectId = (int) $project->body['project']['id'];
-        $developer = $this->login($this->developerEmail);
-        $saved = $this->cookieRequest('PUT', '/api/v1/scratchpad', $developer['cookie'], [
-            'body' => "Investigate stale cache results\n\nThe cache can return an older response.",
-        ], $developer['csrf']);
+        $saved = $this->cookieRequest('PUT', '/api/v1/scratchpad', $admin['cookie'], [
+            'body' => 'Keep this note private',
+        ], $admin['csrf']);
         self::assertSame(200, $saved->status, json_encode($saved->body));
 
-        $forbidden = $this->cookieRequest(
+        $response = $this->cookieRequest(
             'POST',
             '/api/v1/scratchpad/issue',
-            $developer['cookie'],
-            ['project_id' => $projectId],
-            $developer['csrf'],
-        );
-        self::assertSame(404, $forbidden->status);
-        self::assertSame($saved->body['body'], $this->cookieRequest('GET', '/api/v1/scratchpad', $developer['cookie'])->body['body']);
-
-        $membership = $this->cookieRequest(
-            'PUT',
-            "/api/v1/projects/{$projectId}/members/{$this->developerId}",
             $admin['cookie'],
-            [],
+            ['project_id' => $projectId],
             $admin['csrf'],
         );
-        self::assertSame(200, $membership->status);
-        $converted = $this->cookieRequest(
-            'POST',
-            '/api/v1/scratchpad/issue',
-            $developer['cookie'],
-            ['project_id' => $projectId],
-            $developer['csrf'],
+        self::assertSame(404, $response->status);
+        self::assertSame(
+            'Keep this note private',
+            $this->cookieRequest('GET', '/api/v1/scratchpad', $admin['cookie'])->body['body'],
         );
-        self::assertSame(201, $converted->status, json_encode($converted->body));
-        self::assertSame($projectId, $converted->body['issue']['project_id']);
-        self::assertSame('Investigate stale cache results', $converted->body['issue']['title']);
-        self::assertSame('The cache can return an older response.', $converted->body['issue']['description']);
-        self::assertSame('', $this->cookieRequest('GET', '/api/v1/scratchpad', $developer['cookie'])->body['body']);
     }
 
     private function requestForWorkspace(

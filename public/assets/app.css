@@ -750,12 +750,9 @@ dialog::backdrop { background: var(--backdrop); }
 .scratchpad-content .dialog-heading { margin: 0 0 12px; }
 .scratchpad-intro { margin: 0 18px 12px; color: var(--screen-muted); font-size: 13px; }
 .scratchpad-editor-label { display: block; margin: 0 18px 6px; color: var(--screen-muted); font-size: 12px; font-weight: 700; }
-.scratchpad-body { display: block; width: calc(100% - 36px); min-height: 220px; margin: 0 18px; resize: vertical; border-color: var(--accent-edge); color: var(--accent-ink); background: var(--accent); box-shadow: 2px 3px 0 rgba(0, 0, 0, 0.12); font: 400 16px/1.6 var(--font-display); }
+.scratchpad-body { display: block; width: calc(100% - 36px); min-height: 220px; margin: 0 18px; resize: vertical; border-color: var(--accent-edge); color: var(--accent-ink); background: var(--accent); box-shadow: 2px 3px 0 rgba(0, 0, 0, 0.12); font: 400 14px/1.6 var(--font-display); }
 .scratchpad-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 12px 18px 0; }
 .scratchpad-footer [role="status"] { min-height: 1.4em; color: var(--screen-muted); font-size: 12px; }
-.scratchpad-convert-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 10px; margin: 14px 18px 0; border-top: 1px solid var(--screen-border); padding-top: 12px; }
-.scratchpad-convert-form label { display: grid; gap: 6px; color: var(--screen-muted); font-size: 12px; font-weight: 700; }
-.scratchpad-convert-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .dialog-heading { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 12px; height: var(--header-height); margin: 0 0 20px; padding: 0 18px; background: var(--screen-header); }
 .dialog-heading::after { position: absolute; right: 0; bottom: -8px; left: 0; height: 8px; background: var(--signal-stripe); content: ""; pointer-events: none; }
 .dialog-heading h2 { margin: 0; }
@@ -1194,7 +1191,6 @@ dialog::backdrop { background: var(--backdrop); }
   .client-summary-dialog { width: calc(100vw - 24px); max-height: calc(100dvh - 24px); }
   .scratchpad-dialog { width: calc(100vw - 24px); max-height: calc(100dvh - 24px); }
   .scratchpad-body { min-height: 48vh; }
-  .scratchpad-convert-form { grid-template-columns: minmax(0, 1fr); }
   .client-summary-custom-range { grid-template-columns: minmax(0, 1fr); }
   .theme-about-machine { grid-template-columns: minmax(0, 1fr); }
   .theme-about-dialog { width: calc(100vw - 24px); max-height: calc(100dvh - 24px); }

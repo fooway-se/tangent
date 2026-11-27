@@ -12,13 +12,13 @@ final class ScratchpadRepository
     {
     }
 
-    public function readForUser(int $workspaceId, int $userId, bool $forUpdate = false): ?array
+    public function readForUser(int $workspaceId, int $userId): ?array
     {
         $statement = $this->pdo->prepare(
             'SELECT body, updated_at
              FROM scratchpad_notes
              WHERE workspace_id = :workspace_id AND user_id = :user_id
-             LIMIT 1' . ($forUpdate ? ' FOR UPDATE' : '')
+             LIMIT 1'
         );
         $statement->execute(['workspace_id' => $workspaceId, 'user_id' => $userId]);
         $note = $statement->fetch(PDO::FETCH_ASSOC);

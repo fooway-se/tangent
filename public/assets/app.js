@@ -174,7 +174,6 @@ const projectNotesUi = initProjectNotesUi({
 const scratchpadUi = initScratchpadUi({
     doc: document,
     onUnauthorized: () => showSignedOut(),
-    onIssueCreated: (issue) => { void loadProjectDetail(issue.project_id, 'issues'); },
 });
 let activeProjectMembers = [];
 const projectListUi = initProjectListUi({
@@ -1527,8 +1526,13 @@ function getPaletteCommands() {
 function openCommandPalette() {
     if (activeUser === null || milestoneUi.deleteConfirmButton.disabled)
         return;
-    if (scratchpadUi.isOpen())
-        scratchpadUi.close();
+    if (scratchpadUi.isOpen()) {
+        void scratchpadUi.close().then((closed) => {
+            if (closed)
+                openCommandPalette();
+        });
+        return;
+    }
     if (themeUi.aboutDialog.open)
         themeUi.aboutDialog.close();
     if (projectEditDialog.open)
@@ -1562,8 +1566,13 @@ function openScratchpad() {
 function showShortcutHelp() {
     if (activeUser === null || milestoneUi.deleteConfirmButton.disabled)
         return;
-    if (scratchpadUi.isOpen())
-        scratchpadUi.close();
+    if (scratchpadUi.isOpen()) {
+        void scratchpadUi.close().then((closed) => {
+            if (closed)
+                showShortcutHelp();
+        });
+        return;
+    }
     if (workspacePickerUi.isOpen())
         workspacePickerUi.resetPendingSwitch();
     if (issueRelatedUi.isPullRequestDialogOpen())

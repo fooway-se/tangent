@@ -163,7 +163,7 @@ final class Application
             $config->realtimeMaxConnections,
         ))->register($router);
         (new IssuesRoutes($issues))->register($router);
-        (new ScratchpadRoutes(new ScratchpadService(new ScratchpadRepository($pdo), $issues, $pdo)))->register($router);
+        (new ScratchpadRoutes(new ScratchpadService(new ScratchpadRepository($pdo))))->register($router);
         (new AgentsRoutes($agents))->register($router);
         (new InboxRoutes($inbox, $inboxEvents))->register($router);
         (new GitHubRoutes($github, $config))->register($router);

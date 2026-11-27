@@ -13,7 +13,7 @@ A keyboard-first, self-hosted workspace for small dev teams and freelancers: pro
 - **See when someone else is around.** A small power light in project chat shows whether another authorized viewer is active, without showing names or a count.
 - **Chat mentions.** Type `@` to find a project member by their saved name; selecting them inserts an exact mention and sends them an inbox notification.
 - **Project notes.** Each project has one internal Markdown page for durable context, with a safe rendered preview. Guest clients cannot access it.
-- **Quick scratchpad.** Keep one private rough note handy, then turn it into an issue when it is ready to track.
+- **Quick scratchpad.** Keep one private rough note handy; it saves when you close the scratchpad.
 - **Twenty-seven themes.** Choose from 25 machine-inspired themes, plus Clean (neutral light) and Clean (dark), in the login, guest, or workspace view; the choice is saved in this browser.
 - **Issues come out of the conversation.** Turn a chat message into an issue; the issue keeps a link back to its thread. Issues support priorities, due dates, ongoing work tracked separately from planned progress, and an optional guided AI prompt builder with copy and Markdown export.
 - **A bounded handoff to coding agents.** Workspace admins manage named identities in Workspace admin → Agents, with project-scoped issue permissions and one-time tokens. Agents can read issue briefs, post progress, and move open work to Testing; an optional MCP adapter connects those tools to coding-agent hosts.

@@ -38,16 +38,6 @@ final class ScratchpadRoutes
         ): Response {
             return Response::json(200, $this->service->save($user, $request->body));
         });
-
-        $router->add('POST', '/api/v1/scratchpad/issue', function (
-            Request $request,
-            array $params,
-            AuthenticatedUser $user,
-        ): Response {
-            return Response::json(201, [
-                'issue' => $this->service->convertToIssue($user, $request->body),
-            ]);
-        });
     }
 
     private static function matchesEtag(?string $header, string $etag): bool

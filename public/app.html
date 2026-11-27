@@ -830,24 +830,12 @@
           <h2 id="scratchpad-heading">Scratchpad</h2>
           <button id="scratchpad-close" class="button button-quiet" type="button" aria-label="Close scratchpad">Esc</button>
         </header>
-        <p id="scratchpad-intro" class="scratchpad-intro">One private note for thoughts you may want to track later.</p>
+        <p id="scratchpad-intro" class="scratchpad-intro">A private note. Changes save when you close Scratchpad.</p>
         <label class="scratchpad-editor-label" for="scratchpad-body">Your note</label>
         <textarea id="scratchpad-body" class="scratchpad-body" name="body" maxlength="10000" rows="12" placeholder="Jot something down…" aria-describedby="scratchpad-status"></textarea>
         <div class="scratchpad-footer">
-          <span id="scratchpad-status" role="status" aria-live="polite">Saved automatically.</span>
-          <button id="scratchpad-convert-button" class="button button-primary" type="button">Turn into issue</button>
+          <span id="scratchpad-status" role="status" aria-live="polite">Changes save when you close Scratchpad.</span>
         </div>
-        <form id="scratchpad-convert-form" class="scratchpad-convert-form" hidden>
-          <label for="scratchpad-project">Create issue in
-            <select id="scratchpad-project" required>
-              <option value="">Choose a project</option>
-            </select>
-          </label>
-          <div class="scratchpad-convert-actions">
-            <button id="scratchpad-convert-cancel" class="button button-quiet" type="button">Cancel</button>
-            <button id="scratchpad-convert-submit" class="button button-primary" type="submit">Create issue</button>
-          </div>
-        </form>
       </section>
     </dialog>
 
