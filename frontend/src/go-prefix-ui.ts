@@ -1,20 +1,4 @@
-export interface GoPrefixContext {
-  workspaceCount: number;
-  canNavigateWorkspace?: boolean;
-  hasProject: boolean;
-  projectVisible: boolean;
-  isAdmin: boolean;
-  canUseRoadmap: boolean;
-}
-
 export interface GoPrefixUiOptions {
-  hint: HTMLElement;
-  navigationOptions: HTMLElement;
-  workspaceOption: HTMLElement;
-  projectOptions: HTMLElement;
-  adminOption: HTMLElement;
-  roadmapOption: HTMLElement;
-  getContext: () => GoPrefixContext;
   setTimeout: (callback: () => void, delay: number) => number;
   clearTimeout: (timer: number) => void;
 }
@@ -29,7 +13,6 @@ export function initGoPrefixUi(options: GoPrefixUiOptions): {
 
   function clear(): void {
     pending = false;
-    options.hint.hidden = true;
     if (timer !== null) options.clearTimeout(timer);
     timer = null;
   }
@@ -37,13 +20,6 @@ export function initGoPrefixUi(options: GoPrefixUiOptions): {
   function start(): void {
     clear();
     pending = true;
-    const context = options.getContext();
-    options.navigationOptions.hidden = context.canNavigateWorkspace === false;
-    options.workspaceOption.hidden = context.workspaceCount < 2;
-    options.projectOptions.hidden = !context.hasProject || !context.projectVisible;
-    options.adminOption.hidden = !context.isAdmin;
-    options.roadmapOption.hidden = !context.canUseRoadmap;
-    options.hint.hidden = false;
     timer = options.setTimeout(clear, 1200);
   }
 

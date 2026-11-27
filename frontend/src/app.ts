@@ -85,7 +85,7 @@ const {
   },
   workspace: {
     workspacePanel, workspaceNav,
-    adminNavButton, adminView, adminHeading, membersView, adminGoPrefixOption,
+    adminNavButton, adminView, adminHeading, membersView,
     membersTabButton,
   },
   shell: {
@@ -95,7 +95,6 @@ const {
   },
   roadmap: {
     roadmapNavButton, roadmapView, roadmapHeading, roadmapSummary, roadmapMilestoneList, roadmapEmptyState,
-    roadmapGoPrefixOption,
   },
   inbox: {
     inboxNavButton, inboxView, inboxHeading, scratchpadNavButton,
@@ -105,7 +104,7 @@ const {
     loungeChannelLinks, loungeGeneralChannelLink, loungeGeneralChannelPanel, loungeProjectChannelPanel,
   },
   shortcuts: {
-    toggleProjectFormButton, keyboardHints, goPrefixHint, goPrefixNavigationOptions, goPrefixWorkspaceOption, goPrefixProjectOptions,
+    toggleProjectFormButton, keyboardHints,
   },
   chat: {
     chatView,
@@ -638,20 +637,6 @@ let issueQuickAddSourceMessageId: number | null = null;
 let issueQuickAddSourceProjectId: number | null = null;
 
 const goPrefixUi = initGoPrefixUi({
-  hint: goPrefixHint,
-  navigationOptions: goPrefixNavigationOptions,
-  workspaceOption: goPrefixWorkspaceOption,
-  projectOptions: goPrefixProjectOptions,
-  adminOption: adminGoPrefixOption,
-  roadmapOption: roadmapGoPrefixOption,
-  getContext: () => ({
-    workspaceCount: activeWorkspaces.length,
-    canNavigateWorkspace: activeUser !== null && activeUser.role !== 'guest',
-    hasProject: activeProject !== null,
-    projectVisible: !projectView.hidden,
-    isAdmin: activeUser?.role === 'admin',
-    canUseRoadmap: activeUser !== null && activeUser.role !== 'guest',
-  }),
   setTimeout: (callback, delay) => window.setTimeout(callback, delay),
   clearTimeout: (timer) => window.clearTimeout(timer),
 });

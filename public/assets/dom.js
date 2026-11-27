@@ -34,7 +34,6 @@ export const dom = {
         adminView: document.querySelector('#admin-view'),
         adminHeading: document.querySelector('#admin-heading'),
         membersView: document.querySelector('#members-view'),
-        adminGoPrefixOption: document.querySelector('#admin-go-prefix-option'),
         membersTabButton: document.querySelector('#members-tab'),
     },
     shell: {
@@ -53,7 +52,6 @@ export const dom = {
         roadmapSummary: document.querySelector('#roadmap-summary'),
         roadmapMilestoneList: document.querySelector('#roadmap-milestone-list'),
         roadmapEmptyState: document.querySelector('#roadmap-empty-state'),
-        roadmapGoPrefixOption: document.querySelector('#roadmap-go-prefix-option'),
     },
     inbox: {
         inboxNavButton: document.querySelector('#inbox-nav'),
@@ -74,10 +72,6 @@ export const dom = {
     shortcuts: {
         toggleProjectFormButton: document.querySelector('#toggle-project-form'),
         keyboardHints: document.querySelector('#keyboard-hints'),
-        goPrefixHint: document.querySelector('#go-prefix-hint'),
-        goPrefixNavigationOptions: document.querySelector('#go-prefix-navigation-options'),
-        goPrefixWorkspaceOption: document.querySelector('#go-prefix-workspace-option'),
-        goPrefixProjectOptions: document.querySelector('#go-prefix-project-options'),
     },
     chat: {
         chatView: document.querySelector('#chat-view'),

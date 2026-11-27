@@ -109,3 +109,11 @@ test('the keyboard strip sits under both screens and the sidebar', () => {
   assert.ok(footerStart > chatStart, 'the strip comes after the chat screen');
   assert.match(css, /\.keyboard-hints\s*\{[^}]*grid-column:\s*1 \/ -1/s, 'the strip spans every column');
 });
+
+test('keyboard hint labels fit before their keycaps and continued rows align', () => {
+  const labelWidth = Number(css.match(/\.keyboard-hint-sublabel\s*\{[^}]*width:\s*(\d+)px/)?.[1] ?? 0);
+  const continuedIndent = Number(css.match(/\.keyboard-hint-continued\s*\{[^}]*padding-left:\s*(\d+)px/)?.[1] ?? 0);
+
+  assert.ok(labelWidth >= 72, 'the Messages sublabel has room before its first keycap');
+  assert.equal(continuedIndent, labelWidth, 'continued rows align under the shortcut text');
+});

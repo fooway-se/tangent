@@ -2,39 +2,11 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { initGoPrefixUi } from '../../public/assets/go-prefix-ui.js';
 
-class FakeElement {
-  constructor() {
-    this.hidden = true;
-  }
-}
-
-function createHarness(context = {}) {
-  const hint = new FakeElement();
-  const navigationOptions = new FakeElement();
-  const workspaceOption = new FakeElement();
-  const projectOptions = new FakeElement();
-  const adminOption = new FakeElement();
-  const roadmapOption = new FakeElement();
+function createHarness() {
   const timers = new Map();
   let nextTimerId = 1;
   const clearedTimers = [];
-  const current = {
-    workspaceCount: 1,
-    canNavigateWorkspace: true,
-    hasProject: false,
-    projectVisible: false,
-    isAdmin: false,
-    canUseRoadmap: false,
-    ...context,
-  };
   const ui = initGoPrefixUi({
-    hint,
-    navigationOptions,
-    workspaceOption,
-    projectOptions,
-    adminOption,
-    roadmapOption,
-    getContext: () => current,
     setTimeout: (callback, delay) => {
       const id = nextTimerId++;
       timers.set(id, { callback, delay });
@@ -45,47 +17,15 @@ function createHarness(context = {}) {
       timers.delete(id);
     },
   });
-  return { ui, hint, navigationOptions, workspaceOption, projectOptions, adminOption, roadmapOption, timers, clearedTimers, current };
+  return { ui, timers, clearedTimers };
 }
 
-test('starting the prefix shows only options available in the current workspace context', () => {
-  const harness = createHarness({
-    workspaceCount: 2,
-    hasProject: true,
-    projectVisible: true,
-    isAdmin: true,
-    canUseRoadmap: true,
-  });
-
+test('starting the prefix only starts its timeout and does not reveal a transient hint row', () => {
+  const harness = createHarness();
   harness.ui.start();
 
   assert.equal(harness.ui.isPending(), true);
-  assert.equal(harness.hint.hidden, false);
-  assert.equal(harness.navigationOptions.hidden, false);
-  assert.equal(harness.workspaceOption.hidden, false);
-  assert.equal(harness.projectOptions.hidden, false);
-  assert.equal(harness.adminOption.hidden, false);
-  assert.equal(harness.roadmapOption.hidden, false);
   assert.deepEqual([...harness.timers.values()].map((timer) => timer.delay), [1200]);
-});
-
-test('guest and single workspace contexts hide unavailable prefix options', () => {
-  const harness = createHarness({
-    workspaceCount: 1,
-    canNavigateWorkspace: false,
-    hasProject: true,
-    projectVisible: false,
-    isAdmin: false,
-    canUseRoadmap: false,
-  });
-
-  harness.ui.start();
-
-  assert.equal(harness.workspaceOption.hidden, true);
-  assert.equal(harness.navigationOptions.hidden, true);
-  assert.equal(harness.projectOptions.hidden, true);
-  assert.equal(harness.adminOption.hidden, true);
-  assert.equal(harness.roadmapOption.hidden, true);
 });
 
 test('restarting replaces the old timeout and expiry clears the pending prefix', () => {
@@ -100,11 +40,10 @@ test('restarting replaces the old timeout and expiry clears the pending prefix',
   callback();
 
   assert.equal(harness.ui.isPending(), false);
-  assert.equal(harness.hint.hidden, true);
   assert.equal(harness.timers.size, 0);
 });
 
-test('clearing the prefix hides its hint and cancels its timeout', () => {
+test('clearing the prefix cancels its timeout', () => {
   const harness = createHarness();
   harness.ui.start();
   const [timerId] = harness.timers.keys();
@@ -112,7 +51,6 @@ test('clearing the prefix hides its hint and cancels its timeout', () => {
   harness.ui.clear();
 
   assert.equal(harness.ui.isPending(), false);
-  assert.equal(harness.hint.hidden, true);
   assert.deepEqual(harness.clearedTimers, [timerId]);
   assert.equal(harness.timers.size, 0);
 });

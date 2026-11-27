@@ -87,7 +87,7 @@ test('b toggles the project chat and g then c restores and focuses it', () => {
   assert.match(app, /function toggleProjectChat\(\)[\s\S]*setProjectChatVisible\(!projectChatVisible\)/);
   assert.match(app, /case 'toggle-project-chat': toggleProjectChat\(\);/);
   assert.match(app, /function focusProjectChat\(\)[\s\S]*setProjectChatVisible\(true\)/);
-  assert.match(html, /<kbd>b<\/kbd> Toggle chat/);
+  assert.match(html, /<kbd>b<\/kbd> Show\/hide chat/);
   assert.match(html, /<dt><kbd>b<\/kbd><\/dt><dd>Show or hide project chat/);
 });
 
@@ -197,6 +197,19 @@ test('g sequences switch between available project features', () => {
 test('g then w focuses the workspace switcher', () => {
   assert.equal(resolve('w', { goPrefixPending: true, hasWorkspace: true }), 'workspace-switcher');
   assert.equal(resolve('w', { goPrefixPending: true, hasWorkspace: true, canSwitchWorkspace: false }), null);
+});
+
+test('navigation hints identify which keys apply to lists and messages without adding a row for g', () => {
+  const navigationHints = html.slice(
+    html.indexOf('id="keyboard-hints-navigation-label"'),
+    html.indexOf('id="project-keyboard-hints"'),
+  );
+
+  assert.match(navigationHints, /Lists[\s\S]*<kbd>j<\/kbd>\/<kbd>k<\/kbd>[\s\S]*selected project or issue/);
+  assert.match(navigationHints, /Messages[\s\S]*<kbd>j<\/kbd>\/<kbd>k<\/kbd>[\s\S]*message[\s\S]*Focus reply/);
+  assert.match(navigationHints, /Go to[\s\S]*<kbd>g<\/kbd>[\s\S]*then/);
+  assert.doesNotMatch(html, /id="go-prefix-hint"/);
+  assert.doesNotMatch(goPrefixUi, /hint\.hidden|navigationOptions|projectOptions/);
 });
 
 test('the AI prompt dialog participates in modal keyboard handling', () => {
@@ -340,10 +353,7 @@ test('command palette, shortcut help, and contextual hints are present in the wo
   assert.match(html, /Delete[\s\S]*Delete a milestone from Project milestones/);
   assert.equal((html.match(/<dt><kbd>Esc<\/kbd><\/dt>/g) ?? []).length, 1, 'Escape guidance has one authoritative entry');
   assert.doesNotMatch(html, /Move through selected chat messages/);
-  assert.match(html, /admin-go-prefix-option/);
-  assert.match(goPrefixUi, /workspaceOption\.hidden = context\.workspaceCount < 2/);
-  assert.match(goPrefixUi, /projectOptions\.hidden = !context\.hasProject \|\| !context\.projectVisible/);
-  assert.match(goPrefixUi, /adminOption\.hidden = !context\.isAdmin/);
+  assert.match(html, /<kbd>g<\/kbd> then <kbd>a<\/kbd> Administration \(admins\)/);
   assert.match(workspacePickerUi, /workspaceSwitcher\.disabled = workspaces\.length < 2/);
   assert.match(workspacePickerUi, /function open\(proposedWorkspaceId\?: number\)[\s\S]{0,120}workspaces\.length < 2/);
   const commands = paletteCommands;

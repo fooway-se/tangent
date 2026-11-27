@@ -14,8 +14,8 @@
     <link rel="icon" href="./assets/icons/tangent-icon.svg" type="image/svg+xml">
     <link rel="icon" href="./assets/icons/tangent-32.png" sizes="32x32" type="image/png">
     <link rel="stylesheet" href="./assets/tokens.css">
-    <link rel="stylesheet" href="./assets/app.css?v=718a3e5909bc">
-    <script type="module" src="./assets/app.js?v=da3b8b4f8ec0"></script>
+    <link rel="stylesheet" href="./assets/app.css?v=cc760f178c48">
+    <script type="module" src="./assets/app.js?v=740735cc28d1"></script>
   </head>
   <body>
     <section id="login-shell" class="login-shell">
@@ -783,27 +783,28 @@
           <div class="keyboard-hint-group" role="group" aria-labelledby="keyboard-hints-navigation-label">
             <strong id="keyboard-hints-navigation-label" class="keyboard-hint-group-label">Navigation</strong>
             <div class="keyboard-hint-group-items">
-              <span><kbd>j</kbd>/<kbd>k</kbd> Move · <kbd>Enter</kbd> Open</span>
-              <span><kbd>g</kbd> <kbd>p</kbd> Projects · <kbd>g</kbd> <kbd>r</kbd> Roadmap</span>
-              <span><kbd>g</kbd> <kbd>n</kbd> My Work · <kbd>g</kbd> <kbd>l</kbd> Lounge<span id="workspace-switch-hint" hidden> · <kbd>g</kbd> <kbd>w</kbd> Workspace</span></span>
-              <span id="go-prefix-hint" class="go-prefix-hint" hidden><span id="go-prefix-navigation-options"><kbd>p</kbd> Projects<span id="roadmap-go-prefix-option"> · <kbd>r</kbd> Roadmap</span> · <kbd>n</kbd> My Work · <kbd>l</kbd> Lounge</span><span id="go-prefix-workspace-option" hidden> · <kbd>w</kbd> Workspace</span><span id="go-prefix-project-options" hidden> · <kbd>i</kbd> Issues · <kbd>c</kbd> Chat · <kbd>m</kbd> Members</span><span id="admin-go-prefix-option" hidden> · <kbd>a</kbd> Administration</span></span>
+              <span><em class="keyboard-hint-sublabel">Lists</em><kbd>j</kbd>/<kbd>k</kbd> Move · <kbd>Enter</kbd> Open selected project or issue</span>
+              <span><em class="keyboard-hint-sublabel">Messages</em><kbd>j</kbd>/<kbd>k</kbd> Move messages · <kbd>Enter</kbd> Focus reply</span>
+              <span><em class="keyboard-hint-sublabel">Go to</em><kbd>g</kbd> then: <kbd>p</kbd> Projects · <kbd>r</kbd> Roadmap</span>
+              <span class="keyboard-hint-continued"><kbd>n</kbd> My Work · <kbd>l</kbd> Lounge · <kbd>q</kbd> Scratchpad<span id="workspace-switch-hint" hidden> · <kbd>w</kbd> Workspace</span></span>
             </div>
           </div>
           <div id="project-keyboard-hints" class="keyboard-hint-group" role="group" aria-labelledby="keyboard-hints-project-label" hidden>
             <strong id="keyboard-hints-project-label" class="keyboard-hint-group-label">Project</strong>
             <div class="keyboard-hint-group-items">
-              <span><kbd>g</kbd> <kbd>i</kbd> Issues · <kbd>g</kbd> <kbd>c</kbd> Chat · <kbd>g</kbd> <kbd>m</kbd> Members</span>
-              <span><em class="keyboard-hint-sublabel">Issue</em><kbd>c</kbd> Create · <kbd>e</kbd> Edit · <kbd>s</kbd> Status</span>
-              <span><em class="keyboard-hint-sublabel">Chat</em><kbd>b</kbd> Toggle chat</span>
-              <span class="keyboard-hint-continued"><kbd>j</kbd>/<kbd>k</kbd> Move · <kbd>r</kbd> Reply · <kbd>i</kbd> Issue</span>
-              <span class="keyboard-hint-continued"><kbd>Enter</kbd> Send · <kbd>Shift</kbd>+<kbd>Enter</kbd> New line</span>
+              <span><em class="keyboard-hint-sublabel">Tabs</em><kbd>g</kbd> then: <kbd>i</kbd> Issues · <kbd>c</kbd> Chat · <kbd>m</kbd> Members</span>
+              <span><em class="keyboard-hint-sublabel">Issues</em><kbd>c</kbd> Create · <kbd>e</kbd> Edit · <kbd>s</kbd> Status</span>
+              <span><em class="keyboard-hint-sublabel">Chat</em><kbd>b</kbd> Show/hide chat</span>
+              <span><em class="keyboard-hint-sublabel">Messages</em><kbd>j</kbd>/<kbd>k</kbd> Move · <kbd>r</kbd> Reply · <kbd>i</kbd> Create issue</span>
+              <span class="keyboard-hint-continued"><kbd>Enter</kbd> Focus reply · <kbd>Shift</kbd>+<kbd>Enter</kbd> New line</span>
             </div>
           </div>
           <div class="keyboard-hint-group" role="group" aria-labelledby="keyboard-hints-workspace-label">
             <strong id="keyboard-hints-workspace-label" class="keyboard-hint-group-label">Workspace</strong>
             <div class="keyboard-hint-group-items">
-              <span><kbd>Ctrl/Cmd</kbd>+<kbd>K</kbd> Commands · <kbd>t</kbd> Theme · <kbd>g</kbd> then <kbd>q</kbd> Scratchpad</span>
+              <span><kbd>Ctrl/Cmd</kbd>+<kbd>K</kbd> Commands · <kbd>t</kbd> Theme</span>
               <span><kbd>?</kbd> Shortcuts · <kbd>h</kbd> Toggle hints</span>
+              <span><kbd>g</kbd> then <kbd>a</kbd> Administration (admins)</span>
             </div>
           </div>
       </footer>
