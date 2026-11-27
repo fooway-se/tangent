@@ -1678,6 +1678,87 @@
   --signal-stripe: linear-gradient(to right, #d63d3b 0 25%, #f1d23d 25% 50%, #43a458 50% 75%, #315fae 75% 100%);
 }
 
+/* Color BASIC & RGB: CoCo 2's cream case, dark keywell, green display, and badge colors. */
+:root[data-theme="coco-2"] {
+  --night: #10140f;
+  --night-glow: #32402a;
+  --night-muted: #dce8d0;
+
+  --case-top: #e9e1cf;
+  --case-mid: #d9cfbc;
+  --case-bottom: #c9bea7;
+  --case-shade: #a89d84;
+  --case-edge: #857962;
+  --case-light: #f5efdf;
+  --case-ink: #292821;
+  --case-muted: #4a463c;
+  --case-error: #a73027;
+  --vent-dark: #292a26;
+  --vent-light: #eee7d8;
+  --footer-top: #d4c9b3;
+  --footer-bottom: #c2b69d;
+
+  --key-top: #fffbed;
+  --key-bottom: #e4ddcc;
+  --key-highlight: #ffffff;
+  --key-ink: #262624;
+
+  --cap-top: #383936;
+  --cap-bottom: #202220;
+  --cap-edge: #10110f;
+  --plate: #242624;
+  --plate-ink: #efeee6;
+  --plate-muted: #c4c6b9;
+
+  --screen: #081a10;
+  --screen-rim: #040d08;
+  --screen-glow: rgba(114, 186, 90, 0.13);
+  --screen-vignette: rgba(57, 120, 55, 0.09);
+  --screen-ink: #b3e5a5;
+  --screen-muted: #91bd84;
+  --screen-header: rgba(255, 255, 255, 0.04);
+  --screen-highlight: rgba(255, 255, 255, 0.07);
+  --backdrop: rgba(12, 17, 11, 0.76);
+  --screen-panel: #13271a;
+  --screen-control-top: #1e3522;
+  --screen-inset: #07140b;
+  --screen-field: #09170d;
+  --screen-border: #435a3d;
+  --screen-line: #243a26;
+  --screen-hover: #203a24;
+  --screen-track: #07140b;
+  --screen-group: #13271a;
+  --screen-group-top: #324a35;
+  --screen-group-bottom: #243c28;
+
+  --accent: #8ecf6c;
+  --accent-edge: #567d3f;
+  --accent-ink: #162010;
+  --accent-shine: rgba(255, 255, 255, 0.48);
+  --special-key: #f47968;
+  --special-key-deep: #ee7367;
+  --special-key-edge: #a94339;
+  --special-key-ink: #27100d;
+  --success: #79c968;
+  --danger: #ff9380;
+  --power-light: #e34b43;
+  --focus-ring: rgba(142, 207, 108, 0.48);
+  --signal-stripe: linear-gradient(to right, #d9453f 0 33.33%, #37924b 33.33% 66.66%, #3268b7 66.66% 100%);
+
+  --scanline: rgba(0, 0, 0, 0.22);
+  --inset-shade: rgba(0, 0, 0, 0.52);
+  --inset-shade-soft: rgba(0, 0, 0, 0.38);
+  --inset-wash: rgba(0, 0, 0, 0.18);
+  --inset-wash-strong: rgba(0, 0, 0, 0.28);
+
+  --radius-screen: 8px;
+  --radius-panel: 3px;
+  --radius-key: 4px;
+  --radius-cap: 2px;
+  --key-depth: 2px;
+  --key-depth-lg: 3px;
+}
+
 /* Ivory & Assembly: Atom's cream shell, charcoal keyboard, and Acorn green. */
 :root[data-theme="acorn-atom"] {
   --night: #151710;

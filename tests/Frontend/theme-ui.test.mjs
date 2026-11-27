@@ -51,6 +51,7 @@ function createDocument() {
     ['#theme-about-image-fallback', new FakeElement()],
     ['#theme-about-facts', new FakeElement()],
     ['#theme-about-image-credit', new FakeElement()],
+    ['#theme-about-image-license', new FakeElement()],
     ['#theme-about-history-source', new FakeElement()],
     ['#theme-about-close', new FakeElement()],
   ]);
@@ -114,10 +115,28 @@ test('theme controls synchronize selection and display the themed computer card'
   assert.equal(elements.get('#theme-about-heading').textContent, 'Commodore 64');
   assert.equal(elements.get('#theme-about-image').src, './assets/machines/commodore-64.jpg');
   assert.equal(elements.get('#theme-about-facts').children.length, 2);
+  assert.equal(elements.get('#theme-about-image-license').hidden, true);
 
   elements.get('#theme-about-image').dispatchEvent(new Event('error'));
   assert.equal(elements.get('#theme-about-image').hidden, true);
   assert.equal(elements.get('#theme-about-image-fallback').hidden, false);
+
+  ui.dispose();
+});
+
+test('CoCo 2 computer card links Bilby credit and CC BY 3.0 license separately', (t) => {
+  const { elements, aboutButtons } = withBrowserGlobals(t);
+  const ui = initThemeUi();
+
+  ui.setTheme('coco-2');
+  aboutButtons[0].dispatchEvent(new Event('click'));
+
+  assert.equal(elements.get('#theme-about-image').src, './assets/machines/tandy-color-computer-2.jpg');
+  assert.equal(elements.get('#theme-about-image-credit').textContent, 'Photo: Bilby · Wikimedia Commons');
+  assert.equal(elements.get('#theme-about-image-credit').href, 'https://commons.wikimedia.org/wiki/File:TRS-80_Color_Computer_2_(PAL)_4x3.jpg');
+  assert.equal(elements.get('#theme-about-image-license').textContent, 'CC BY 3.0');
+  assert.equal(elements.get('#theme-about-image-license').href, 'https://creativecommons.org/licenses/by/3.0/');
+  assert.equal(elements.get('#theme-about-image-license').hidden, false);
 
   ui.dispose();
 });

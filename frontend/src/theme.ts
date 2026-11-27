@@ -1,4 +1,4 @@
-export type ThemeId = 'putty' | 'rainbow' | 'breadbin' | 'broadcast' | 'cassette' | 'mono' | 'stripe' | 'paper' | 'desk' | 'silver' | 'blue' | 'cartridge' | 'nordic' | 'desktop' | 'copper' | 'altair' | 'atari-st' | 'x68000' | 'pc88' | 'microbee' | 'coleco-adam' | 'jupiter-ace' | 'oric-1' | 'dragon-32' | 'acorn-atom' | 'clean' | 'clean-dark';
+export type ThemeId = 'putty' | 'rainbow' | 'breadbin' | 'broadcast' | 'cassette' | 'mono' | 'stripe' | 'paper' | 'desk' | 'silver' | 'blue' | 'cartridge' | 'nordic' | 'desktop' | 'copper' | 'altair' | 'atari-st' | 'x68000' | 'pc88' | 'microbee' | 'coleco-adam' | 'jupiter-ace' | 'oric-1' | 'dragon-32' | 'coco-2' | 'acorn-atom' | 'clean' | 'clean-dark';
 
 export interface ThemeOption {
   id: ThemeId;
@@ -32,6 +32,7 @@ export const THEMES: readonly ThemeOption[] = [
   { id: 'jupiter-ace', label: 'Ivory & Ink' },
   { id: 'oric-1', label: 'Chroma & Charcoal' },
   { id: 'dragon-32', label: 'Wedge & Raster' },
+  { id: 'coco-2', label: 'Color BASIC & RGB' },
   { id: 'acorn-atom', label: 'Ivory & Assembly' },
   { id: 'clean', label: 'Clean' },
   { id: 'clean-dark', label: 'Clean (dark)' },

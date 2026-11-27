@@ -26,6 +26,13 @@ test('every theme has a locally hosted, credited computer photo and two short fa
   assert.equal(THEME_MACHINES.copper.model, 'Commodore Amiga 500');
   assert.equal(THEME_MACHINES.copper.year, '1987');
   assert.equal(THEME_MACHINES.copper.photoCredit, 'Bill Bertram');
+  assert.equal(THEME_MACHINES['coco-2'].model, 'TRS-80 Color Computer 2');
+  assert.equal(THEME_MACHINES['coco-2'].year, '1983');
+  assert.equal(THEME_MACHINES['coco-2'].imageFile, 'tandy-color-computer-2.jpg');
+  assert.equal(THEME_MACHINES['coco-2'].photoCredit, 'Bilby · Wikimedia Commons');
+  assert.equal(THEME_MACHINES['coco-2'].license, 'CC BY 3.0');
+  assert.equal(THEME_MACHINES['coco-2'].licenseUrl, 'https://creativecommons.org/licenses/by/3.0/');
+  assert.equal(THEME_MACHINES['coco-2'].imagePage, 'https://commons.wikimedia.org/wiki/File:TRS-80_Color_Computer_2_(PAL)_4x3.jpg');
   for (const [id, machine] of Object.entries(THEME_MACHINES)) {
     assert.ok(machine.model, `${id} has a model name`);
     assert.ok(machine.year, `${id} has a year`);
@@ -78,6 +85,7 @@ test('theme selectors have a silent computer icon that opens the accessible card
   assert.match(html, /<dialog id="theme-about-dialog"[^>]*aria-labelledby="theme-about-heading"/);
   assert.match(html, /id="theme-about-image"[^>]*alt=""/);
   assert.match(html, /id="theme-about-facts"/);
+  assert.match(html, /id="theme-about-image-license"/);
   assert.match(html, /img-src 'self' data:/);
   assert.match(htaccess, /img-src 'self' data:/);
   assert.doesNotMatch(html, /img-src[^>]*wikimedia\.org/);

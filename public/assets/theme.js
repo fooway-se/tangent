@@ -24,6 +24,7 @@ export const THEMES = [
     { id: 'jupiter-ace', label: 'Ivory & Ink' },
     { id: 'oric-1', label: 'Chroma & Charcoal' },
     { id: 'dragon-32', label: 'Wedge & Raster' },
+    { id: 'coco-2', label: 'Color BASIC & RGB' },
     { id: 'acorn-atom', label: 'Ivory & Assembly' },
     { id: 'clean', label: 'Clean' },
     { id: 'clean-dark', label: 'Clean (dark)' },

@@ -1315,6 +1315,15 @@ dialog::backdrop { background: var(--backdrop); }
   background-color: var(--key-bottom);
   background-image: linear-gradient(180deg, var(--key-top), var(--key-bottom));
 }
+
+/* CoCo 2: keep the red BREAK key as a small state accent against the RGB badge stripe. */
+:root[data-theme="coco-2"] .workspace-nav-button.is-active {
+  border-color: var(--special-key-edge);
+  color: var(--special-key-ink);
+  background: linear-gradient(180deg, var(--special-key), var(--special-key-deep));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
 /* Acorn Atom: a shallow warm-case recess around the charcoal keys. */
 /* Icon & Mouse: a shallow warm-gray recess around the light keycaps. */
 .retro-computer-icon { position: relative; display: block; width: 14px; height: 10px; margin-bottom: 5px; border: 2px solid currentColor; }

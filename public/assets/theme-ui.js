@@ -10,6 +10,7 @@ export function initThemeUi(doc = document) {
     const themeAboutImageFallback = doc.querySelector('#theme-about-image-fallback');
     const themeAboutFacts = doc.querySelector('#theme-about-facts');
     const themeAboutImageCredit = doc.querySelector('#theme-about-image-credit');
+    const themeAboutImageLicense = doc.querySelector('#theme-about-image-license');
     const themeAboutHistorySource = doc.querySelector('#theme-about-history-source');
     const themeAboutClose = doc.querySelector('#theme-about-close');
     const listeners = new AbortController();
@@ -38,7 +39,12 @@ export function initThemeUi(doc = document) {
         themeAboutImage.loading = 'eager';
         themeAboutImage.src = machine.imageUrl;
         themeAboutImageCredit.href = machine.imagePage;
-        themeAboutImageCredit.textContent = `${machine.illustration ? 'Illustration' : 'Photo'}: ${machine.photoCredit} · ${machine.license}`;
+        themeAboutImageCredit.textContent = `${machine.illustration ? 'Illustration' : 'Photo'}: ${machine.photoCredit}${machine.licenseUrl ? '' : ` · ${machine.license}`}`;
+        themeAboutImageLicense.hidden = !machine.licenseUrl;
+        if (machine.licenseUrl) {
+            themeAboutImageLicense.href = machine.licenseUrl;
+            themeAboutImageLicense.textContent = machine.license;
+        }
         themeAboutHistorySource.href = machine.historyUrl;
         themeAboutDialog.showModal();
     }

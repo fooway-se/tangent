@@ -191,6 +191,15 @@ export const THEME_MACHINES = {
         historyUrl: 'https://www.homecomputermuseum.nl/en/collectie/dragondata/dragondata-dragon-32/',
         facts: ['DragonData launched the Welsh-made computer in August 1982 with 32 KB of RAM.', 'Its 6809E processor and Color BASIC made it a close cousin of Tandy’s Color Computer.'],
     },
+    'coco-2': {
+        model: 'TRS-80 Color Computer 2', year: '1983', imageFile: 'tandy-color-computer-2.jpg',
+        imageUrl: './assets/machines/tandy-color-computer-2.jpg',
+        imagePage: 'https://commons.wikimedia.org/wiki/File:TRS-80_Color_Computer_2_(PAL)_4x3.jpg',
+        photoCredit: 'Bilby · Wikimedia Commons', license: 'CC BY 3.0',
+        licenseUrl: 'https://creativecommons.org/licenses/by/3.0/',
+        historyUrl: 'https://colorcomputerarchive.com/repo/Documents/Manuals/Hardware/Color%20Computer%202%20Operation%20Manual%20%28Tandy%29.pdf',
+        facts: ['The Color Computer 2 paired Tandy’s home computer with built-in Color BASIC.', 'Its nine-color set included green, cyan, magenta, and orange.'],
+    },
     'acorn-atom': {
         model: 'Acorn Atom', year: '1980', imageFile: 'Acorn Atom 1981.jpg',
         imageUrl: './assets/machines/acorn-atom.jpg',

@@ -25,7 +25,7 @@ for (const values of Object.values(themes)) values['--key-ink'] ??= values['--ca
 
 test('classic computer themes use the chosen indirect names', () => {
   assert.deepEqual(
-    THEMES.filter(({ id }) => ['broadcast', 'cassette', 'mono', 'stripe', 'paper', 'desk', 'silver', 'blue', 'cartridge', 'nordic', 'desktop', 'copper', 'altair', 'atari-st', 'x68000'].includes(id)).map(({ id, label }) => [id, label]),
+    THEMES.filter(({ id }) => ['broadcast', 'cassette', 'mono', 'stripe', 'paper', 'desk', 'silver', 'blue', 'cartridge', 'nordic', 'desktop', 'copper', 'altair', 'atari-st', 'x68000', 'coco-2'].includes(id)).map(({ id, label }) => [id, label]),
     [
       ['broadcast', 'Broadcast & Beige'],
       ['cassette', 'Cassette & Colour'],
@@ -42,6 +42,7 @@ test('classic computer themes use the chosen indirect names', () => {
       ['altair', 'Switches & Steel'],
       ['atari-st', 'Studio & Sound'],
       ['x68000', 'Arcade & Towers'],
+      ['coco-2', 'Color BASIC & RGB'],
     ],
   );
 });
@@ -63,6 +64,7 @@ test('theme helpers normalise and cycle', () => {
   assert.equal(normalizeTheme('altair'), 'altair');
   assert.equal(normalizeTheme('atari-st'), 'atari-st');
   assert.equal(normalizeTheme('x68000'), 'x68000');
+  assert.equal(normalizeTheme('coco-2'), 'coco-2');
   assert.equal(normalizeTheme('unknown'), 'putty');
   assert.equal(normalizeTheme(null), 'putty');
   assert.equal(nextTheme('putty'), 'rainbow');
@@ -75,6 +77,8 @@ test('theme helpers normalise and cycle', () => {
   assert.equal(nextTheme('altair'), 'atari-st');
   assert.equal(nextTheme('atari-st'), 'x68000');
   assert.equal(nextTheme('x68000'), 'pc88');
+  assert.equal(nextTheme('dragon-32'), 'coco-2');
+  assert.equal(nextTheme('coco-2'), 'acorn-atom');
   assert.equal(nextTheme('clean'), 'clean-dark');
   assert.equal(nextTheme('clean-dark'), 'putty');
   assert.equal(normalizeTheme('clean-dark'), 'clean-dark');
@@ -97,6 +101,14 @@ test('every theme defines every colour token of the default theme', () => {
     const own = declarations(block(`:root[data-theme="${id}"]`));
     for (const name of colourTokens) assert.ok(name in own, `${id} defines ${name}`);
   }
+});
+
+test('CoCo 2 theme uses its RGB badge colors and a dedicated red key accent', () => {
+  const coco = declarations(block(':root[data-theme="coco-2"]'));
+  assert.match(coco['--signal-stripe'], /linear-gradient\(to right, #[\da-f]{6} 0 33\.33%, #[\da-f]{6} 33\.33% 66\.66%, #[\da-f]{6} 66\.66% 100%\)/i);
+  assert.match(coco['--screen'], /^#[\da-f]{6}$/i);
+  assert.match(coco['--success'], /^#[\da-f]{6}$/i);
+  assert.match(block(':root[data-theme="coco-2"]'), /--special-key:\s*#[c-f\da-f]{6}/i);
 });
 
 test('early theme script and the picker cover all themes', () => {
