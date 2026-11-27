@@ -247,7 +247,7 @@ kbd {
 .project-chat-column { flex: 0 1 var(--chat-width); min-width: 300px; }
 .workspace-topbar, .chat-heading { position: relative; display: flex; flex: 0 0 var(--header-height); align-items: center; height: var(--header-height); margin: 0 0 8px; background: var(--screen-header); font-family: var(--font-display); }
 .workspace-topbar::after { position: absolute; right: 0; bottom: -8px; left: 0; height: 8px; background: var(--signal-stripe); content: ""; pointer-events: none; }
-.workspace-topbar { padding: 0 22px; font-size: 15px; }
+.workspace-topbar { padding: 0 18px 0 22px; font-size: 15px; }
 .workspace-breadcrumb { display: flex; align-items: center; gap: 10px; min-width: 0; color: var(--screen-muted); }
 .workspace-breadcrumb strong { color: var(--screen-ink); font-weight: 800; letter-spacing: 0.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .breadcrumb-link { border: 0; padding: 0; color: var(--screen-muted); background: transparent; font: inherit; cursor: pointer; }
@@ -679,7 +679,7 @@ details[open] > .disclosure-summary::before { transform: rotate(90deg); }
 .chat-heading-activity { display: inline-flex; align-items: center; gap: 9px; }
 .chat-presence { display: inline-flex; width: 14px; height: 18px; align-items: center; justify-content: center; }
 .chat-presence[hidden] { display: none; }
-#topbar-presence { flex: none; margin-left: auto; }
+#topbar-presence { flex: none; margin-left: auto; transform: translateY(-1px); }
 .chat-presence-light { width: 7px; height: 7px; }
 .chat-presence-light.is-on { background: var(--power-light); box-shadow: var(--lamp-shadow-sm); }
 .chat-presence-light.is-off { background: var(--screen-border); box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.7); }
@@ -864,7 +864,7 @@ dialog::backdrop { background: var(--backdrop); }
   .workspace-nav { grid-column: 1 / -1; grid-row: 2; }
   .sidebar-projects { grid-column: 1 / -1; grid-row: 3; }
   .sidebar-account { grid-column: 1 / -1; grid-row: 4; margin-top: 4px; }
-  .workspace-topbar { padding: 0 14px; }
+  .workspace-topbar { padding: 0 18px 0 14px; }
   .project-page-actions { width: 100%; justify-content: flex-start; }
   .workspace-invite-row { align-items: stretch !important; flex-direction: column; gap: 10px !important; }
   .workspace-invite-details { display: block; width: 100%; }

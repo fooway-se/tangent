@@ -39,4 +39,13 @@ test('hiding the project chat moves the presence light to the workspace top bar'
   assert.match(app, /chatView\.replaceChildren\(projectChatUi\.create\(projectId\)\);\s*syncTopbarPresence\(\);/);
   assert.match(css, /\.chat-presence\[hidden\]\s*\{\s*display:\s*none;/);
   assert.match(css, /#topbar-presence\s*\{[^}]*margin-left:\s*auto/);
+  assert.match(css, /#topbar-presence\s*\{[^}]*transform:\s*translateY\(-1px\)/);
+});
+
+test('the top bar presence light keeps the same right inset as the chat header', () => {
+  const narrowViewportStyles = css.slice(css.indexOf('@media (max-width: 520px)'));
+
+  assert.match(css, /\.chat-heading\s*\{[^}]*padding:\s*0 18px/);
+  assert.match(css, /\.workspace-topbar\s*\{[^}]*padding:\s*0 18px 0 22px/);
+  assert.match(narrowViewportStyles, /\.workspace-topbar\s*\{[^}]*padding:\s*0 18px 0 14px/);
 });
