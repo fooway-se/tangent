@@ -22,6 +22,8 @@ test('issue row cache signature changes with every displayed value and selection
 
   assert.equal(issueRowRenderSignature({ ...issue }, undefined, labelAssignee), signature);
   assert.notEqual(issueRowRenderSignature({ ...issue, is_shared: true }, undefined, labelAssignee), signature);
+  assert.notEqual(issueRowRenderSignature({ ...issue, is_blocked: true }, undefined, labelAssignee), signature);
+  assert.notEqual(issueRowRenderSignature({ ...issue, blocking_reason: 'Waiting on review' }, undefined, labelAssignee), signature);
   assert.notEqual(issueRowRenderSignature({ ...issue, discussion_count: 3 }, undefined, labelAssignee), signature);
   assert.notEqual(issueRowRenderSignature(issue, { canMoveEarlier: true }, labelAssignee), signature);
   assert.notEqual(issueRowRenderSignature(issue, undefined, labelAssignee, true), signature);

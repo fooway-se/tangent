@@ -12,6 +12,8 @@ export function issueRowRenderSignature(issue, reorder, issueAssigneeLabel, allo
         reorder?.canMoveEarlier,
         reorder?.canMoveLater,
         issue.is_ongoing,
+        issue.is_blocked,
+        issue.blocking_reason,
         allowBulkMoveSelection,
         bulkMoveSelected,
         allowBulkAssignSelection,

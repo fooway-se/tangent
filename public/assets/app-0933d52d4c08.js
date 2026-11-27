@@ -26,7 +26,7 @@ import { initProjectChatUi } from './project-chat-ui-75b2bd010328.js';
 import { initCommandPaletteUi } from './command-palette-ui-5440f11b3881.js';
 import { buildPaletteCommands } from './command-palette-commands-1256322b4657.js';
 import { initWorkspacePickerUi } from './workspace-picker-ui-263faa637db8.js';
-import { initIssueBoardUi } from './issue-board-ui-2db43fd6dcd6.js';
+import { initIssueBoardUi } from './issue-board-ui-68ce583d29d7.js';
 import { initIssueBoardView } from './issue-board-view-929e915206fe.js';
 import { initIssueBulkUi } from './issue-bulk-ui-6576fb4f32ad.js';
 import { initIssueBulkActions } from './issue-bulk-actions-3887151afeb0.js';
