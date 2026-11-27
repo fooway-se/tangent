@@ -117,6 +117,20 @@ test('CoCo 2 vent grille stays as subtle as the Dragon 32 light case', () => {
   assert.equal(themes['coco-2']['--vent-light'], themes['dragon-32']['--vent-light']);
 });
 
+test('horizontal-grille themes use horizontal vent slots', () => {
+  const vents = appCss.match(/\/\* Horizontal grille slots echo the rear vents on these machines\. \*\/[\s\S]*?\n\}/)?.[0] ?? '';
+  for (const id of ['dragon-32', 'coco-2', 'breadbin', 'blue', 'stripe', 'paper', 'silver', 'cartridge']) {
+    assert.ok(vents.includes(`:root[data-theme="${id}"] .workspace-sidebar::before`), `${id} has horizontal vents`);
+  }
+  assert.match(vents, /repeating-linear-gradient\(180deg,\s*var\(--vent-dark\) 0 2px,\s*var\(--vent-light\) 2px 6px\)/);
+});
+
+test('PC-8801 grille uses two horizontal vent rows', () => {
+  const vents = appCss.match(/:root\[data-theme="pc88"\] \.workspace-brand::before\s*\{([^}]*repeating-linear-gradient[^}]*)\}/)?.[1] ?? '';
+  assert.match(vents, /repeating-linear-gradient\(180deg,/);
+  assert.match(vents, /height:\s*10px/);
+});
+
 test('early theme script and the picker cover all themes', () => {
   for (const id of themeIds) assert.ok(init.includes(`'${id}'`), `theme-init knows ${id}`);
   assert.match(html, /<script src="\.\/assets\/theme-init-[a-f0-9]{12}\.js"><\/script>/);
