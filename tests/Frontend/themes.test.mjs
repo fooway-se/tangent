@@ -199,10 +199,18 @@ test('PET and Sord omit vents while Atari 400 keeps vertical vents', () => {
   assert.match(atariVents, /repeating-linear-gradient\(90deg,/);
 });
 
-test('PC-8801 grille uses two horizontal vent rows', () => {
+test('PC-8801 grille uses three thin horizontal vent lines', () => {
   const vents = appCss.match(/:root\[data-theme="pc88"\] \.workspace-brand::before\s*\{([^}]*repeating-linear-gradient[^}]*)\}/)?.[1] ?? '';
-  assert.match(vents, /repeating-linear-gradient\(180deg,/);
+  assert.match(vents, /repeating-linear-gradient\(180deg,\s*rgba\(205, 198, 184, 0\.58\) 0 1px, transparent 1px 4px\)/);
   assert.match(vents, /height:\s*10px/);
+});
+
+test('Broadcast & Beige vents retain the original vertical stripes at 7px tall', () => {
+  const vents = appCss.match(/:root\[data-theme="broadcast"\] \.workspace-brand::before\s*\{([^}]+)\}/)?.[1] ?? '';
+  assert.match(vents, /height:\s*7px/);
+  assert.match(vents, /margin:\s*0 -4px 8px/);
+  assert.match(vents, /repeating-linear-gradient\(90deg, rgba\(205, 207, 198, 0\.6\) 0 2px, transparent 2px 5px\)/);
+  assert.match(vents, /inset 0 0 0 1px rgba\(0, 0, 0, 0\.42\)/);
 });
 
 test('early theme script and the picker cover all themes', () => {
