@@ -26,6 +26,10 @@ export const THEMES = [
     { id: 'dragon-32', label: 'Wedge & Raster' },
     { id: 'coco-2', label: 'Color BASIC & RGB' },
     { id: 'acorn-atom', label: 'Ivory & Assembly' },
+    { id: 'pet', label: 'PET & Phosphor' },
+    { id: 'atari-400', label: 'Membrane & Gold' },
+    { id: 'zx80', label: 'White & Inverse' },
+    { id: 'sord-m5', label: 'Keys & Cartridge' },
     { id: 'clean', label: 'Clean' },
     { id: 'clean-dark', label: 'Clean (dark)' },
 ];

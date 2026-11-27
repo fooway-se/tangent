@@ -48,6 +48,29 @@ test('classic computer themes use the chosen indirect names', () => {
   );
 });
 
+test('four new computer themes bring the picker to thirty machines', () => {
+  assert.equal(THEMES.length, 32);
+  assert.equal(THEMES.filter(({ id }) => !['clean', 'clean-dark'].includes(id)).length, 30);
+  assert.deepEqual(
+    THEMES.slice(-6, -2).map(({ id, label }) => [id, label]),
+    [
+      ['pet', 'PET & Phosphor'],
+      ['atari-400', 'Membrane & Gold'],
+      ['zx80', 'White & Inverse'],
+      ['sord-m5', 'Keys & Cartridge'],
+    ],
+  );
+  assert.equal(normalizeTheme('pet'), 'pet');
+  assert.equal(normalizeTheme('atari-400'), 'atari-400');
+  assert.equal(normalizeTheme('zx80'), 'zx80');
+  assert.equal(normalizeTheme('sord-m5'), 'sord-m5');
+  assert.equal(nextTheme('acorn-atom'), 'pet');
+  assert.equal(nextTheme('pet'), 'atari-400');
+  assert.equal(nextTheme('atari-400'), 'zx80');
+  assert.equal(nextTheme('zx80'), 'sord-m5');
+  assert.equal(nextTheme('sord-m5'), 'clean');
+});
+
 test('theme helpers normalise and cycle', () => {
   assert.equal(normalizeTheme('breadbin'), 'breadbin');
   assert.equal(normalizeTheme('broadcast'), 'broadcast');
@@ -112,6 +135,45 @@ test('CoCo 2 theme uses its RGB badge colors and a dedicated red key accent', ()
   assert.match(block(':root[data-theme="coco-2"]'), /--special-key:\s*#[c-f\da-f]{6}/i);
 });
 
+test('new computer palettes pick out their case, keyboard and signal colors', () => {
+  const pet = declarations(block(':root[data-theme="pet"]'));
+  const atari = declarations(block(':root[data-theme="atari-400"]'));
+  const zx80 = declarations(block(':root[data-theme="zx80"]'));
+  const sord = declarations(block(':root[data-theme="sord-m5"]'));
+  assert.equal(pet['--case-top'], '#f2eee2');
+  assert.equal(pet['--key-top'], '#e3e9e9');
+  assert.equal(pet['--plate'], '#171a1e');
+  assert.equal(pet['--accent'], '#61a9d1');
+  assert.equal(pet['--special-key'], '#c33b36');
+  assert.equal(pet['--signal-stripe'], 'linear-gradient(to right, #171a1e 0 35%, #286e9e 35% 43%, #171a1e 43% 70%, #d2b26e 70% 100%)');
+  assert.match(pet['--screen'], /^#[01][\da-f]{5}$/i);
+  assert.match(pet['--screen-ink'], /^#[\da-f]{6}$/i);
+  assert.match(atari['--signal-stripe'], /#2a251c.*#e6b936/i);
+  assert.equal(atari['--special-key'], '#e6b936');
+  assert.equal(zx80['--key-top'], '#3d6f9e');
+  assert.equal(zx80['--key-ink'], '#ffffff');
+  assert.equal(zx80['--content-button-top'], '#3d6f9e');
+  assert.equal(zx80['--content-button-bottom'], '#2b5279');
+  assert.equal(zx80['--content-button-ink'], '#ffffff');
+  for (const background of [zx80['--key-top'], zx80['--key-bottom'], zx80['--content-button-top'], zx80['--content-button-bottom']]) {
+    assert.ok(contrast('#ffffff', background) >= 4.5, `ZX80 button text on ${background} has sufficient contrast`);
+  }
+  assert.equal(zx80['--accent'], '#e09a3a');
+  assert.equal(sord['--key-top'], '#34383b');
+  assert.equal(sord['--accent'], '#e3bd55');
+  assert.equal(sord['--signal-stripe'], 'linear-gradient(to right, #252827 0 28%, #d2ad38 28% 100%)');
+});
+
+test('PET active navigation key uses the red key color with readable white text', () => {
+  const pet = declarations(block(':root[data-theme="pet"]'));
+  const activeKey = appCss.match(/:root\[data-theme="pet"\] \.workspace-nav-button\.is-active\s*\{([^}]+)\}/)?.[1] ?? '';
+  assert.equal(pet['--special-key-ink'], '#ffffff');
+  assert.match(activeKey, /color:\s*var\(--special-key-ink\)/);
+  assert.match(activeKey, /background:\s*linear-gradient\(180deg, var\(--special-key\), var\(--special-key-deep\)\)/);
+  assert.ok(contrast(pet['--special-key-ink'], pet['--special-key']) >= 4.5);
+  assert.ok(contrast(pet['--special-key-ink'], pet['--special-key-deep']) >= 4.5);
+});
+
 test('CoCo 2 vent grille stays as subtle as the Dragon 32 light case', () => {
   assert.equal(themes['coco-2']['--vent-dark'], themes['dragon-32']['--vent-dark']);
   assert.equal(themes['coco-2']['--vent-light'], themes['dragon-32']['--vent-light']);
@@ -119,10 +181,22 @@ test('CoCo 2 vent grille stays as subtle as the Dragon 32 light case', () => {
 
 test('horizontal-grille themes use horizontal vent slots', () => {
   const vents = appCss.match(/\/\* Horizontal grille slots echo the rear vents on these machines\. \*\/[\s\S]*?\n\}/)?.[0] ?? '';
-  for (const id of ['dragon-32', 'coco-2', 'breadbin', 'blue', 'stripe', 'paper', 'silver', 'cartridge']) {
+  for (const id of ['dragon-32', 'coco-2', 'breadbin', 'blue', 'stripe', 'paper', 'silver', 'cartridge', 'zx80']) {
     assert.ok(vents.includes(`:root[data-theme="${id}"] .workspace-sidebar::before`), `${id} has horizontal vents`);
   }
   assert.match(vents, /repeating-linear-gradient\(180deg,\s*var\(--vent-dark\) 0 2px,\s*var\(--vent-light\) 2px 6px\)/);
+});
+
+test('PET and Sord omit vents while Atari 400 keeps vertical vents', () => {
+  const hiddenVents = appCss.match(/\/\* Hide the vent detail[\s\S]*?\{ display: none; \}/)?.[0] ?? '';
+  const horizontalVents = appCss.match(/\/\* Horizontal grille slots echo the rear vents on these machines\. \*\/[\s\S]*?\n\}/)?.[0] ?? '';
+  const atariVents = appCss.match(/:root\[data-theme="atari-400"\] \.workspace-sidebar::before\s*\{([^}]+)\}/)?.[1] ?? '';
+  for (const id of ['pet', 'sord-m5']) {
+    assert.ok(hiddenVents.includes(`:root[data-theme="${id}"] .workspace-sidebar::before`), `${id} hides the vent detail`);
+    assert.ok(!horizontalVents.includes(`:root[data-theme="${id}"] .workspace-sidebar::before`), `${id} has no horizontal vents`);
+  }
+  assert.ok(!horizontalVents.includes(':root[data-theme="atari-400"] .workspace-sidebar::before'));
+  assert.match(atariVents, /repeating-linear-gradient\(90deg,/);
 });
 
 test('PC-8801 grille uses two horizontal vent rows', () => {

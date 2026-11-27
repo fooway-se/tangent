@@ -1245,6 +1245,7 @@ dialog::backdrop { background: var(--backdrop); }
 
 /* ZX81 red branding carries across the full Tangent logo. */
 :root[data-theme="mono"] .brand { color: var(--accent); }
+:root[data-theme="zx80"] .brand { color: var(--accent); }
 :root[data-theme="mono"] .workspace-content .button:not(.button-quiet) {
   border-color: var(--content-button-edge);
   color: var(--content-button-ink);
@@ -1252,6 +1253,16 @@ dialog::backdrop { background: var(--backdrop); }
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 :root[data-theme="mono"] .workspace-content .button-danger:not(.button-quiet) {
+  border-color: var(--content-button-edge);
+  color: var(--danger);
+}
+:root[data-theme="zx80"] .workspace-content .button:not(.button-quiet) {
+  border-color: var(--content-button-edge);
+  color: var(--content-button-ink);
+  background: linear-gradient(180deg, var(--content-button-top), var(--content-button-bottom));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+:root[data-theme="zx80"] .workspace-content .button-danger:not(.button-quiet) {
   border-color: var(--content-button-edge);
   color: var(--danger);
 }
@@ -1270,7 +1281,9 @@ dialog::backdrop { background: var(--backdrop); }
 
 /* Microbee's black function keys sit above its ivory keyboard. */
 :root[data-theme="microbee"] .workspace-nav-button,
-:root[data-theme="microbee"] .workspace-nav-button.is-active {
+:root[data-theme="microbee"] .workspace-nav-button.is-active,
+:root[data-theme="sord-m5"] .workspace-nav-button,
+:root[data-theme="sord-m5"] .workspace-nav-button.is-active {
   border-color: var(--cap-edge);
   color: var(--plate-ink);
   background: linear-gradient(180deg, var(--cap-top), var(--cap-bottom));
@@ -1278,7 +1291,9 @@ dialog::backdrop { background: var(--backdrop); }
   font-weight: 700;
 }
 :root[data-theme="microbee"] #lounge-nav .lounge-nav-presence,
-:root[data-theme="microbee"] #lounge-nav.is-active #lounge-nav-presence { color: var(--plate-ink); }
+:root[data-theme="microbee"] #lounge-nav.is-active #lounge-nav-presence,
+:root[data-theme="sord-m5"] #lounge-nav .lounge-nav-presence,
+:root[data-theme="sord-m5"] #lounge-nav.is-active #lounge-nav-presence { color: var(--plate-ink); }
 
 /* ADAM's dark function keys become the five workspace navigation keys. */
 :root[data-theme="coleco-adam"] .workspace-nav-button,
@@ -1327,6 +1342,28 @@ dialog::backdrop { background: var(--backdrop); }
   color: var(--special-key-ink);
 }
 
+/* PET: the red SPACE and RETURN caps mark the active workspace key. */
+:root[data-theme="pet"] .workspace-nav-button.is-active {
+  border-color: var(--special-key-edge);
+  color: var(--special-key-ink);
+  background: linear-gradient(180deg, var(--special-key), var(--special-key-deep));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+:root[data-theme="pet"] #lounge-nav.is-active #lounge-nav-presence {
+  color: var(--special-key-ink);
+}
+
+/* Atari 400: yellow controls carry the OPTION, SELECT, and START key color. */
+:root[data-theme="atari-400"] .workspace-nav-button.is-active {
+  border-color: var(--special-key-edge);
+  color: var(--special-key-ink);
+  background: linear-gradient(180deg, var(--special-key), var(--special-key-deep));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+:root[data-theme="atari-400"] #lounge-nav.is-active #lounge-nav-presence {
+  color: var(--special-key-ink);
+}
+
 /* Acorn Atom: a shallow warm-case recess around the charcoal keys. */
 /* Icon & Mouse: a shallow warm-gray recess around the light keycaps. */
 .retro-computer-icon { position: relative; display: block; width: 14px; height: 10px; margin-bottom: 5px; border: 2px solid currentColor; }
@@ -1346,6 +1383,8 @@ dialog::backdrop { background: var(--backdrop); }
 :root[data-theme="desktop"] .workspace-sidebar::before,
 :root[data-theme="desk"] .workspace-sidebar::before,
 :root[data-theme="pc88"] .workspace-sidebar::before,
+:root[data-theme="pet"] .workspace-sidebar::before,
+:root[data-theme="sord-m5"] .workspace-sidebar::before,
 :root[data-theme="x68000"] .workspace-sidebar::before { display: none; }
 
 :root[data-theme="clean"] .workspace-sidebar,
@@ -1364,6 +1403,7 @@ dialog::backdrop { background: var(--backdrop); }
 /* Horizontal grille slots echo the rear vents on these machines. */
 :root[data-theme="dragon-32"] .workspace-sidebar::before,
 :root[data-theme="coco-2"] .workspace-sidebar::before,
+:root[data-theme="zx80"] .workspace-sidebar::before,
 :root[data-theme="breadbin"] .workspace-sidebar::before,
 :root[data-theme="blue"] .workspace-sidebar::before,
 :root[data-theme="stripe"] .workspace-sidebar::before,
@@ -1371,6 +1411,11 @@ dialog::backdrop { background: var(--backdrop); }
 :root[data-theme="silver"] .workspace-sidebar::before,
 :root[data-theme="cartridge"] .workspace-sidebar::before {
   background: repeating-linear-gradient(180deg, var(--vent-dark) 0 2px, var(--vent-light) 2px 6px);
+}
+
+/* Atari 400: fine vertical slots on the pale membrane body. */
+:root[data-theme="atari-400"] .workspace-sidebar::before {
+  background: repeating-linear-gradient(90deg, var(--vent-dark) 0 2px, var(--vent-light) 2px 6px);
 }
 
 /* Clean: flat neutral surfaces group the navigation keys. */

@@ -41,7 +41,7 @@ test('every theme has a locally hosted, credited computer photo and two short fa
       assert.match(machine.imageUrl, /^\.\/assets\/machines\/[a-z0-9-]+\.svg$/);
       assert.match(machine.imagePage, /^https:\/\//);
     } else {
-      assert.match(machine.imageUrl, /^\.\/assets\/machines\/[a-z0-9-]+\.jpg$/);
+      assert.match(machine.imageUrl, /^\.\/assets\/machines\/[a-z0-9-]+\.(?:jpg|png|webp)$/);
       assert.match(machine.imagePage, /^https:\/\/commons\.wikimedia\.org\/wiki\/File:/);
     }
     assert.ok(machine.photoCredit, `${id} has a photo credit`);
@@ -72,6 +72,27 @@ test('Altair, Atari ST, and X68000 themes have sourced machine cards', () => {
   assert.equal(THEME_MACHINES.x68000.year, '1991');
   assert.equal(THEME_MACHINES.x68000.photoCredit, 'htomari');
   assert.equal(THEME_MACHINES.x68000.license, 'CC BY-SA 2.0');
+});
+
+test('PET, Atari 400, ZX80, and Sord M5 have credited machine photos', () => {
+  assert.deepEqual(
+    ['pet', 'atari-400', 'zx80', 'sord-m5'].map((id) => [THEME_MACHINES[id].model, THEME_MACHINES[id].year]),
+    [
+      ['Commodore PET 2001', '1977'],
+      ['Atari 400', '1979'],
+      ['Sinclair ZX80', '1980'],
+      ['Sord M5', '1982'],
+    ],
+  );
+  assert.equal(THEME_MACHINES.pet.photoCredit, 'Sandra Fauconnier');
+  assert.equal(THEME_MACHINES.pet.license, 'CC BY 4.0');
+  assert.equal(THEME_MACHINES['atari-400'].photoCredit, 'McCormick');
+  assert.equal(THEME_MACHINES['atari-400'].license, 'Public domain');
+  assert.equal(THEME_MACHINES.zx80.photoCredit, 'Daniel Ryde');
+  assert.equal(THEME_MACHINES.zx80.license, 'CC BY-SA 3.0');
+  assert.equal(THEME_MACHINES['sord-m5'].photoCredit, 'Liftarn; retouched by Ubcule');
+  assert.equal(THEME_MACHINES['sord-m5'].license, 'CC BY-SA 2.0');
+  assert.equal(THEME_MACHINES['sord-m5'].licenseUrl, 'https://creativecommons.org/licenses/by-sa/2.0/');
 });
 
 test('theme selectors have a silent computer icon that opens the accessible card', () => {

@@ -1,5 +1,5 @@
-import { THEMES, applyTheme, loadTheme } from './theme-b3c8dcd35596.js';
-import { THEME_MACHINES } from './theme-machines-21edc06313a6.js';
+import { THEMES, applyTheme, loadTheme } from './theme-dfb823dc6450.js';
+import { THEME_MACHINES } from './theme-machines-ee4f75d9c6fe.js';
 export function initThemeUi(doc = document) {
     let activeTheme = loadTheme();
     const themeSelects = Array.from(doc.querySelectorAll('.theme-select'));

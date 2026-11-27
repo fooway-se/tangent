@@ -1823,6 +1823,276 @@
   --signal-stripe: linear-gradient(to bottom, #7da96d 0 20%, #2c2926 20% 80%, #7da96d 80% 100%);
 }
 
+/* PET & Phosphor: satin metal, black bezel, and a pale green CRT. */
+:root[data-theme="pet"] {
+  --night: #121711;
+  --night-glow: #36462e;
+  --night-muted: #e3e2d5;
+
+  --case-top: #f2eee2;
+  --case-mid: #e3ddcf;
+  --case-bottom: #d0c8b8;
+  --case-shade: #a9a18e;
+  --case-edge: #807765;
+  --case-light: #faf6eb;
+  --case-ink: #28251f;
+  --case-muted: #484339;
+  --case-error: #9f3d34;
+  --vent-dark: #aaa38f;
+  --vent-light: #eee9dc;
+  --footer-top: #ded8c8;
+  --footer-bottom: #c9c1b0;
+
+  --key-top: #e3e9e9;
+  --key-bottom: #cbd4d3;
+  --key-highlight: #f9fbf7;
+  --key-ink: #292c2d;
+
+  --cap-top: #30343a;
+  --cap-bottom: #1c2025;
+  --cap-edge: #0c0f12;
+  --plate: #171a1e;
+  --plate-ink: #d7bb83;
+  --plate-muted: #bfb29b;
+
+  --screen: #091a24;
+  --screen-rim: #030c12;
+  --screen-glow: rgba(109, 174, 207, 0.12);
+  --screen-vignette: rgba(71, 133, 169, 0.08);
+  --screen-ink: #d8e4e4;
+  --screen-muted: #b6c6c8;
+  --screen-header: rgba(255, 255, 255, 0.04);
+  --screen-highlight: rgba(255, 255, 255, 0.06);
+  --backdrop: rgba(7, 12, 17, 0.76);
+  --screen-panel: #162b36;
+  --screen-control-top: #254656;
+  --screen-inset: #061119;
+  --screen-field: #08151d;
+  --screen-border: #425c68;
+  --screen-line: #2c414c;
+  --screen-hover: #24404e;
+  --screen-track: #061119;
+  --screen-group: #152a35;
+  --screen-group-top: #344d59;
+  --screen-group-bottom: #243c47;
+
+  --accent: #61a9d1;
+  --accent-edge: #3b718f;
+  --accent-ink: #182a34;
+  --accent-shine: rgba(255, 255, 255, 0.48);
+  --special-key: #c33b36;
+  --special-key-deep: #982b28;
+  --special-key-edge: #6b1d1a;
+  --special-key-ink: #ffffff;
+  --success: #89c58a;
+  --danger: #f18475;
+  --power-light: #d9473b;
+  --focus-ring: rgba(97, 169, 209, 0.5);
+  --signal-stripe: linear-gradient(to right, #171a1e 0 35%, #286e9e 35% 43%, #171a1e 43% 70%, #d2b26e 70% 100%);
+}
+
+/* Membrane & Gold: pale Atari plastic, dark membrane bed, and yellow badge and function keys. */
+:root[data-theme="atari-400"] {
+  --night: #11100d;
+  --night-glow: #55472e;
+  --night-muted: #f1e6cf;
+
+  --case-top: #e4d2ad;
+  --case-mid: #d3bd94;
+  --case-bottom: #bda57b;
+  --case-shade: #927a55;
+  --case-edge: #76603f;
+  --case-light: #f2e5c9;
+  --case-ink: #282319;
+  --case-muted: #3b3224;
+  --case-error: #a43b32;
+  --vent-dark: #ad9870;
+  --vent-light: #eddfc0;
+  --footer-top: #d2bd95;
+  --footer-bottom: #bba47a;
+
+  --key-top: #ede2c9;
+  --key-bottom: #d0c1a1;
+  --key-highlight: #fff8e8;
+  --key-ink: #332b1d;
+
+  --cap-top: #272a2b;
+  --cap-bottom: #131516;
+  --cap-edge: #090a0b;
+  --plate: #252828;
+  --plate-ink: #efefea;
+  --plate-muted: #c7c9c4;
+
+  --screen: #111719;
+  --screen-rim: #090c0d;
+  --screen-glow: rgba(195, 204, 190, 0.045);
+  --screen-vignette: rgba(139, 143, 126, 0.055);
+  --screen-ink: #d9ddd5;
+  --screen-muted: #b8beb7;
+  --screen-header: rgba(255, 255, 255, 0.04);
+  --screen-highlight: rgba(255, 255, 255, 0.06);
+  --backdrop: rgba(8, 11, 14, 0.72);
+  --screen-panel: #202627;
+  --screen-control-top: #2a3132;
+  --screen-inset: #0b0e0f;
+  --screen-field: #080a0b;
+  --screen-border: #4a5252;
+  --screen-line: #313a3c;
+  --screen-hover: #2a3234;
+  --screen-track: #090b0d;
+  --screen-group: #1d2425;
+  --screen-group-top: #2a3232;
+  --screen-group-bottom: #202727;
+
+  --accent: #d7a32e;
+  --accent-edge: #94701f;
+  --accent-ink: #292213;
+  --accent-shine: rgba(255, 255, 255, 0.42);
+  --success: #86bd78;
+  --danger: #e77668;
+  --power-light: #ce4a3e;
+  --focus-ring: rgba(230, 185, 54, 0.5);
+  --signal-stripe: linear-gradient(to right, #2a251c 0 28%, #e6b936 28% 76%, #f2e5c9 76% 100%);
+  --special-key: #e6b936;
+  --special-key-deep: #c68f1d;
+  --special-key-edge: #866116;
+  --special-key-ink: #282112;
+}
+
+/* White & Inverse: the ZX80 wedge, blue membrane keys, and white phosphor on black. */
+:root[data-theme="zx80"] {
+  --night: #111316;
+  --night-glow: #34404b;
+  --night-muted: #e9eef2;
+
+  --case-top: #f4f3ee;
+  --case-mid: #e5e4df;
+  --case-bottom: #d0d0cc;
+  --case-shade: #a8a9a7;
+  --case-edge: #85888a;
+  --case-light: #ffffff;
+  --case-ink: #25292d;
+  --case-muted: #4a4f54;
+  --case-error: #a33d32;
+  --vent-dark: #b3b4b2;
+  --vent-light: #fbfaf5;
+  --footer-top: #e1e0db;
+  --footer-bottom: #cecfcb;
+
+  --key-top: #3d6f9e;
+  --key-bottom: #315d88;
+  --key-highlight: #6995bd;
+  --key-ink: #ffffff;
+  --key-depth: 1px;
+  --key-depth-lg: 1px;
+  --content-button-top: #3d6f9e;
+  --content-button-bottom: #2b5279;
+  --content-button-edge: #1d3d5c;
+  --content-button-ink: #ffffff;
+
+  --cap-top: #151617;
+  --cap-bottom: #08090a;
+  --cap-edge: #000000;
+  --plate: #0b0c0d;
+  --plate-ink: #f1f3ef;
+  --plate-muted: #c6cac7;
+
+  --screen: #050607;
+  --screen-rim: #000000;
+  --screen-glow: rgba(220, 230, 225, 0.04);
+  --screen-vignette: rgba(130, 150, 145, 0.06);
+  --screen-ink: #f1f2ef;
+  --screen-muted: #bdc3c1;
+  --screen-header: rgba(255, 255, 255, 0.04);
+  --screen-highlight: rgba(255, 255, 255, 0.06);
+  --backdrop: rgba(0, 0, 0, 0.74);
+  --screen-panel: #101214;
+  --screen-control-top: #1a1c1e;
+  --screen-inset: #030405;
+  --screen-field: #000000;
+  --screen-border: #555b5a;
+  --screen-line: #303436;
+  --screen-hover: #1a1d1e;
+  --screen-track: #090b0c;
+  --screen-group: #17191a;
+  --screen-group-top: #292c2d;
+  --screen-group-bottom: #202223;
+
+  --accent: #e09a3a;
+  --accent-edge: #9c6120;
+  --accent-ink: #2c2114;
+  --accent-shine: rgba(255, 255, 255, 0.3);
+  --success: #a4d7b1;
+  --danger: #ffa99e;
+  --power-light: #d97032;
+  --focus-ring: rgba(224, 154, 58, 0.48);
+  --signal-stripe: linear-gradient(to right, #f0ede4 0 24%, #4d82b3 24% 52%, #e09a3a 52% 70%, #13171b 70% 100%);
+}
+
+/* Keys & Cartridge: Sord’s two-tone case, charcoal keyboard, and cartridge colors. */
+:root[data-theme="sord-m5"] {
+  --night: #16130e;
+  --night-glow: #4b3e27;
+  --night-muted: #e9e1cf;
+
+  --case-top: #e6d8b7;
+  --case-mid: #d4c49e;
+  --case-bottom: #c2b18c;
+  --case-shade: #958363;
+  --case-edge: #776649;
+  --case-light: #f3e8d0;
+  --case-ink: #28251e;
+  --case-muted: #484238;
+  --case-error: #a34237;
+  --vent-dark: #aa9873;
+  --vent-light: #eee0c2;
+  --footer-top: #d3c39d;
+  --footer-bottom: #bfae88;
+
+  --key-top: #34383b;
+  --key-bottom: #202326;
+  --key-highlight: #565b5e;
+  --key-ink: #f3eee2;
+
+  --cap-top: #393633;
+  --cap-bottom: #272522;
+  --cap-edge: #151412;
+  --plate: #2c2926;
+  --plate-ink: #f0e8d8;
+  --plate-muted: #c8beac;
+
+  --screen: #101e32;
+  --screen-rim: #070d17;
+  --screen-glow: rgba(83, 155, 203, 0.13);
+  --screen-vignette: rgba(85, 133, 171, 0.08);
+  --screen-ink: #e9eddd;
+  --screen-muted: #bdc7b4;
+  --screen-header: rgba(255, 255, 255, 0.04);
+  --screen-highlight: rgba(255, 255, 255, 0.06);
+  --backdrop: rgba(11, 15, 10, 0.76);
+  --screen-panel: #1c3040;
+  --screen-control-top: #294455;
+  --screen-inset: #0a121d;
+  --screen-field: #0d1824;
+  --screen-border: #4a6572;
+  --screen-line: #2e4350;
+  --screen-hover: #294653;
+  --screen-track: #09131f;
+  --screen-group: #192e3d;
+  --screen-group-top: #375361;
+  --screen-group-bottom: #263f4c;
+
+  --accent: #e3bd55;
+  --accent-edge: #98752c;
+  --accent-ink: #2b2516;
+  --accent-shine: rgba(255, 255, 255, 0.48);
+  --success: #9bc979;
+  --danger: #e67c61;
+  --power-light: #e0b343;
+  --focus-ring: rgba(227, 189, 85, 0.48);
+  --signal-stripe: linear-gradient(to right, #252827 0 28%, #d2ad38 28% 100%);
+}
+
 /*
  * Clean: a neutral, modern light theme for people who would rather not use a
  * retro computer. Same layout as every other theme; it only flattens the
