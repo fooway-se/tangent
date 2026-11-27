@@ -274,10 +274,11 @@ kbd {
 .lounge-presence-person::before { width: 6px; height: 6px; flex: 0 0 auto; border-radius: 50%; background: var(--accent); box-shadow: 0 0 5px var(--accent); content: ""; }
 .lounge-channel-links { display: flex; flex: 0 0 auto; flex-wrap: wrap; gap: 4px 12px; overflow-x: auto; padding: 2px 0 10px; overscroll-behavior-x: contain; }
 .lounge-channel-entry { display: inline-flex; align-items: baseline; gap: 4px; }
-.lounge-channel-link { display: inline-flex; flex: 0 0 auto; align-items: baseline; gap: 4px; color: var(--accent); font-size: 12px; text-decoration: none; white-space: nowrap; }
-.lounge-channel-link-title { display: inline; }
-.lounge-channel-link:hover:not([aria-current="page"]), .lounge-channel-link:focus-visible:not([aria-current="page"]) { text-decoration: underline; text-underline-offset: 3px; }
-.lounge-channel-link[aria-current="page"] { color: var(--screen-ink); text-decoration: none; }
+.lounge-channel-link { display: inline-flex; flex: 0 0 auto; align-items: baseline; gap: 4px; color: var(--screen-ink); font-size: 12px; text-decoration: none; white-space: nowrap; }
+.lounge-channel-link-title { display: inline-flex; align-items: baseline; gap: 0.4em; }
+.lounge-channel-link:hover:not([aria-current="page"]) { color: var(--accent); }
+.lounge-channel-link:focus-visible:not([aria-current="page"]) { text-decoration: underline; text-underline-offset: 3px; }
+.lounge-channel-link[aria-current="page"] { color: var(--accent); text-decoration: none; }
 .lounge-channel-unread { color: var(--accent); font: 700 11px/1.4 var(--font-mono); }
 .lounge-channel-unread[hidden] { display: none; }
 .lounge-project-channel-panel { min-height: 0; }
