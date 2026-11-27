@@ -1693,8 +1693,8 @@
   --case-ink: #292821;
   --case-muted: #4a463c;
   --case-error: #a73027;
-  --vent-dark: #292a26;
-  --vent-light: #eee7d8;
+  --vent-dark: #a99f87;
+  --vent-light: #e8e1d0;
   --footer-top: #d4c9b3;
   --footer-bottom: #c2b69d;
 
@@ -1735,10 +1735,10 @@
   --accent-edge: #567d3f;
   --accent-ink: #162010;
   --accent-shine: rgba(255, 255, 255, 0.48);
-  --special-key: #f47968;
-  --special-key-deep: #ee7367;
-  --special-key-edge: #a94339;
-  --special-key-ink: #27100d;
+  --special-key: #d9453f;
+  --special-key-deep: #b61f24;
+  --special-key-edge: #7f1d1d;
+  --special-key-ink: #ffffff;
   --success: #79c968;
   --danger: #ff9380;
   --power-light: #e34b43;

@@ -4,6 +4,7 @@ import test from 'node:test';
 import { THEMES, nextTheme, normalizeTheme } from '../../public/assets/theme.js';
 
 const tokens = await readFile(new URL('../../public/assets/tokens.css', import.meta.url), 'utf8');
+const appCss = await readFile(new URL('../../public/assets/app.css', import.meta.url), 'utf8');
 const init = await readFile(new URL('../../public/assets/theme-init.js', import.meta.url), 'utf8');
 const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
 
@@ -111,6 +112,11 @@ test('CoCo 2 theme uses its RGB badge colors and a dedicated red key accent', ()
   assert.match(block(':root[data-theme="coco-2"]'), /--special-key:\s*#[c-f\da-f]{6}/i);
 });
 
+test('CoCo 2 vent grille stays as subtle as the Dragon 32 light case', () => {
+  assert.equal(themes['coco-2']['--vent-dark'], themes['dragon-32']['--vent-dark']);
+  assert.equal(themes['coco-2']['--vent-light'], themes['dragon-32']['--vent-light']);
+});
+
 test('early theme script and the picker cover all themes', () => {
   for (const id of themeIds) assert.ok(init.includes(`'${id}'`), `theme-init knows ${id}`);
   assert.match(html, /<script src="\.\/assets\/theme-init-[a-f0-9]{12}\.js"><\/script>/);
@@ -126,6 +132,17 @@ function contrast(a, b) {
   const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
   return (hi + 0.05) / (lo + 0.05);
 }
+
+test('CoCo 2 active navigation key uses a true red with readable white text', () => {
+  const coco = declarations(block(':root[data-theme="coco-2"]'));
+  const stripeRed = coco['--signal-stripe'].match(/linear-gradient\(to right,\s*(#[\da-f]{6})/i)?.[1];
+  const activeKey = appCss.match(/:root\[data-theme="coco-2"\] \.workspace-nav-button\.is-active\s*\{([^}]+)\}/)?.[1] ?? '';
+  assert.equal(coco['--special-key'], stripeRed);
+  assert.equal(coco['--special-key-ink'], '#ffffff');
+  assert.ok(contrast(coco['--special-key-ink'], coco['--special-key']) >= 4.25);
+  assert.ok(contrast(coco['--special-key-ink'], coco['--special-key-deep']) >= 4.5);
+  assert.match(activeKey, /color:\s*var\(--special-key-ink\)/);
+});
 
 const pairs = [
   ['--screen-ink', '--screen'], ['--screen-ink', '--screen-panel'], ['--screen-ink', '--screen-field'],
