@@ -222,3 +222,71 @@ test('project chat reports presence changes so the top bar can mirror the indica
   ui.stop();
   ui.dispose();
 });
+
+test('project chat can render from a supplied channel context without project-page actions', async (t) => {
+  const previous = { document: globalThis.document, window: globalThis.window };
+  const document = {
+    activeElement: null,
+    hidden: false,
+    createElement: (tagName) => new FakeElement(tagName),
+    createElementNS: (_namespace, tagName) => new FakeElement(tagName),
+  };
+  globalThis.document = document;
+  globalThis.window = { setTimeout: () => 1, clearTimeout() {} };
+  t.after(() => {
+    for (const [key, value] of Object.entries(previous)) {
+      if (value === undefined) delete globalThis[key];
+      else globalThis[key] = value;
+    }
+  });
+
+  const contextProject = { id: 12, slug: 'waterworks', status: 'active' };
+  const ui = initProjectChatUi({
+    getProject: () => null,
+    getMembers: () => [],
+    getUser: () => ({ id: 11, name: 'Avery' }),
+    isDocumentHidden: () => false,
+    selectMessage() {}, onClearSelection() {}, onCreateIssue() {}, onUnauthorized() {},
+    report(message) { assert.fail(message); },
+    avatarInitials: (name) => name.slice(0, 1), compactMessage: (body) => body,
+    submitFormOnEnter() {},
+    request: async (path) => path.endsWith('/presence')
+      ? { someone_else_viewing: false }
+      : { messages: [] },
+    pollEvents: async () => ({ notModified: true, status: 304, etag: null, nextDelay: 1500, events: [] }),
+    doc: document,
+  });
+
+  const view = ui.create(12, { project: contextProject, members: [], allowIssueActions: false });
+  ui.appendMessage({
+    id: 22,
+    channel_id: 13,
+    parent_id: null,
+    author_id: 8,
+    author_name: 'Sam',
+    body: 'A project channel message',
+    created_at: '2026-11-26T10:00:00Z',
+  });
+  await new Promise((resolve) => setImmediate(resolve));
+
+  const find = (element, tagName) => {
+    if (element.tagName === tagName) return element;
+    for (const child of element.children) {
+      const found = find(child, tagName);
+      if (found !== null) return found;
+    }
+    return null;
+  };
+  const findByClass = (element, className) => {
+    if (element.className.split(' ').includes(className)) return element;
+    for (const child of element.children) {
+      const found = findByClass(child, className);
+      if (found !== null) return found;
+    }
+    return null;
+  };
+  assert.equal(ui.activeProjectId(), 12);
+  assert.equal(find(view, 'textarea').placeholder, 'Message #waterworks…');
+  assert.equal(findByClass(view, 'chat-create-issue-button').hidden, true);
+  ui.dispose();
+});

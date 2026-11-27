@@ -65,6 +65,10 @@ export const dom = {
     loungeView: document.querySelector<HTMLElement>('#lounge-view')!,
     loungeHeading: document.querySelector<HTMLHeadingElement>('#lounge-heading')!,
     loungeMessageList: document.querySelector<HTMLElement>('#lounge-message-list')!,
+    loungeChannelLinks: document.querySelector<HTMLElement>('#lounge-channel-links')!,
+    loungeGeneralChannelLink: document.querySelector<HTMLAnchorElement>('#lounge-general-channel-link')!,
+    loungeGeneralChannelPanel: document.querySelector<HTMLElement>('#lounge-general-channel-panel')!,
+    loungeProjectChannelPanel: document.querySelector<HTMLElement>('#lounge-project-channel-panel')!,
   },
   shortcuts: {
     toggleProjectFormButton: document.querySelector<HTMLButtonElement>('#toggle-project-form')!,

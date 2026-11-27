@@ -6,6 +6,7 @@ import { resolveShortcut } from '../../public/assets/shortcuts.js';
 const html = await readFile(new URL('../../public/app.html', import.meta.url), 'utf8');
 const app = await readFile(new URL('../../frontend/src/app.ts', import.meta.url), 'utf8');
 const loungeChatUi = await readFile(new URL('../../frontend/src/lounge-chat-ui.ts', import.meta.url), 'utf8');
+const loungeChannelsUi = await readFile(new URL('../../frontend/src/lounge-channels-ui.ts', import.meta.url), 'utf8');
 const projectChatUi = await readFile(new URL('../../frontend/src/project-chat-ui.ts', import.meta.url), 'utf8');
 const mentionsUi = await readFile(new URL('../../frontend/src/chat-mentions-ui.ts', import.meta.url), 'utf8');
 const css = await readFile(new URL('../../public/assets/app.css', import.meta.url), 'utf8');
@@ -25,6 +26,27 @@ test('Lounge is a fixed workspace destination between Inbox and workspace admin'
   assert.match(html, /id="lounge-latest-button"[^>]*class="chat-latest-button button button-quiet"[^>]*hidden/);
   assert.match(app, /function goToLounge\(/);
   assert.match(loungeChatUi, /\/lounge\/messages/);
+});
+
+test('Lounge presents General and project chats as simple channel links', () => {
+  assert.match(html, /<nav id="lounge-channel-links"[^>]*aria-label="Lounge channels"/);
+  assert.match(html, /id="lounge-general-channel-link"[^>]*href="#lounge-general-channel-panel"[^>]*aria-current="page"[^>]*><span class="lounge-channel-link-title"><span aria-hidden="true">#<\/span>General<\/span><\/a>/);
+  assert.match(css, /\.lounge-channel-link-title\s*\{\s*display:\s*inline\s*;/);
+  assert.doesNotMatch(html, /class="lounge-channel-prefix"/);
+  assert.doesNotMatch(loungeChannelsUi, /lounge-channel-prefix/);
+  assert.doesNotMatch(css, /\.lounge-channel-prefix/);
+  assert.match(css, /\.lounge-channel-entry\s*\{[^}]*display:\s*inline-flex/);
+  assert.doesNotMatch(css, /\.lounge-channel-link\[aria-current="page"\]\s*\{[^}]*text-decoration:\s*underline/, 'selected channel uses color rather than an underline');
+  assert.match(css, /\.lounge-channel-link:hover:not\(\[aria-current="page"\]\)/, 'hover underline excludes the selected channel');
+  assert.match(html, /id="lounge-general-channel-panel"/);
+  assert.match(app, /initLoungeChannelsUi\(/);
+  assert.match(loungeChannelsUi, /\/events\?cursor=\$\{cursor\}/);
+  assert.match(loungeChannelsUi, /request<\{ projects: Project\[\] \}>\('\/projects'\)/);
+  assert.doesNotMatch(html, /role="tablist"[^>]*aria-label="Lounge channels"/);
+});
+
+test('Lounge General chat has the same simple titlebar style as project chats', () => {
+  assert.match(html, /<section id="lounge-general-channel-panel"[^>]*aria-labelledby="lounge-general-channel-heading">[\s\S]*?<h3 id="lounge-general-channel-heading" class="chat-heading" tabindex="-1"><span class="chat-channel-name"><span class="chat-channel-hash" aria-hidden="true">#<\/span><span>General<\/span><\/span><\/h3>/);
 });
 
 test('Lounge can be opened with the workspace g-l shortcut', () => {

@@ -97,10 +97,14 @@ test('issue sharing checkboxes sit beside their labels and keep a compact contro
   assert.match(rule(css, '.form-check-label input[type="checkbox"]'), /box-shadow:\s*none/);
 });
 
-test('every screen and dialog header carries the signal stripe', () => {
-  for (const selector of ['.workspace-nav::before', '.workspace-topbar::after, .chat-heading::after', '.dialog-heading::after', '.topbar::after']) {
+test('project chat heading stays plain while workspace and dialog headers retain the signal stripe', () => {
+  for (const selector of ['.workspace-nav::before', '.dialog-heading::after', '.topbar::after']) {
     assert.match(rule(css, selector), /background:\s*var\(--signal-stripe\)/, `${selector} draws the stripe`);
   }
+  assert.match(css, /\.workspace-topbar, \.chat-heading\s*\{[^}]*background:\s*var\(--screen-header\)/, 'chat headings use the screen header background');
+  assert.match(rule(css, '.chat-heading'), /border-bottom:\s*1px solid var\(--screen-border\)/, 'chat headings have a thin bottom border');
+  assert.match(css, /\.workspace-topbar::after[^{}]*\{[^}]*background:\s*var\(--signal-stripe\)/, 'workspace topbar keeps the stripe');
+  assert.doesNotMatch(css, /\.chat-heading::after/, 'project chat heading has no decorative stripe');
 });
 
 test('shortcut keys are black keycaps on the case and beige keys elsewhere', () => {

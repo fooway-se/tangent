@@ -17,6 +17,7 @@ import { initProjectNotesUi } from './project-notes-ui.js';
 import { initMilestoneUi } from './milestone-ui.js';
 import { initLoungePresence } from './lounge-presence.js';
 import { initLoungeChatUi } from './lounge-chat-ui.js';
+import { initLoungeChannelsUi } from './lounge-channels-ui.js';
 import { initWorkspaceAdminUi } from './workspace-admin-ui.js';
 import { applyPresenceState } from './presence-indicator.js';
 import { initProjectChatUi } from './project-chat-ui.js';
@@ -50,7 +51,7 @@ import { parseQuickIssueInput } from './quick-issue.js';
 import { initRoadmapUi } from './roadmap-ui.js';
 import { loadIssueCollections, refreshDeletedIssuesOnOpen, shouldDeferIssueUpdates, } from './issue-polling.js';
 import { dom } from './dom.js';
-const { project: { projectHeading, projectEditDialog, projectReadOnlyNotice, editProjectButton, projectsNavButton, projectsView, projectView, projectForm, projectList, projectFormPanel, projectDescription, projectState, projectChatColumn, projectSidebarList, projectMain, projectTabs, projectKeyboardHints, topbarPresence, }, auth: { loginPanel, loginShell, accountBar, currentUserLabel, loginStatusMessage, logoutButton, }, workspace: { workspacePanel, workspaceNav, adminNavButton, adminView, adminHeading, membersView, adminGoPrefixOption, membersTabButton, }, shell: { createWorkspaceForm, breadcrumbProjectsButton, breadcrumbDivider, breadcrumbCurrent, notesTabButton, emptyIssues, statusMessage, }, roadmap: { roadmapNavButton, roadmapView, roadmapHeading, roadmapSummary, roadmapMilestoneList, roadmapEmptyState, roadmapGoPrefixOption, }, inbox: { inboxNavButton, inboxView, inboxHeading, }, lounge: { loungeNavButton, loungeView, loungeHeading, loungeMessageList, }, shortcuts: { toggleProjectFormButton, keyboardHints, goPrefixHint, goPrefixNavigationOptions, goPrefixWorkspaceOption, goPrefixProjectOptions, }, chat: { chatView, }, issues: { issuesView, issueDetailView, issueDetailDisplay, issueDetailTitle, issueDetailPriority, issueDetailDueDate, issueDetailDescription, issueDetailBrief, issueDetailContextSection, issueDetailContext, issueDetailExpectedOutcomeSection, issueDetailExpectedOutcome, issueDetailAcceptanceCriteriaSection, issueDetailAcceptanceCriteria, issueDetailStatus, issueDetailStatusLabel, issueSourceLink, issueDetailEditForm, issueDetailEditButton, issueDetailDeleteButton, issuesTabButton, issueBackButton, issueForm, issueQuickAddTitle, issueQuickAddPriority, issueQuickAddDueDate, issueQuickAddAssignee, issueQuickAddMilestone, issueQuickAddOngoing, issueQuickAddShared, issueQuickAddApproval, issueQuickAddCancelButton, issueDetailType, issueDetailAssignee, issueDetailMilestone, issueDetailOngoingRow, issueDetailSharing, issueDetailApproval, issueDescriptionDetails, issueProgress, issueProgressLabel, issueFilter, issueGrouping, issueOrder, issueScope, issueCountSummary, issueBulkAssignToggle, issueBulkAssignToolbar, issueList, deletedIssuesDetails, deletedIssueCount, deletedIssueList, }, guest: { guestLogoutButton, }, } = dom;
+const { project: { projectHeading, projectEditDialog, projectReadOnlyNotice, editProjectButton, projectsNavButton, projectsView, projectView, projectForm, projectList, projectFormPanel, projectDescription, projectState, projectChatColumn, projectSidebarList, projectMain, projectTabs, projectKeyboardHints, topbarPresence, }, auth: { loginPanel, loginShell, accountBar, currentUserLabel, loginStatusMessage, logoutButton, }, workspace: { workspacePanel, workspaceNav, adminNavButton, adminView, adminHeading, membersView, adminGoPrefixOption, membersTabButton, }, shell: { createWorkspaceForm, breadcrumbProjectsButton, breadcrumbDivider, breadcrumbCurrent, notesTabButton, emptyIssues, statusMessage, }, roadmap: { roadmapNavButton, roadmapView, roadmapHeading, roadmapSummary, roadmapMilestoneList, roadmapEmptyState, roadmapGoPrefixOption, }, inbox: { inboxNavButton, inboxView, inboxHeading, }, lounge: { loungeNavButton, loungeView, loungeHeading, loungeMessageList, loungeChannelLinks, loungeGeneralChannelLink, loungeGeneralChannelPanel, loungeProjectChannelPanel, }, shortcuts: { toggleProjectFormButton, keyboardHints, goPrefixHint, goPrefixNavigationOptions, goPrefixWorkspaceOption, goPrefixProjectOptions, }, chat: { chatView, }, issues: { issuesView, issueDetailView, issueDetailDisplay, issueDetailTitle, issueDetailPriority, issueDetailDueDate, issueDetailDescription, issueDetailBrief, issueDetailContextSection, issueDetailContext, issueDetailExpectedOutcomeSection, issueDetailExpectedOutcome, issueDetailAcceptanceCriteriaSection, issueDetailAcceptanceCriteria, issueDetailStatus, issueDetailStatusLabel, issueSourceLink, issueDetailEditForm, issueDetailEditButton, issueDetailDeleteButton, issuesTabButton, issueBackButton, issueForm, issueQuickAddTitle, issueQuickAddPriority, issueQuickAddDueDate, issueQuickAddAssignee, issueQuickAddMilestone, issueQuickAddOngoing, issueQuickAddShared, issueQuickAddApproval, issueQuickAddCancelButton, issueDetailType, issueDetailAssignee, issueDetailMilestone, issueDetailOngoingRow, issueDetailSharing, issueDetailApproval, issueDescriptionDetails, issueProgress, issueProgressLabel, issueFilter, issueGrouping, issueOrder, issueScope, issueCountSummary, issueBulkAssignToggle, issueBulkAssignToolbar, issueList, deletedIssuesDetails, deletedIssueCount, deletedIssueList, }, guest: { guestLogoutButton, }, } = dom;
 function issueStatusLabel(status) {
     return ISSUE_STATUS_OPTIONS.find((option) => option.value === status)?.label ?? status;
 }
@@ -608,12 +609,63 @@ const projectChatUi = initProjectChatUi({
     realtime: realtimeTransport,
     onPresenceChange: (state) => applyPresenceState(topbarPresence, state),
 });
+let loungeProjectLoadVersion = 0;
+const loungeChannelsUi = initLoungeChannelsUi({
+    links: loungeChannelLinks,
+    generalLink: loungeGeneralChannelLink,
+    generalPanel: loungeGeneralChannelPanel,
+    projectPanel: loungeProjectChannelPanel,
+    isVisible: () => !loungeView.hidden,
+    isDocumentHidden: () => document.hidden,
+    getWorkspaceId: () => activeUser?.workspace_id ?? null,
+    getUserId: () => activeUser?.id ?? null,
+    onGeneralSelected: () => {
+        loungeProjectLoadVersion += 1;
+        projectChatUi.stop();
+        loungeProjectChannelPanel.replaceChildren();
+    },
+    onProjectSelected: (project) => {
+        const requestVersion = ++loungeProjectLoadVersion;
+        projectChatUi.stop();
+        loungeProjectChannelPanel.replaceChildren();
+        const loading = document.createElement('p');
+        loading.className = 'chat-empty-state';
+        loading.setAttribute('role', 'status');
+        loading.textContent = `Loading #${project.slug}…`;
+        loungeProjectChannelPanel.append(loading);
+        void api(`/projects/${project.id}`).then((result) => {
+            if (requestVersion !== loungeProjectLoadVersion
+                || loungeChannelsUi.selectedProjectId() !== project.id || loungeView.hidden)
+                return;
+            loungeProjectChannelPanel.replaceChildren(projectChatUi.create(project.id, {
+                project: result.project,
+                members: result.members,
+                allowIssueActions: false,
+            }));
+        }).catch((error) => {
+            if (requestVersion !== loungeProjectLoadVersion
+                || loungeChannelsUi.selectedProjectId() !== project.id || loungeView.hidden)
+                return;
+            const message = document.createElement('p');
+            message.className = 'chat-empty-state';
+            message.textContent = 'Could not load this project channel.';
+            loungeProjectChannelPanel.replaceChildren(message);
+            if (error instanceof ApiFailure && error.status === 401)
+                showSignedOut();
+            else
+                report(error instanceof Error ? error.message : 'Could not load project chat.', true);
+        });
+    },
+    onUnauthorized: () => showSignedOut(),
+    report,
+    realtime: realtimeTransport,
+});
 const chatMessageNavigationUi = initChatMessageNavigationUi({
     getMessageList: activeChatMessageList,
     getSelectedMessageId: () => selectedChatMessageId,
     setSelectedMessageId: (id) => { selectedChatMessageId = id; },
     setFollowLatest: (followLatest) => {
-        if (loungeView.hidden)
+        if (isProjectChatActive())
             projectChatUi.setFollowLatest(followLatest);
         else
             loungeChatUi.setFollowLatest(followLatest);
@@ -725,6 +777,7 @@ function showSignedOut() {
     workspacePickerUi.resetPendingSwitch();
     projectChatUi.stop();
     loungeChatUi.stop();
+    loungeChannelsUi.stop();
     loungePresenceUi.reset();
     if (clientSummaryUi.dialog.open)
         clientSummaryUi.close();
@@ -763,6 +816,7 @@ function showSignedIn(user) {
     activeProject = null;
     projectChatVisible = true;
     loungeChatUi.stop();
+    loungeChannelsUi.stop();
     loungePresenceUi.reset();
     activeUser = user;
     workspacePickerUi.setGuestVisible(user.role === 'guest');
@@ -833,6 +887,8 @@ function showWorkspaceView(view) {
     }
     if (view !== 'lounge')
         loungeChatUi.stop();
+    if (view !== 'lounge')
+        loungeChannelsUi.stop();
     if (view !== 'project') {
         if (activeProject !== null)
             projectReturnFocusId = activeProject.id;
@@ -950,6 +1006,7 @@ function goToLounge() {
     showWorkspaceView('lounge');
     loungeHeading.focus();
     loungeChatUi.load();
+    loungeChannelsUi.load();
 }
 function goBackWorkspaceView() {
     const currentLocation = currentWorkspaceLocation();
@@ -973,6 +1030,7 @@ function goBackWorkspaceView() {
         showWorkspaceView('lounge');
         loungeHeading.focus();
         void loungeChatUi.load();
+        loungeChannelsUi.load();
     }
     else if (previousLocation?.view === 'admin') {
         showWorkspaceView('admin');
@@ -1081,16 +1139,19 @@ function latestChatIssueButton() {
     return messages.at(-1)?.querySelector('.chat-create-issue-button:not(:disabled)') ?? null;
 }
 function activeChatMessageList() {
-    return loungeView.hidden ? projectChatUi.messageList() : loungeMessageList;
+    return isProjectChatActive() ? projectChatUi.messageList() : loungeMessageList;
 }
 function activeChatMessagesById() {
-    return loungeView.hidden ? projectChatUi.messagesById() : loungeChatUi.messagesById();
+    return isProjectChatActive() ? projectChatUi.messagesById() : loungeChatUi.messagesById();
 }
 function focusActiveChatComposer() {
-    if (loungeView.hidden)
+    if (isProjectChatActive())
         projectChatUi.focusComposer();
     else
         loungeChatUi.focusComposer();
+}
+function isProjectChatActive() {
+    return loungeView.hidden || loungeChannelsUi.selectedProjectId() !== null;
 }
 function chatMessageElements() {
     return chatMessageNavigationUi.messages();
@@ -1141,7 +1202,7 @@ function replyToSelectedChatMessage() {
     const message = activeChatMessagesById().get(selectedChatMessageId);
     if (message === undefined)
         return;
-    if (loungeView.hidden)
+    if (isProjectChatActive())
         projectChatUi.setReplyParent(message);
     else
         loungeChatUi.setReplyParent(message);
@@ -1227,7 +1288,7 @@ function shortcutContext(target) {
             && target.closest('.chat-message') !== null,
         hasSelectedChatMessage: selectedChatMessageId !== null && selectedChatMessageId > 0
             && activeChatMessagesById().has(selectedChatMessageId),
-        canCreateIssueFromChatMessage: loungeView.hidden,
+        canCreateIssueFromChatMessage: !projectView.hidden,
         issueDiscussionMessagesFocused: issueDiscussionUi.isMessageTarget(target),
         hasSelectedIssueDiscussionMessage: issueDiscussionUi.hasSelectedMessage(),
         issueGroupFocused: target instanceof HTMLElement && target.closest('.issue-group > summary') !== null,
@@ -1239,7 +1300,8 @@ function shortcutContext(target) {
         canDismiss: commandPaletteUi.isPaletteOpen() || commandPaletteUi.isShortcutHelpOpen() || (!workspacePanel.hidden && (workspacePickerUi.hasPendingSwitch()
             || (!projectView.hidden && (!issueDetailView.hidden || !issueDetailEditForm.hidden
                 || issueQuickAddEscapePending || projectChatUi.hasReplyParent()))
-            || (!loungeView.hidden && loungeChatUi.hasReplyParent())
+            || (isProjectChatActive() && projectChatUi.hasReplyParent())
+            || (!isProjectChatActive() && !loungeView.hidden && loungeChatUi.hasReplyParent())
             || (!projectsView.hidden && !projectFormPanel.hidden)
             || !projectView.hidden || !roadmapView.hidden || !inboxView.hidden || !loungeView.hidden || !adminView.hidden)),
     };
@@ -1575,10 +1637,10 @@ function dismissCurrentView() {
         && (issueQuickAddEscapePending || issueForm.classList.contains('is-active'))) {
         cancelIssueQuickAdd();
     }
-    else if (!workspacePanel.hidden && !loungeView.hidden && loungeChatUi.hasReplyParent()) {
+    else if (!workspacePanel.hidden && !isProjectChatActive() && !loungeView.hidden && loungeChatUi.hasReplyParent()) {
         loungeChatUi.clearReplyParent();
     }
-    else if (!workspacePanel.hidden && !projectView.hidden && projectChatUi.hasReplyParent()) {
+    else if (!workspacePanel.hidden && isProjectChatActive() && projectChatUi.hasReplyParent()) {
         projectChatUi.clearReplyParent();
     }
     else if (!workspacePanel.hidden && (!projectView.hidden || !inboxView.hidden || !adminView.hidden)) {
@@ -1741,7 +1803,10 @@ function blurTextInput() {
             target.focus();
     }
     else {
-        projectChatColumn.querySelector('.chat-heading')?.focus();
+        const heading = projectView.hidden
+            ? loungeProjectChannelPanel.querySelector('.chat-heading')
+            : projectChatColumn.querySelector('.chat-heading');
+        heading?.focus();
     }
 }
 function executeShortcut(action) {

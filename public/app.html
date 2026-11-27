@@ -14,8 +14,8 @@
     <link rel="icon" href="./assets/icons/tangent-icon.svg" type="image/svg+xml">
     <link rel="icon" href="./assets/icons/tangent-32.png" sizes="32x32" type="image/png">
     <link rel="stylesheet" href="./assets/tokens.css">
-    <link rel="stylesheet" href="./assets/app.css?v=3838fb969a4a">
-    <script type="module" src="./assets/app.js?v=25464cda2af9"></script>
+    <link rel="stylesheet" href="./assets/app.css?v=cbd616d4e971">
+    <script type="module" src="./assets/app.js?v=86d4ea78978c"></script>
   </head>
   <body>
     <section id="login-shell" class="login-shell">
@@ -233,7 +233,11 @@
                 <p id="lounge-presence" class="lounge-presence" role="status" aria-live="polite">Checking who’s here…</p>
               </div>
             </header>
-            <section class="lounge-chat-panel" aria-label="Lounge chat">
+            <nav id="lounge-channel-links" class="lounge-channel-links" aria-label="Lounge channels">
+              <a id="lounge-general-channel-link" class="lounge-channel-link is-active" href="#lounge-general-channel-panel" aria-current="page"><span class="lounge-channel-link-title"><span aria-hidden="true">#</span>General</span></a>
+            </nav>
+            <section id="lounge-general-channel-panel" class="lounge-chat-panel" aria-labelledby="lounge-general-channel-heading">
+              <h3 id="lounge-general-channel-heading" class="chat-heading" tabindex="-1"><span class="chat-channel-name"><span class="chat-channel-hash" aria-hidden="true">#</span><span>General</span></span></h3>
               <div id="lounge-message-list" class="chat-message-list lounge-message-list" aria-live="polite">
                 <p id="lounge-empty-state" class="chat-empty-state" role="status" aria-live="polite">Loading messages…</p>
               </div>
@@ -250,6 +254,7 @@
                 </div>
               </form>
             </section>
+            <section id="lounge-project-channel-panel" class="lounge-chat-panel lounge-project-channel-panel" aria-label="Project channel" hidden></section>
           </section>
 
           <section id="project-view" class="workspace-view project-view" hidden aria-live="polite">

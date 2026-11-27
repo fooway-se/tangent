@@ -18,7 +18,7 @@ import type { ChatEvent, ChatMessage, Member, Project, User } from './types.js';
 const PROJECT_PRESENCE_INTERVAL_MS = 15_000;
 
 export interface ProjectChatUiController {
-  create(projectId: number): HTMLElement;
+  create(projectId: number, context?: ProjectChatContext): HTMLElement;
   stop(): void;
   resume(): void;
   activeProjectId(): number | null;
@@ -33,6 +33,12 @@ export interface ProjectChatUiController {
   appendMessage(message: ChatMessage, scrollToBottom?: boolean): void;
   setReadOnly(readOnly: boolean): void;
   dispose(): void;
+}
+
+export interface ProjectChatContext {
+  project: Project;
+  members: Member[];
+  allowIssueActions?: boolean;
 }
 
 export function initProjectChatUi(options: {
@@ -60,6 +66,9 @@ export function initProjectChatUi(options: {
   const fetcher = options.fetcher ?? fetch;
   const pollEvents = options.pollEvents ?? pollProjectChatEvents;
   let activeId: number | null = null;
+  let chatProject: Project | null = null;
+  let chatMembers: Member[] = [];
+  let issueActionsEnabled = true;
   let pollTimer: number | null = null;
   const eventFeed = new ChatEventFeed();
   let etag: string | null = null;
@@ -85,8 +94,12 @@ export function initProjectChatUi(options: {
   let replyParent: { id: number; name: string; body: string } | null = null;
 
   function isReadOnly(): boolean {
-    const status = options.getProject()?.status;
+    const status = (chatProject ?? options.getProject())?.status;
     return status === 'completed' || status === 'archived';
+  }
+
+  function currentProject(): Project | null {
+    return chatProject ?? options.getProject();
   }
 
   function activeProjectId(): number | null {
@@ -100,6 +113,9 @@ export function initProjectChatUi(options: {
   function stop(): void {
     stopPresencePolling();
     activeId = null;
+    chatProject = null;
+    chatMembers = [];
+    issueActionsEnabled = true;
     if (pollTimer !== null) window.clearTimeout(pollTimer);
     pollTimer = null;
     messageListElement = null;
@@ -311,9 +327,10 @@ export function initProjectChatUi(options: {
     createIssue.type = 'button';
     createIssue.textContent = 'Create issue';
     createIssue.disabled = isReadOnly();
+    createIssue.hidden = !issueActionsEnabled;
     createIssue.addEventListener('click', () => {
       options.selectMessage(message.id, false);
-      if (activeId === null || options.getProject()?.id !== activeId) return;
+      if (activeId === null || currentProject()?.id !== activeId || !issueActionsEnabled) return;
       options.onCreateIssue(message, createIssue, activeId);
     });
     const actions = doc.createElement('div');
@@ -413,12 +430,12 @@ export function initProjectChatUi(options: {
 
   async function focusMessageById(messageId: number): Promise<void> {
     const projectId = activeId;
-    if (projectId === null || options.getProject()?.id !== projectId || !Number.isSafeInteger(messageId) || messageId < 1) return;
+    if (projectId === null || currentProject()?.id !== projectId || !Number.isSafeInteger(messageId) || messageId < 1) return;
     let sourceMessage = messageListElement?.querySelector<HTMLElement>(`.chat-message[data-message-id="${messageId}"]`) ?? null;
     if (sourceMessage === null) {
       try {
         const result = await request<{ messages: ChatMessage[] }>(`/projects/${projectId}/messages?since=${messageId - 1}`);
-        if (options.getProject()?.id !== projectId || activeId !== projectId) return;
+        if (currentProject()?.id !== projectId || activeId !== projectId) return;
         for (const message of result.messages) appendMessage(message);
         sourceMessage = messageListElement?.querySelector<HTMLElement>(`.chat-message[data-message-id="${messageId}"]`) ?? null;
       } catch (error) {
@@ -496,7 +513,7 @@ export function initProjectChatUi(options: {
       hideMentionSuggestions();
       return;
     }
-    const members = options.getMembers();
+    const members = chatMembers;
     const matches = filterMentionMembers(members, query.query, options.getUser()?.id ?? null);
     if (matches.length === 0) {
       mentionQuery = query;
@@ -577,8 +594,16 @@ export function initProjectChatUi(options: {
     );
   }
 
-  function create(projectId: number): HTMLElement {
-    stopPresencePolling();
+  function create(projectId: number, context?: ProjectChatContext): HTMLElement {
+    if (activeId === null) stopPresencePolling();
+    else stop();
+    const project = context?.project ?? options.getProject();
+    if (project === null || project.id !== projectId) {
+      throw new Error('The project chat context does not match the selected project.');
+    }
+    chatProject = project;
+    chatMembers = context?.members ?? options.getMembers();
+    issueActionsEnabled = context?.allowIssueActions ?? true;
     const section = doc.createElement('section');
     section.className = 'project-chat';
     const heading = doc.createElement('h3');
@@ -590,10 +615,10 @@ export function initProjectChatUi(options: {
     channelHash.className = 'chat-channel-hash';
     channelHash.textContent = '#';
     const channelSlug = doc.createElement('span');
-    channelSlug.textContent = options.getProject()?.slug ?? 'project';
+    channelSlug.textContent = project.slug;
     channelName.append(channelHash, channelSlug);
     const memberCount = doc.createElement('span');
-    const members = options.getMembers();
+    const members = chatMembers;
     memberCount.className = 'chat-members-count';
     memberCount.textContent = `${members.length} ${members.length === 1 ? 'member' : 'members'}`;
     const activity = doc.createElement('span');
@@ -652,7 +677,7 @@ export function initProjectChatUi(options: {
     input.maxLength = 10_000;
     input.required = true;
     input.disabled = isReadOnly();
-    input.placeholder = `Message #${options.getProject()?.slug ?? 'project'}…`;
+    input.placeholder = `Message #${project.slug}…`;
     input.setAttribute('aria-label', 'Message');
     input.setAttribute('aria-autocomplete', 'list');
     input.setAttribute('aria-controls', mentionList.id);

@@ -26,6 +26,7 @@ import { initProjectNotesUi } from './project-notes-ui.js';
 import { initMilestoneUi } from './milestone-ui.js';
 import { initLoungePresence } from './lounge-presence.js';
 import { initLoungeChatUi } from './lounge-chat-ui.js';
+import { initLoungeChannelsUi } from './lounge-channels-ui.js';
 import { initWorkspaceAdminUi } from './workspace-admin-ui.js';
 import { applyPresenceState } from './presence-indicator.js';
 import { initProjectChatUi } from './project-chat-ui.js';
@@ -100,6 +101,7 @@ const {
   },
   lounge: {
     loungeNavButton, loungeView, loungeHeading, loungeMessageList,
+    loungeChannelLinks, loungeGeneralChannelLink, loungeGeneralChannelPanel, loungeProjectChannelPanel,
   },
   shortcuts: {
     toggleProjectFormButton, keyboardHints, goPrefixHint, goPrefixNavigationOptions, goPrefixWorkspaceOption, goPrefixProjectOptions,
@@ -691,12 +693,60 @@ const projectChatUi = initProjectChatUi({
   onPresenceChange: (state) => applyPresenceState(topbarPresence, state),
 });
 
+let loungeProjectLoadVersion = 0;
+const loungeChannelsUi = initLoungeChannelsUi({
+  links: loungeChannelLinks,
+  generalLink: loungeGeneralChannelLink,
+  generalPanel: loungeGeneralChannelPanel,
+  projectPanel: loungeProjectChannelPanel,
+  isVisible: () => !loungeView.hidden,
+  isDocumentHidden: () => document.hidden,
+  getWorkspaceId: () => activeUser?.workspace_id ?? null,
+  getUserId: () => activeUser?.id ?? null,
+  onGeneralSelected: () => {
+    loungeProjectLoadVersion += 1;
+    projectChatUi.stop();
+    loungeProjectChannelPanel.replaceChildren();
+  },
+  onProjectSelected: (project) => {
+    const requestVersion = ++loungeProjectLoadVersion;
+    projectChatUi.stop();
+    loungeProjectChannelPanel.replaceChildren();
+    const loading = document.createElement('p');
+    loading.className = 'chat-empty-state';
+    loading.setAttribute('role', 'status');
+    loading.textContent = `Loading #${project.slug}…`;
+    loungeProjectChannelPanel.append(loading);
+    void api<{ project: Project; members: Member[] }>(`/projects/${project.id}`).then((result) => {
+      if (requestVersion !== loungeProjectLoadVersion
+        || loungeChannelsUi.selectedProjectId() !== project.id || loungeView.hidden) return;
+      loungeProjectChannelPanel.replaceChildren(projectChatUi.create(project.id, {
+        project: result.project,
+        members: result.members,
+        allowIssueActions: false,
+      }));
+    }).catch((error: unknown) => {
+      if (requestVersion !== loungeProjectLoadVersion
+        || loungeChannelsUi.selectedProjectId() !== project.id || loungeView.hidden) return;
+      const message = document.createElement('p');
+      message.className = 'chat-empty-state';
+      message.textContent = 'Could not load this project channel.';
+      loungeProjectChannelPanel.replaceChildren(message);
+      if (error instanceof ApiFailure && error.status === 401) showSignedOut();
+      else report(error instanceof Error ? error.message : 'Could not load project chat.', true);
+    });
+  },
+  onUnauthorized: () => showSignedOut(),
+  report,
+  realtime: realtimeTransport,
+});
+
 const chatMessageNavigationUi = initChatMessageNavigationUi({
   getMessageList: activeChatMessageList,
   getSelectedMessageId: () => selectedChatMessageId,
   setSelectedMessageId: (id) => { selectedChatMessageId = id; },
   setFollowLatest: (followLatest) => {
-    if (loungeView.hidden) projectChatUi.setFollowLatest(followLatest);
+    if (isProjectChatActive()) projectChatUi.setFollowLatest(followLatest);
     else loungeChatUi.setFollowLatest(followLatest);
   },
   focusComposer: focusActiveChatComposer,
@@ -814,6 +864,7 @@ function showSignedOut(): void {
   workspacePickerUi.resetPendingSwitch();
   projectChatUi.stop();
   loungeChatUi.stop();
+  loungeChannelsUi.stop();
   loungePresenceUi.reset();
   if (clientSummaryUi.dialog.open) clientSummaryUi.close();
   activeUser = null;
@@ -851,6 +902,7 @@ function showSignedIn(user: User): void {
   activeProject = null;
   projectChatVisible = true;
   loungeChatUi.stop();
+  loungeChannelsUi.stop();
   loungePresenceUi.reset();
   activeUser = user;
   workspacePickerUi.setGuestVisible(user.role === 'guest');
@@ -925,6 +977,7 @@ function showWorkspaceView(view: 'projects' | 'roadmap' | 'inbox' | 'lounge' | '
     inboxUi.clearForNavigation();
   }
   if (view !== 'lounge') loungeChatUi.stop();
+  if (view !== 'lounge') loungeChannelsUi.stop();
   if (view !== 'project') {
     if (activeProject !== null) projectReturnFocusId = activeProject.id;
     projectChatUi.stop();
@@ -1041,6 +1094,7 @@ function goToLounge(): void {
   showWorkspaceView('lounge');
   loungeHeading.focus();
   loungeChatUi.load();
+  loungeChannelsUi.load();
 }
 
 function goBackWorkspaceView(): void {
@@ -1061,6 +1115,7 @@ function goBackWorkspaceView(): void {
     showWorkspaceView('lounge');
     loungeHeading.focus();
     void loungeChatUi.load();
+    loungeChannelsUi.load();
   } else if (previousLocation?.view === 'admin') {
     showWorkspaceView('admin');
     adminHeading.focus();
@@ -1182,16 +1237,20 @@ function latestChatIssueButton(): HTMLButtonElement | null {
 }
 
 function activeChatMessageList(): HTMLElement | null {
-  return loungeView.hidden ? projectChatUi.messageList() : loungeMessageList;
+  return isProjectChatActive() ? projectChatUi.messageList() : loungeMessageList;
 }
 
 function activeChatMessagesById(): Map<number, ChatMessage> {
-  return loungeView.hidden ? projectChatUi.messagesById() : loungeChatUi.messagesById();
+  return isProjectChatActive() ? projectChatUi.messagesById() : loungeChatUi.messagesById();
 }
 
 function focusActiveChatComposer(): void {
-  if (loungeView.hidden) projectChatUi.focusComposer();
+  if (isProjectChatActive()) projectChatUi.focusComposer();
   else loungeChatUi.focusComposer();
+}
+
+function isProjectChatActive(): boolean {
+  return loungeView.hidden || loungeChannelsUi.selectedProjectId() !== null;
 }
 
 function chatMessageElements(): HTMLElement[] {
@@ -1247,7 +1306,7 @@ function replyToSelectedChatMessage(): void {
   if (selectedChatMessageId === null || selectedChatMessageId <= 0) return;
   const message = activeChatMessagesById().get(selectedChatMessageId);
   if (message === undefined) return;
-  if (loungeView.hidden) projectChatUi.setReplyParent(message);
+  if (isProjectChatActive()) projectChatUi.setReplyParent(message);
   else loungeChatUi.setReplyParent(message);
 }
 
@@ -1331,7 +1390,7 @@ function shortcutContext(target: EventTarget | null) {
       && target.closest('.chat-message') !== null,
     hasSelectedChatMessage: selectedChatMessageId !== null && selectedChatMessageId > 0
       && activeChatMessagesById().has(selectedChatMessageId),
-    canCreateIssueFromChatMessage: loungeView.hidden,
+    canCreateIssueFromChatMessage: !projectView.hidden,
     issueDiscussionMessagesFocused: issueDiscussionUi.isMessageTarget(target),
     hasSelectedIssueDiscussionMessage: issueDiscussionUi.hasSelectedMessage(),
     issueGroupFocused: target instanceof HTMLElement && target.closest('.issue-group > summary') !== null,
@@ -1344,7 +1403,8 @@ function shortcutContext(target: EventTarget | null) {
       workspacePickerUi.hasPendingSwitch()
       || (!projectView.hidden && (!issueDetailView.hidden || !issueDetailEditForm.hidden
         || issueQuickAddEscapePending || projectChatUi.hasReplyParent()))
-      || (!loungeView.hidden && loungeChatUi.hasReplyParent())
+      || (isProjectChatActive() && projectChatUi.hasReplyParent())
+      || (!isProjectChatActive() && !loungeView.hidden && loungeChatUi.hasReplyParent())
       || (!projectsView.hidden && !projectFormPanel.hidden)
       || !projectView.hidden || !roadmapView.hidden || !inboxView.hidden || !loungeView.hidden || !adminView.hidden
     )),
@@ -1660,9 +1720,9 @@ function dismissCurrentView(): void {
   } else if (!workspacePanel.hidden && !projectView.hidden
     && (issueQuickAddEscapePending || issueForm.classList.contains('is-active'))) {
     cancelIssueQuickAdd();
-  } else if (!workspacePanel.hidden && !loungeView.hidden && loungeChatUi.hasReplyParent()) {
+  } else if (!workspacePanel.hidden && !isProjectChatActive() && !loungeView.hidden && loungeChatUi.hasReplyParent()) {
     loungeChatUi.clearReplyParent();
-  } else if (!workspacePanel.hidden && !projectView.hidden && projectChatUi.hasReplyParent()) {
+  } else if (!workspacePanel.hidden && isProjectChatActive() && projectChatUi.hasReplyParent()) {
     projectChatUi.clearReplyParent();
   } else if (!workspacePanel.hidden && (!projectView.hidden || !inboxView.hidden || !adminView.hidden)) {
     goBackWorkspaceView();
@@ -1822,7 +1882,10 @@ function blurTextInput(): void {
     if (messageId > 0) selectChatMessage(messageId);
     else target.focus();
   } else {
-    projectChatColumn.querySelector<HTMLElement>('.chat-heading')?.focus();
+    const heading = projectView.hidden
+      ? loungeProjectChannelPanel.querySelector<HTMLElement>('.chat-heading')
+      : projectChatColumn.querySelector<HTMLElement>('.chat-heading');
+    heading?.focus();
   }
 }
 
