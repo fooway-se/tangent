@@ -32,6 +32,21 @@ final class WorkspaceService
         return $this->workspaces->listForAccount($user->accountId);
     }
 
+    public function ids(): array
+    {
+        return $this->workspaces->ids();
+    }
+
+    public function name(int $workspaceId): ?string
+    {
+        return $this->workspaces->name($workspaceId);
+    }
+
+    public function activeAdmins(int $workspaceId): array
+    {
+        return $this->workspaces->activeAdmins($workspaceId);
+    }
+
     public function create(AuthenticatedUser $user, array $body): array
     {
         if (!Permissions::can($user, 'workspaces.create')) {

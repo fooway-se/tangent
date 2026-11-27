@@ -1,6 +1,6 @@
 # Email notification summaries
 
-**Status:** Proposed MVP specification. Defaults below are recommendations based on the discussion draft; implementation has not started.
+**Status:** Implemented MVP. The recommended defaults below are in effect.
 
 ## Goal
 
@@ -85,6 +85,6 @@ Help workspace admins notice important project situations that still need attent
 8. Failed delivery remains retryable, and a delayed cron run sends at most one current summary rather than multiple historical emails.
 9. Only opted-in, active workspace admins receive email. Guests, developers, inactive members, and former admins do not.
 
-## Decisions proposed for approval
+## Decisions in effect
 
-The recommended MVP includes unanswered customer conversations and blocked issues; uses 24-hour and 72-hour elapsed-time thresholds; repeats unresolved items with their continuing age; excludes invitation acceptance; and sends at 09:00 in each admin's selected time zone. These defaults replace the unresolved candidate choices in the discussion draft. Change any of them before implementation if they do not fit the intended product behavior.
+The MVP includes unanswered customer conversations and blocked issues; uses 24-hour and 72-hour elapsed-time thresholds; repeats unresolved items with their continuing age; excludes invitation acceptance; and sends at 09:00 in each admin's selected time zone. These defaults resolve the candidate choices in the discussion draft.

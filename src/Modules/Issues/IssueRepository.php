@@ -14,12 +14,40 @@ final class IssueRepository
     {
     }
 
+    public function blockedForNotifications(int $workspaceId, string $cutoff): array
+    {
+        $statement = $this->pdo->prepare(
+            "SELECT issues.id, issues.project_id, issues.title, issues.blocked_at, issues.blocking_reason,
+                    projects.name AS project_name
+             FROM issues
+             INNER JOIN projects ON projects.workspace_id = issues.workspace_id AND projects.id = issues.project_id
+             WHERE issues.workspace_id = :workspace_id AND projects.workspace_id = :project_workspace_id
+               AND projects.status <> 'archived' AND issues.is_blocked = 1
+               AND issues.blocked_at IS NOT NULL AND issues.blocked_at <= :cutoff
+               AND issues.status NOT IN ('done', 'cancelled') AND issues.deleted_at IS NULL
+             ORDER BY projects.name, issues.blocked_at, issues.id"
+        );
+        $statement->execute([
+            'workspace_id' => $workspaceId,
+            'project_workspace_id' => $workspaceId,
+            'cutoff' => $cutoff,
+        ]);
+        return array_map(static fn (array $row): array => [
+            'id' => (int) $row['id'],
+            'project_id' => (int) $row['project_id'],
+            'project_name' => (string) $row['project_name'],
+            'title' => (string) $row['title'],
+            'blocked_at' => (string) $row['blocked_at'],
+            'blocking_reason' => $row['blocking_reason'] === null ? null : (string) $row['blocking_reason'],
+        ], $statement->fetchAll(PDO::FETCH_ASSOC));
+    }
+
     public function listForProject(int $workspaceId, int $projectId): array
     {
         $statement = $this->pdo->prepare(
             "SELECT id, workspace_id, project_id, title, description, context, expected_outcome, acceptance_criteria,
                     issue_type AS type, assignee_id, status, priority, due_date, created_by,
-                    source_channel_id, source_message_id, is_shared, is_ongoing, milestone_id, sort_order, approval_requested_at, approved_by, approved_at,
+                    source_channel_id, source_message_id, is_shared, is_ongoing, is_blocked, blocked_at, blocking_reason, milestone_id, sort_order, approval_requested_at, approved_by, approved_at,
                     created_at, updated_at, deleted_at,
                     (SELECT COUNT(*) FROM issue_discussion_messages discussion
                      WHERE discussion.workspace_id = issues.workspace_id AND discussion.issue_id = issues.id) AS discussion_count
@@ -120,7 +148,7 @@ final class IssueRepository
         $statement = $this->pdo->prepare(
             'SELECT id, workspace_id, project_id, title, description, context, expected_outcome, acceptance_criteria,
                     issue_type AS type, assignee_id, status, priority, due_date, created_by,
-                    source_channel_id, source_message_id, is_shared, is_ongoing, milestone_id, sort_order, approval_requested_at, approved_by, approved_at,
+                    source_channel_id, source_message_id, is_shared, is_ongoing, is_blocked, blocked_at, blocking_reason, milestone_id, sort_order, approval_requested_at, approved_by, approved_at,
                     created_at, updated_at, deleted_at,
                     (SELECT COUNT(*) FROM issue_discussion_messages discussion
                      WHERE discussion.workspace_id = issues.workspace_id AND discussion.issue_id = issues.id) AS discussion_count
@@ -224,7 +252,7 @@ final class IssueRepository
         $statement = $this->pdo->prepare(
             'SELECT id, workspace_id, project_id, title, description, context, expected_outcome, acceptance_criteria,
                     issue_type AS type, assignee_id, status, priority, due_date, created_by,
-                    source_channel_id, source_message_id, is_shared, is_ongoing, milestone_id, sort_order, approval_requested_at, approved_by, approved_at,
+                    source_channel_id, source_message_id, is_shared, is_ongoing, is_blocked, blocked_at, blocking_reason, milestone_id, sort_order, approval_requested_at, approved_by, approved_at,
                     created_at, updated_at, deleted_at,
                     (SELECT COUNT(*) FROM issue_discussion_messages discussion
                      WHERE discussion.workspace_id = issues.workspace_id AND discussion.issue_id = issues.id) AS discussion_count
@@ -277,7 +305,7 @@ final class IssueRepository
         $statement = $this->pdo->prepare(
             'SELECT id, workspace_id, project_id, title, description, context, expected_outcome, acceptance_criteria,
                     issue_type AS type, assignee_id, status, priority, due_date, created_by,
-                    source_channel_id, source_message_id, is_shared, is_ongoing, milestone_id, sort_order, approval_requested_at, approved_by, approved_at,
+                    source_channel_id, source_message_id, is_shared, is_ongoing, is_blocked, blocked_at, blocking_reason, milestone_id, sort_order, approval_requested_at, approved_by, approved_at,
                     created_at, updated_at, deleted_at,
                     (SELECT COUNT(*) FROM issue_discussion_messages discussion
                      WHERE discussion.workspace_id = issues.workspace_id AND discussion.issue_id = issues.id) AS discussion_count
@@ -295,7 +323,9 @@ final class IssueRepository
              SET title = :title, description = :description, context = :context, expected_outcome = :expected_outcome,
                  acceptance_criteria = :acceptance_criteria, issue_type = :type, assignee_id = :assignee_id,
                  status = :status, priority = :priority, due_date = :due_date,
-                 is_shared = :is_shared, is_ongoing = :is_ongoing, milestone_id = :milestone_id, sort_order = :sort_order,
+                 is_shared = :is_shared, is_ongoing = :is_ongoing, is_blocked = :is_blocked,
+                 blocked_at = :blocked_at, blocking_reason = :blocking_reason,
+                 milestone_id = :milestone_id, sort_order = :sort_order,
                  approval_requested_at = :approval_requested_at, approved_by = :approved_by, approved_at = :approved_at
              WHERE workspace_id = :workspace_id AND id = :id AND deleted_at IS NULL'
         );
@@ -314,6 +344,9 @@ final class IssueRepository
             'due_date' => $issue['due_date'],
             'is_shared' => $issue['is_shared'] ? 1 : 0,
             'is_ongoing' => $issue['is_ongoing'] ? 1 : 0,
+            'is_blocked' => $issue['is_blocked'] ? 1 : 0,
+            'blocked_at' => $issue['blocked_at'],
+            'blocking_reason' => $issue['blocking_reason'],
             'milestone_id' => $issue['milestone_id'],
             'sort_order' => $issue['sort_order'],
             'approval_requested_at' => $issue['approval_requested_at'],
@@ -836,6 +869,9 @@ final class IssueRepository
         $issue['assignee_id'] = $issue['assignee_id'] === null ? null : (int) $issue['assignee_id'];
         $issue['is_shared'] = (bool) $issue['is_shared'];
         $issue['is_ongoing'] = (bool) ($issue['is_ongoing'] ?? false);
+        $issue['is_blocked'] = (bool) ($issue['is_blocked'] ?? false);
+        $issue['blocked_at'] = ($issue['blocked_at'] ?? null) === null ? null : (string) $issue['blocked_at'];
+        $issue['blocking_reason'] = ($issue['blocking_reason'] ?? null) === null ? null : (string) $issue['blocking_reason'];
         $issue['milestone_id'] = $issue['milestone_id'] === null ? null : (int) $issue['milestone_id'];
         $issue['priority'] = (string) $issue['priority'];
         $issue['due_date'] = $issue['due_date'] === null ? null : (string) $issue['due_date'];

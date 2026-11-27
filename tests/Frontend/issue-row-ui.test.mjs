@@ -75,6 +75,8 @@ const issue = {
   source_message_id: 19,
   is_shared: true,
   is_ongoing: true,
+  is_blocked: true,
+  blocking_reason: 'Waiting on review',
   milestone_name: 'Winter release',
   discussion_count: 2,
 };
@@ -93,6 +95,8 @@ test('issue row renders metadata, accessibility labels, and shared state', () =>
   assert.equal(findByClass(row, 'issue-priority-tag').textContent, 'HIGH priority');
   assert.equal(findByClass(row, 'issue-due-date-tag').textContent, 'Overdue formatted 2026-11-20');
   assert.equal(findByClass(row, 'issue-ongoing-tag').textContent, 'Ongoing');
+  assert.equal(findByClass(row, 'issue-blocked-tag').textContent, 'Blocked');
+  assert.equal(findByClass(row, 'issue-blocked-tag').title, 'Waiting on review');
   assert.equal(findByClass(row, 'issue-milestone-tag').textContent, 'Winter release');
   assert.equal(findByClass(row, 'issue-assignee-label').textContent, 'Member 3');
   assert.equal(findByClass(row, 'issue-source').textContent, 'From chat thread');

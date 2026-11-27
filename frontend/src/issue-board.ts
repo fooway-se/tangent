@@ -14,6 +14,7 @@ export interface BoardIssue {
   milestone_name?: string | null;
   milestone_due_date?: string | null;
   is_ongoing?: boolean;
+  is_blocked?: boolean;
   discussion_count?: number;
   sort_order?: number;
   created_at: string;

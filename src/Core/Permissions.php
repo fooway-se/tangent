@@ -37,6 +37,8 @@ final class Permissions
         return match ($action) {
             'users.list', 'users.create', 'users.manage_members', 'projects.create', 'projects.update', 'projects.manage_members', 'agents.manage'
                 => $user->role === 'admin',
+            'workspace.notifications.manage'
+                => $user->role === 'admin',
             'workspaces.create'
                 => $user->role === 'admin' && $user->accountId > 0,
             'workspaces.list', 'workspaces.switch'

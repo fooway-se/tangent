@@ -573,6 +573,7 @@ details[open] > .disclosure-summary::before { transform: rotate(90deg); }
 .issue-milestone-tag { max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
 .issue-type-tag { color: var(--screen-ink); }
 .issue-ongoing-tag { color: var(--accent); font-weight: 700; }
+.issue-blocked-tag { color: var(--danger); font-weight: 700; }
 .issue-priority-tag.is-high, .inbox-issue-status.is-doing { color: var(--accent); }
 .issue-priority-tag.is-urgent, .issue-due-date-tag.is-overdue { color: var(--danger); }
 .issue-status-button { display: flex; width: 108px; min-width: 108px; align-items: center; justify-content: space-between; border-color: var(--accent-edge); border-bottom-width: var(--key-depth); color: var(--accent-ink); background: var(--accent); box-shadow: inset 0 1px 0 var(--accent-shine); font: 700 12px var(--font-display); text-align: left; text-transform: capitalize; }

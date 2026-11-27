@@ -12,6 +12,36 @@ final class WorkspaceRepository
     {
     }
 
+    public function ids(): array
+    {
+        $statement = $this->pdo->query('SELECT id FROM workspaces ORDER BY id');
+        return array_map('intval', $statement->fetchAll(PDO::FETCH_COLUMN));
+    }
+
+    public function name(int $workspaceId): ?string
+    {
+        $statement = $this->pdo->prepare('SELECT name FROM workspaces WHERE id = :workspace_id LIMIT 1');
+        $statement->execute(['workspace_id' => $workspaceId]);
+        $name = $statement->fetchColumn();
+        return $name === false ? null : (string) $name;
+    }
+
+    public function activeAdmins(int $workspaceId): array
+    {
+        $statement = $this->pdo->prepare(
+            "SELECT users.id, user_accounts.email
+             FROM users
+             INNER JOIN user_accounts ON user_accounts.id = users.account_id
+             WHERE users.workspace_id = :workspace_id AND users.role = 'admin' AND users.is_active = 1
+             ORDER BY users.id"
+        );
+        $statement->execute(['workspace_id' => $workspaceId]);
+        return array_map(static fn (array $admin): array => [
+            'id' => (int) $admin['id'],
+            'email' => (string) $admin['email'],
+        ], $statement->fetchAll(PDO::FETCH_ASSOC));
+    }
+
     public function listForAccount(int $accountId): array
     {
         $statement = $this->pdo->prepare(

@@ -192,13 +192,16 @@ Guests see a separate, read-only project overview with limited actions. The proj
 
 ## 9. Workspace administration
 
-Workspace admins use **Workspace admin** to manage members, invitations, coding agents, and workspaces.
+Workspace admins use **Workspace admin** to manage members, invitations, coding agents, workspaces, and personal notification settings.
 
 - Create an invite, choose **Developer** or **Guest**, and send it. Tangent emails a single-use link to the invited address; the link expires after seven days. Guest invites require at least one project to be selected.
 - Use **Resend invite** to email a replacement link. This invalidates the previous link.
 - Manage existing members and guest project access from the Members area. An account can be a member of more than one workspace.
 - Use Agents to create coding-agent identities with access limited to selected active or paused projects and issue capabilities. The raw token appears once at creation or rotation; copy it to the agent's secret store before closing the dialog. The list shows each agent's grants and token activity. To change its grants, revoke the identity and create a replacement.
 - Use Workspaces to create a separate workspace for another client, then switch to it from the workspace picker.
+- Open **Notifications** to opt in to email summaries, choose Daily, Every other day, or Weekly, and set an IANA time zone. Summaries are scheduled for 09:00 in that zone and include unanswered guest conversations at least 24 hours old and issues blocked for at least 72 hours. Team replies, unblocking, terminal issue status, deletion, and archived projects clear the matching item. An unresolved item can appear in later summaries with its original waiting age. Each admin manages only their own subscription in the current workspace; subscriptions start opted out.
+
+In an issue's detail view, workspace members can mark the issue **Blocked** and optionally enter a short reason. Blocking is independent of the issue's workflow status. Unblocking clears the current blocked period and reason; marking it blocked again starts a new period.
 
 See [Coding agent access](AGENTS.md) for the available capabilities and REST API usage, and [MCP adapter setup](../tools/agent-mcp/README.md) for connecting a coding-agent host. The adapter's `list_projects` tool returns the project IDs and names granted to that agent, while `get_issue_prompt` returns the browser's copy-ready prompt from saved issue details and context.
 

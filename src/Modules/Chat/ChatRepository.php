@@ -14,6 +14,55 @@ final class ChatRepository
     {
     }
 
+    public function unansweredCustomerConversations(int $workspaceId, string $cutoff): array
+    {
+        $statement = $this->pdo->prepare(
+            "WITH RECURSIVE client_threads
+                (root_message_id, message_id, created_at, author_id, author_role, author_active, depth) AS (
+                SELECT root.id, root.id, root.created_at, root.author_id, author.role, author.is_active, 1
+                FROM messages root
+                INNER JOIN channels ON channels.workspace_id = root.workspace_id AND channels.id = root.channel_id
+                INNER JOIN projects ON projects.workspace_id = channels.workspace_id AND projects.id = channels.project_id
+                INNER JOIN users author ON author.workspace_id = root.workspace_id AND author.id = root.author_id
+                WHERE root.workspace_id = :workspace_id AND channels.channel_type = 'project'
+                  AND projects.status = 'active' AND root.parent_id IS NULL AND root.is_client_visible = 1
+                UNION ALL
+                SELECT thread.root_message_id, reply.id, reply.created_at, reply.author_id, author.role, author.is_active, thread.depth + 1
+                FROM client_threads thread
+                INNER JOIN messages reply
+                  ON reply.workspace_id = :reply_workspace_id AND reply.parent_id = thread.message_id
+                INNER JOIN users author ON author.workspace_id = reply.workspace_id AND author.id = reply.author_id
+                WHERE thread.depth < 32
+            ), ranked_threads AS (
+                SELECT root_message_id, message_id, created_at, author_role,
+                       ROW_NUMBER() OVER (PARTITION BY root_message_id ORDER BY created_at DESC, message_id DESC) AS position
+                FROM client_threads
+                WHERE author_role = 'guest' OR (author_active = 1 AND author_role IN ('admin', 'developer'))
+            )
+            SELECT projects.id AS project_id, projects.name AS project_name,
+                   ranked.root_message_id, ranked.created_at AS waiting_since
+            FROM ranked_threads ranked
+            INNER JOIN messages roots ON roots.workspace_id = :root_workspace_id AND roots.id = ranked.root_message_id
+            INNER JOIN channels ON channels.workspace_id = roots.workspace_id AND channels.id = roots.channel_id
+            INNER JOIN projects ON projects.workspace_id = channels.workspace_id AND projects.id = channels.project_id
+            WHERE ranked.position = 1 AND ranked.author_role = 'guest' AND ranked.created_at <= :cutoff
+              AND projects.status = 'active'
+            ORDER BY projects.name, ranked.created_at, ranked.root_message_id"
+        );
+        $statement->execute([
+            'workspace_id' => $workspaceId,
+            'reply_workspace_id' => $workspaceId,
+            'root_workspace_id' => $workspaceId,
+            'cutoff' => $cutoff,
+        ]);
+        return array_map(static fn (array $row): array => [
+            'project_id' => (int) $row['project_id'],
+            'project_name' => (string) $row['project_name'],
+            'root_message_id' => (int) $row['root_message_id'],
+            'waiting_since' => (string) $row['waiting_since'],
+        ], $statement->fetchAll(PDO::FETCH_ASSOC));
+    }
+
     public function createProjectChannel(int $workspaceId, int $projectId): int
     {
         $statement = $this->pdo->prepare(

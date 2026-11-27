@@ -8,6 +8,8 @@ export interface IssueDetailViewElements {
   issueDetailAssignee: HTMLElement;
   issueDetailMilestone: HTMLElement;
   issueDetailOngoingRow: HTMLElement;
+  issueDetailBlockedRow: HTMLElement;
+  issueDetailBlockingState: HTMLElement;
   issueDetailSharing: HTMLElement;
   issueDetailApproval: HTMLElement;
   issueDetailDescription: HTMLElement;
@@ -65,6 +67,8 @@ export function initIssueDetailView(options: IssueDetailViewOptions): {
     elements.issueDetailAssignee.textContent = options.issueAssigneeLabel(issue.assignee_id);
     elements.issueDetailMilestone.textContent = options.getMilestones().find((milestone) => milestone.id === issue.milestone_id)?.name ?? 'None';
     elements.issueDetailOngoingRow.hidden = !issue.is_ongoing;
+    elements.issueDetailBlockedRow.hidden = issue.is_blocked !== true;
+    elements.issueDetailBlockingState.textContent = issue.blocking_reason?.trim() || 'Blocked';
     elements.issueDetailSharing.textContent = issue.is_shared ? 'Shared' : 'Internal only';
     elements.issueDetailApproval.textContent = issue.approved_at !== null
       ? 'Approved'

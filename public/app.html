@@ -14,8 +14,8 @@
     <link rel="icon" href="./assets/icons/tangent-icon.svg" type="image/svg+xml">
     <link rel="icon" href="./assets/icons/tangent-32.png" sizes="32x32" type="image/png">
     <link rel="stylesheet" href="./assets/tokens-c18ae8eb4e3a.css">
-    <link rel="stylesheet" href="./assets/app-99228dee2dca.css">
-    <script type="module" src="./assets/app-0e4cbbdf87e6.js"></script>
+    <link rel="stylesheet" href="./assets/app-47ced24d87e9.css">
+    <script type="module" src="./assets/app-27ea8ef4eb47.js"></script>
   </head>
   <body>
     <section id="login-shell" class="login-shell">
@@ -488,6 +488,7 @@
                     <div><dt>Assignee</dt><dd id="issue-detail-assignee"></dd></div>
                     <div><dt>Milestone</dt><dd id="issue-detail-milestone"></dd></div>
                     <div id="issue-detail-ongoing-row" hidden><dt>Work pattern</dt><dd>Ongoing</dd></div>
+                    <div id="issue-detail-blocked-row" hidden><dt>Attention</dt><dd id="issue-detail-blocking-state"></dd></div>
                     <div><dt>Guests</dt><dd id="issue-detail-sharing"></dd></div>
                     <div><dt>Approval</dt><dd id="issue-detail-approval"></dd></div>
                   </dl>
@@ -575,6 +576,13 @@
                     Ongoing work
                   </label>
                   <label class="form-check-label">
+                    <input id="issue-detail-blocked-input" name="is_blocked" type="checkbox">
+                    Mark as blocked
+                  </label>
+                  <label>Blocking reason (optional)
+                    <input id="issue-detail-blocking-reason-input" name="blocking_reason" maxlength="500" disabled>
+                  </label>
+                  <label class="form-check-label">
                     <input id="issue-detail-shared-input" name="is_shared" type="checkbox">
                     Share this issue with the guest
                   </label>
@@ -625,6 +633,7 @@
               <button id="workspace-admin-invites-tab" class="project-tab" type="button" role="tab" aria-selected="false" aria-controls="workspace-admin-invites-panel" tabindex="-1">Invites</button>
               <button id="workspace-admin-agents-tab" class="project-tab" type="button" role="tab" aria-selected="false" aria-controls="workspace-admin-agents-panel" tabindex="-1">Agents</button>
               <button id="workspace-admin-workspaces-tab" class="project-tab" type="button" role="tab" aria-selected="false" aria-controls="workspace-admin-workspaces-panel" tabindex="-1">Workspaces</button>
+              <button id="workspace-admin-notifications-tab" class="project-tab" type="button" role="tab" aria-selected="false" aria-controls="workspace-admin-notifications-panel" tabindex="-1">Notifications</button>
             </nav>
             <section id="workspace-admin-members-panel" class="project-tab-view workspace-admin-tab-panel tab-panel-offset" role="tabpanel" tabindex="0" aria-labelledby="workspace-admin-members-tab">
               <article class="panel admin-panel">
@@ -706,6 +715,35 @@
                     <input name="name" maxlength="120" required>
                   </label>
                   <button class="button button-primary" type="submit">Create workspace</button>
+                </form>
+              </article>
+            </section>
+            <section id="workspace-admin-notifications-panel" class="project-tab-view workspace-admin-tab-panel tab-panel-offset" role="tabpanel" tabindex="0" hidden aria-labelledby="workspace-admin-notifications-tab">
+              <article class="panel admin-panel">
+                <h2>Email notification summaries</h2>
+                <p class="panel-description">Receive a short summary for unanswered customer conversations and long-running blockers in this workspace. Each admin manages their own subscription.</p>
+                <form id="workspace-notifications-form" class="form-stack">
+                  <label class="form-check-label">
+                    <input id="workspace-notifications-enabled" name="enabled" type="checkbox">
+                    Email me notification summaries
+                  </label>
+                  <label>Frequency
+                    <select id="workspace-notifications-frequency" name="frequency">
+                      <option value="daily">Daily</option>
+                      <option value="every_other_day">Every other day</option>
+                      <option value="weekly">Weekly</option>
+                    </select>
+                  </label>
+                  <label>Time zone
+                    <select id="workspace-notifications-time-zone" name="time_zone" required>
+                      <option value="UTC">UTC</option>
+                    </select>
+                  </label>
+                  <p class="panel-description">Choose a valid IANA time zone. Focus the list and type a city or region to jump to a match.</p>
+                  <p class="panel-description">Summaries are sent at 09:00 in this time zone. The first message arrives at the next scheduled time.</p>
+                  <div class="form-actions">
+                    <button id="workspace-notifications-save" class="button button-primary" type="submit">Save notification settings</button>
+                  </div>
                 </form>
               </article>
             </section>

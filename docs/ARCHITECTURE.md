@@ -13,6 +13,8 @@ This document is for contributors and AI agents. Follow it unless there is a goo
 - **Project chat presence is a separate heartbeat.** While the project page is visible, the client posts to `POST /api/v1/projects/{id}/presence` every 15 seconds. The server checks normal chat access and returns only whether a different user has checked in within 45 seconds; it never returns names or counts. Presence expires after 45 seconds, and rows older than a day are cleaned on the next heartbeat for that project.
 - **The workspace Lounge has one internal standalone General chat per workspace and presents accessible project chats as secondary channel links.** It uses the existing channel and message storage, is available to admins and developers, and does not create project inbox events. `@` autocomplete in General lists active workspace admins and developers; selected names are highlighted in messages but do not send notifications. Guests cannot access it. Project channels remain scoped to their projects; user-created channels and DMs are not part of the product.
 - **Issue lists use conditional reads** while a project issue view is open. `ETag`/`If-None-Match` avoids resending unchanged active and deleted issue collections; the frontend retains unchanged row elements and defers remote changes while issue controls are being edited. SSE refresh signals replace the recurring request when the stream is healthy.
+- **Email notification summaries are opt-in and workspace-scoped.** `src/Modules/EmailNotifications/` owns preferences, schedule calculation, delivery idempotency, and the hourly CLI runner. It calls the public Chat, Issues, and Workspaces APIs for eligible items and recipients; it does not query those modules' tables. Mail uses the existing plain-text `Mailer`. Notification deliveries store the scheduled slot and send time, never the rendered body or customer message text. The runner serializes invocations with a database advisory lock.
+- **Issue blocking is a marker independent of workflow status.** `is_blocked`, `blocked_at`, and the optional `blocking_reason` are updated through the existing issue API and rendered in the existing issue UI. A new blocking period starts when an issue changes from unblocked to blocked; unblocking clears the period and reason. Notification summaries use the issue marker without introducing another issue status.
 - **Open source and self-hostable.** Prefer simple over clever.
 
 ## Structure
@@ -27,6 +29,7 @@ src/Modules/Projects/
 src/Modules/Chat/
 src/Modules/Issues/
 src/Modules/Inbox/
+src/Modules/EmailNotifications/  workspace-scoped notification preferences and scheduled summaries
 src/Modules/Scratchpad/       one private workspace-scoped quick note per user
 src/Modules/GitHub/         GitHub pull-request, push, and check-run webhooks
 migrations/                 numbered SQL files
@@ -67,6 +70,7 @@ Each module registers its own routes. Modules do not touch each other's tables; 
 - Read endpoints support `ETag` and `304` so unchanged fallback polls are almost free. The opt-in SSE stream is same-origin and session-cookie authenticated; guests and agent principals cannot subscribe.
 - Non-empty API request bodies must use `Content-Type: application/json`. The gateway accepts request bodies up to 1 MiB and returns `413 payload_too_large` above that limit.
 - Browser sessions use the `tangent_workspace` cookie to select the active workspace. Bearer tokens are workspace-scoped; non-default workspaces use the `X-Tangent-Workspace` header.
+- Workspace admins manage only their own email summary subscription through `GET`/`PUT /api/v1/workspace/notifications`. Preferences are stored per workspace and user. The hourly `bin/email-notification-summaries.php` runner sends only due, non-empty summaries to active opted-in admins, using each recipient's selected IANA timezone and 09:00 local schedule. Module lookups use public APIs and remain scoped to one workspace.
 - Workspace admins create one-use invites that Tangent emails to the invited address; raw invite tokens are never returned to the admin. Invite acceptance creates or links the global account, workspace membership, guest project access, and session in one transaction. Admin-initiated password recovery emails use the same typed, one-use credential-token table and revoke all sessions and API tokens for the account across workspaces after a successful reset.
 - Cursor-based pagination.
 - One consistent JSON error format.

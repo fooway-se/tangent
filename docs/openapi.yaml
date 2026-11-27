@@ -369,6 +369,51 @@ paths:
                   workspace: { $ref: '#/components/schemas/Workspace' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '422': { $ref: '#/components/responses/ValidationFailed' }
+  /workspace/notifications:
+    get:
+      summary: Read the current admin's email summary preferences
+      description: Workspace admins can read only their own preference in the active workspace. Missing preferences are returned as opted out with daily frequency and UTC timezone.
+      responses:
+        '200':
+          description: Current admin's notification settings.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [settings]
+                properties:
+                  settings: { $ref: '#/components/schemas/EmailNotificationSettings' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    put:
+      summary: Update the current admin's email summary preferences
+      description: Enables or disables this admin's workspace-scoped subscription. When enabled, summaries are scheduled for 09:00 local time; no email is sent immediately.
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [enabled, frequency, time_zone]
+              properties:
+                enabled: { type: boolean }
+                frequency: { type: string, enum: [daily, every_other_day, weekly] }
+                time_zone: { type: string, description: IANA time zone identifier, default: UTC }
+      responses:
+        '200':
+          description: Saved preferences and next scheduled slot, if enabled.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [settings]
+                properties:
+                  settings: { $ref: '#/components/schemas/EmailNotificationSettings' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
   /workspaces/{id}/switch:
     post:
       security:
@@ -1567,6 +1612,8 @@ paths:
                 status: { type: string, enum: [backlog, todo, doing, testing, done, cancelled] }
                 is_shared: { type: boolean, description: Whether this issue appears in the guest client view. }
                 is_ongoing: { type: boolean, description: Whether this is continuing work. Requires issues.share. Ongoing issues cannot belong to a milestone or be marked done. }
+                is_blocked: { type: boolean, description: Blocking marker independent of workflow status. Changing from false to true starts a new blocked period; false clears the reason and blocked timestamp. }
+                blocking_reason: { type: [string, 'null'], maxLength: 500, description: Optional explanation shown with blocked issues. Only allowed while is_blocked is true; null or an empty string clears it. }
                 milestone_id: { type: [integer, 'null'], minimum: 1 }
                 approval_requested: { type: boolean }
       responses:
@@ -2192,6 +2239,14 @@ components:
       required: false
       schema: { type: string }
   schemas:
+    EmailNotificationSettings:
+      type: object
+      required: [enabled, frequency, time_zone, next_send_at]
+      properties:
+        enabled: { type: boolean }
+        frequency: { type: string, enum: [daily, every_other_day, weekly] }
+        time_zone: { type: string, description: IANA time zone identifier }
+        next_send_at: { type: [string, 'null'], format: date-time, description: Next due slot in UTC; null when disabled. }
     Workspace:
       type: object
       required: [id, name, slug, role]
@@ -2397,7 +2452,7 @@ components:
             feed_cursor: { type: integer, minimum: 1, description: Commit-ordered cursor scoped to the workspace. }
     Issue:
       type: object
-      required: [id, workspace_id, project_id, title, description, context, expected_outcome, acceptance_criteria, type, assignee_id, status, priority, due_date, created_by, source_channel_id, source_message_id, is_shared, is_ongoing, milestone_id, sort_order, discussion_count, approval_requested_at, approved_by, approved_at, created_at, updated_at, deleted_at]
+      required: [id, workspace_id, project_id, title, description, context, expected_outcome, acceptance_criteria, type, assignee_id, status, priority, due_date, created_by, source_channel_id, source_message_id, is_shared, is_ongoing, is_blocked, blocked_at, blocking_reason, milestone_id, sort_order, discussion_count, approval_requested_at, approved_by, approved_at, created_at, updated_at, deleted_at]
       properties:
         id: { type: integer }
         workspace_id: { type: integer }
@@ -2411,6 +2466,9 @@ components:
         assignee_id: { type: [integer, 'null'], description: Project member responsible for the issue; null means unassigned. }
         is_shared: { type: boolean, default: false }
         is_ongoing: { type: boolean, default: false, description: Ongoing work is excluded from planned progress and cannot belong to a milestone or be marked done. }
+        is_blocked: { type: boolean, default: false, description: Blocking marker independent of workflow status. }
+        blocked_at: { type: [string, 'null'], format: date-time, description: Start of the current blocking period. }
+        blocking_reason: { type: [string, 'null'], maxLength: 500, description: Optional explanation for the current blocking period. }
         milestone_id: { type: [integer, 'null'] }
         sort_order: { type: integer, minimum: 0, description: Saved ordering within the issue's milestone; lower values come first. }
         discussion_count: { type: integer, minimum: 0, description: Number of posts and replies in this issue's discussion. }

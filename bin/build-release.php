@@ -13,13 +13,13 @@ if (!class_exists(ZipArchive::class)) {
 
 $root = dirname(__DIR__);
 $requiredFiles = [
-    'bootstrap.php', 'LICENSE', 'INSTALL.md', 'bin/migrate.php',
+    'bootstrap.php', 'LICENSE', 'INSTALL.md', 'bin/migrate.php', 'bin/email-notification-summaries.php',
     'public/.htaccess', 'public/index.php', 'public/install.php', 'public/upgrade.php',
     'public/assets/app.js', 'public/assets/app.css',
     'docs/GITHUB.md', 'docs/ISSUES.md', 'docs/USER_MANUAL.md', 'docs/openapi.yaml',
 ];
 $releaseFiles = [
-    'bootstrap.php', 'bin/migrate.php', 'LICENSE', 'INSTALL.md',
+    'bootstrap.php', 'bin/migrate.php', 'bin/email-notification-summaries.php', 'LICENSE', 'INSTALL.md',
     'docs/GITHUB.md', 'docs/ISSUES.md', 'docs/USER_MANUAL.md', 'docs/openapi.yaml',
 ];
 $releaseDirectories = ['migrations/', 'resources/', 'src/', 'public/'];
@@ -342,7 +342,7 @@ try {
             $publicRelative = substr($relative, strlen('public/'));
             $addFile($relative, $prefix . 'tangent-app/' . $relative);
             $addFile($relative, $prefix . 'public_html/' . $publicRelative);
-        } elseif (in_array($relative, ['bootstrap.php', 'bin/migrate.php'], true)) {
+        } elseif (in_array($relative, ['bootstrap.php', 'bin/migrate.php', 'bin/email-notification-summaries.php'], true)) {
             $addFile($relative, $prefix . 'tangent-app/' . $relative);
         } elseif (str_starts_with($relative, 'migrations/') || str_starts_with($relative, 'resources/') || str_starts_with($relative, 'src/')) {
             $addFile($relative, $prefix . 'tangent-app/' . $relative);
@@ -363,6 +363,7 @@ try {
     $expectedEntries = [
         $prefix . 'tangent-app/bootstrap.php',
         $prefix . 'tangent-app/bin/migrate.php',
+        $prefix . 'tangent-app/bin/email-notification-summaries.php',
         $prefix . 'tangent-app/migrations/001_core.sql',
         $prefix . 'tangent-app/public/.htaccess',
         $prefix . 'public_html/.htaccess',

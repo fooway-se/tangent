@@ -15,6 +15,8 @@ export function initIssueDetailEditUi(options) {
     const ongoingInput = required('#issue-detail-ongoing-input');
     const sharedInput = required('#issue-detail-shared-input');
     const approvalInput = required('#issue-detail-approval-input');
+    const blockedInput = required('#issue-detail-blocked-input');
+    const blockingReasonInput = required('#issue-detail-blocking-reason-input');
     const listeners = new AbortController();
     function required(selector) {
         const element = doc.querySelector(selector);
@@ -26,6 +28,7 @@ export function initIssueDetailEditUi(options) {
         form.reset();
         ongoingInput.disabled = false;
         ongoingInput.title = '';
+        blockingReasonInput.disabled = !blockedInput.checked;
         options.updateOngoingMilestoneControl(ongoingInput, milestoneInput);
     }
     function close() {
@@ -52,6 +55,9 @@ export function initIssueDetailEditUi(options) {
         sharedInput.checked = issue.is_shared;
         approvalInput.checked = issue.approval_requested_at !== null;
         approvalInput.disabled = !issue.is_shared;
+        blockedInput.checked = issue.is_blocked === true;
+        blockingReasonInput.value = issue.blocking_reason ?? '';
+        blockingReasonInput.disabled = !blockedInput.checked;
         display.hidden = true;
         form.hidden = false;
         titleInput.focus();
@@ -77,6 +83,8 @@ export function initIssueDetailEditUi(options) {
                     is_ongoing: ongoingInput.checked,
                     is_shared: sharedInput.checked,
                     approval_requested: approvalInput.checked,
+                    is_blocked: blockedInput.checked,
+                    blocking_reason: blockedInput.checked ? blockingReasonInput.value : null,
                 }),
             });
             if (options.getIssue()?.id !== issue.id || options.getProjectId() !== projectId)
@@ -110,6 +118,11 @@ export function initIssueDetailEditUi(options) {
         if (!sharedInput.checked)
             approvalInput.checked = false;
         approvalInput.disabled = !sharedInput.checked;
+    }, { signal: listeners.signal });
+    blockedInput.addEventListener('change', () => {
+        blockingReasonInput.disabled = !blockedInput.checked;
+        if (!blockedInput.checked)
+            blockingReasonInput.value = '';
     }, { signal: listeners.signal });
     descriptionInput.addEventListener('keydown', (event) => options.submitFormOnEnter(event, form), {
         signal: listeners.signal,

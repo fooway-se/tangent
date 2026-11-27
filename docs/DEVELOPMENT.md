@@ -55,8 +55,8 @@ Configure these values in the host environment or in `config.php` for production
 
 | Environment variable | `config.php` key | Purpose | Default |
 |---|---|---|---|
-| `TANGENT_APP_URL` | `app.url` | Public base URL used to build invite links and emailed password recovery links; set this to the exact HTTPS site address. | `http://localhost:8080` |
-| `TANGENT_MAIL_FROM` | `mail.from` | Sender address used for workspace invitations and password recovery email. The installer saves it in `config.php`; this environment variable overrides that value. | unset |
+| `TANGENT_APP_URL` | `app.url` | Public base URL used to build invite, recovery, and notification-summary links; set this to the exact HTTPS site address. | `http://localhost:8080` |
+| `TANGENT_MAIL_FROM` | `mail.from` | Sender address used for workspace invitations, password recovery, and notification summaries. The installer saves it in `config.php`; this environment variable overrides that value. | unset |
 | `TANGENT_HIBP_ENABLED` | `security.hibp_enabled` | Enables the optional Have I Been Pwned Pwned Passwords range lookup. | `false` |
 | `TANGENT_SSE_ENABLED` | `realtime.stream_enabled` | Enables the SSE event stream. Leave disabled on hosts where long-running requests could consume too much of the PHP worker pool. | `false` |
 | `TANGENT_SSE_MAX_CONNECTIONS` | `realtime.max_connections` | Global maximum number of active SSE streams across workspaces. Set this below the worker capacity reserved for ordinary requests; only one active stream per workspace user is allowed. | `1` |
@@ -68,6 +68,14 @@ Configure these values in the host environment or in `config.php` for production
 | `TANGENT_GITHUB_WEBHOOK_SECRET` | `github.webhook_secret` | Secret used to verify GitHub webhook signatures. | unset |
 
 Tangent sends plain-text invitation and recovery email through PHP's configured mail transport. Invites fail closed when delivery is unavailable, and no usable invite link is issued. Existing-account invite acceptance still requires the account password. The optional breach lookup sends only the first five hexadecimal characters of the password's SHA-1 hash to the service, verifies the full hash against the returned suffix list, and fails open when the network check is unavailable. Leave it disabled on hosts without outbound HTTPS access.
+
+Email notification summaries are opt-in per active workspace admin. After applying migration 050, configure the public app URL and sender address above, then schedule the bundled PHP CLI runner hourly. It sends a current summary only when the admin has a due subscription and qualifying items; it does not send empty summaries. For example, on a self-hosted Linux server, edit the crontab for the account that can run the site's PHP CLI:
+
+```cron
+0 * * * * cd /path/to/tangent && /usr/bin/php bin/email-notification-summaries.php >> /var/log/tangent-email-summaries.log 2>&1
+```
+
+Use the PHP executable and writable log location provided by the host. The runner uses the same `mail.from` sender and PHP mail transport as invitations, serializes overlapping runs with a database advisory lock, and can be invoked manually to inspect its sent/empty/failed counts. It is included in generated release packages.
 
 The installer writes `config.php` in the private application directory, alongside `src/` and outside `public/`. Existing installations must move their current values into the grouped sections below; upgrades do not rewrite `config.php`, and flat root-level settings are ignored. Keep the `database` section unchanged and preserve your actual values when moving the other settings:
 

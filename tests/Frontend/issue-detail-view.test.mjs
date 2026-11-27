@@ -111,6 +111,7 @@ function createHarness() {
   const names = [
     'issueDetailTitle', 'issueDetailType', 'issueDetailPriority', 'issueDetailDueDate',
     'issueDetailAssignee', 'issueDetailMilestone', 'issueDetailOngoingRow', 'issueDetailSharing',
+    'issueDetailBlockedRow', 'issueDetailBlockingState',
     'issueDetailApproval', 'issueDetailDescription', 'issueDetailContext', 'issueDetailContextSection',
     'issueDetailExpectedOutcome', 'issueDetailExpectedOutcomeSection', 'issueDetailAcceptanceCriteria',
     'issueDetailAcceptanceCriteriaSection', 'issueDetailBrief', 'issueDetailStatusLabel',
@@ -173,6 +174,7 @@ test('detail rendering fills labels and hides optional sections when their conte
   assert.equal(harness.elements.issueDetailDescription.classList.contains('is-empty'), true);
   assert.equal(harness.elements.issueDetailBrief.hidden, false);
   assert.equal(harness.elements.issueDetailOngoingRow.hidden, false);
+  assert.equal(harness.elements.issueDetailBlockedRow.hidden, true);
   assert.equal(harness.elements.issueSourceLink.hidden, false);
   assert.equal(harness.elements.issueSourceLink.dataset.messageId, '31');
   assert.match(harness.elements.issueDetailStatus.attributes.get('aria-label'), /Current status: DOING/);
@@ -184,6 +186,11 @@ test('detail rendering fills labels and hides optional sections when their conte
   assert.equal(harness.elements.issueDetailContextSection.hidden, true);
   assert.equal(harness.elements.issueSourceLink.hidden, true);
   assert.equal('messageId' in harness.elements.issueSourceLink.dataset, false);
+
+  harness.setSelectedIssue(createIssue({ is_blocked: true, blocking_reason: 'Waiting for review' }));
+  harness.ui.renderDetail();
+  assert.equal(harness.elements.issueDetailBlockedRow.hidden, false);
+  assert.equal(harness.elements.issueDetailBlockingState.textContent, 'Waiting for review');
 });
 
 test('deleted issue rows reuse unchanged markup, replace changed rows, and honor read-only projects', () => {

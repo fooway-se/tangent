@@ -175,6 +175,9 @@ export interface Issue extends BoardIssue {
   source_message_id: number | null;
   is_shared: boolean;
   is_ongoing: boolean;
+  is_blocked?: boolean;
+  blocked_at?: string | null;
+  blocking_reason?: string | null;
   milestone_id: number | null;
   milestone_name?: string | null;
   milestone_due_date?: string | null;

@@ -50,8 +50,12 @@ function setup(t, responder = request) {
   const ids = [
     'workspace-admin-view', 'workspace-admin-tabs', 'workspace-admin-members-tab',
     'workspace-admin-invites-tab', 'workspace-admin-agents-tab', 'workspace-admin-workspaces-tab',
+    'workspace-admin-notifications-tab',
     'workspace-admin-members-panel', 'workspace-admin-invites-panel',
-    'workspace-admin-agents-panel', 'workspace-admin-workspaces-panel', 'workspace-members-list', 'workspace-members-empty',
+    'workspace-admin-agents-panel', 'workspace-admin-workspaces-panel', 'workspace-admin-notifications-panel',
+    'workspace-notifications-form', 'workspace-notifications-enabled', 'workspace-notifications-frequency',
+    'workspace-notifications-time-zone', 'workspace-notifications-save',
+    'workspace-members-list', 'workspace-members-empty',
     'workspace-invites-list', 'workspace-invites-empty', 'invite-form', 'invite-role',
     'workspace-agents-list', 'workspace-agents-empty', 'agent-form', 'agent-name',
     'agent-project-options', 'agent-capability-options', 'agent-expires-in-days',
@@ -111,6 +115,9 @@ function request(path) {
   if (path === '/users/invites') return Promise.resolve({ invites: [] });
   if (path === '/projects') return Promise.resolve({ projects: [{ id: 4, name: 'Tangent', status: 'active' }] });
   if (path === '/agents') return Promise.resolve({ agents: [] });
+  if (path === '/workspace/notifications') return Promise.resolve({ settings: {
+    enabled: false, frequency: 'daily', time_zone: 'UTC', next_send_at: null,
+  } });
   return Promise.resolve({});
 }
 
@@ -182,6 +189,9 @@ test('workspace admin shows loading labels instead of empty lists during its fir
   resolvers.get('/users/invites')({ invites: [] });
   resolvers.get('/projects')({ projects: [] });
   resolvers.get('/agents')({ agents: [] });
+  resolvers.get('/workspace/notifications')({ settings: {
+    enabled: false, frequency: 'daily', time_zone: 'UTC', next_send_at: null,
+  } });
   await loading;
 
   assert.equal(state.elements.get('#workspace-members-empty').textContent, 'No members yet.');
@@ -262,6 +272,55 @@ test('workspace admin creates an agent and displays its token only in the one-ti
   elements.get('#workspace-agent-token-close').click();
   assert.equal(elements.get('#workspace-agent-token-dialog').open, false);
   assert.equal(elements.get('#workspace-agent-token-value').textContent, '');
+});
+
+test('workspace admin can load and save only their email notification preferences', async (t) => {
+  const saved = { enabled: true, frequency: 'weekly', time_zone: 'Europe/Stockholm', next_send_at: '2026-11-30 08:00:00' };
+  const { elements, requests, reports, ui } = setup(t, async (path, init) => {
+    if (path === '/workspace/notifications' && init?.method === 'PUT') return { settings: saved };
+    return request(path);
+  });
+
+  assert.ok(elements.get('#workspace-notifications-time-zone').children.reduce(
+    (total, group) => total + (group.children?.length ?? 0), 0) > 100);
+  await ui.load();
+  ui.switchTab('notifications');
+
+  assert.equal(ui.currentTab(), 'notifications');
+  assert.equal(elements.get('#workspace-admin-notifications-tab').attributes.get('aria-selected'), 'true');
+  assert.equal(elements.get('#workspace-admin-notifications-panel').hidden, false);
+  assert.equal(elements.get('#workspace-notifications-enabled').checked, false);
+  assert.equal(elements.get('#workspace-notifications-frequency').value, 'daily');
+  assert.equal(elements.get('#workspace-notifications-time-zone').value, 'UTC');
+  assert.ok(elements.get('#workspace-notifications-time-zone').children.reduce(
+    (total, group) => total + (group.children?.length ?? 0), 0) > 100);
+  assert.ok(elements.get('#workspace-notifications-time-zone').children.some((group) =>
+    group.children?.some((option) => option.value === 'Europe/Stockholm')));
+
+  elements.get('#workspace-notifications-enabled').checked = true;
+  elements.get('#workspace-notifications-frequency').value = 'weekly';
+  elements.get('#workspace-notifications-time-zone').value = 'Europe/Stockholm';
+  elements.get('#workspace-notifications-form').dispatchEvent(new Event('submit', { cancelable: true }));
+  await new Promise((resolve) => setImmediate(resolve));
+
+  const save = requests.find(({ path, init }) => path === '/workspace/notifications' && init?.method === 'PUT');
+  assert.deepEqual(JSON.parse(save.init.body), {
+    enabled: true,
+    frequency: 'weekly',
+    time_zone: 'Europe/Stockholm',
+  });
+  assert.equal(reports.at(-1).message, 'Notification settings saved.');
+});
+
+test('workspace notification settings reject a time zone outside the selectable IANA list', async (t) => {
+  const { elements, requests, reports, ui } = setup(t);
+  await ui.load();
+  elements.get('#workspace-notifications-time-zone').value = 'Mars/Phobos';
+  elements.get('#workspace-notifications-form').dispatchEvent(new Event('submit', { cancelable: true }));
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(requests.some(({ path, init }) => path === '/workspace/notifications' && init?.method === 'PUT'), false);
+  assert.deepEqual(reports.at(-1), { message: 'Choose a time zone from the list.', isError: true });
 });
 
 test('workspace admin rotates agent tokens and confirms revocation', async (t) => {

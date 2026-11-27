@@ -29,6 +29,7 @@ import { initLoungePresence } from './lounge-presence.js';
 import { initLoungeChatUi } from './lounge-chat-ui.js';
 import { initLoungeChannelsUi } from './lounge-channels-ui.js';
 import { initWorkspaceAdminUi } from './workspace-admin-ui.js';
+import { parseEmailNotificationLink } from './email-notification-links.js';
 import { applyPresenceState } from './presence-indicator.js';
 import { initProjectChatUi } from './project-chat-ui.js';
 import { initCommandPaletteUi } from './command-palette-ui.js';
@@ -927,7 +928,7 @@ async function loadWorkspaces(): Promise<void> {
   workspacePickerUi.renderSwitcher();
 }
 
-async function switchWorkspace(workspaceId: number, restoreSwitcherFocus = false): Promise<void> {
+async function switchWorkspace(workspaceId: number, restoreSwitcherFocus = false, announce = true): Promise<void> {
   workspacePickerUi.resetPendingSwitch();
   if (activeUser === null || workspaceId === activeUser.workspace_id) return;
   workspacePickerUi.setSwitching(true);
@@ -944,7 +945,7 @@ async function switchWorkspace(workspaceId: number, restoreSwitcherFocus = false
       () => projectListUi.load(),
     );
     if (result === null) return;
-    report(`Switched to ${result.workspace.name}.`);
+    if (announce) report(`Switched to ${result.workspace.name}.`);
   } catch (error) {
     report(error instanceof Error ? error.message : 'Could not switch workspace.', true);
   } finally {
@@ -1032,7 +1033,7 @@ function openWorkspaceAdmin(): void {
   adminHeading.focus();
 }
 
-function switchWorkspaceAdminTab(tab: 'members' | 'invites' | 'agents' | 'workspaces'): void {
+function switchWorkspaceAdminTab(tab: 'members' | 'invites' | 'agents' | 'workspaces' | 'notifications'): void {
   workspaceAdminUi.switchTab(tab);
 }
 
@@ -2364,6 +2365,61 @@ async function loadProjectDetail(
     );
 }
 
+async function openEmailNotificationLink(url: URL): Promise<void> {
+  const target = parseEmailNotificationLink(url);
+  if (target === null || activeUser === null) return;
+  if (target.workspaceId !== activeUser.workspace_id) {
+    if (!activeWorkspaces.some((workspace) => workspace.id === target.workspaceId)) {
+      report('This workspace is not available to your account.', true);
+      return;
+    }
+    await switchWorkspace(target.workspaceId, false, false);
+    if (activeUser?.workspace_id !== target.workspaceId) return;
+  }
+
+  for (const key of ['workspace_id', 'project_id', 'issue_id', 'conversation_id', 'admin']) {
+    url.searchParams.delete(key);
+  }
+  history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+
+  if (target.adminNotifications) {
+    if (activeUser.role !== 'admin') {
+      report('Workspace notification settings are available to admins only.', true);
+      return;
+    }
+    openWorkspaceAdmin();
+    switchWorkspaceAdminTab('notifications');
+    return;
+  }
+
+  if (target.projectId === null) return;
+  await loadProjectDetail(target.projectId);
+  if (target.issueId !== null) {
+    await loadProjectIssues(target.projectId);
+    const issue = projectIssues.find((candidate) => candidate.id === target.issueId);
+    if (issue === undefined) {
+      report('This issue is no longer available.', true);
+      return;
+    }
+    openIssue(issue);
+    return;
+  }
+
+  if (target.conversationId !== null) {
+    try {
+      const result = await api<{ message: ChatMessage }>(
+        `/projects/${target.projectId}/messages/${target.conversationId}`,
+      );
+      if (activeProject?.id !== target.projectId || projectChatUi.activeProjectId() !== target.projectId) return;
+      projectChatUi.appendMessage(result.message);
+      selectChatMessage(result.message.id);
+      projectChatUi.setFollowLatest(false);
+    } catch (error) {
+      report(error instanceof Error ? error.message : 'Could not open the customer conversation.', true);
+    }
+  }
+}
+
 function switchProjectTab(tab: 'issues' | 'members' | 'notes', returnFocusIssueId?: number, loadIssues = true): void {
   if (activeProject === null) return;
   const showingIssueDetail = tab === 'issues' && selectedIssue !== null;
@@ -2760,6 +2816,7 @@ async function start(): Promise<void> {
     await loadWorkspaces();
     if (result.user.role === 'guest') return;
     await projectListUi.load();
+    await openEmailNotificationLink(url);
     if (githubConnected) report('GitHub connected. Choose a repository in project settings.');
   } catch (error) {
     showSignedOut();

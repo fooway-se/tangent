@@ -112,6 +112,8 @@ export const dom = {
     issueDetailAssignee: document.querySelector<HTMLElement>('#issue-detail-assignee')!,
     issueDetailMilestone: document.querySelector<HTMLElement>('#issue-detail-milestone')!,
     issueDetailOngoingRow: document.querySelector<HTMLElement>('#issue-detail-ongoing-row')!,
+    issueDetailBlockedRow: document.querySelector<HTMLElement>('#issue-detail-blocked-row')!,
+    issueDetailBlockingState: document.querySelector<HTMLElement>('#issue-detail-blocking-state')!,
     issueDetailSharing: document.querySelector<HTMLElement>('#issue-detail-sharing')!,
     issueDetailApproval: document.querySelector<HTMLElement>('#issue-detail-approval')!,
     issueDescriptionDetails: document.querySelector<HTMLDetailsElement>('#issue-description-details')!,

@@ -133,6 +133,14 @@ final class ChatService
         return $message;
     }
 
+    public function unansweredCustomerConversations(int $workspaceId, \DateTimeImmutable $cutoff): array
+    {
+        return $this->chat->unansweredCustomerConversations(
+            $workspaceId,
+            $cutoff->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s'),
+        );
+    }
+
     public function heartbeatProjectPresence(AuthenticatedUser $user, int $projectId): array
     {
         $this->visibleProjectChannel($user, $projectId);

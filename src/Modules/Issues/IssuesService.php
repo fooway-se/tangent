@@ -37,6 +37,14 @@ final class IssuesService
         return $this->issues->listForProject($user->workspaceId, $projectId);
     }
 
+    public function blockedIssuesForNotifications(int $workspaceId, \DateTimeImmutable $cutoff): array
+    {
+        return $this->issues->blockedForNotifications(
+            $workspaceId,
+            $cutoff->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s'),
+        );
+    }
+
     public function listRevision(AuthenticatedUser $user, int $projectId, bool $deleted = false): int
     {
         $this->requireProjectAccess($user, $projectId, 'issues.read');
@@ -310,7 +318,7 @@ final class IssuesService
             $shareFields = ['is_shared', 'is_ongoing', 'milestone_id', 'approval_requested'];
             $issueFields = [
                 'title', 'description', 'status', 'type', 'assignee_id', 'priority', 'due_date',
-                'context', 'expected_outcome', 'acceptance_criteria',
+                'context', 'expected_outcome', 'acceptance_criteria', 'is_blocked', 'blocking_reason',
             ];
             $hasShareFields = array_intersect($shareFields, array_keys($input)) !== [];
             $hasIssueFields = array_intersect($issueFields, array_keys($input)) !== [];
@@ -333,6 +341,9 @@ final class IssuesService
                 'due_date' => $issue['due_date'],
                 'is_shared' => $issue['is_shared'],
                 'is_ongoing' => $issue['is_ongoing'],
+                'is_blocked' => $issue['is_blocked'],
+                'blocked_at' => $issue['blocked_at'],
+                'blocking_reason' => $issue['blocking_reason'],
                 'milestone_id' => $issue['milestone_id'],
                 'sort_order' => $issue['sort_order'],
                 'approval_requested_at' => $issue['approval_requested_at'],
@@ -386,6 +397,30 @@ final class IssuesService
             if (array_key_exists('is_ongoing', $input)) {
                 if (!is_bool($input['is_ongoing'])) throw new ApiException(422, 'validation_failed', 'is_ongoing must be a boolean.');
                 $updated['is_ongoing'] = $input['is_ongoing'];
+            }
+            if (array_key_exists('is_blocked', $input)) {
+                if (!is_bool($input['is_blocked'])) throw new ApiException(422, 'validation_failed', 'is_blocked must be a boolean.');
+                if ($input['is_blocked'] && !$issue['is_blocked']) {
+                    $updated['blocked_at'] = gmdate('Y-m-d H:i:s');
+                    $updated['blocking_reason'] = null;
+                } elseif (!$input['is_blocked']) {
+                    $updated['blocked_at'] = null;
+                    $updated['blocking_reason'] = null;
+                }
+                $updated['is_blocked'] = $input['is_blocked'];
+            }
+            if (array_key_exists('blocking_reason', $input)) {
+                if ($input['blocking_reason'] !== null && !is_string($input['blocking_reason'])) {
+                    throw new ApiException(422, 'validation_failed', 'blocking_reason must be text or null.');
+                }
+                $reason = trim((string) ($input['blocking_reason'] ?? ''));
+                if (mb_strlen($reason, 'UTF-8') > 500) {
+                    throw new ApiException(422, 'validation_failed', 'blocking_reason cannot exceed 500 characters.');
+                }
+                if (!$updated['is_blocked'] && $reason !== '') {
+                    throw new ApiException(422, 'validation_failed', 'A blocking reason requires the issue to be blocked.');
+                }
+                $updated['blocking_reason'] = $reason === '' ? null : $reason;
             }
             if (array_key_exists('milestone_id', $input)) {
                 if ($input['milestone_id'] !== null && (!is_int($input['milestone_id']) || $input['milestone_id'] < 1)) {

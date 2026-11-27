@@ -10,7 +10,14 @@ import type {
   WorkspaceMember,
 } from './types.js';
 
-export type WorkspaceAdminTab = 'members' | 'invites' | 'agents' | 'workspaces';
+export type WorkspaceAdminTab = 'members' | 'invites' | 'agents' | 'workspaces' | 'notifications';
+
+interface EmailNotificationSettings {
+  enabled: boolean;
+  frequency: 'daily' | 'every_other_day' | 'weekly';
+  time_zone: string;
+  next_send_at: string | null;
+}
 
 export interface WorkspaceAdminUiController {
   open(): void;
@@ -38,10 +45,19 @@ export function initWorkspaceAdminUi(options: {
   const invitesTab = required<HTMLButtonElement>('#workspace-admin-invites-tab');
   const agentsTab = required<HTMLButtonElement>('#workspace-admin-agents-tab');
   const workspacesTab = required<HTMLButtonElement>('#workspace-admin-workspaces-tab');
+  const notificationsTab = required<HTMLButtonElement>('#workspace-admin-notifications-tab');
   const membersPanel = required<HTMLElement>('#workspace-admin-members-panel');
   const invitesPanel = required<HTMLElement>('#workspace-admin-invites-panel');
   const agentsPanel = required<HTMLElement>('#workspace-admin-agents-panel');
   const workspacesPanel = required<HTMLElement>('#workspace-admin-workspaces-panel');
+  const notificationsPanel = required<HTMLElement>('#workspace-admin-notifications-panel');
+  const notificationsForm = required<HTMLFormElement>('#workspace-notifications-form');
+  const notificationsEnabled = required<HTMLInputElement>('#workspace-notifications-enabled');
+  const notificationsFrequency = required<HTMLSelectElement>('#workspace-notifications-frequency');
+  const notificationsTimeZone = required<HTMLSelectElement>('#workspace-notifications-time-zone');
+  const notificationsSave = required<HTMLButtonElement>('#workspace-notifications-save');
+  const notificationTimeZoneChoices = new Set<string>();
+  populateNotificationTimeZones();
   const membersList = required<HTMLUListElement>('#workspace-members-list');
   const membersEmpty = required<HTMLElement>('#workspace-members-empty');
   const invitesList = required<HTMLUListElement>('#workspace-invites-list');
@@ -106,6 +122,7 @@ export function initWorkspaceAdminUi(options: {
       ['invites', invitesTab, invitesPanel],
       ['agents', agentsTab, agentsPanel],
       ['workspaces', workspacesTab, workspacesPanel],
+      ['notifications', notificationsTab, notificationsPanel],
     ];
     for (const [name, button, panel] of states) {
       const selected = name === tab;
@@ -126,7 +143,7 @@ export function initWorkspaceAdminUi(options: {
   }
 
   function updatePanelTabIndex(): void {
-    const panel = [membersPanel, invitesPanel, agentsPanel, workspacesPanel].find((candidate) => !candidate.hidden);
+    const panel = [membersPanel, invitesPanel, agentsPanel, workspacesPanel, notificationsPanel].find((candidate) => !candidate.hidden);
     if (panel === undefined) return;
     const hasFocusableContent = Array.from(panel.querySelectorAll<HTMLElement>(
       'a[href], button, input, select, textarea, [tabindex]',
@@ -146,11 +163,12 @@ export function initWorkspaceAdminUi(options: {
     invitesEmpty.hidden = false;
     agentsEmpty.hidden = false;
     try {
-      const [members, invites, projects, agents] = await Promise.all([
+      const [members, invites, projects, agents, notificationSettings] = await Promise.all([
         request<{ users: WorkspaceMember[] }>('/users'),
         request<{ invites: WorkspaceInvite[] }>('/users/invites'),
         request<{ projects: Project[] }>('/projects'),
         request<{ agents: AgentIdentity[] }>('/agents'),
+        request<{ settings: EmailNotificationSettings }>('/workspace/notifications'),
       ]);
       if (!options.isVisible()) return;
       adminProjects = projects.projects.filter((project) => project.status === 'active' || project.status === 'paused');
@@ -159,6 +177,7 @@ export function initWorkspaceAdminUi(options: {
       renderInviteProjectOptions();
       renderAgentProjectOptions();
       renderAgents(agents.agents);
+      renderNotificationSettings(notificationSettings.settings);
       updatePanelTabIndex();
     } catch (error) {
       membersEmpty.textContent = 'Could not load workspace members.';
@@ -171,6 +190,88 @@ export function initWorkspaceAdminUi(options: {
   function open(): void {
     switchTab(workspaceAdminTab);
     void load();
+  }
+
+  function renderNotificationSettings(settings: EmailNotificationSettings): void {
+    notificationsEnabled.checked = settings.enabled;
+    notificationsFrequency.value = settings.frequency;
+    if (!notificationTimeZoneChoices.has(settings.time_zone)) populateNotificationTimeZones(settings.time_zone);
+    notificationsTimeZone.value = notificationTimeZoneChoices.has(settings.time_zone) ? settings.time_zone : 'UTC';
+  }
+
+  function populateNotificationTimeZones(preferred?: string): void {
+    const values = supportedTimeZones();
+    if (preferred !== undefined && !values.includes(preferred) && isRecognizedTimeZone(preferred)) {
+      values.push(preferred);
+      values.sort((left, right) => left.localeCompare(right));
+    }
+    notificationTimeZoneChoices.clear();
+    notificationsTimeZone.replaceChildren();
+    const groups = new Map<string, HTMLOptGroupElement>();
+    for (const timeZone of values) {
+      const groupName = timeZone.includes('/') ? timeZone.split('/')[0] : 'Common';
+      let group = groups.get(groupName);
+      if (!group) {
+        group = doc.createElement('optgroup');
+        group.label = groupName;
+        groups.set(groupName, group);
+      }
+      const option = doc.createElement('option');
+      option.value = timeZone;
+      option.textContent = timeZone;
+      group.append(option);
+      notificationTimeZoneChoices.add(timeZone);
+    }
+    notificationsTimeZone.append(...groups.values());
+    notificationsTimeZone.value = preferred !== undefined && notificationTimeZoneChoices.has(preferred)
+      ? preferred
+      : 'UTC';
+  }
+
+  async function saveNotificationSettings(event: SubmitEvent): Promise<void> {
+    event.preventDefault();
+    if (!notificationTimeZoneChoices.has(notificationsTimeZone.value)) {
+      options.report('Choose a time zone from the list.', true);
+      notificationsTimeZone.focus();
+      return;
+    }
+    notificationsSave.disabled = true;
+    try {
+      const result = await request<{ settings: EmailNotificationSettings }>('/workspace/notifications', {
+        method: 'PUT',
+        body: JSON.stringify({
+          enabled: notificationsEnabled.checked,
+          frequency: notificationsFrequency.value,
+          time_zone: notificationsTimeZone.value.trim(),
+        }),
+      });
+      renderNotificationSettings(result.settings);
+      options.report('Notification settings saved.');
+    } catch (error) {
+      options.report(error instanceof Error ? error.message : 'Could not save notification settings.', true);
+    } finally {
+      notificationsSave.disabled = false;
+    }
+  }
+
+  function supportedTimeZones(): string[] {
+    const values = Intl.supportedValuesOf?.('timeZone') ?? [
+      'Africa/Cairo', 'America/Chicago', 'America/Denver', 'America/Los_Angeles',
+      'America/New_York', 'America/Sao_Paulo', 'Asia/Dubai', 'Asia/Kolkata',
+      'Asia/Seoul', 'Asia/Shanghai', 'Asia/Singapore', 'Asia/Tokyo', 'Australia/Sydney',
+      'Europe/Berlin', 'Europe/Helsinki', 'Europe/London', 'Europe/Paris', 'Europe/Stockholm',
+      'Pacific/Auckland',
+    ];
+    return [...new Set(['UTC', ...values])].sort((left, right) => left.localeCompare(right));
+  }
+
+  function isRecognizedTimeZone(value: string): boolean {
+    try {
+      new Intl.DateTimeFormat('en', { timeZone: value }).format();
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   function renderMembers(members: readonly WorkspaceMember[]): void {
@@ -694,9 +795,11 @@ export function initWorkspaceAdminUi(options: {
   invitesTab.addEventListener('click', () => switchTab('invites'), { signal: listeners.signal });
   agentsTab.addEventListener('click', () => switchTab('agents'), { signal: listeners.signal });
   workspacesTab.addEventListener('click', () => switchTab('workspaces'), { signal: listeners.signal });
+  notificationsTab.addEventListener('click', () => switchTab('notifications'), { signal: listeners.signal });
+  notificationsForm.addEventListener('submit', (event) => void saveNotificationSettings(event), { signal: listeners.signal });
   tabs.addEventListener('keydown', (event) => {
-    const tabButtons = [membersTab, invitesTab, agentsTab, workspacesTab];
-    const names: WorkspaceAdminTab[] = ['members', 'invites', 'agents', 'workspaces'];
+    const tabButtons = [membersTab, invitesTab, agentsTab, workspacesTab, notificationsTab];
+    const names: WorkspaceAdminTab[] = ['members', 'invites', 'agents', 'workspaces', 'notifications'];
     const currentIndex = tabButtons.indexOf(event.target as HTMLButtonElement);
     if (currentIndex < 0 || event.altKey || event.ctrlKey || event.metaKey) return;
     let nextIndex: number;

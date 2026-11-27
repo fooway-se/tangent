@@ -20,6 +20,7 @@ import { initLoungePresence } from './lounge-presence.js';
 import { initLoungeChatUi } from './lounge-chat-ui.js';
 import { initLoungeChannelsUi } from './lounge-channels-ui.js';
 import { initWorkspaceAdminUi } from './workspace-admin-ui.js';
+import { parseEmailNotificationLink } from './email-notification-links.js';
 import { applyPresenceState } from './presence-indicator.js';
 import { initProjectChatUi } from './project-chat-ui.js';
 import { initCommandPaletteUi } from './command-palette-ui.js';
@@ -842,7 +843,7 @@ async function loadWorkspaces() {
     activeWorkspaces = result.workspaces;
     workspacePickerUi.renderSwitcher();
 }
-async function switchWorkspace(workspaceId, restoreSwitcherFocus = false) {
+async function switchWorkspace(workspaceId, restoreSwitcherFocus = false, announce = true) {
     workspacePickerUi.resetPendingSwitch();
     if (activeUser === null || workspaceId === activeUser.workspace_id)
         return;
@@ -854,7 +855,8 @@ async function switchWorkspace(workspaceId, restoreSwitcherFocus = false) {
         }), showSignedIn, loadWorkspaces, () => projectListUi.load());
         if (result === null)
             return;
-        report(`Switched to ${result.workspace.name}.`);
+        if (announce)
+            report(`Switched to ${result.workspace.name}.`);
     }
     catch (error) {
         report(error instanceof Error ? error.message : 'Could not switch workspace.', true);
@@ -2403,6 +2405,59 @@ async function loadProjectDetail(projectId, tab = 'issues', recordHistory = true
         showWorkspaceView('projects');
     });
 }
+async function openEmailNotificationLink(url) {
+    const target = parseEmailNotificationLink(url);
+    if (target === null || activeUser === null)
+        return;
+    if (target.workspaceId !== activeUser.workspace_id) {
+        if (!activeWorkspaces.some((workspace) => workspace.id === target.workspaceId)) {
+            report('This workspace is not available to your account.', true);
+            return;
+        }
+        await switchWorkspace(target.workspaceId, false, false);
+        if (activeUser?.workspace_id !== target.workspaceId)
+            return;
+    }
+    for (const key of ['workspace_id', 'project_id', 'issue_id', 'conversation_id', 'admin']) {
+        url.searchParams.delete(key);
+    }
+    history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+    if (target.adminNotifications) {
+        if (activeUser.role !== 'admin') {
+            report('Workspace notification settings are available to admins only.', true);
+            return;
+        }
+        openWorkspaceAdmin();
+        switchWorkspaceAdminTab('notifications');
+        return;
+    }
+    if (target.projectId === null)
+        return;
+    await loadProjectDetail(target.projectId);
+    if (target.issueId !== null) {
+        await loadProjectIssues(target.projectId);
+        const issue = projectIssues.find((candidate) => candidate.id === target.issueId);
+        if (issue === undefined) {
+            report('This issue is no longer available.', true);
+            return;
+        }
+        openIssue(issue);
+        return;
+    }
+    if (target.conversationId !== null) {
+        try {
+            const result = await api(`/projects/${target.projectId}/messages/${target.conversationId}`);
+            if (activeProject?.id !== target.projectId || projectChatUi.activeProjectId() !== target.projectId)
+                return;
+            projectChatUi.appendMessage(result.message);
+            selectChatMessage(result.message.id);
+            projectChatUi.setFollowLatest(false);
+        }
+        catch (error) {
+            report(error instanceof Error ? error.message : 'Could not open the customer conversation.', true);
+        }
+    }
+}
 function switchProjectTab(tab, returnFocusIssueId, loadIssues = true) {
     if (activeProject === null)
         return;
@@ -2785,6 +2840,7 @@ async function start() {
         if (result.user.role === 'guest')
             return;
         await projectListUi.load();
+        await openEmailNotificationLink(url);
         if (githubConnected)
             report('GitHub connected. Choose a repository in project settings.');
     }

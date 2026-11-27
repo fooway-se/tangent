@@ -114,6 +114,13 @@ export function createIssueRowUi(options) {
             ongoing.title = 'Continuous work outside milestone completion.';
             metadata.append(ongoing);
         }
+        if (issue.is_blocked === true) {
+            const blocked = doc.createElement('span');
+            blocked.className = 'issue-blocked-tag';
+            blocked.textContent = 'Blocked';
+            blocked.title = issue.blocking_reason?.trim() || 'This issue is blocked.';
+            metadata.append(blocked);
+        }
         if (issue.milestone_name !== null && issue.milestone_name !== undefined && reorder?.showMilestoneTag !== false) {
             const milestone = doc.createElement('span');
             milestone.className = 'issue-milestone-tag';

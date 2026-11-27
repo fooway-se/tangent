@@ -38,6 +38,8 @@ export function initIssueDetailEditUi(options: {
   const ongoingInput = required<HTMLInputElement>('#issue-detail-ongoing-input');
   const sharedInput = required<HTMLInputElement>('#issue-detail-shared-input');
   const approvalInput = required<HTMLInputElement>('#issue-detail-approval-input');
+  const blockedInput = required<HTMLInputElement>('#issue-detail-blocked-input');
+  const blockingReasonInput = required<HTMLInputElement>('#issue-detail-blocking-reason-input');
   const listeners = new AbortController();
 
   function required<T extends Element>(selector: string): T {
@@ -50,6 +52,7 @@ export function initIssueDetailEditUi(options: {
     form.reset();
     ongoingInput.disabled = false;
     ongoingInput.title = '';
+    blockingReasonInput.disabled = !blockedInput.checked;
     options.updateOngoingMilestoneControl(ongoingInput, milestoneInput);
   }
 
@@ -76,6 +79,9 @@ export function initIssueDetailEditUi(options: {
     sharedInput.checked = issue.is_shared;
     approvalInput.checked = issue.approval_requested_at !== null;
     approvalInput.disabled = !issue.is_shared;
+    blockedInput.checked = issue.is_blocked === true;
+    blockingReasonInput.value = issue.blocking_reason ?? '';
+    blockingReasonInput.disabled = !blockedInput.checked;
     display.hidden = true;
     form.hidden = false;
     titleInput.focus();
@@ -101,6 +107,8 @@ export function initIssueDetailEditUi(options: {
           is_ongoing: ongoingInput.checked,
           is_shared: sharedInput.checked,
           approval_requested: approvalInput.checked,
+          is_blocked: blockedInput.checked,
+          blocking_reason: blockedInput.checked ? blockingReasonInput.value : null,
         }),
       });
       if (options.getIssue()?.id !== issue.id || options.getProjectId() !== projectId) return;
@@ -129,6 +137,10 @@ export function initIssueDetailEditUi(options: {
   sharedInput.addEventListener('change', () => {
     if (!sharedInput.checked) approvalInput.checked = false;
     approvalInput.disabled = !sharedInput.checked;
+  }, { signal: listeners.signal });
+  blockedInput.addEventListener('change', () => {
+    blockingReasonInput.disabled = !blockedInput.checked;
+    if (!blockedInput.checked) blockingReasonInput.value = '';
   }, { signal: listeners.signal });
   descriptionInput.addEventListener('keydown', (event) => options.submitFormOnEnter(event, form), {
     signal: listeners.signal,

@@ -26,6 +26,7 @@ const issue = {
   title: 'Prepare release', description: 'Review changes', status: 'todo',
   priority: 'high', due_date: '2026-12-01', type: 'task', assignee_id: 5,
   milestone_id: 8, is_ongoing: false, is_shared: true, approval_requested_at: null,
+  is_blocked: true, blocked_at: '2026-11-24 08:00:00', blocking_reason: 'Waiting on review',
 };
 
 function setup({ api } = {}) {
@@ -35,6 +36,7 @@ function setup({ api } = {}) {
     'issue-detail-description-input', 'issue-detail-priority-input', 'issue-detail-due-date-input',
     'issue-detail-type-input', 'issue-detail-assignee-input', 'issue-detail-milestone-input',
     'issue-detail-ongoing-input', 'issue-detail-shared-input', 'issue-detail-approval-input',
+    'issue-detail-blocked-input', 'issue-detail-blocking-reason-input',
   ];
   const elements = new Map(ids.map((id) => [`#${id}`, new FakeElement()]));
   const doc = { querySelector: (selector) => elements.get(selector) ?? null };
@@ -92,6 +94,8 @@ test('issue editor opens with current values and applies ongoing/shared field ru
   assert.equal(elements.get('#issue-detail-assignee-input').value, '5');
   assert.equal(elements.get('#issue-detail-milestone-input').value, '8');
   assert.equal(elements.get('#issue-detail-approval-input').disabled, false);
+  assert.equal(elements.get('#issue-detail-blocked-input').checked, true);
+  assert.equal(elements.get('#issue-detail-blocking-reason-input').value, 'Waiting on review');
   assert.equal(elements.get('#issue-detail-title-input').focused, true);
 
   const shared = elements.get('#issue-detail-shared-input');
@@ -112,6 +116,8 @@ test('issue editor saves normalized fields and refreshes detail and board views'
   elements.get('#issue-detail-ongoing-input').checked = true;
   elements.get('#issue-detail-shared-input').checked = false;
   elements.get('#issue-detail-approval-input').checked = false;
+  elements.get('#issue-detail-blocked-input').checked = true;
+  elements.get('#issue-detail-blocking-reason-input').value = 'Waiting for security review';
 
   elements.get('#issue-detail-edit-form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
   await new Promise((resolve) => setImmediate(resolve));
@@ -129,6 +135,8 @@ test('issue editor saves normalized fields and refreshes detail and board views'
     is_ongoing: true,
     is_shared: false,
     approval_requested: false,
+    is_blocked: true,
+    blocking_reason: 'Waiting for security review',
   });
   assert.equal(updates[0].title, 'Prepared release');
   assert.deepEqual(renders, ['detail', 'board']);

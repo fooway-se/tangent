@@ -19,7 +19,8 @@ import { initMilestoneUi } from './milestone-ui-e57eec3c5764.js';
 import { initLoungePresence } from './lounge-presence-d038552d25b4.js';
 import { initLoungeChatUi } from './lounge-chat-ui-b416cde07d46.js';
 import { initLoungeChannelsUi } from './lounge-channels-ui-e54cc47e2700.js';
-import { initWorkspaceAdminUi } from './workspace-admin-ui-c15012163294.js';
+import { initWorkspaceAdminUi } from './workspace-admin-ui-3a8325344a71.js';
+import { parseEmailNotificationLink } from './email-notification-links-72413b315b73.js';
 import { applyPresenceState } from './presence-indicator-5e1c76e720b6.js';
 import { initProjectChatUi } from './project-chat-ui-75b2bd010328.js';
 import { initCommandPaletteUi } from './command-palette-ui-5440f11b3881.js';
@@ -36,14 +37,14 @@ import { initStatusMessageUi } from './status-message-ui-973e24af9d55.js';
 import { initKeyboardHintsUi, KEYBOARD_HINTS_STORAGE_KEY } from './keyboard-hints-ui-8faab6813c20.js';
 import { initIssuePollingController } from './issue-polling-controller-1676820c28c4.js';
 import { initIssueActions } from './issue-actions-d3bc42fa2a22.js';
-import { initIssueDetailView } from './issue-detail-view-40290ac4f86f.js';
-import { createIssueRowUi } from './issue-row-ui-ad784dfe1a85.js';
+import { initIssueDetailView } from './issue-detail-view-4e344128b596.js';
+import { createIssueRowUi } from './issue-row-ui-99874f84a67c.js';
 import { initIssueAiPromptUi } from './issue-ai-prompt-ui-e571e2003f3e.js';
 import { initIssueDiscussionUi } from './issue-discussion-ui-835ee16f0fa5.js';
 import { initIssueRelatedUi } from './issue-related-ui-90b97bdbad55.js';
 import { initIssueStatusPickerUi } from './issue-status-picker-ui-46dd1c20883a.js';
 import { initIssueDeleteUi } from './issue-delete-ui-f91c26319d43.js';
-import { initIssueDetailEditUi } from './issue-detail-edit-ui-1337312a16b6.js';
+import { initIssueDetailEditUi } from './issue-detail-edit-ui-159b77349fcc.js';
 import { initProjectMembersUi } from './project-members-ui-5490e385c1b1.js';
 import { initProjectEditUi } from './project-edit-ui-41636b66dc74.js';
 import { initProjectListUi } from './project-list-ui-491393d38f54.js';
@@ -51,7 +52,7 @@ import { initGithubProjectUi } from './github-project-ui-48af5ccd7b83.js';
 import { parseQuickIssueInput } from './quick-issue-99551ec7544c.js';
 import { initRoadmapUi } from './roadmap-ui-937d4face352.js';
 import { loadIssueCollections, refreshDeletedIssuesOnOpen, shouldDeferIssueUpdates, } from './issue-polling-83fefe215877.js';
-import { dom } from './dom-ee2c07647f5c.js';
+import { dom } from './dom-1ffe11904215.js';
 const { project: { projectHeading, projectEditDialog, projectReadOnlyNotice, editProjectButton, projectsNavButton, projectsView, projectView, projectForm, projectList, projectFormPanel, projectDescription, projectState, projectChatColumn, projectSidebarList, projectMain, projectTabs, projectKeyboardHints, topbarPresence, }, auth: { loginPanel, loginShell, accountBar, currentUserLabel, loginStatusMessage, logoutButton, }, workspace: { workspacePanel, workspaceNav, adminNavButton, adminView, adminHeading, membersView, membersTabButton, }, shell: { createWorkspaceForm, breadcrumbProjectsButton, breadcrumbDivider, breadcrumbCurrent, notesTabButton, emptyIssues, statusMessage, }, roadmap: { roadmapNavButton, roadmapView, roadmapHeading, roadmapSummary, roadmapMilestoneList, roadmapEmptyState, }, inbox: { inboxNavButton, inboxView, inboxHeading, }, lounge: { loungeNavButton, loungeView, loungeHeading, loungeMessageList, loungeChannelLinks, loungeGeneralChannelLink, loungeGeneralChannelPanel, loungeProjectChannelPanel, }, shortcuts: { toggleProjectFormButton, keyboardHints, }, chat: { chatView, }, issues: { issuesView, issueDetailView, issueDetailDisplay, issueDetailTitle, issueDetailPriority, issueDetailDueDate, issueDetailDescription, issueDetailBrief, issueDetailContextSection, issueDetailContext, issueDetailExpectedOutcomeSection, issueDetailExpectedOutcome, issueDetailAcceptanceCriteriaSection, issueDetailAcceptanceCriteria, issueDetailStatus, issueDetailStatusLabel, issueSourceLink, issueDetailEditForm, issueDetailEditButton, issueDetailDeleteButton, issuesTabButton, issueBackButton, issueForm, issueQuickAddTitle, issueQuickAddPriority, issueQuickAddDueDate, issueQuickAddAssignee, issueQuickAddMilestone, issueQuickAddOngoing, issueQuickAddShared, issueQuickAddApproval, issueQuickAddCancelButton, issueDetailType, issueDetailAssignee, issueDetailMilestone, issueDetailOngoingRow, issueDetailSharing, issueDetailApproval, issueDescriptionDetails, issueProgress, issueProgressLabel, issueFilter, issueGrouping, issueOrder, issueScope, issueCountSummary, issueBulkAssignToggle, issueBulkAssignToolbar, issueList, deletedIssuesDetails, deletedIssueCount, deletedIssueList, }, guest: { guestLogoutButton, }, } = dom;
 function issueStatusLabel(status) {
     return ISSUE_STATUS_OPTIONS.find((option) => option.value === status)?.label ?? status;
@@ -842,7 +843,7 @@ async function loadWorkspaces() {
     activeWorkspaces = result.workspaces;
     workspacePickerUi.renderSwitcher();
 }
-async function switchWorkspace(workspaceId, restoreSwitcherFocus = false) {
+async function switchWorkspace(workspaceId, restoreSwitcherFocus = false, announce = true) {
     workspacePickerUi.resetPendingSwitch();
     if (activeUser === null || workspaceId === activeUser.workspace_id)
         return;
@@ -854,7 +855,8 @@ async function switchWorkspace(workspaceId, restoreSwitcherFocus = false) {
         }), showSignedIn, loadWorkspaces, () => projectListUi.load());
         if (result === null)
             return;
-        report(`Switched to ${result.workspace.name}.`);
+        if (announce)
+            report(`Switched to ${result.workspace.name}.`);
     }
     catch (error) {
         report(error instanceof Error ? error.message : 'Could not switch workspace.', true);
@@ -2403,6 +2405,59 @@ async function loadProjectDetail(projectId, tab = 'issues', recordHistory = true
         showWorkspaceView('projects');
     });
 }
+async function openEmailNotificationLink(url) {
+    const target = parseEmailNotificationLink(url);
+    if (target === null || activeUser === null)
+        return;
+    if (target.workspaceId !== activeUser.workspace_id) {
+        if (!activeWorkspaces.some((workspace) => workspace.id === target.workspaceId)) {
+            report('This workspace is not available to your account.', true);
+            return;
+        }
+        await switchWorkspace(target.workspaceId, false, false);
+        if (activeUser?.workspace_id !== target.workspaceId)
+            return;
+    }
+    for (const key of ['workspace_id', 'project_id', 'issue_id', 'conversation_id', 'admin']) {
+        url.searchParams.delete(key);
+    }
+    history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+    if (target.adminNotifications) {
+        if (activeUser.role !== 'admin') {
+            report('Workspace notification settings are available to admins only.', true);
+            return;
+        }
+        openWorkspaceAdmin();
+        switchWorkspaceAdminTab('notifications');
+        return;
+    }
+    if (target.projectId === null)
+        return;
+    await loadProjectDetail(target.projectId);
+    if (target.issueId !== null) {
+        await loadProjectIssues(target.projectId);
+        const issue = projectIssues.find((candidate) => candidate.id === target.issueId);
+        if (issue === undefined) {
+            report('This issue is no longer available.', true);
+            return;
+        }
+        openIssue(issue);
+        return;
+    }
+    if (target.conversationId !== null) {
+        try {
+            const result = await api(`/projects/${target.projectId}/messages/${target.conversationId}`);
+            if (activeProject?.id !== target.projectId || projectChatUi.activeProjectId() !== target.projectId)
+                return;
+            projectChatUi.appendMessage(result.message);
+            selectChatMessage(result.message.id);
+            projectChatUi.setFollowLatest(false);
+        }
+        catch (error) {
+            report(error instanceof Error ? error.message : 'Could not open the customer conversation.', true);
+        }
+    }
+}
 function switchProjectTab(tab, returnFocusIssueId, loadIssues = true) {
     if (activeProject === null)
         return;
@@ -2785,6 +2840,7 @@ async function start() {
         if (result.user.role === 'guest')
             return;
         await projectListUi.load();
+        await openEmailNotificationLink(url);
         if (githubConnected)
             report('GitHub connected. Choose a repository in project settings.');
     }
