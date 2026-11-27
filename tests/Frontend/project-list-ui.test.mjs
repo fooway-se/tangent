@@ -100,10 +100,28 @@ test('project list sorts lifecycle states, renders cards and opens the selected 
   const cards = elements.get('#project-list').children;
   assert.deepEqual(cards.map((card) => card.dataset.projectId), ['2', '1', '3']);
   assert.equal(cards[0].children[0].children[1].textContent, 'Work');
-  assert.equal(elements.get('#project-sidebar-list').children[0].children[0].textContent, 'Alpha');
+  const sidebarLinks = elements.get('#project-sidebar-list').children;
+  assert.deepEqual(sidebarLinks.map((item) => item.children[0].textContent), ['Alpha']);
   cards[0].children[1].children[1].click();
-  assert.deepEqual(opened, [2]);
+  cards[2].children[1].children[1].click();
+  assert.deepEqual(opened, [2, 3]);
   assert.equal(elements.get('#empty-projects').hidden, true);
+});
+
+test('sidebar shows an empty state when projects exist but none are active', async (t) => {
+  const projects = [
+    { id: 1, name: 'Paused', slug: 'paused', description: '', status: 'paused' },
+    { id: 2, name: 'Archived', slug: 'archived', description: '', status: 'archived' },
+  ];
+  const { ui, elements, cleanup } = setup({ projects });
+  t.after(cleanup);
+
+  await ui.load();
+
+  assert.equal(elements.get('#project-list').children.length, 2);
+  assert.equal(elements.get('#project-sidebar-list').children.length, 0);
+  assert.equal(elements.get('#project-sidebar-empty').hidden, false);
+  assert.equal(elements.get('#project-sidebar-empty').textContent, 'No active projects.');
 });
 
 test('project creation posts form and repository values, closes, and reloads the list', async (t) => {

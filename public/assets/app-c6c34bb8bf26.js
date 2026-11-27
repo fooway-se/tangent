@@ -47,7 +47,7 @@ import { initIssueDeleteUi } from './issue-delete-ui-f91c26319d43.js';
 import { initIssueDetailEditUi } from './issue-detail-edit-ui-159b77349fcc.js';
 import { initProjectMembersUi } from './project-members-ui-5490e385c1b1.js';
 import { initProjectEditUi } from './project-edit-ui-41636b66dc74.js';
-import { initProjectListUi } from './project-list-ui-491393d38f54.js';
+import { initProjectListUi } from './project-list-ui-b381e570c26e.js';
 import { initGithubProjectUi } from './github-project-ui-48af5ccd7b83.js';
 import { parseQuickIssueInput } from './quick-issue-99551ec7544c.js';
 import { initRoadmapUi } from './roadmap-ui-937d4face352.js';

@@ -5,8 +5,8 @@
       "sha256": "c96a28d6bb6cda30b57b7c5aa1030a7453cec11b91a2d199c247e9ba5986ec60"
     },
     "app.js": {
-      "file": "app-af2512cf5c6f.js",
-      "sha256": "af2512cf5c6fb361e57caf0998de4c79c9d85f1b5f1a093fdbe64f9367d6eb08"
+      "file": "app-c6c34bb8bf26.js",
+      "sha256": "c6c34bb8bf265bf7cb372da5007300e7c1b5844b86aa8f97861caa793edaecc6"
     },
     "auth-ui.js": {
       "file": "auth-ui-35a933e6bcd0.js",
@@ -217,8 +217,8 @@
       "sha256": "41636b66dc74f2c9a8125c34c7d401f46c0b4c1ded35d2d114af520e9bd22c36"
     },
     "project-list-ui.js": {
-      "file": "project-list-ui-491393d38f54.js",
-      "sha256": "491393d38f5440c3e56c76ca7c3bbb15980cc4e739df689cb7f70a4ba4cdb722"
+      "file": "project-list-ui-b381e570c26e.js",
+      "sha256": "b381e570c26e418d9ead87fdfdb8f70f258805ae9a0e446122599c2f9258d13f"
     },
     "project-members-ui.js": {
       "file": "project-members-ui-5490e385c1b1.js",

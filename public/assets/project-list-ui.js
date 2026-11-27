@@ -23,15 +23,19 @@ export function initProjectListUi(options) {
     }
     function updateEmptyStates(projects) {
         const isEmpty = projects.length === 0;
+        const hasActiveProjects = projects.some((project) => project.status === 'active');
         const isAdmin = options.getRole() === 'admin';
         emptyProjects.hidden = !isEmpty;
-        projectSidebarEmpty.hidden = !isEmpty;
-        if (!isEmpty)
-            return;
-        emptyProjects.textContent = isAdmin
-            ? 'No projects yet.'
-            : "You're not a member of any projects yet. Ask a workspace admin to add you.";
-        projectSidebarEmpty.textContent = isAdmin ? 'No projects yet.' : 'No project access yet.';
+        projectSidebarEmpty.hidden = hasActiveProjects;
+        if (isEmpty) {
+            emptyProjects.textContent = isAdmin
+                ? 'No projects yet.'
+                : "You're not a member of any projects yet. Ask a workspace admin to add you.";
+            projectSidebarEmpty.textContent = isAdmin ? 'No projects yet.' : 'No project access yet.';
+        }
+        else if (!hasActiveProjects) {
+            projectSidebarEmpty.textContent = 'No active projects.';
+        }
     }
     function closeForm() {
         projectForm.reset();
@@ -93,17 +97,19 @@ export function initProjectListUi(options) {
             actions.append(state, open);
             item.append(details, actions);
             projectList.append(item);
-            const sidebarItem = doc.createElement('li');
-            const sidebarButton = doc.createElement('button');
-            sidebarButton.type = 'button';
-            sidebarButton.className = 'project-sidebar-link';
-            sidebarButton.dataset.projectId = String(project.id);
-            sidebarButton.classList.toggle('is-active', options.getActiveProjectId() === project.id);
-            sidebarButton.textContent = project.name;
-            sidebarButton.setAttribute('aria-label', `${project.name}, ${projectStatusLabel(project.status)}`);
-            sidebarButton.addEventListener('click', () => options.openProject(project.id));
-            sidebarItem.append(sidebarButton);
-            projectSidebarList.append(sidebarItem);
+            if (project.status === 'active') {
+                const sidebarItem = doc.createElement('li');
+                const sidebarButton = doc.createElement('button');
+                sidebarButton.type = 'button';
+                sidebarButton.className = 'project-sidebar-link';
+                sidebarButton.dataset.projectId = String(project.id);
+                sidebarButton.classList.toggle('is-active', options.getActiveProjectId() === project.id);
+                sidebarButton.textContent = project.name;
+                sidebarButton.setAttribute('aria-label', `${project.name}, ${projectStatusLabel(project.status)}`);
+                sidebarButton.addEventListener('click', () => options.openProject(project.id));
+                sidebarItem.append(sidebarButton);
+                projectSidebarList.append(sidebarItem);
+            }
         }
         window.requestAnimationFrame(options.onRendered);
     }
