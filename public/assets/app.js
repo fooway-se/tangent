@@ -5,7 +5,7 @@ import { initGuestUi } from './guest-ui.js';
 import { initInboxUi } from './inbox-ui.js';
 import { createLogoutController } from './logout.js';
 import { ProjectNavigationOwner, runOwnedRequest } from './project-navigation.js';
-import { shouldHideProjectSidebarVent } from './project-sidebar-layout.js';
+import { getProjectSidebarLayoutStage, shouldHideProjectSidebarVent, } from './project-sidebar-layout.js';
 import { createWorkspaceHistory } from './workspace-history.js';
 import { switchWorkspaceMembership } from './workspace-switch.js';
 import { initAuthUi } from './auth-ui.js';
@@ -2245,35 +2245,48 @@ function createScrollMoreIndicator() {
 }
 function updateProjectSidebarMoreCue() {
     const isHorizontal = window.matchMedia('(max-width: 760px)').matches;
-    const scrollSize = isHorizontal ? projectSidebarList.scrollWidth : projectSidebarList.scrollHeight;
-    const visibleSize = isHorizontal ? projectSidebarList.clientWidth : projectSidebarList.clientHeight;
-    const scrollOffset = isHorizontal ? projectSidebarList.scrollLeft : projectSidebarList.scrollTop;
-    const hasProjectOverflow = shouldHideProjectSidebarVent(scrollSize, visibleSize);
-    const hasMoreProjects = hasProjectOverflow && scrollOffset + visibleSize < scrollSize - 1;
-    const ventIsAlreadyHidden = projectSidebar?.classList.contains('is-project-sidebar-space-constrained') ?? false;
+    projectSidebarSection.classList.toggle('is-horizontal', isHorizontal);
+    let hasProjectOverflow = false;
     const ventSpaceValue = projectSidebar
         ? window.getComputedStyle(projectSidebar).getPropertyValue('--project-sidebar-top-vent-space')
         : '';
     const ventSpace = ventSpaceValue === ''
         ? 0
         : Number.parseFloat(ventSpaceValue);
-    let shouldHideVent = false;
-    if (!isHorizontal && projectSidebar && ventSpace > 0) {
-        shouldHideVent = hasProjectOverflow;
-        if (ventIsAlreadyHidden && !hasProjectOverflow) {
-            projectSidebar.classList.remove('is-project-sidebar-space-constrained');
-            shouldHideVent = shouldHideProjectSidebarVent(projectSidebarList.scrollHeight, projectSidebarList.clientHeight);
-            if (shouldHideVent)
-                projectSidebar.classList.add('is-project-sidebar-space-constrained');
+    if (!isHorizontal && projectSidebar) {
+        projectSidebarSection.classList.remove('has-project-overflow', 'has-more-projects');
+        projectSidebar.classList.remove('is-project-sidebar-space-constrained', 'is-project-sidebar-controls-compact');
+        const hasSidebarSpacePressure = () => shouldHideProjectSidebarVent(projectSidebar.scrollHeight, projectSidebar.clientHeight)
+            || shouldHideProjectSidebarVent(projectSidebarList.scrollHeight, projectSidebarList.clientHeight);
+        const hasOverflowBeforeVent = hasSidebarSpacePressure();
+        let hasOverflowAfterVent = hasOverflowBeforeVent;
+        if (hasOverflowBeforeVent && ventSpace > 0) {
+            projectSidebar.classList.add('is-project-sidebar-space-constrained');
+            hasOverflowAfterVent = hasSidebarSpacePressure();
         }
+        let hasOverflowAfterCompactButtons = hasOverflowAfterVent;
+        if (hasOverflowAfterVent) {
+            projectSidebar.classList.add('is-project-sidebar-controls-compact');
+            hasOverflowAfterCompactButtons = shouldHideProjectSidebarVent(projectSidebarList.scrollHeight, projectSidebarList.clientHeight);
+        }
+        const stage = getProjectSidebarLayoutStage(hasOverflowBeforeVent, hasOverflowAfterVent, hasOverflowAfterCompactButtons);
+        projectSidebar.classList.toggle('is-project-sidebar-space-constrained', stage !== 'normal' && ventSpace > 0);
+        projectSidebar.classList.toggle('is-project-sidebar-controls-compact', stage === 'buttons-compact' || stage === 'scrollable');
+        hasProjectOverflow = stage === 'scrollable';
+    }
+    else {
+        projectSidebar?.classList.remove('is-project-sidebar-space-constrained', 'is-project-sidebar-controls-compact');
+        hasProjectOverflow = shouldHideProjectSidebarVent(projectSidebarList.scrollWidth, projectSidebarList.clientWidth);
     }
     projectSidebarMore.classList.toggle('is-horizontal', isHorizontal);
     projectSidebarMore.textContent = isHorizontal ? '▶' : '▼';
-    projectSidebarMore.hidden = !hasMoreProjects;
-    projectSidebarSection.classList.toggle('is-horizontal', isHorizontal);
     projectSidebarSection.classList.toggle('has-project-overflow', hasProjectOverflow);
+    const scrollSize = isHorizontal ? projectSidebarList.scrollWidth : projectSidebarList.scrollHeight;
+    const visibleSize = isHorizontal ? projectSidebarList.clientWidth : projectSidebarList.clientHeight;
+    const scrollOffset = isHorizontal ? projectSidebarList.scrollLeft : projectSidebarList.scrollTop;
+    const hasMoreProjects = hasProjectOverflow && scrollOffset + visibleSize < scrollSize - 1;
+    projectSidebarMore.hidden = !hasMoreProjects;
     projectSidebarSection.classList.toggle('has-more-projects', hasMoreProjects);
-    projectSidebar?.classList.toggle('is-project-sidebar-space-constrained', shouldHideVent);
     accountBar.classList.toggle('has-project-overflow', hasProjectOverflow);
 }
 function scheduleProjectSidebarMoreCue() {

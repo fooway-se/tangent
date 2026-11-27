@@ -5,8 +5,8 @@
       "sha256": "c96a28d6bb6cda30b57b7c5aa1030a7453cec11b91a2d199c247e9ba5986ec60"
     },
     "app.js": {
-      "file": "app-27ea8ef4eb47.js",
-      "sha256": "27ea8ef4eb47abf380da584ec8b4ee0b4b74c89bc3b3ee655d2d337554004c4b"
+      "file": "app-af2512cf5c6f.js",
+      "sha256": "af2512cf5c6fb361e57caf0998de4c79c9d85f1b5f1a093fdbe64f9367d6eb08"
     },
     "auth-ui.js": {
       "file": "auth-ui-35a933e6bcd0.js",
@@ -237,8 +237,8 @@
       "sha256": "7b5e291ec84197b6aad1f6fef8086cba7ad788ff52cdff6bc0a96ba369acb1e7"
     },
     "project-sidebar-layout.js": {
-      "file": "project-sidebar-layout-c67f096f6f8c.js",
-      "sha256": "c67f096f6f8ce7f8e7e502632ca97bdce270325f69df503eb49e5441891bdd23"
+      "file": "project-sidebar-layout-2f64958edb35.js",
+      "sha256": "2f64958edb359333fe8d2debc6bb9df8668e7bdfe8cbb50d84b51258b7f6ca23"
     },
     "quick-issue.js": {
       "file": "quick-issue-99551ec7544c.js",
@@ -311,8 +311,8 @@
   },
   "styles": {
     "app.css": {
-      "file": "app-47ced24d87e9.css",
-      "sha256": "47ced24d87e9897e1f8dd910f9d911f0ac5efe2533872077d832b3b24855aa0d"
+      "file": "app-17c2680afe6e.css",
+      "sha256": "17c2680afe6ee65f6644505a47749f8b75bde3b9a8490a8f6407b82026672400"
     },
     "tokens.css": {
       "file": "tokens-c18ae8eb4e3a.css",

@@ -22,18 +22,21 @@ function selectorsHiddenIn(styles) {
     .flatMap((match) => match[1].split(',').map((selector) => selector.trim()));
 }
 
-for (const [label, query] of [
-  ['mobile width', '(max-width: 760px)'],
-  ['short desktop height', '(min-width: 761px) and (max-height: 560px)'],
-]) {
-  test(`hides branded vents at ${label}`, () => {
-    const hidden = selectorsHiddenIn(mediaBlock(query));
+test('hides branded vents at mobile width', () => {
+  const hidden = selectorsHiddenIn(mediaBlock('(max-width: 760px)'));
 
-    for (const theme of ['broadcast', 'pc88']) {
-      assert.ok(
-        hidden.includes(`:root[data-theme="${theme}"] .workspace-brand::before`),
-        `${theme} grille is hidden at ${label}`,
-      );
-    }
-  });
-}
+  for (const theme of ['broadcast', 'pc88']) {
+    assert.ok(
+      hidden.includes(`:root[data-theme="${theme}"] .workspace-brand::before`),
+      `${theme} grille is hidden at mobile width`,
+    );
+  }
+});
+
+test('hides desktop vents through the first constrained-sidebar stage', () => {
+  assert.match(css, /\.workspace-sidebar\.is-project-sidebar-space-constrained::before\s*\{\s*display:\s*none;/);
+  assert.match(css, /:root \.workspace-sidebar\.is-project-sidebar-space-constrained \.workspace-brand::before\s*\{\s*display:\s*none;/);
+
+  const shortDesktop = mediaBlock('(min-width: 761px) and (max-height: 560px)');
+  assert.doesNotMatch(shortDesktop, /\.workspace-sidebar::before|\.workspace-brand::before/);
+});
