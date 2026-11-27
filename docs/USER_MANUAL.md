@@ -38,7 +38,7 @@ Tangent brings project conversation, issue tracking, planning, and client update
 - If **New project** is available to your role, select it from **Projects**, enter a name and optional description, then create the project.
 - Choose a project from the **Projects** page or the project list in the sidebar. Your available projects depend on membership and access.
 - Use the theme selector in the sidebar to change the appearance in this browser.
-- The selector includes **Switches & Steel** (Altair 8800), **Studio & Sound** (Atari ST), **Arcade & Towers** (Sharp X68000), **Kana & Keycaps** (NEC PC-8801), **Beehive & Beige** (Microbee), **Daisy & Data Pack** (Coleco ADAM), **Ivory & Ink** (Jupiter Ace), **Chroma & Charcoal** (Oric-1), **Wedge & Raster** (Dragon 32), and **Ivory & Assembly** (Acorn Atom). **Clean** and **Clean (dark)** remain the last two options.
+- The selector includes **Switches & Steel** (Altair 8800), **Studio & Sound** (Atari ST), **Arcade & Towers** (Sharp X68000), **Kana & Keycaps** (NEC PC-8801), **Beehive & Beige** (Microbee), **Daisy & Data Pack** (Coleco ADAM), **Ivory & Ink** (Jupiter Ace), **Chroma & Charcoal** (Oric-1), **Wedge & Raster** (Dragon 32), **Color BASIC & RGB** (TRS-80 Color Computer 2), and **Ivory & Assembly** (Acorn Atom). **Clean** and **Clean (dark)** remain the last two options.
 
 > **Guest access:** Guests sign in to the client portal, which shows only the projects and shared information they have been granted access to.
 
