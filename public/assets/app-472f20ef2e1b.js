@@ -18,7 +18,7 @@ import { initScratchpadUi } from './scratchpad-ui-2decead809cc.js';
 import { initMilestoneUi } from './milestone-ui-e57eec3c5764.js';
 import { initLoungePresence } from './lounge-presence-d038552d25b4.js';
 import { initLoungeChatUi } from './lounge-chat-ui-b416cde07d46.js';
-import { initLoungeChannelsUi } from './lounge-channels-ui-e54cc47e2700.js';
+import { initLoungeChannelsUi } from './lounge-channels-ui-3a21ea071bff.js';
 import { initWorkspaceAdminUi } from './workspace-admin-ui-3a8325344a71.js';
 import { parseEmailNotificationLink } from './email-notification-links-72413b315b73.js';
 import { applyPresenceState } from './presence-indicator-5e1c76e720b6.js';

@@ -46,7 +46,7 @@ class FakeElement extends EventTarget {
   focus() { globalThis.document.activeElement = this; }
 }
 
-test('Lounge loads project links, marks new chat unread, and clears that count when opened', async (t) => {
+test('Lounge shows channels only for active projects and tracks unread messages', async (t) => {
   const previous = {
     document: globalThis.document,
     window: globalThis.window,
@@ -109,7 +109,12 @@ test('Lounge loads project links, marks new chat unread, and clears that count w
       requests.push(path);
       return await new Promise((resolve) => {
         finishProjects = () => resolve({
-          projects: [{ id: 7, name: 'Tangent', slug: 'tangent', status: 'active' }],
+          projects: [
+            { id: 7, name: 'Tangent', slug: 'tangent', status: 'active' },
+            { id: 8, name: 'Paused project', slug: 'paused', status: 'paused' },
+            { id: 9, name: 'Completed project', slug: 'completed', status: 'completed' },
+            { id: 10, name: 'Archived project', slug: 'archived', status: 'archived' },
+          ],
         });
       });
     },
@@ -143,6 +148,7 @@ test('Lounge loads project links, marks new chat unread, and clears that count w
     '/api/v1/events?cursor=0',
     '/api/v1/events?cursor=4',
   ]);
+  assert.equal(links.children.length, 2, 'General plus the active project channel');
   const entry = links.children[1];
   const projectLink = entry.children[0];
   const unread = entry.children[1];
@@ -150,6 +156,7 @@ test('Lounge loads project links, marks new chat unread, and clears that count w
   assert.equal(entry.className, 'lounge-channel-entry');
   assert.equal(entry.children.length, 2);
   assert.equal(projectLink.tagName, 'a');
+  assert.equal(projectLink.dataset.projectId, '7');
   assert.equal(projectLink.querySelector('.lounge-channel-unread'), null);
   assert.equal(unread.parentElement, entry);
   assert.equal(title.className, 'lounge-channel-link-title');

@@ -5,8 +5,8 @@
       "sha256": "c96a28d6bb6cda30b57b7c5aa1030a7453cec11b91a2d199c247e9ba5986ec60"
     },
     "app.js": {
-      "file": "app-c6c34bb8bf26.js",
-      "sha256": "c6c34bb8bf265bf7cb372da5007300e7c1b5844b86aa8f97861caa793edaecc6"
+      "file": "app-472f20ef2e1b.js",
+      "sha256": "472f20ef2e1bb248a7e12bff31671b4bdbc718caa4604cceb1e72793ad63664a"
     },
     "auth-ui.js": {
       "file": "auth-ui-35a933e6bcd0.js",
@@ -185,8 +185,8 @@
       "sha256": "2ca99ba6ba860ab852f610021eddda639fda5182ff27ffc72281063ceba68380"
     },
     "lounge-channels-ui.js": {
-      "file": "lounge-channels-ui-e54cc47e2700.js",
-      "sha256": "e54cc47e270044630a43aa4bf10e5740b0e1136ea3ace7ff18fd8ff8affbb2ec"
+      "file": "lounge-channels-ui-3a21ea071bff.js",
+      "sha256": "3a21ea071bffdf4fee9184d14749c862a083ba8b520fcc3a8f73a1b3952148a4"
     },
     "lounge-chat-ui.js": {
       "file": "lounge-chat-ui-b416cde07d46.js",

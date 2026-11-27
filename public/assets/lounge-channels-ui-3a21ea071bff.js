@@ -121,7 +121,7 @@ export function initLoungeChannelsUi(options) {
             entry.remove();
         projectLinks.clear();
         projectEntries.clear();
-        for (const project of projects) {
+        for (const project of projects.filter((candidate) => candidate.status === 'active')) {
             const { entry, link } = createProjectLink(project);
             projectLinks.set(project.id, link);
             projectEntries.set(project.id, entry);
