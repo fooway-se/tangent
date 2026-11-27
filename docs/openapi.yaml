@@ -414,6 +414,54 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '422': { $ref: '#/components/responses/ValidationFailed' }
+  /cron/email-notification-summaries:
+    post:
+      security:
+        - ExternalCronBearer: []
+      summary: Run due email notification summaries
+      description: Available only when enabled in private config. Uses the same serialized runner as the PHP CLI command and sends only due, non-empty summaries. Send an empty POST body; a failed delivery returns 503 so a later scheduled call can retry.
+      responses:
+        '200':
+          description: The run completed, or another run already held the runner lock.
+          headers:
+            Cache-Control: { schema: { type: string, const: no-store } }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [result]
+                properties:
+                  result:
+                    type: object
+                    required: [sent, empty, failed, skipped]
+                    properties:
+                      sent: { type: integer, minimum: 0 }
+                      empty: { type: integer, minimum: 0 }
+                      failed: { type: integer, minimum: 0 }
+                      skipped: { type: boolean }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '503':
+          description: Trigger configuration is invalid or one or more email deliveries failed.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [error]
+                properties:
+                  error:
+                    type: object
+                    required: [code, message]
+                    properties:
+                      code: { type: string, enum: [trigger_misconfigured, email_notification_delivery_failed] }
+                      message: { type: string }
+                  result:
+                    type: object
+                    properties:
+                      sent: { type: integer, minimum: 0 }
+                      empty: { type: integer, minimum: 0 }
+                      failed: { type: integer, minimum: 0 }
+                      skipped: { type: boolean }
   /workspaces/{id}/switch:
     post:
       security:
@@ -2222,6 +2270,10 @@ components:
       type: http
       scheme: bearer
       description: Opaque workspace-scoped API token. Human tokens retain their user's permissions; named agent tokens are restricted to explicit project and issue capability grants. Include X-Tangent-Workspace with the workspace ID when the token is for a non-default workspace.
+    ExternalCronBearer:
+      type: http
+      scheme: bearer
+      description: Dedicated random token for the optional email notification HTTP trigger. Store only its SHA-256 hash in private config; this is separate from workspace API tokens.
   parameters:
     Id:
       name: id

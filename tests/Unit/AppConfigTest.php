@@ -74,4 +74,76 @@ final class AppConfigTest extends TestCase
             }
         }
     }
+
+    public function testEmailNotificationHttpTriggerIsDisabledByDefaultAndLoadsPrivateConfig(): void
+    {
+        $keys = [
+            'TANGENT_EMAIL_NOTIFICATIONS_HTTP_TRIGGER_ENABLED',
+            'TANGENT_EMAIL_NOTIFICATIONS_HTTP_TRIGGER_TOKEN_HASH',
+        ];
+        $previous = [];
+        foreach ($keys as $key) {
+            $previous[$key] = getenv($key);
+            putenv($key);
+        }
+
+        try {
+            $default = AppConfig::fromEnvironment();
+            self::assertFalse($default->emailNotificationHttpTriggerEnabled);
+            self::assertSame('', $default->emailNotificationHttpTriggerTokenHash);
+
+            $configured = AppConfig::fromEnvironment([
+                'email_notifications' => [
+                    'http_trigger' => [
+                        'enabled' => true,
+                        'token_hash' => str_repeat('a', 64),
+                    ],
+                ],
+            ]);
+
+            self::assertTrue($configured->emailNotificationHttpTriggerEnabled);
+            self::assertSame(str_repeat('a', 64), $configured->emailNotificationHttpTriggerTokenHash);
+        } finally {
+            foreach ($previous as $key => $value) {
+                if ($value === false) {
+                    putenv($key);
+                } else {
+                    putenv($key . '=' . $value);
+                }
+            }
+        }
+    }
+
+    public function testEmailNotificationHttpTriggerEnvironmentOverridesPrivateConfig(): void
+    {
+        $previousEnabled = getenv('TANGENT_EMAIL_NOTIFICATIONS_HTTP_TRIGGER_ENABLED');
+        $previousTokenHash = getenv('TANGENT_EMAIL_NOTIFICATIONS_HTTP_TRIGGER_TOKEN_HASH');
+        putenv('TANGENT_EMAIL_NOTIFICATIONS_HTTP_TRIGGER_ENABLED=false');
+        putenv('TANGENT_EMAIL_NOTIFICATIONS_HTTP_TRIGGER_TOKEN_HASH=' . str_repeat('b', 64));
+
+        try {
+            $configured = AppConfig::fromEnvironment([
+                'email_notifications' => [
+                    'http_trigger' => [
+                        'enabled' => true,
+                        'token_hash' => str_repeat('a', 64),
+                    ],
+                ],
+            ]);
+
+            self::assertFalse($configured->emailNotificationHttpTriggerEnabled);
+            self::assertSame(str_repeat('b', 64), $configured->emailNotificationHttpTriggerTokenHash);
+        } finally {
+            foreach ([
+                'TANGENT_EMAIL_NOTIFICATIONS_HTTP_TRIGGER_ENABLED' => $previousEnabled,
+                'TANGENT_EMAIL_NOTIFICATIONS_HTTP_TRIGGER_TOKEN_HASH' => $previousTokenHash,
+            ] as $key => $value) {
+                if ($value === false) {
+                    putenv($key);
+                } else {
+                    putenv($key . '=' . $value);
+                }
+            }
+        }
+    }
 }

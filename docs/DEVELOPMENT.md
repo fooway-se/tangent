@@ -60,6 +60,8 @@ Configure these values in the host environment or in `config.php` for production
 | `TANGENT_HIBP_ENABLED` | `security.hibp_enabled` | Enables the optional Have I Been Pwned Pwned Passwords range lookup. | `false` |
 | `TANGENT_SSE_ENABLED` | `realtime.stream_enabled` | Enables the SSE event stream. Leave disabled on hosts where long-running requests could consume too much of the PHP worker pool. | `false` |
 | `TANGENT_SSE_MAX_CONNECTIONS` | `realtime.max_connections` | Global maximum number of active SSE streams across workspaces. Set this below the worker capacity reserved for ordinary requests; only one active stream per workspace user is allowed. | `1` |
+| `TANGENT_EMAIL_NOTIFICATIONS_HTTP_TRIGGER_ENABLED` | `email_notifications.http_trigger.enabled` | Enables the optional external HTTP trigger for notification summaries. | `false` |
+| `TANGENT_EMAIL_NOTIFICATIONS_HTTP_TRIGGER_TOKEN_HASH` | `email_notifications.http_trigger.token_hash` | SHA-256 hash of the random bearer token used by the external scheduler. | unset |
 | `TANGENT_GITHUB_APP_ID` | `github.app_id` | Numeric GitHub App ID for repository selection and pull-request, commit, and check-run tracking. | unset |
 | `TANGENT_GITHUB_APP_SLUG` | `github.app_slug` | GitHub App URL slug. | unset |
 | `TANGENT_GITHUB_PRIVATE_KEY` | `github.private_key` | GitHub App PEM private key; environment values and single-quoted PHP strings may use `\n` for newlines. | unset |
@@ -69,13 +71,32 @@ Configure these values in the host environment or in `config.php` for production
 
 Tangent sends plain-text invitation and recovery email through PHP's configured mail transport. Invites fail closed when delivery is unavailable, and no usable invite link is issued. Existing-account invite acceptance still requires the account password. The optional breach lookup sends only the first five hexadecimal characters of the password's SHA-1 hash to the service, verifies the full hash against the returned suffix list, and fails open when the network check is unavailable. Leave it disabled on hosts without outbound HTTPS access.
 
-Email notification summaries are opt-in per active workspace admin. After applying migration 050, configure the public app URL and sender address above, then schedule the bundled PHP CLI runner hourly. It sends a current summary only when the admin has a due subscription and qualifying items; it does not send empty summaries. For example, on a self-hosted Linux server, edit the crontab for the account that can run the site's PHP CLI:
+Email notification summaries are opt-in per active workspace admin. After applying migration 050, configure the public app URL and sender address above, then schedule the bundled PHP CLI runner hourly where PHP CLI jobs are available. It sends a current summary only when the admin has a due subscription and qualifying items; it does not send empty summaries. For example, on a self-hosted Linux server, edit the crontab for the account that can run the site's PHP CLI:
 
 ```cron
 0 * * * * cd /path/to/tangent && /usr/bin/php bin/email-notification-summaries.php >> /var/log/tangent-email-summaries.log 2>&1
 ```
 
 Use the PHP executable and writable log location provided by the host. The runner uses the same `mail.from` sender and PHP mail transport as invitations, serializes overlapping runs with a database advisory lock, and can be invoked manually to inspect its sent/empty/failed counts. It is included in generated release packages.
+
+If the host does not allow scheduled PHP commands, an external HTTP scheduler can trigger the same runner. Generate a random token and its SHA-256 hash on a trusted machine:
+
+```sh
+php -r '$token = rtrim(strtr(base64_encode(random_bytes(32)), "+/", "-_"), "="); echo "Token: $token\nSHA-256: " . hash("sha256", $token) . "\n";'
+```
+
+Enable the endpoint in the private `config.php` and store only the printed hash in Tangent. Put the raw token in the scheduler's `Authorization` header as `Bearer <token>`:
+
+```php
+'email_notifications' => [
+    'http_trigger' => [
+        'enabled' => true,
+        'token_hash' => '64-character-sha256-hash',
+    ],
+],
+```
+
+Configure the scheduler to send `POST` requests with an empty body to `https://your-tangent-host/api/v1/cron/email-notification-summaries`. Do not put the token in the URL. A 200 response means the run completed; a 503 response means configuration is invalid or at least one delivery failed, so a later scheduled call can retry. The endpoint is disabled unless explicitly enabled, and it uses the same advisory lock and delivery idempotency as the CLI runner. Requests run synchronously, so set the scheduler timeout above the expected run time and ensure the hosting provider's PHP execution limit allows it. A 15-minute schedule is also safe; Tangent sends only summaries whose saved schedule is due.
 
 The installer writes `config.php` in the private application directory, alongside `src/` and outside `public/`. Existing installations must move their current values into the grouped sections below; upgrades do not rewrite `config.php`, and flat root-level settings are ignored. Keep the `database` section unchanged and preserve your actual values when moving the other settings:
 
@@ -94,6 +115,12 @@ The installer writes `config.php` in the private application directory, alongsid
 'realtime' => [
     'stream_enabled' => false,
     'max_connections' => 1,
+],
+'email_notifications' => [
+    'http_trigger' => [
+        'enabled' => false,
+        'token_hash' => '',
+    ],
 ],
 'github' => [],
 ```

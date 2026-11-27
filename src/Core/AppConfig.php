@@ -22,6 +22,8 @@ final class AppConfig
         public readonly bool $realtimeStreamEnabled = false,
         public readonly int $realtimeMaxConnections = 1,
         public readonly ?array $githubRepositoryAllowlist = null,
+        public readonly bool $emailNotificationHttpTriggerEnabled = false,
+        public readonly string $emailNotificationHttpTriggerTokenHash = '',
     ) {
     }
 
@@ -34,6 +36,14 @@ final class AppConfig
         $mail = is_array($fileConfig['mail'] ?? null) ? $fileConfig['mail'] : [];
         $realtime = is_array($fileConfig['realtime'] ?? null) ? $fileConfig['realtime'] : [];
         $github = is_array($fileConfig['github'] ?? null) ? $fileConfig['github'] : [];
+        $emailNotifications = is_array($fileConfig['email_notifications'] ?? null)
+            ? $fileConfig['email_notifications']
+            : [];
+        $httpTrigger = is_array($emailNotifications['http_trigger'] ?? null)
+            ? $emailNotifications['http_trigger']
+            : [];
+        $emailTriggerEnabled = getenv('TANGENT_EMAIL_NOTIFICATIONS_HTTP_TRIGGER_ENABLED');
+        $emailTriggerTokenHash = getenv('TANGENT_EMAIL_NOTIFICATIONS_HTTP_TRIGGER_TOKEN_HASH');
         $repositoryAllowlistConfigured = array_key_exists('repository_allowlist', $github);
         $repositoryAllowlist = $repositoryAllowlistConfigured
             ? $github['repository_allowlist']
@@ -64,6 +74,15 @@ final class AppConfig
             $repositoryAllowlistConfigured
                 ? (is_array($repositoryAllowlist) ? $repositoryAllowlist : [])
                 : null,
+            filter_var(
+                $emailTriggerEnabled === false || $emailTriggerEnabled === ''
+                    ? (string) ($httpTrigger['enabled'] ?? 'false')
+                    : $emailTriggerEnabled,
+                FILTER_VALIDATE_BOOL,
+            ),
+            $emailTriggerTokenHash === false || $emailTriggerTokenHash === ''
+                ? (string) ($httpTrigger['token_hash'] ?? '')
+                : $emailTriggerTokenHash,
         );
     }
 

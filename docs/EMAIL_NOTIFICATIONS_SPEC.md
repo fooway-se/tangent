@@ -69,6 +69,7 @@ Help workspace admins notice important project situations that still need attent
 
 - Use the existing `Mailer`/`NativeMailer` path and its configured `mail.from` value. No runtime package or external mail service is required by this spec.
 - Provide a PHP CLI command that the self-hosting operator can invoke from cron. Run it hourly so a delayed run can pick up due subscriptions without a long-running worker.
+- For hosts that cannot schedule PHP CLI commands, provide an optional HTTP trigger enabled in private config. It must require a dedicated bearer token, store only the token hash, use the same serialized runner, and remain disabled by default.
 - Make the runner safe against overlapping invocations and duplicate sends for the same recipient and scheduled slot. Persist enough per-subscription schedule and delivery state to retry a failed send and prevent a successful send from repeating.
 - Keep business logic in the owning modules and use public module APIs across module boundaries. All preference and item queries must be tenant-scoped and use prepared statements.
 - The blocked marker needs a migration and issue API/UI support. The customer-conversation item should use existing client visibility and thread data.

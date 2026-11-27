@@ -22,6 +22,7 @@ use Tangent\Modules\Chat\ChatRoutes;
 use Tangent\Modules\Chat\ChatService;
 use Tangent\Modules\Chat\RealtimeRoutes;
 use Tangent\Modules\EmailNotifications\EmailNotificationRepository;
+use Tangent\Modules\EmailNotifications\EmailNotificationRunner;
 use Tangent\Modules\EmailNotifications\EmailNotificationsRoutes;
 use Tangent\Modules\EmailNotifications\EmailNotificationsService;
 use Tangent\Modules\Issues\IssueRepository;
@@ -76,6 +77,8 @@ final class Application
         $tokens = new TokenRepository($pdo);
         $rateLimiter = new RateLimiter($pdo);
         $workspaceRepository = new WorkspaceRepository($pdo);
+        $workspaces = new WorkspaceService($pdo, $workspaceRepository, $users, $tokens, $config);
+        $mailTransport = $mailer ?? new NativeMailer($config->mailFrom);
         $auth = new AuthService($pdo, $users, $tokens, $rateLimiter, $config, $passwords, $workspaceRepository);
         $projectRepository = new ProjectRepository($pdo);
         $credentials = new CredentialService(
@@ -89,7 +92,7 @@ final class Application
             $auth,
             $passwords,
             $config,
-            $mailer ?? new NativeMailer($config->mailFrom),
+            $mailTransport,
         );
         $inboxEvents = new InboxEvents(new InboxEventRepository($pdo), $projectRepository, $users);
         $chat = new ChatService(new ChatRepository($pdo), $projectRepository, $inboxEvents, $pdo);
@@ -104,6 +107,16 @@ final class Application
             $pdo,
             $milestoneRepository,
             $issueDiscussionRepository,
+        );
+        $emailNotificationRepository = new EmailNotificationRepository($pdo);
+        $emailNotificationRunner = new EmailNotificationRunner(
+            $pdo,
+            $emailNotificationRepository,
+            $workspaces,
+            $chat,
+            $issues,
+            $mailTransport,
+            $config->publicAppUrl,
         );
         $agents = new AgentsService(
             new AgentRepository($pdo),
@@ -149,7 +162,7 @@ final class Application
             $csrfCookiePath,
         ))->register($router);
         (new WorkspaceRoutes(
-            new WorkspaceService($pdo, $workspaceRepository, $users, $tokens, $config),
+            $workspaces,
             $config->cookieSecure,
             $config->sessionLifetimeSeconds,
             $apiCookiePath,
@@ -170,7 +183,11 @@ final class Application
         (new AgentsRoutes($agents))->register($router);
         (new InboxRoutes($inbox, $inboxEvents))->register($router);
         (new GitHubRoutes($github, $config))->register($router);
-        (new EmailNotificationsRoutes(new EmailNotificationsService(new EmailNotificationRepository($pdo))))->register($router);
+        (new EmailNotificationsRoutes(
+            new EmailNotificationsService($emailNotificationRepository),
+            $emailNotificationRunner,
+            $config,
+        ))->register($router);
 
         return new Gateway($router, new Authenticator($tokens, $config), new RequestErrorReporter(), $realtimeFeed);
     }
